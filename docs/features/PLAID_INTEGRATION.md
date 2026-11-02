@@ -67,6 +67,7 @@ The **bank icon** in the header opens the Bank Import modal. It appears as soon 
 
 1. **Connect a bank** opens Plaid Link. In Production it first asks you to confirm, showing how many Trial connections you have used.
 2. For each account, choose the **payment method** it pays from (debit or credit card payment methods), or *Don't import*. Transactions from unmapped accounts are kept but hidden from the inbox.
+   - Mapped payment methods show a small green **bank badge** next to their name on the Financial page (Payment Methods). Hovering it lists the linked bank accounts. Without Plaid configured, the Financial page makes no bank calls and shows no badges.
 3. **Sync now** pulls changes for every connected bank and reports new / updated / removed counts. One failing bank does not stop the others.
    - The first sync covers about 30 days of history. Plaid may need a minute after connecting before history is ready.
    - Each bank shows when it last synced (date and time) and its last error.

@@ -7,6 +7,8 @@ import { getPaymentMethods, getPaymentMethod, deletePaymentMethod, setPaymentMet
 import { getCurrentCycleStatus } from '../../services/creditCardApi';
 import { authAwareFetch } from '../../utils/fetchProvider';
 import { useSyncEvent } from '../../hooks/useSyncEvent';
+import { useBankAccountLinks } from '../../hooks/useBankAccountLinks';
+import BankLinkedBadge from '../bank-import/BankLinkedBadge';
 import CreditCardPaymentForm from '../credit-cards/CreditCardPaymentForm';
 import LoanRow from '../loans/LoanRow';
 import InvestmentRow from '../loans/InvestmentRow';
@@ -167,6 +169,7 @@ const TYPE_LABELS = { debit: 'Debit', cheque: 'Cheque', cash: 'Cash' };
 
 const PaymentMethodsSection = ({ paymentMethods, loading, onPaymentRecorded, onViewDetails, onAddNew }) => {
   const [activeTab, setActiveTab] = useState('active');
+  const bankLinks = useBankAccountLinks();
   const [cardData, setCardData] = useState([]);
   const [cardLoading, setCardLoading] = useState(true);
   const [payingCardId, setPayingCardId] = useState(null);
@@ -306,7 +309,10 @@ const PaymentMethodsSection = ({ paymentMethods, loading, onPaymentRecorded, onV
                     </div>
                     {filteredCardData.map(card => (
                       <div key={card.id} className="financial-cc-summary-row">
-                        <span className="financial-cc-name">{card.name}</span>
+                        <span className="financial-cc-name">
+                          {card.name}
+                          <BankLinkedBadge accounts={bankLinks.get(card.id)} name={card.name} />
+                        </span>
                         <span className="financial-cc-amount">{formatCurrency(card.currentBalance)}</span>
                         <span className="financial-cc-amount">{card.statementBalance != null ? formatCurrency(card.statementBalance) : '—'}</span>
                         <span className="financial-cc-amount">{card.cycleBalance != null ? formatCurrency(card.cycleBalance) : '—'}</span>
@@ -350,7 +356,10 @@ const PaymentMethodsSection = ({ paymentMethods, loading, onPaymentRecorded, onV
                 {creditCards.length > 0 && <div className="payment-methods-subsection-divider">Other Payment Methods</div>}
                 {otherMethods.map(method => (
                   <div key={method.id} className="other-payment-method-row">
-                    <span className="other-payment-method-name">{method.display_name}</span>
+                    <span className="other-payment-method-name">
+                      {method.display_name}
+                      <BankLinkedBadge accounts={bankLinks.get(method.id)} name={method.display_name} />
+                    </span>
                     <span className="other-payment-method-type-badge" data-testid="type-badge">{getTypeBadgeLabel(method.type)}</span>
                     {activeTab === 'active' ? (
                       <button

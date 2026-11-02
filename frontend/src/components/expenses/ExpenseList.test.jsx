@@ -124,6 +124,36 @@ describe('ExpenseList Local Filter Tests', () => {
   });
 
   /**
+   * Test: bank-confirmed expenses colour their payment method pill instead of showing a separate icon
+   */
+  it('colours the payment method pill of bank-confirmed expenses, with the bank details on hover', async () => {
+    const bankLink = { status: 'added', name: 'Grocery Store', rawName: 'GROCERY #12', date: '2025-01-15', amount: 150.5 };
+    render(
+      <ExpenseList
+        expenses={[
+          { ...mockExpenses[0], bankLink },
+          { ...mockExpenses[1], amount: 50, bankLink: { ...bankLink, name: 'Restaurant', amount: 45 } },
+          mockExpenses[2]
+        ]}
+        onExpenseDeleted={vi.fn()}
+        onExpenseUpdated={vi.fn()}
+        onAddExpense={vi.fn()}
+      />
+    );
+
+    await waitFor(() => expect(screen.getAllByTestId('bank-method-pill')).toHaveLength(2));
+    const pills = screen.getAllByTestId('bank-method-pill');
+    const confirmed = pills.find(pill => pill.dataset.bankState === 'confirmed');
+    const differs = pills.find(pill => pill.dataset.bankState === 'differs');
+    expect(confirmed).toHaveClass('method-pill', 'bank-pill-confirmed');
+    expect(confirmed).toHaveTextContent('CIBC MC (confirmed by bank)');
+    expect(confirmed.getAttribute('title')).toBe('Confirmed by bank: Grocery Store\nJan 15, 2025 · $150.50\nAdded from bank');
+    expect(differs).toHaveClass('bank-pill-differs');
+    expect(differs.getAttribute('title')).toMatch(/^Amount differs from bank: \$45\.00/);
+    expect(screen.queryByTestId('bank-confirmed-indicator')).not.toBeInTheDocument();
+  });
+
+  /**
    * Test: Empty state message when no expenses exist
    */
   it('should display message when no expenses exist', async () => {

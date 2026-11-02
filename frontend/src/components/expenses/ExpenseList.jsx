@@ -8,7 +8,8 @@ import InvoiceIndicator from '../tax/InvoiceIndicator';
 import InsuranceStatusIndicator from './InsuranceStatusIndicator';
 import QuickStatusUpdate from './QuickStatusUpdate';
 import ReimbursementIndicator from './ReimbursementIndicator';
-import BankConfirmedIndicator from '../bank-import/BankConfirmedIndicator';
+import { bankLinkState, bankLinkTitle, bankPillProps } from '../bank-import/bankConfirmation';
+import '../bank-import/BankImport.css';
 import PostedIndicator from './PostedIndicator';
 import ExpenseForm from './ExpenseForm';
 import FilterChip from './FilterChip';
@@ -1073,6 +1074,7 @@ const ExpenseList = memo(({
               const invoices = invoiceData.get(expense.id) || [];
               const typeHue = getCategoryHue(expense.type);
               const methodIcon = PAYMENT_TYPE_ICONS[expense.payment_method_type ?? paymentMethodMap.get(expense.method)?.type];
+              const bankPill = bankPillProps(bankLinkState(expense), bankLinkTitle(expense));
               return (
               <tr 
                 key={expense.id}
@@ -1104,7 +1106,6 @@ const ExpenseList = memo(({
                       expense.place || '-'
                     )}
                     <div className="expense-indicators">
-                      <BankConfirmedIndicator expense={expense} />
                       <PeopleIndicator expense={expense} />
                       {TAX_TYPES.includes(expense.type) && (
                         <InvoiceIndicator
@@ -1158,9 +1159,13 @@ const ExpenseList = memo(({
                 </td>
                 <td>{expense.week}</td>
                 <td>
-                  <span className={`method-pill${expense.payment_method_is_active === 0 ? ' inactive-payment-method' : ''}`}>
+                  <span
+                    className={`method-pill${expense.payment_method_is_active === 0 ? ' inactive-payment-method' : ''}${bankPill.className}`}
+                    {...bankPill.attrs}
+                  >
                     {methodIcon && <Icon name={methodIcon} size={13} className="method-pill-icon" />}
                     {expense.method}
+                    {bankPill.srText && <span className="sr-only">{bankPill.srText}</span>}
                     {expense.payment_method_is_active === 0 && (
                       <span 
                         className="inactive-indicator" 

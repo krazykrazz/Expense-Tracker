@@ -375,7 +375,7 @@
   }
 }
 
-/* Expense list indicator */
+/* Income Management indicator (income has no payment method pill) */
 
 .bank-confirmed-indicator {
   position: relative;
@@ -418,6 +418,44 @@
     color: #000 !important;
     border: 1px solid #000 !important;
   }
+}
+
+/* Payment method pill of a bank-confirmed expense / fixed expense: green, amber when the amount differs.
+   Bank details are in the pill's hover text. */
+
+.method-pill.bank-pill-confirmed,
+.fixed-expense-payment.bank-pill-confirmed {
+  color: var(--color-positive-dark, #16a34a);
+  background-color: var(--color-positive-light, #dcfce7);
+  box-shadow: inset 0 0 0 1px rgba(34, 197, 94, 0.45);
+  cursor: help;
+}
+
+.method-pill.bank-pill-differs,
+.fixed-expense-payment.bank-pill-differs {
+  color: #92400e;
+  background-color: var(--color-warning-light, #fef3c7);
+  box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.55);
+  cursor: help;
+}
+
+.method-pill.bank-pill-confirmed .method-pill-icon,
+.method-pill.bank-pill-differs .method-pill-icon {
+  color: inherit;
+}
+
+:root[data-theme='dark'] .method-pill.bank-pill-confirmed,
+:root[data-theme='dark'] .fixed-expense-payment.bank-pill-confirmed {
+  color: #4ade80;
+  background-color: rgba(34, 197, 94, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(74, 222, 128, 0.45);
+}
+
+:root[data-theme='dark'] .method-pill.bank-pill-differs,
+:root[data-theme='dark'] .fixed-expense-payment.bank-pill-differs {
+  color: #fbbf24;
+  background-color: rgba(245, 158, 11, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(251, 191, 36, 0.45);
 }
 
 /* Settings → Bank Import (theme variables only, so it stays readable in dark mode) */

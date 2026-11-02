@@ -15,7 +15,10 @@ import { getMonthNameLong } from '../../utils/formatters';
 import { CATEGORIES } from '../../utils/constants';
 import { createLogger } from '../../utils/logger';
 import ConfirmDialog from '../shared/ConfirmDialog';
-import FixedConfirmationIndicator from '../bank-import/FixedConfirmationIndicator';
+import { fixedConfirmationState, fixedConfirmationTitle, bankPillProps } from '../bank-import/bankConfirmation';
+import '../bank-import/BankImport.css';
+
+const fixedBankPill = (fixedExpense) => bankPillProps(fixedConfirmationState(fixedExpense), fixedConfirmationTitle(fixedExpense));
 
 const logger = createLogger('FixedExpensesModal');
 
@@ -610,7 +613,9 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
                       <span>Linked Loan</span>
                       <span>Actions</span>
                     </div>
-                    {fixedExpenses.map((expense) => (
+                    {fixedExpenses.map((expense) => {
+                    const bankPill = fixedBankPill(expense);
+                    return (
                     <div key={expense.id} className="fixed-expense-item">
                       {editingId === expense.id ? (
                         <div className="fixed-expense-edit">
@@ -755,23 +760,19 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
                         </div>
                       ) : (
                         <div className="fixed-expense-display">
-                          <span className="fixed-expense-name">
-                            {expense.name}
-                            {expense.bankConfirmation && (
-                              <>
-                                {' '}
-                                <FixedConfirmationIndicator fixedExpense={expense} />
-                              </>
-                            )}
-                          </span>
+                          <span className="fixed-expense-name">{expense.name}</span>
                           <span className="fixed-expense-category">{expense.category || 'Other'}</span>
-                          <span className={`fixed-expense-payment ${
-                            (expense.payment_method_id && inactivePaymentMethods[expense.payment_method_id]) ||
-                            (expense.payment_type && !paymentMethods.some(m => m.display_name === expense.payment_type))
-                              ? 'inactive-payment-method'
-                              : ''
-                          }`}>
+                          <span
+                            className={`fixed-expense-payment ${
+                              (expense.payment_method_id && inactivePaymentMethods[expense.payment_method_id]) ||
+                              (expense.payment_type && !paymentMethods.some(m => m.display_name === expense.payment_type))
+                                ? 'inactive-payment-method'
+                                : ''
+                            }${bankPill.className}`}
+                            {...bankPill.attrs}
+                          >
                             {expense.payment_type || 'Debit'}
+                            {bankPill.srText && <span className="sr-only">{bankPill.srText}</span>}
                             {/* Show warning indicator for inactive payment methods (Requirements 5.4) */}
                             {((expense.payment_method_id && inactivePaymentMethods[expense.payment_method_id]) ||
                               (expense.payment_type && !paymentMethodsLoading && paymentMethods.length > 0 && 
@@ -821,7 +822,8 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
                         </div>
                       )}
                     </div>
-                  ))}
+                    );
+                  })}
                   </>
                 )}
               </div>

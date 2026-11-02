@@ -165,7 +165,7 @@ Suggested after the first real-bank connection: a payroll deposit showed as "Ref
 
 **Design**
 - `plaid_transactions.link_type TEXT` (`expense|refund|fixed|card_payment`), set when matched; `expense_id` reused for refunds.
-- The expense's bank icon tooltip lists both the charge and the refund.
+- The expense's payment method pill hover text lists both the charge and the refund.
 
 **Tests:** candidate rules (PBT on amounts/dates); applying twice is rejected; insurance-tracked medical expenses are never candidates; card balance unchanged in net effect.
 

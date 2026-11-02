@@ -233,6 +233,7 @@ Deferred (Low, phase 2):
   - **Confirming:** stores the landing date in `plaid_fixed_expense_links` (a new table, so no migration). A different amount updates the plan through `fixedExpenseService.updateFixedExpense`; if that fails, the link is undone.
   - **Display:** Fixed Expenses shows a bank icon with when the payment landed and how many days from the due date, amber if the plan is later edited away from the bank amount.
   - **Delete:** deleting the fixed expense returns the transaction to the inbox.
+- **Display change (after the first real-bank week):** the separate bank icons on expenses and fixed expenses were replaced by colouring the payment method pill (green confirmed, amber amount differs) with the bank details as its hover text. `BankConfirmedIndicator` and `FixedConfirmationIndicator` became helpers in `components/bank-import/bankConfirmation.js`. Income keeps an icon because it has no payment method pill.
 
 ## Tasks
 

@@ -42,6 +42,7 @@ Small slices found while using Phase 1 with real banks, shipped ahead of the pha
 | Pending transactions: add the day you spend; the expense settles in place (yellow → green pill) | 3.5 (Status) | #438 (v1.17.0) |
 | Linked balances: investments and loans/lines of credit kept current from bank balances | [below](#linked-balances-next-slice) | not started |
 | Credit cards: record card payments from the bank, balance check, utilization, (CIBC) statements | [below](#credit-cards-next-slice-candidates) | not started |
+| Investments and loans: contributions close the loop on planned savings; record loan/LOC payments from the bank | [below](#investments-and-loans-next-slice-candidates) | not started |
 
 ### Linked balances (next slice)
 
@@ -142,6 +143,68 @@ Cards are where the household spends most, and every card account already return
 - **Wealthsimple** doesn't support Liabilities, so its cards stay on manual statements.
 
 **Order suggested:** 2 (removes the most manual work) → 1 → 3 → 4 (after 2.1).
+
+### Investments and loans (next slice candidates)
+
+[Linked balances](#linked-balances-next-slice) keeps investment values and loan balances current. This section covers the **money movements**: contributions and loan payments that show up in the inbox and today can only be ignored.
+
+**1. Contributions close the loop on planned savings**
+
+The budget plan (Budget Plan API) already has monthly **allocations**, e.g. "RRSP $300". An allocation can be linked to an investment (`budget_allocations.investment_id`), and range views already compare planned savings with "saved" (income − fixed − variable). What's missing is whether the planned contribution **actually happened**.
+
+- **Bank side:** a contribution is a debit from chequing labelled `TRANSFER_OUT` (or similar). Plaid's Transactions product doesn't return investment-account transactions, so the chequing side is what we see, for example a Wealthsimple chequing → RRSP transfer.
+- **Inbox:** such a debit is labelled **Transfer** (2.4), with **Record contribution**. The picker lists the month's allocations, ranked by:
+  1. the allocation this bank description was recorded against before (learned, like income);
+  2. investment or allocation name words in the description ("RRSP", "TFSA");
+  3. exact amount;
+  4. same month, or within 3 days of the month boundary.
+
+  Several contributions may count towards one allocation (e.g. bi-weekly $150 + $150 against $300).
+- **Without Plaid:** **Mark contributed** on the allocation in the Plan tab records the same thing by hand (principle 7).
+- **Plan tab:** each allocation shows "Planned $300 · Contributed $300 ✓", partial "$150 of $300", or nothing yet. The month adds `contributed` next to `allocated`.
+- **Range views** (`/budgets/history`, `period-summary`, `annual-summary`) add `contributed` next to `planned` and `saved`, so "planned vs actually invested" is visible over time.
+- **Not an expense:** contributions never count as spending, just like allocations.
+- **Linked balances:** when the investment is linked to a bank account, its value change for the month can be split into "contributed $300, growth $X". That's later; it needs only the data above.
+
+**Design**
+- **New table** `investment_contributions`:
+
+  | Column | Notes |
+  |---|---|
+  | `id` | |
+  | `year`, `month` | |
+  | `allocation_id` | → `budget_allocations`, ON DELETE SET NULL |
+  | `investment_id` | → `investments`, ON DELETE SET NULL |
+  | `date`, `amount > 0` | |
+  | `source` | `manual` \| `bank` |
+  | `plaid_transaction_id` | UNIQUE → `plaid_transactions`, ON DELETE SET NULL |
+  | `notes`, `created_at` | |
+
+  Deleting a contribution returns its bank row to the inbox (trigger, same pattern as the other links).
+- **Carry-forward:** an allocation shown carried forward (no `id`) is persisted first (`useCarryForward.ensurePersisted` / service equivalent) before a contribution is attached.
+- **Activity log:** `investment_contribution_added|deleted`, entity `budget` (refreshes the Plan tab in other tabs), plus `plaid_transaction_updated` (`action: 'contribution'`).
+- **Endpoints:**
+  - `POST /api/plaid/inbox/:id/contribution` `{ allocationId? , investmentId? }`;
+  - `GET|POST|DELETE /api/budgets/contributions`;
+  - `contributed` added to `/budgets/plan` and the range views.
+
+**2. Loan and line-of-credit payments from the bank**
+- **Today:** a debit labelled `LOAN_PAYMENTS` (mortgage, HELOC, line of credit) can only confirm a **loan-linked fixed expense**, which logs the loan payment (4.1). A payment with no fixed expense (an extra principal payment, paying down the LOC) has only Ignore.
+- **New:** **Record loan payment** lists active loans, ranked by:
+  - loans linked to a fixed expense on this payment method;
+  - name words in the description;
+  - loans whose last payment had a similar amount.
+
+  It creates the payment through `loanPaymentService.createPayment` (validation, mortgage balance snapshot, activity log) with the bank's date and amount, and links the bank row (`plaid_loan_payment_links`; deleting the payment returns the row to the inbox).
+- **Duplicates:** if a payment for that loan with the same amount within ±5 days already exists (logged by hand or by the auto-log prompt), offer **Match** instead. If a loan-linked fixed expense matches, **Confirm fixed expense** (4.1) is offered first, so the loan payment isn't logged twice.
+
+**Known limits (stated so they aren't mistaken for bugs)**
+- **Loans at banks that aren't connected** (e.g. Pine Mortgage, Pine HELOC) can't be linked for balances. Their payments are seen only from the chequing side (item 2 / 4.1).
+- **Line-of-credit draws and interest charges** change the LOC balance. Linked balances follows the balance only; individual draws and interest charges are not recorded.
+- **Interest rates** stay manual. Plaid provides them only through Liabilities: CIBC supports it, but it holds no loans of ours, and Wealthsimple doesn't support Liabilities. Linked balances carries the last rate forward.
+- **Contributions made inside a brokerage** (e.g. from a Wealthsimple cash account to an RRSP) may never touch a connected chequing account. Then they're recorded with **Mark contributed**, or later from the Investments product (Wealthsimple supports it; see the untapped-data table).
+
+**Order suggested:** 1 (contributions; closes the plan loop) → 2 (loan payments). Both depend on 2.4 storing Plaid categories, so the transfer and loan-payment labels exist.
 
 ### Untapped Plaid data (reference)
 

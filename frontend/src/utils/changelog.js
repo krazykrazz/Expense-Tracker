@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.14.0',
+    date: 'November 2, 2026',
+    added: [],
+    changed: ['Bank import (Plaid): connect banks and review transactions in an Import Inbox (add, match, confirm fixed expenses, ignore), with in-app setup; charged-amount matching; fixed expenses linked to payment methods'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.13.1',
     date: 'November 1, 2026',
     added: [],

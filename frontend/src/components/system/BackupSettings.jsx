@@ -1215,6 +1215,13 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v1.14.0</div>
+                <div className="changelog-date">November 2, 2026</div>
+                <ul className="changelog-items">
+                  <li>Bank import (Plaid): connect banks and review transactions in an Import Inbox (add, match, confirm fixed expenses, ignore), with in-app setup; charged-amount matching; fixed expenses linked to payment methods</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v1.13.1</div>
                 <div className="changelog-date">November 1, 2026</div>
                 <ul className="changelog-items">

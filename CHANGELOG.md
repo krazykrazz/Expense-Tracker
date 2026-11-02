@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.14.0] - 2026-11-02
+
+### Bank import (Plaid): connect banks and review transactions in an Import Inbox (add, match, confirm fixed expenses, ignore), with in-app setup; charged-amount matching; fixed expenses linked to payment methods
+
 ## [1.13.1] - 2026-11-01
 
 ### Fix Total Debt Trend: include paid-off loans for the months they had balances, carry active loans forward when no monthly balance is entered, and correct the Active Loans count. Make vX.Y.Z image tags immutable in CI.

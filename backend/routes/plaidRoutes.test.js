@@ -141,6 +141,15 @@ describe('plaid routes', () => {
     expect(plaidInboxService.matchToExpense).toHaveBeenCalledWith(3, 4);
   });
 
+  test('POST /inbox/:id/match-fixed passes the fixed expense and tab id', async () => {
+    plaidInboxService.matchToFixedExpense.mockResolvedValue({ transaction: {}, fixedExpense: { id: 8 } });
+
+    const res = await request(app).post('/api/plaid/inbox/3/match-fixed').set('X-Tab-ID', 'tab-2').send({ fixedExpenseId: 8 });
+
+    expect(res.status).toBe(200);
+    expect(plaidInboxService.matchToFixedExpense).toHaveBeenCalledWith(3, 8, 'tab-2');
+  });
+
   test('DELETE /items/:id returns 204', async () => {
     plaidService.disconnectItem.mockResolvedValue();
 

@@ -248,6 +248,91 @@ class PlaidRepository {
     return changes > 0;
   }
 
+  // ─── Fixed expenses ───
+
+  /**
+   * Fixed expenses not yet confirmed by a bank transaction, for the given payment methods and an inclusive
+   * range of month indexes (year * 12 + month - 1). Most fixed expenses only store the payment method's
+   * display name (`payment_type`); `payment_method_id` is used when present.
+   */
+  async findUnlinkedFixedExpenses(paymentMethodIds, fromMonthIdx, toMonthIdx) {
+    if (paymentMethodIds.length === 0) return [];
+    return dbHelper.queryAll(
+      `SELECT fe.id, fe.year, fe.month, fe.name, fe.amount, fe.category, fe.payment_due_day AS dueDay,
+              fe.linked_loan_id AS linkedLoanId, pm.id AS paymentMethodId
+       FROM fixed_expenses fe
+       JOIN payment_methods pm
+         ON pm.id = fe.payment_method_id OR (fe.payment_method_id IS NULL AND pm.display_name = fe.payment_type)
+       WHERE pm.id IN (${paymentMethodIds.map(() => '?').join(',')})
+         AND fe.year BETWEEN ? AND ?
+         AND (fe.year * 12 + fe.month - 1) BETWEEN ? AND ?
+         AND NOT EXISTS (SELECT 1 FROM plaid_fixed_expense_links l WHERE l.fixed_expense_id = fe.id)
+       ORDER BY fe.year, fe.month, fe.name`,
+      [...paymentMethodIds, Math.floor(fromMonthIdx / 12), Math.floor(toMonthIdx / 12), fromMonthIdx, toMonthIdx]
+    );
+  }
+
+  /** @returns {Promise<Object|null>} the fixed expense with its resolved payment method id */
+  async findFixedExpenseForMatching(id) {
+    return dbHelper.queryOne(
+      `SELECT fe.id, fe.year, fe.month, fe.name, fe.amount, fe.payment_due_day AS dueDay,
+              (SELECT pm.id FROM payment_methods pm
+               WHERE pm.id = fe.payment_method_id OR (fe.payment_method_id IS NULL AND pm.display_name = fe.payment_type)
+               LIMIT 1) AS paymentMethodId,
+              EXISTS (SELECT 1 FROM plaid_fixed_expense_links l WHERE l.fixed_expense_id = fe.id) AS linked
+       FROM fixed_expenses fe WHERE fe.id = ?`,
+      [id]
+    );
+  }
+
+  /**
+   * Atomically mark a 'new' transaction matched and link it to a fixed expense.
+   * @returns {Promise<boolean>} false when the transaction was no longer 'new'
+   */
+  async linkFixedExpense(transactionId, fixedExpenseId, landedDate, plannedAmount) {
+    return dbHelper.runInTransaction(async (tx) => {
+      const { changes } = await tx.run(
+        "UPDATE plaid_transactions SET status = 'matched', expense_id = NULL WHERE id = ? AND status = 'new'",
+        [transactionId]
+      );
+      if (changes === 0) return false;
+      await tx.run(
+        'INSERT INTO plaid_fixed_expense_links (plaid_transaction_id, fixed_expense_id, landed_date, planned_amount) VALUES (?, ?, ?, ?)',
+        [transactionId, fixedExpenseId, landedDate, plannedAmount]
+      );
+      return true;
+    });
+  }
+
+  /** Undo linkFixedExpense (used when a follow-up step fails). */
+  async unlinkFixedExpense(transactionId) {
+    await dbHelper.runInTransaction(async (tx) => {
+      await tx.run('DELETE FROM plaid_fixed_expense_links WHERE plaid_transaction_id = ?', [transactionId]);
+      await tx.run("UPDATE plaid_transactions SET status = 'new' WHERE id = ? AND status = 'matched'", [transactionId]);
+    });
+  }
+
+  /**
+   * Bank confirmations for the given fixed expenses.
+   * @returns {Promise<Map<number, {landedDate: string, amount: number, plannedAmount: (number|null), name: string}>>}
+   */
+  async findConfirmationsForFixedExpenses(fixedExpenseIds) {
+    const confirmations = new Map();
+    if (fixedExpenseIds.length === 0) return confirmations;
+    const rows = await dbHelper.queryAll(
+      `SELECT l.fixed_expense_id AS fixedExpenseId, l.landed_date AS landedDate, l.planned_amount AS plannedAmount,
+              pt.amount, COALESCE(pt.merchant_name, pt.name) AS name
+       FROM plaid_fixed_expense_links l
+       JOIN plaid_transactions pt ON pt.id = l.plaid_transaction_id
+       WHERE l.fixed_expense_id IN (${fixedExpenseIds.map(() => '?').join(',')})`,
+      fixedExpenseIds
+    );
+    for (const { fixedExpenseId, ...confirmation } of rows) {
+      confirmations.set(fixedExpenseId, confirmation);
+    }
+    return confirmations;
+  }
+
   // ─── Expense list ───
 
   /**

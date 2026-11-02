@@ -78,12 +78,28 @@ Lists posted transactions waiting for review, newest first, with the place (Plai
 | Action | What happens |
 |--------|--------------|
 | **Add** | Opens an inline editor pre-filled with place, date and a category suggested from your history for that place. **Add expense** creates a normal expense (validation, activity log and sync all apply). For credit cards, the bank's posting date is stored as the posted date when it is later than the purchase date. |
-| **Match** | Shown when existing expenses could be the same purchase: same payment method, same **charged** amount to the cent, date within ±3 days, and not already linked. For reimbursed or insurance-tracked expenses the charged amount is the original cost (what the card was charged), not the out-of-pocket amount; the picker shows both. Links the transaction to the chosen expense without changing it. |
+| **Match** | Shown when existing expenses could be the same purchase: same payment method, same **charged** amount to the cent, date within ±3 days, and not already linked. For reimbursed or insurance-tracked expenses the charged amount is the original cost (what the card was charged), not the out-of-pocket amount; the picker shows both. Links the transaction to the chosen expense without changing it. The same picker lists **fixed expenses** the transaction could pay (see below). |
 | **Ignore** | Hides the transaction. The **Ignored** filter lists ignored transactions with **Undo ignore**. |
 
 - Refunds and credits (zero or negative amounts) are labelled *Refund / credit* and can only be ignored.
 - Amounts in a currency other than CAD get a badge; they are not converted.
 
+### Fixed expenses: confirm instead of adding
+
+Fixed expenses (rent, mortgage, utilities, subscriptions) are usually logged ahead, often copied from the previous month. A bank charge that pays one should **confirm** it, not be added as a new expense: adding it would count the bill twice.
+
+- **Which fixed expenses are offered:** for a charge (not a refund), the Match picker lists fixed expenses that:
+  - use the **same payment method**: the fixed expense's payment method ID, or its payment method name for older entries;
+  - are **due from 3 days before to 10 days after** the date the charge landed (the bank's posted date), with the due day clamped to the month length. A fixed expense without a due day is offered for any charge in its month. The window crosses month ends, so a bill due on the 30th that lands on the 2nd still matches;
+  - are **not already confirmed**.
+
+  Exact amounts are listed first. When an amount is exact or within 10%, the row gets a **"Fixed: <name>"** badge.
+- **Confirm:** links the transaction to the fixed expense and records when the payment **actually landed**. No expense is created.
+- **Different amount:** bills vary, and copied-forward amounts go stale. The planned amount is updated to the bank amount through the normal fixed-expense update (validated, logged as `fixed_expense_updated`), and the picker says so before you confirm. If that update fails, the confirmation is undone.
+- **In Fixed Expenses**, a confirmed item shows the bank icon. Its tooltip gives the bank description, the date it landed and how many days before or after the due date, the bank amount, and the planned amount when it was updated. The icon turns amber if the planned amount is later edited away from the bank amount.
+- **Each month is separate:** copying fixed expenses forward creates new, unconfirmed items. Deleting a confirmed fixed expense returns its transaction to the inbox.
+
+The landing dates are the groundwork for a later phase: auto-logged loan payments (currently created on the due day) could use the actual date the payment landed.
 ### Bank-confirmed icon in the expense list
 
 Expenses that were added from, or matched to, a bank transaction show a small bank icon next to the other indicators.
@@ -134,6 +150,6 @@ These are deferred to later phases:
 - Categories come only from your own history for the place; Plaid's categories are not used.
 - No bulk actions, no inbox count badge, no medical/donation people allocation in the inline editor (edit the expense afterwards).
 - Card payments, transfers and refunds are not recorded (ignore them).
-- **Fixed expenses are not matched.** A bank charge for something tracked under Fixed Expenses (rent, utilities, subscriptions) never shows "Possible match". **Ignore it**: adding it would count it twice, once as a fixed expense and again as a variable expense.
+- Confirmed fixed expenses don't yet feed auto-logged loan payments (those still use the due day).
 - **Medical, donation, insurance and reimbursement details** are not in the inline Add form. Add the expense, then edit it in the expense list to set people, insurance, receipts or a reimbursement. Its bank icon keeps comparing against the original charged amount.
 - Card balances (Liabilities) and investments are not imported.

@@ -8,7 +8,7 @@
  * @module database/schema
  */
 
-// ─── Table Statements (30 tables) ───
+// ─── Table Statements (31 tables) ───
 
 const TABLE_STATEMENTS = [
   // schema_migrations — tracks applied migrations
@@ -399,6 +399,19 @@ const TABLE_STATEMENTS = [
     FOREIGN KEY (expense_id) REFERENCES expenses(id) ON DELETE SET NULL
   )`,
 
+  // plaid_fixed_expense_links — a bank transaction confirming a (planned) fixed expense, with the
+  // date the payment actually landed. One link per transaction and per fixed expense.
+  `CREATE TABLE IF NOT EXISTS plaid_fixed_expense_links (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    plaid_transaction_id INTEGER NOT NULL UNIQUE,
+    fixed_expense_id INTEGER NOT NULL UNIQUE,
+    landed_date TEXT NOT NULL,
+    planned_amount REAL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (plaid_transaction_id) REFERENCES plaid_transactions(id) ON DELETE CASCADE,
+    FOREIGN KEY (fixed_expense_id) REFERENCES fixed_expenses(id) ON DELETE CASCADE
+  )`,
+
   // users — authentication user accounts
   `CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -457,6 +470,15 @@ const TRIGGER_STATEMENTS = [
    BEFORE DELETE ON expenses
    BEGIN
      UPDATE plaid_transactions SET status = 'new', expense_id = NULL WHERE expense_id = OLD.id;
+   END`,
+
+  // Same for fixed expenses: the confirming bank transaction returns to the Import Inbox
+  // (the link row itself is removed by ON DELETE CASCADE)
+  `CREATE TRIGGER IF NOT EXISTS plaid_transactions_unlink_on_fixed_expense_delete
+   BEFORE DELETE ON fixed_expenses
+   BEGIN
+     UPDATE plaid_transactions SET status = 'new'
+     WHERE id IN (SELECT plaid_transaction_id FROM plaid_fixed_expense_links WHERE fixed_expense_id = OLD.id);
    END`
 ];
 

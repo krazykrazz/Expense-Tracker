@@ -7,6 +7,7 @@ vi.mock('../../services/plaidApi', () => ({
   getInbox: vi.fn(),
   addInboxTransaction: vi.fn(),
   matchInboxTransaction: vi.fn(),
+  matchInboxTransactionToFixed: vi.fn(),
   ignoreInboxTransaction: vi.fn(),
   unignoreInboxTransaction: vi.fn(),
 }));
@@ -14,7 +15,7 @@ vi.mock('../../services/plaidApi', () => ({
 const txn = (overrides = {}) => ({
   id: 1, transactionId: 't1', date: '2026-10-10', postedDate: '2026-10-12', place: 'Coffee Shop', rawName: 'SQ *COFFEE SHOP',
   amount: 25.5, isoCurrencyCode: 'CAD', accountMask: '1234', paymentMethodId: 2, paymentMethodName: 'Debit',
-  status: 'new', canAdd: true, suggestedCategory: 'Dining Out', matchCandidates: [], ...overrides
+  status: 'new', canAdd: true, suggestedCategory: 'Dining Out', matchCandidates: [], fixedCandidates: [], ...overrides
 });
 
 const renderInbox = (props = {}) => render(<ImportInbox onExpensesChanged={vi.fn()} onOpenConnections={vi.fn()} {...props} />);
@@ -76,7 +77,7 @@ describe('ImportInbox', () => {
     renderInbox();
     expect(await screen.findByText('Possible match')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Match' }));
-    const picker = screen.getByText(/Same payment method and amount/).parentElement;
+    const picker = document.querySelector('.inbox-match-picker');
     fireEvent.click(within(picker).getByRole('button', { name: 'Match' }));
 
     await waitFor(() => expect(plaidApi.matchInboxTransaction).toHaveBeenCalledWith(1, 42));
@@ -89,9 +90,47 @@ describe('ImportInbox', () => {
     renderInbox();
     fireEvent.click(await screen.findByRole('button', { name: 'Match' }));
 
-    const row = screen.getByText(/Same payment method and amount/).parentElement;
+    const row = document.querySelector('.inbox-match-picker');
     expect(within(row).getByText(/Clinic · Tax - Medical · \$25\.50/)).toBeInTheDocument();
     expect(within(row).getByText(/you paid \$5\.50 after reimbursement/)).toBeInTheDocument();
+  });
+
+  describe('fixed expenses', () => {
+    const fixed = (overrides = {}) => ({
+      id: 9, year: 2026, month: 10, name: 'Mortgage', category: 'Housing', amount: 1500, dueDay: 1,
+      expectedDate: '2026-10-01', amountDiffers: false, linkedLoanId: null, ...overrides
+    });
+
+    it('flags a matching fixed expense and confirms it from the picker', async () => {
+      plaidApi.getInbox
+        .mockResolvedValueOnce({ transactions: [txn({ place: 'MORTGAGE PMT', amount: 1500, fixedCandidates: [fixed()] })], hiddenUnmapped: 0 })
+        .mockResolvedValue({ transactions: [], hiddenUnmapped: 0 });
+      plaidApi.matchInboxTransactionToFixed.mockResolvedValue({ transaction: {}, fixedExpense: { id: 9 } });
+      const onExpensesChanged = vi.fn();
+
+      renderInbox({ onExpensesChanged });
+      expect(await screen.findByText('Fixed: Mortgage')).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Match' }));
+      const candidate = screen.getByTestId('fixed-candidate');
+      expect(candidate).toHaveTextContent('Mortgage · due Oct 1, 2026 · $1,500.00');
+      fireEvent.click(within(candidate).getByRole('button', { name: 'Confirm' }));
+
+      await waitFor(() => expect(plaidApi.matchInboxTransactionToFixed).toHaveBeenCalledWith(1, 9));
+      await waitFor(() => expect(onExpensesChanged).toHaveBeenCalled());
+    });
+
+    it('explains that a different amount will update the plan, and only badges close amounts', async () => {
+      plaidApi.getInbox.mockResolvedValue({
+        transactions: [txn({ amount: 17.78, fixedCandidates: [fixed({ name: 'HELOC Interest', amount: 6.91, amountDiffers: true })] })],
+        hiddenUnmapped: 0
+      });
+
+      renderInbox();
+      fireEvent.click(await screen.findByRole('button', { name: 'Match' }));
+
+      expect(screen.getByTestId('fixed-candidate')).toHaveTextContent('planned amount will be updated to $17.78');
+      expect(screen.queryByText(/^Fixed:/)).not.toBeInTheDocument();
+    });
   });
 
   it('refunds can only be ignored', async () => {

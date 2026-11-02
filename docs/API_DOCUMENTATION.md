@@ -265,13 +265,14 @@ Every route except `/status` and `/settings` returns `503` until Plaid is config
 | DELETE | `/api/plaid/items/:id` | Disconnect a bank (removes it at Plaid; keeps added/matched links) (204) |
 | PUT | `/api/plaid/accounts/:id` | Map an account to a payment method: body `{ paymentMethodId }` (`null` = don't import) |
 | POST | `/api/plaid/sync` | Sync all banks: `{ results: [{ id, institutionName, added, updated, removed, updateStatus } \| { id, institutionName, error }], totals }` |
-| GET | `/api/plaid/inbox?status=new\|ignored` | Staged transactions from mapped accounts, with `suggestedCategory`, `matchCandidates` (each with `amount`, `originalCost`, `chargedAmount`) and `canAdd`; plus `hiddenUnmapped` |
+| GET | `/api/plaid/inbox?status=new\|ignored` | Staged transactions from mapped accounts, with `suggestedCategory`, `matchCandidates` (each with `amount`, `originalCost`, `chargedAmount`), `fixedCandidates` (each with `name`, `amount`, `dueDay`, `expectedDate`, `amountDiffers`) and `canAdd`; plus `hiddenUnmapped` |
 | POST | `/api/plaid/inbox/:id/add` | Create an expense: body `{ type, place?, date?, notes? }` (201; 400 for refunds/validation, 409 if already reviewed) |
 | POST | `/api/plaid/inbox/:id/match` | Link to an existing expense: body `{ expenseId }` (400 different payment method, 409 already linked) |
+| POST | `/api/plaid/inbox/:id/match-fixed` | Confirm a fixed expense: body `{ fixedExpenseId }`. Records the landing date; a different bank amount updates the fixed expense amount (logged as `fixed_expense_updated`). 400 other payment method / outside the due window / update failed, 404, 409 already confirmed |
 | POST | `/api/plaid/inbox/:id/ignore` | Ignore a transaction (409 if already reviewed) |
 | POST | `/api/plaid/inbox/:id/unignore` | Return an ignored transaction to the inbox |
 
-`GET /api/expenses` adds a `bankLink` field to each expense: `{ status: 'added'|'matched', name, rawName, date, amount }`, or `null` when it is not linked to a bank transaction.
+`GET /api/expenses` adds a `bankLink` field to each expense: `{ status: 'added'|'matched', name, rawName, date, amount }`, or `null` when it is not linked to a bank transaction. `GET /api/fixed-expenses/:year/:month` adds `bankConfirmation` to each item: `{ landedDate, amount, plannedAmount, name, expectedDate, daysFromDue }`, or `null`.
 
 ---
 

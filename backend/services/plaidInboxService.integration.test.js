@@ -15,6 +15,7 @@ const { getDatabase } = require('../database/db');
 const activityLogService = require('./activityLogService');
 const plaidInboxService = require('./plaidInboxService');
 const expenseService = require('./expenseService');
+const fixedExpenseService = require('./fixedExpenseService');
 
 const DEBIT = 2;
 const CREDIT_CARD = 4;
@@ -50,10 +51,12 @@ afterAll(() => cleanupIsolatedTestDb(db));
 
 beforeEach(async () => {
   activityLogService.logEvent.mockClear();
+  await run('DELETE FROM plaid_fixed_expense_links');
   await run('DELETE FROM plaid_transactions');
   await run('DELETE FROM plaid_accounts');
   await run('DELETE FROM plaid_items');
   await run('DELETE FROM expenses');
+  await run('DELETE FROM fixed_expenses');
   const itemId = await run("INSERT INTO plaid_items (item_id, institution_name, access_token_enc, environment) VALUES ('item-1', 'Test Bank', 'v1:x:y:z', 'sandbox')");
   debitAccountId = await run("INSERT INTO plaid_accounts (plaid_item_id, account_id, name, payment_method_id) VALUES (?, 'acc-debit', 'Chequing', ?)", [itemId, DEBIT]);
   cardAccountId = await run("INSERT INTO plaid_accounts (plaid_item_id, account_id, name, payment_method_id) VALUES (?, 'acc-card', 'Visa', ?)", [itemId, CREDIT_CARD]);
@@ -231,6 +234,109 @@ describe('plaidInboxService', () => {
       await expect(plaidInboxService.ignore(id)).rejects.toMatchObject({ statusCode: 409 });
       await expect(plaidInboxService.unignore(id)).rejects.toMatchObject({ statusCode: 409 });
       await expect(plaidInboxService.ignore(99999)).rejects.toMatchObject({ statusCode: 404 });
+    });
+  });
+
+  describe('fixed expenses', () => {
+    const addFixed = ({ name = 'Mortgage', amount = 1500, dueDay = 1, year = 2026, month = 10, paymentType = 'Debit', paymentMethodId = null } = {}) =>
+      run(
+        "INSERT INTO fixed_expenses (year, month, name, amount, category, payment_type, payment_method_id, payment_due_day) VALUES (?, ?, ?, ?, 'Housing', ?, ?, ?)",
+        [year, month, name, amount, paymentType, paymentMethodId, dueDay]
+      );
+
+    test('offers fixed expenses on the same payment method due around the landing date, by name or id', async () => {
+      const mortgage = await addFixed({ name: 'Mortgage', amount: 1500, dueDay: 1 });
+      const internet = await addFixed({ name: 'Internet', amount: 80, dueDay: 30, month: 9, paymentType: 'legacy-name', paymentMethodId: DEBIT });
+      await addFixed({ name: 'Too late', amount: 1500, dueDay: 1, month: 9 });          // due Sep 1: Oct 3 is 32 days late
+      await addFixed({ name: 'Other card', amount: 1500, dueDay: 1, paymentType: 'Credit Card' });
+      await stage('t-bill', { amount: 1500, date: '2026-10-03', authorizedDate: '2026-10-03', name: 'MORTGAGE PMT', merchantName: null });
+
+      const { transactions } = await plaidInboxService.listInbox('new');
+
+      expect(transactions[0].fixedCandidates.map(f => f.name)).toEqual(['Mortgage', 'Internet']);
+      expect(transactions[0].fixedCandidates[0]).toMatchObject({ id: mortgage, expectedDate: '2026-10-01', amountDiffers: false });
+      expect(transactions[0].fixedCandidates[1]).toMatchObject({ id: internet, expectedDate: '2026-09-30', amountDiffers: true });
+    });
+
+    test('matching confirms the fixed expense, records when it landed, and creates no expense', async () => {
+      const mortgage = await addFixed({ amount: 1500, dueDay: 1 });
+      const id = await stage('t-bill', { amount: 1500, date: '2026-10-03', authorizedDate: '2026-10-02' });
+
+      const result = await plaidInboxService.matchToFixedExpense(id, mortgage, 'tab-1');
+
+      expect(result.transaction).toMatchObject({ status: 'matched', expenseId: null });
+      expect(result.fixedExpense).toMatchObject({ id: mortgage, plannedAmount: 1500, amount: 1500, amountUpdated: false, landedDate: '2026-10-03' });
+      expect((await get('SELECT COUNT(*) AS n FROM expenses')).n).toBe(0);
+      expect((await plaidInboxService.listInbox('new')).transactions).toHaveLength(0);
+
+      const { items } = await fixedExpenseService.getMonthlyFixedExpensesWithLoans(2026, 10);
+      expect(items.find(i => i.id === mortgage).bankConfirmation).toMatchObject({
+        landedDate: '2026-10-03', amount: 1500, plannedAmount: 1500, expectedDate: '2026-10-01', daysFromDue: 2
+      });
+    });
+
+    test('a different bank amount updates the planned amount through the fixed expense service', async () => {
+      const heloc = await addFixed({ name: 'HELOC Interest', amount: 17.47, dueDay: 25, month: 10 });
+      const id = await stage('t-heloc', { amount: 17.78, date: '2026-10-27', authorizedDate: '2026-10-27' });
+
+      const result = await plaidInboxService.matchToFixedExpense(id, heloc, 'tab-1');
+
+      expect(result.fixedExpense).toMatchObject({ plannedAmount: 17.47, amount: 17.78, amountUpdated: true });
+      expect(await get('SELECT amount FROM fixed_expenses WHERE id = ?', [heloc])).toEqual({ amount: 17.78 });
+      expect(activityLogService.logEvent).toHaveBeenCalledWith(
+        'fixed_expense_updated', 'fixed_expense', heloc, expect.stringContaining('$17.47 → $17.78'), expect.objectContaining({ tabId: 'tab-1' })
+      );
+      const { items } = await fixedExpenseService.getMonthlyFixedExpensesWithLoans(2026, 10);
+      expect(items[0].bankConfirmation).toMatchObject({ amount: 17.78, plannedAmount: 17.47 });
+    });
+
+    test('if the amount cannot be updated, the link is undone', async () => {
+      const legacy = await addFixed({ amount: 50, dueDay: 1, paymentType: 'Fixed', paymentMethodId: DEBIT });
+      const id = await stage('t-legacy', { amount: 55, date: '2026-10-02', authorizedDate: '2026-10-02' });
+
+      await expect(plaidInboxService.matchToFixedExpense(id, legacy)).rejects.toMatchObject({ statusCode: 400 });
+
+      expect(await get('SELECT status FROM plaid_transactions WHERE id = ?', [id])).toEqual({ status: 'new' });
+      expect((await get('SELECT COUNT(*) AS n FROM plaid_fixed_expense_links')).n).toBe(0);
+      expect(await get('SELECT amount FROM fixed_expenses WHERE id = ?', [legacy])).toEqual({ amount: 50 });
+    });
+
+    test('rejects fixed expenses on another payment method, outside the window, or already confirmed', async () => {
+      const card = await addFixed({ paymentType: 'Credit Card' });
+      const septemberDue = await addFixed({ month: 9 });
+      const mortgage = await addFixed();
+      const first = await stage('t1', { amount: 1500, date: '2026-10-02', authorizedDate: '2026-10-02' });
+      const second = await stage('t2', { amount: 1500, date: '2026-10-03', authorizedDate: '2026-10-03' });
+
+      await expect(plaidInboxService.matchToFixedExpense(first, card)).rejects.toMatchObject({ statusCode: 400 });
+      await expect(plaidInboxService.matchToFixedExpense(first, septemberDue)).rejects.toMatchObject({ statusCode: 400 });
+      await expect(plaidInboxService.matchToFixedExpense(first, 99999)).rejects.toMatchObject({ statusCode: 404 });
+      await plaidInboxService.matchToFixedExpense(first, mortgage);
+      await expect(plaidInboxService.matchToFixedExpense(second, mortgage)).rejects.toMatchObject({ statusCode: 409 });
+      expect(await get('SELECT status FROM plaid_transactions WHERE id = ?', [second])).toEqual({ status: 'new' });
+    });
+
+    test('deleting a confirmed fixed expense returns the bank transaction to the inbox', async () => {
+      const mortgage = await addFixed();
+      const id = await stage('t-bill', { amount: 1500, date: '2026-10-02', authorizedDate: '2026-10-02' });
+      await plaidInboxService.matchToFixedExpense(id, mortgage);
+
+      await run('DELETE FROM fixed_expenses WHERE id = ?', [mortgage]);
+
+      expect((await plaidInboxService.listInbox('new')).transactions.map(t => t.id)).toEqual([id]);
+      expect((await get('SELECT COUNT(*) AS n FROM plaid_fixed_expense_links')).n).toBe(0);
+    });
+
+    test('copied-forward months are confirmed separately', async () => {
+      const october = await addFixed({ month: 10 });
+      const november = await addFixed({ month: 11 });
+      const octTxn = await stage('t-oct', { amount: 1500, date: '2026-10-01', authorizedDate: '2026-10-01' });
+      await plaidInboxService.matchToFixedExpense(octTxn, october);
+      await stage('t-nov', { amount: 1500, date: '2026-11-02', authorizedDate: '2026-11-02' });
+
+      const { transactions } = await plaidInboxService.listInbox('new');
+
+      expect(transactions[0].fixedCandidates.map(f => f.id)).toEqual([november]);
     });
   });
 

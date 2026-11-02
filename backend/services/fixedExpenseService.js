@@ -1,10 +1,12 @@
 const fixedExpenseRepository = require('../repositories/fixedExpenseRepository');
 const paymentMethodRepository = require('../repositories/paymentMethodRepository');
 const loanRepository = require('../repositories/loanRepository');
+const plaidRepository = require('../repositories/plaidRepository');
 const activityLogService = require('./activityLogService');
 const { validateYearMonth } = require('../utils/validators');
 const { previousMonth, logMonthCopy } = require('../utils/monthlyRows');
 const { CATEGORIES, normalizeCategory } = require('../utils/categories');
+const { fixedExpectedDate, signedDayDiff } = require('../utils/plaidMatching');
 
 class FixedExpenseService {
   /**
@@ -216,13 +218,34 @@ class FixedExpenseService {
     }
 
     // Fetch fixed expenses with loan details and total from repository
-    const items = await fixedExpenseRepository.getFixedExpensesWithLoans(yearNum, monthNum);
+    const rows = await fixedExpenseRepository.getFixedExpensesWithLoans(yearNum, monthNum);
     const total = await fixedExpenseRepository.getTotalFixedExpenses(yearNum, monthNum);
 
     return {
-      items,
+      items: await this._withBankConfirmations(rows),
       total
     };
+  }
+
+  /**
+   * Attach `bankConfirmation` (from the Plaid Import Inbox) to each item: when the payment actually landed,
+   * the bank amount, the amount planned before it was confirmed, and how many days after the due date it landed.
+   */
+  async _withBankConfirmations(items) {
+    const confirmations = await plaidRepository.findConfirmationsForFixedExpenses(items.map(item => item.id));
+    return items.map(item => {
+      const confirmation = confirmations.get(item.id);
+      if (!confirmation) return { ...item, bankConfirmation: null };
+      const expectedDate = fixedExpectedDate({ year: item.year, month: item.month, dueDay: item.payment_due_day });
+      return {
+        ...item,
+        bankConfirmation: {
+          ...confirmation,
+          expectedDate,
+          daysFromDue: expectedDate ? signedDayDiff(expectedDate, confirmation.landedDate) : null
+        }
+      };
+    });
   }
 
   /**

@@ -16,6 +16,9 @@ const {
 const { INCOME_CATEGORIES } = require('../utils/constants');
 
 const INBOX_STATUSES = ['new', 'ignored'];
+/** A dropped pending charge may reappear as a posted row up to this many days later, within this share of its amount. */
+const SETTLE_WINDOW_DAYS = 10;
+const SETTLE_AMOUNT_TOLERANCE = 0.25;
 
 const fail = (message, statusCode) => Object.assign(new Error(message), { statusCode });
 const round2 = (n) => Math.round(n * 100) / 100;
@@ -76,6 +79,7 @@ class PlaidInboxService {
         paymentMethodName: row.paymentMethodName,
         paymentMethodType: row.paymentMethodType,
         status: row.status,
+        pending: Boolean(row.pending),
         canAdd: row.amount > 0,
         isDeposit: isDeposit(row),
         suggestedCategory: suggestions.get(place.toLowerCase()) ?? null,
@@ -86,7 +90,37 @@ class PlaidInboxService {
       };
     });
 
-    return { transactions, hiddenUnmapped };
+    return { transactions, hiddenUnmapped, cancelled: isNew ? await this._cancelledPending() : [] };
+  }
+
+  /**
+   * Pending charges added or matched as expenses and then dropped by the bank: a cancelled hold, or a charge
+   * that settled under a new reference without Plaid linking the two. For the second case, posted rows on the
+   * same account within 10 days and 25% of the amount are offered.
+   */
+  async _cancelledPending() {
+    const rows = await plaidRepository.findCancelledPending();
+    if (rows.length === 0) return [];
+    const dates = rows.map(row => row.date).sort();
+    const posted = await plaidRepository.findPostedNewOnAccounts(
+      [...new Set(rows.map(row => row.plaidAccountId).filter(Boolean))],
+      dates[0],
+      shiftDate(dates[dates.length - 1], SETTLE_WINDOW_DAYS)
+    );
+    return rows.map(row => ({
+      id: row.id,
+      date: transactionDate(row),
+      place: defaultPlace(row),
+      amount: row.amount,
+      accountMask: row.accountMask,
+      paymentMethodName: row.paymentMethodName,
+      expense: { id: row.expenseId, place: row.expensePlace, amount: row.expenseAmount, date: row.expenseDate },
+      settledCandidates: posted
+        .filter(p => p.plaidAccountId === row.plaidAccountId && p.date >= row.date
+          && p.date <= shiftDate(row.date, SETTLE_WINDOW_DAYS)
+          && Math.abs(p.amount - row.amount) <= Math.abs(row.amount) * SETTLE_AMOUNT_TOLERANCE)
+        .map(p => ({ id: p.id, date: p.date, place: defaultPlace(p), amount: p.amount }))
+    }));
   }
 
   /**
@@ -185,13 +219,16 @@ class PlaidInboxService {
     return suggestions;
   }
 
-  async _requireNew(id) {
+  async _requireNew(id, { settled = false } = {}) {
     const txn = await plaidRepository.findTransactionById(id);
     if (!txn) {
       throw fail('Bank transaction not found', 404);
     }
     if (txn.status !== 'new') {
       throw fail(`Bank transaction was already ${txn.status}`, 409);
+    }
+    if (settled && txn.pending) {
+      throw fail('This transaction is still pending at the bank. Confirm it once it settles.', 400);
     }
     return txn;
   }
@@ -211,7 +248,7 @@ class PlaidInboxService {
   /**
    * Activity log for an inbox decision. Entity `plaid_transaction` is routed as `plaid`, so open inboxes in
    * other tabs refresh. Side effects (expense_added, fixed_expense_updated, ...) are logged by their services.
-   * @param {'add'|'match'|'match_fixed'|'match_income'|'add_income'|'ignore'|'unignore'} action
+   * @param {'add'|'match'|'match_fixed'|'match_income'|'add_income'|'ignore'|'unignore'|'settled'|'pending_changed'|'cancelled_keep'|'cancelled_delete'} action
    */
   async _logReview(txn, action, description, extra = {}) {
     await activityLogService.logEvent('plaid_transaction_updated', 'plaid_transaction', txn.id, description, {
@@ -236,8 +273,9 @@ class PlaidInboxService {
 
       const date = input.date || transactionDate(txn);
       const place = typeof input.place === 'string' ? input.place.trim() : defaultPlace(txn);
-      // Credit card expenses keep the bank's posting date when it differs from the purchase date
-      const postedDate = txn.paymentMethodType === 'credit_card' && txn.date > date ? txn.date : null;
+      // Credit card expenses keep the bank's posting date when it differs from the purchase date (a pending
+      // charge has no posting date yet; it is set when it settles)
+      const postedDate = !txn.pending && txn.paymentMethodType === 'credit_card' && txn.date > date ? txn.date : null;
 
       let created;
       try {
@@ -299,7 +337,7 @@ class PlaidInboxService {
    */
   async matchToFixedExpense(id, fixedExpenseId, tabId = null) {
     return this._exclusive(id, async () => {
-      const txn = await this._requireNew(id);
+      const txn = await this._requireNew(id, { settled: true });
       const parsedId = parseInt(fixedExpenseId, 10);
       const fixed = Number.isNaN(parsedId) ? null : await plaidRepository.findFixedExpenseForMatching(parsedId);
       if (!fixed) {
@@ -356,7 +394,7 @@ class PlaidInboxService {
    */
   async matchToIncome(id, incomeSourceId, { updateAmount = true } = {}, tabId = null) {
     return this._exclusive(id, async () => {
-      const txn = await this._requireNew(id);
+      const txn = await this._requireNew(id, { settled: true });
       const parsedId = parseInt(incomeSourceId, 10);
       const source = Number.isNaN(parsedId) ? null : await plaidRepository.findIncomeSourceForMatching(parsedId);
       if (!source) {
@@ -412,7 +450,7 @@ class PlaidInboxService {
    */
   async addAsIncome(id, input = {}, tabId = null) {
     return this._exclusive(id, async () => {
-      const txn = await this._requireNew(id);
+      const txn = await this._requireNew(id, { settled: true });
       if (!isDeposit(txn)) {
         throw fail('Only deposits into a bank account can be added as income', 400);
       }
@@ -442,6 +480,99 @@ class PlaidInboxService {
       }
       await this._logReview(txn, 'add_income', `Added bank deposit ${describeTxn(txn)} as income "${created.name}"`, { incomeSourceId: created.id });
       return { transaction: await plaidRepository.findTransactionById(id), incomeSource: created };
+    });
+  }
+
+  /**
+   * Bring expenses created from (or matched to) a pending charge in line with the bank once it settled, or
+   * when its pending amount changed:
+   * - the amount follows the bank only if the expense still has the previous bank amount; an amount edited
+   *   by hand, or a reimbursed / insurance-tracked expense, is kept (its payment method pill shows the
+   *   difference);
+   * - on settlement, credit card expenses get the bank's posting date.
+   * Runs after the sync batch is committed. Never throws: a failed update leaves the expense as it was.
+   * @param {Array<{plaidTransactionId: number, expenseId: number, settled: boolean, previousAmount: number,
+   *   amount: number, postedDate: (string|null)}>} settlements
+   */
+  async applySettlements(settlements) {
+    for (const s of settlements) {
+      try {
+        const [expense, txn] = await Promise.all([
+          expenseRepository.findById(s.expenseId),
+          plaidRepository.findTransactionById(s.plaidTransactionId)
+        ]);
+        if (!expense || !txn) continue;
+
+        const amountChanged = toCents(s.amount) !== toCents(s.previousAmount);
+        const changes = {};
+        if (amountChanged && s.amount > 0 && expense.original_cost == null && toCents(expense.amount) === toCents(s.previousAmount)) {
+          changes.amount = round2(s.amount);
+        }
+        if (s.settled && s.postedDate && txn.paymentMethodType === 'credit_card' && !expense.posted_date && s.postedDate > expense.date) {
+          changes.posted_date = s.postedDate;
+        }
+        if (Object.keys(changes).length > 0) {
+          await expenseService.updateExpense(expense.id, { ...expense, ...changes });
+        }
+
+        let outcome = '';
+        if (amountChanged) {
+          outcome = `: ${money(s.previousAmount)} → ${money(s.amount)}, ${changes.amount ? 'expense updated' : 'expense amount kept (edited by hand)'}`;
+        }
+        await this._logReview(
+          txn,
+          s.settled ? 'settled' : 'pending_changed',
+          s.settled ? `Pending charge ${describeTxn(txn)} settled${outcome}` : `Pending charge ${describeTxn(txn)} changed${outcome}`,
+          { expenseId: expense.id, previousAmount: s.previousAmount, amountUpdated: Boolean(changes.amount) }
+        );
+      } catch (err) {
+        logger.warn('Updating an expense from a settled bank transaction failed', { expenseId: s.expenseId, error: err.message });
+      }
+    }
+  }
+
+  /**
+   * Review a pending charge that was added (or matched) as an expense and then dropped by the bank.
+   * @param {{action: 'keep'|'delete_expense'|'link', postedId?: number}} input
+   *   keep: keep the expense, no longer linked to the bank; delete_expense: the charge was cancelled;
+   *   link: it settled as `postedId` (a posted row on the same account), which takes over the link
+   */
+  async resolveCancelled(id, { action, postedId } = {}, tabId = null) {
+    return this._exclusive(id, async () => {
+      const txn = await plaidRepository.findTransactionById(id);
+      if (!txn || !txn.pending || !txn.removedAt || !['added', 'matched'].includes(txn.status)) {
+        throw fail('Cancelled pending charge not found', 404);
+      }
+
+      if (action === 'keep') {
+        await plaidRepository.deleteTransaction(id);
+        await this._logReview(txn, 'cancelled_keep', `Kept the expense for cancelled pending charge ${describeTxn(txn)}`, { expenseId: txn.expenseId });
+        return { action };
+      }
+
+      if (action === 'delete_expense') {
+        // Expense first: if that fails nothing has changed
+        if (txn.expenseId) await expenseService.deleteExpense(txn.expenseId, tabId);
+        await plaidRepository.deleteTransaction(id);
+        await this._logReview(txn, 'cancelled_delete', `Deleted the expense for cancelled pending charge ${describeTxn(txn)}`, { expenseId: txn.expenseId });
+        return { action };
+      }
+
+      if (action === 'link') {
+        const parsedId = parseInt(postedId, 10);
+        const posted = Number.isNaN(parsedId) ? null : await plaidRepository.findTransactionById(parsedId);
+        if (!posted || posted.status !== 'new' || posted.pending || posted.plaidAccountId !== txn.plaidAccountId) {
+          throw fail('Choose a settled transaction on the same account that is still waiting for review', 400);
+        }
+        await plaidRepository.transferPendingLink(id, posted.id, txn.status, txn.expenseId);
+        await this.applySettlements([{
+          plaidTransactionId: posted.id, expenseId: txn.expenseId, settled: true,
+          previousAmount: txn.amount, amount: posted.amount, postedDate: posted.date
+        }]);
+        return { action, transaction: await plaidRepository.findTransactionById(posted.id) };
+      }
+
+      throw fail('action must be one of: keep, delete_expense, link', 400);
     });
   }
 

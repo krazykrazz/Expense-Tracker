@@ -26,6 +26,18 @@ describe('expense bank link', () => {
     expect(bankLinkTitle({ amount: 25.5, bankLink: link({ status: 'added' }) })).toContain('Added from bank');
     expect(bankLinkTitle({ amount: 30, bankLink: link() })).toMatch(/^Amount differs from bank: \$25\.50/);
   });
+
+  it('pending wins over the amount check, and a dropped pending charge asks for review', () => {
+    const pending = { amount: 30, bankLink: link({ status: 'added', pending: true, removed: false }) };
+    const dropped = { amount: 25.5, bankLink: link({ pending: true, removed: true }) };
+
+    expect(bankLinkState(pending)).toBe('pending');
+    expect(bankLinkTitle(pending)).toBe('Pending at bank: Coffee Shop\nOct 10, 2026 · $25.50\nAdded from bank; updates when it settles');
+    expect(bankLinkState(dropped)).toBe('cancelled');
+    expect(bankLinkTitle(dropped)).toContain('Review it in Bank Import');
+    expect(bankPillProps('pending', 't').srText).toBe(' (pending at bank)');
+    expect(bankPillProps('cancelled', 't').className).toBe(' bank-pill-cancelled');
+  });
 });
 
 describe('fixed expense confirmation', () => {

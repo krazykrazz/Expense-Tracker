@@ -195,6 +195,26 @@ const MIGRATIONS = [
       `);
       logger.info('Backfilled fixed_expenses.payment_method_id from payment_type');
     }
+  },
+  {
+    // Pending bank transactions: staged (and addable as expenses) before they settle. On settlement Plaid
+    // sends the posted transaction with pending_transaction_id; the row is updated in place so links survive.
+    // removed_at marks a linked pending charge the bank dropped (cancelled hold) for review.
+    name: 'plaid_transactions_pending_v1',
+    async apply(db) {
+      for (const column of [
+        'pending INTEGER NOT NULL DEFAULT 0',
+        'pending_transaction_id TEXT',
+        'removed_at TEXT'
+      ]) {
+        try {
+          await runSql(db, `ALTER TABLE plaid_transactions ADD COLUMN ${column}`);
+        } catch (err) {
+          if (!err.message.includes('duplicate column name')) throw err;
+        }
+      }
+      logger.info('Added pending columns to plaid_transactions');
+    }
   }
 ];
 

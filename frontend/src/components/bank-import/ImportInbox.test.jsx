@@ -10,6 +10,7 @@ vi.mock('../../services/plaidApi', () => ({
   matchInboxTransactionToFixed: vi.fn(),
   matchInboxTransactionToIncome: vi.fn(),
   addInboxTransactionAsIncome: vi.fn(),
+  resolveCancelledPending: vi.fn(),
   ignoreInboxTransaction: vi.fn(),
   unignoreInboxTransaction: vi.fn(),
 }));
@@ -196,6 +197,41 @@ describe('ImportInbox', () => {
       fireEvent.click(within(document.querySelector('.inbox-add-form')).getByRole('button', { name: 'Add income' }));
 
       await waitFor(() => expect(plaidApi.addInboxTransactionAsIncome).toHaveBeenCalledWith(1, { name: 'JAT - Direct deposit', category: 'Salary' }));
+    });
+  });
+
+  describe('pending transactions', () => {
+    it('marks pending rows and still lets you add them', async () => {
+      plaidApi.getInbox.mockResolvedValue({ transactions: [txn({ pending: true })], hiddenUnmapped: 0, cancelled: [] });
+
+      renderInbox();
+
+      expect(await screen.findByText('Pending')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Add' })).toBeEnabled();
+    });
+
+    it('reviews a dropped pending charge: link to the settled transaction, keep, or delete', async () => {
+      const cancelledRow = {
+        id: 7, date: '2026-10-10', place: 'Gas Station', amount: 100, accountMask: '1234', paymentMethodName: 'Visa',
+        expense: { id: 55, place: 'Gas Station', amount: 100, date: '2026-10-10' },
+        settledCandidates: [{ id: 8, date: '2026-10-12', place: 'GAS STATION', amount: 62.4 }]
+      };
+      plaidApi.getInbox.mockResolvedValue({ transactions: [], hiddenUnmapped: 0, cancelled: [cancelledRow] });
+      plaidApi.resolveCancelledPending.mockResolvedValue({ action: 'link' });
+      const onExpensesChanged = vi.fn();
+
+      renderInbox({ onExpensesChanged });
+      const row = await screen.findByTestId('cancelled-row');
+      expect(within(row).getByText('Cancelled at bank')).toBeInTheDocument();
+      expect(within(row).getByText(/GAS STATION · \$62\.40/)).toBeInTheDocument();
+      expect(screen.queryByText(/Nothing to review/)).not.toBeInTheDocument();
+
+      fireEvent.click(within(row).getByRole('button', { name: 'Link' }));
+      await waitFor(() => expect(plaidApi.resolveCancelledPending).toHaveBeenCalledWith(7, { action: 'link', postedId: 8 }));
+      await waitFor(() => expect(onExpensesChanged).toHaveBeenCalled());
+
+      fireEvent.click(within(row).getByRole('button', { name: 'Delete expense' }));
+      await waitFor(() => expect(plaidApi.resolveCancelledPending).toHaveBeenCalledWith(7, { action: 'delete_expense' }));
     });
   });
 

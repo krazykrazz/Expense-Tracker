@@ -158,7 +158,7 @@ describe('plaidService', () => {
   });
 
   describe('syncItem', () => {
-    test('pages through has_more, skips pending, and saves the final cursor', async () => {
+    test('pages through has_more, stages pending transactions flagged, and saves the final cursor', async () => {
       const item = await connect();
       client.transactionsSync
         .mockResolvedValueOnce(page({ added: [txn('t1'), txn('p1', { pending: true })], next_cursor: 'c1', has_more: true }))
@@ -166,9 +166,10 @@ describe('plaidService', () => {
 
       const result = await plaidService.syncItem(item.id);
 
-      expect(result).toMatchObject({ added: 2, updated: 0, removed: 0 });
+      expect(result).toMatchObject({ added: 3, updated: 0, removed: 0 });
       expect(client.transactionsSync.mock.calls.map(([req]) => req.cursor)).toEqual([undefined, 'c1']);
-      expect((await all('SELECT transaction_id FROM plaid_transactions ORDER BY transaction_id')).map(r => r.transaction_id)).toEqual(['t1', 't2']);
+      expect(await all('SELECT transaction_id, pending FROM plaid_transactions ORDER BY transaction_id'))
+        .toEqual([{ transaction_id: 'p1', pending: 1 }, { transaction_id: 't1', pending: 0 }, { transaction_id: 't2', pending: 0 }]);
       expect(await get('SELECT sync_cursor, last_synced_at FROM plaid_items WHERE id = ?', [item.id]))
         .toMatchObject({ sync_cursor: 'c2', last_synced_at: expect.any(String) });
     });
@@ -320,6 +321,109 @@ describe('plaidService', () => {
       client.transactionsSync.mockResolvedValue(page());
       await plaidService.syncItems(await plaidService.findStaleItems(30, Date.now() + 31 * 60 * 1000), 'on_open');
       expect(activityLogService.logEvent).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('pending transactions', () => {
+    const plaidInboxService = require('./plaidInboxService');
+    const CREDIT_CARD = 4;
+    const expenseOf = (id) => get('SELECT amount, date, posted_date FROM expenses WHERE id = ?', [id]);
+
+    async function addPendingAsExpense({ amount = 40, date = '2026-10-10' } = {}) {
+      const item = await connect();
+      await plaidService.updateAccountMapping(item.accounts[0].id, CREDIT_CARD);
+      client.transactionsSync.mockResolvedValueOnce(page({
+        added: [txn('p1', { pending: true, amount, date, authorized_date: date })], next_cursor: 'c1'
+      }));
+      await plaidService.syncItem(item.id);
+      const row = await get("SELECT id FROM plaid_transactions WHERE transaction_id = 'p1'");
+      const { expense } = await plaidInboxService.addAsExpense(row.id, { type: 'Dining Out' });
+      return { item, rowId: row.id, expenseId: expense.id };
+    }
+
+    test('a pending charge can be added; when it settles with a tip the expense follows the bank', async () => {
+      const { item, rowId, expenseId } = await addPendingAsExpense({ amount: 40 });
+      expect(await expenseOf(expenseId)).toEqual({ amount: 40, date: '2026-10-10', posted_date: null });
+      expect((await plaidInboxService.listInbox('new')).transactions).toHaveLength(0);
+
+      client.transactionsSync.mockResolvedValueOnce(page({
+        added: [txn('s1', { amount: 48, date: '2026-10-12', authorized_date: '2026-10-10', pending_transaction_id: 'p1' })],
+        removed: [{ transaction_id: 'p1' }], next_cursor: 'c2'
+      }));
+      await plaidService.syncItem(item.id);
+
+      expect(await get('SELECT id, transaction_id, pending, status, expense_id, amount FROM plaid_transactions'))
+        .toEqual({ id: rowId, transaction_id: 's1', pending: 0, status: 'added', expense_id: expenseId, amount: 48 });
+      expect(await expenseOf(expenseId)).toEqual({ amount: 48, date: '2026-10-10', posted_date: '2026-10-12' });
+      expect(activityLogService.logEvent).toHaveBeenCalledWith(
+        'plaid_transaction_updated', 'plaid_transaction', rowId,
+        expect.stringMatching(/settled: \$40\.00 → \$48\.00, expense updated$/),
+        expect.objectContaining({ action: 'settled', amountUpdated: true })
+      );
+    });
+
+    test('an amount edited by hand is kept when the charge settles at a different amount', async () => {
+      const { item, expenseId } = await addPendingAsExpense({ amount: 40 });
+      await run('UPDATE expenses SET amount = 45 WHERE id = ?', [expenseId]);
+
+      client.transactionsSync.mockResolvedValueOnce(page({
+        added: [txn('s1', { amount: 48, date: '2026-10-12', pending_transaction_id: 'p1' })], removed: [{ transaction_id: 'p1' }], next_cursor: 'c2'
+      }));
+      await plaidService.syncItem(item.id);
+
+      expect((await expenseOf(expenseId)).amount).toBe(45);
+    });
+
+    test('a dropped pending charge is flagged for review, and can be linked to the settled transaction', async () => {
+      const { item, rowId, expenseId } = await addPendingAsExpense({ amount: 40 });
+      client.transactionsSync.mockResolvedValueOnce(page({
+        added: [txn('s9', { amount: 46, date: '2026-10-13' })], removed: [{ transaction_id: 'p1' }], next_cursor: 'c2'
+      }));
+      await plaidService.syncItem(item.id);
+
+      const { cancelled, transactions } = await plaidInboxService.listInbox('new');
+      expect(cancelled).toHaveLength(1);
+      expect(cancelled[0]).toMatchObject({ id: rowId, expense: { id: expenseId, amount: 40 } });
+      expect(cancelled[0].settledCandidates.map(c => c.amount)).toEqual([46]);
+      expect((await require('./expenseService').getExpenses({ year: 2026, month: 10 })).find(e => e.id === expenseId).bankLink)
+        .toMatchObject({ pending: true, removed: true });
+
+      await plaidInboxService.resolveCancelled(rowId, { action: 'link', postedId: transactions[0].id });
+
+      expect(await all('SELECT transaction_id, status, expense_id FROM plaid_transactions'))
+        .toEqual([{ transaction_id: 's9', status: 'added', expense_id: expenseId }]);
+      expect((await expenseOf(expenseId)).amount).toBe(46);
+      expect((await plaidInboxService.listInbox('new')).cancelled).toEqual([]);
+    });
+
+    test('a cancelled hold: delete the expense, or keep it unlinked', async () => {
+      const first = await addPendingAsExpense();
+      client.transactionsSync.mockResolvedValueOnce(page({ removed: [{ transaction_id: 'p1' }], next_cursor: 'c2' }));
+      await plaidService.syncItem(first.item.id);
+
+      await plaidInboxService.resolveCancelled(first.rowId, { action: 'delete_expense' });
+
+      expect(await get('SELECT COUNT(*) AS n FROM expenses WHERE id = ?', [first.expenseId])).toEqual({ n: 0 });
+      expect(await get('SELECT COUNT(*) AS n FROM plaid_transactions')).toEqual({ n: 0 });
+      await expect(plaidInboxService.resolveCancelled(first.rowId, { action: 'keep' })).rejects.toMatchObject({ statusCode: 404 });
+    });
+
+    test('unreviewed pending rows follow the bank: removed when dropped, replaced in place when settled', async () => {
+      const item = await connect();
+      client.transactionsSync.mockResolvedValueOnce(page({
+        added: [txn('p1', { pending: true, amount: 10 }), txn('p2', { pending: true, amount: 20 })], next_cursor: 'c1'
+      }));
+      await plaidService.syncItem(item.id);
+      const p1 = await get("SELECT id FROM plaid_transactions WHERE transaction_id = 'p1'");
+
+      client.transactionsSync.mockResolvedValueOnce(page({
+        added: [txn('s1', { amount: 11, pending_transaction_id: 'p1' })],
+        removed: [{ transaction_id: 'p1' }, { transaction_id: 'p2' }], next_cursor: 'c2'
+      }));
+      await plaidService.syncItem(item.id);
+
+      expect(await all('SELECT id, transaction_id, pending, status, amount FROM plaid_transactions'))
+        .toEqual([{ id: p1.id, transaction_id: 's1', pending: 0, status: 'new', amount: 11 }]);
     });
   });
 

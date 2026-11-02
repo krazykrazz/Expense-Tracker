@@ -209,6 +209,15 @@ describe('plaid routes', () => {
     expect(plaidInboxService.addAsIncome).toHaveBeenCalledWith(3, { name: 'Gift', category: 'Gifts' }, null);
   });
 
+  test('POST /inbox/:id/cancelled passes the action, settled row and tab id', async () => {
+    plaidInboxService.resolveCancelled.mockResolvedValue({ action: 'link' });
+
+    const res = await request(app).post('/api/plaid/inbox/3/cancelled').set('X-Tab-ID', 'tab-4').send({ action: 'link', postedId: 9 });
+
+    expect(res.status).toBe(200);
+    expect(plaidInboxService.resolveCancelled).toHaveBeenCalledWith(3, { action: 'link', postedId: 9 }, 'tab-4');
+  });
+
   test('DELETE /items/:id returns 204', async () => {
     plaidService.disconnectItem.mockResolvedValue();
 

@@ -151,6 +151,15 @@ const addAsIncome = asyncHandler(async (req, res) => {
   res.status(201).json(await plaidInboxService.addAsIncome(idParam(req), req.body || {}, tabIdOf(req)));
 });
 
+/**
+ * POST /api/plaid/inbox/:id/cancelled
+ * Body: { action: 'keep'|'delete_expense'|'link', postedId? } — review a pending charge the bank dropped
+ */
+const resolveCancelled = asyncHandler(async (req, res) => {
+  const { action, postedId } = req.body || {};
+  res.json(await plaidInboxService.resolveCancelled(idParam(req), { action, postedId }, tabIdOf(req)));
+});
+
 /** POST /api/plaid/inbox/:id/ignore */
 const ignore = asyncHandler(async (req, res) => {
   res.json(await plaidInboxService.ignore(idParam(req)));
@@ -181,6 +190,7 @@ module.exports = {
   matchToFixedExpense,
   matchToIncome,
   addAsIncome,
+  resolveCancelled,
   ignore,
   unignore
 };

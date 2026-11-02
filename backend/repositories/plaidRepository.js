@@ -4,7 +4,8 @@ const PUBLIC_ITEM_COLUMNS = 'id, item_id AS itemId, institution_name AS institut
 const ACCOUNT_COLUMNS = 'id, plaid_item_id AS plaidItemId, account_id AS accountId, name, mask, type, subtype, payment_method_id AS paymentMethodId';
 const TXN_COLUMNS = `pt.id, pt.transaction_id AS transactionId, pt.plaid_account_id AS plaidAccountId, pt.amount,
   pt.iso_currency_code AS isoCurrencyCode, pt.date, pt.authorized_date AS authorizedDate, pt.name,
-  pt.merchant_name AS merchantName, pt.status, pt.expense_id AS expenseId`;
+  pt.merchant_name AS merchantName, pt.status, pt.expense_id AS expenseId, pt.pending,
+  pt.pending_transaction_id AS pendingTransactionId, pt.removed_at AS removedAt`;
 
 /**
  * Data access for Plaid items, accounts and staged transactions.
@@ -87,10 +88,16 @@ class PlaidRepository {
 
   /**
    * Apply one fully-paginated /transactions/sync result atomically, then advance the cursor.
-   * Only rows still in review state 'new' are ever modified or removed.
+   * Rows still in review state 'new' follow the bank. Reviewed rows are never changed, except pending ones:
+   * - A posted transaction that names its pending version (`pending_transaction_id`) replaces that row in
+   *   place, keeping its review state and links (expense, ignore). Linked ones are returned as `settlements`
+   *   so the caller can bring the expense in line with the posted amount.
+   * - A linked pending row whose amount changes while still pending is updated and reported the same way.
+   * - A linked pending row that Plaid removes (cancelled hold, or settled without a reference) is kept and
+   *   marked `removed_at` for review; unlinked removed rows are deleted.
    * @param {number} plaidItemId
    * @param {{accounts: Array, upserts: Array, removedIds: string[], cursor: string}} batch
-   * @returns {Promise<{added: number, updated: number, removed: number}>}
+   * @returns {Promise<{added: number, updated: number, removed: number, settlements: Array}>}
    */
   async applySyncBatch(plaidItemId, { accounts, upserts, removedIds, cursor }) {
     return dbHelper.runInTransaction(async (tx) => {
@@ -102,39 +109,74 @@ class PlaidRepository {
       const accountIdMap = new Map(accountRows.map(row => [row.account_id, row.id]));
 
       const counts = { added: 0, updated: 0, removed: 0 };
+      const settlements = [];
+      const SET_FIELDS = `plaid_account_id = ?, amount = ?, iso_currency_code = ?, date = ?, authorized_date = ?,
+        name = ?, merchant_name = ?, pending = ?, pending_transaction_id = ?`;
 
       for (const txn of upserts) {
-        const plaidAccountId = accountIdMap.get(txn.account_id) ?? null;
+        const pending = txn.pending ? 1 : 0;
         const values = [
-          plaidAccountId, txn.amount, txn.iso_currency_code ?? null, txn.date,
-          txn.authorized_date ?? null, txn.name ?? null, txn.merchant_name ?? null
+          accountIdMap.get(txn.account_id) ?? null, txn.amount, txn.iso_currency_code ?? null, txn.date,
+          txn.authorized_date ?? null, txn.name ?? null, txn.merchant_name ?? null, pending, txn.pending_transaction_id ?? null
         ];
-        const existing = await tx.get('SELECT id, status FROM plaid_transactions WHERE transaction_id = ?', [txn.transaction_id]);
+        const existing = await tx.get(
+          'SELECT id, status, amount, pending, expense_id AS expenseId FROM plaid_transactions WHERE transaction_id = ?',
+          [txn.transaction_id]
+        );
+
+        if (!existing && !pending && txn.pending_transaction_id) {
+          const pendingRow = await tx.get(
+            'SELECT id, status, amount, expense_id AS expenseId FROM plaid_transactions WHERE transaction_id = ? AND pending = 1',
+            [txn.pending_transaction_id]
+          );
+          if (pendingRow) {
+            await tx.run(
+              `UPDATE plaid_transactions SET transaction_id = ?, ${SET_FIELDS}, removed_at = NULL WHERE id = ?`,
+              [txn.transaction_id, ...values, pendingRow.id]
+            );
+            counts.updated++;
+            if (pendingRow.expenseId) {
+              settlements.push({
+                plaidTransactionId: pendingRow.id, expenseId: pendingRow.expenseId, settled: true,
+                previousAmount: pendingRow.amount, amount: txn.amount, postedDate: txn.date
+              });
+            }
+            continue;
+          }
+        }
+
         if (!existing) {
           await tx.run(
             `INSERT INTO plaid_transactions
-               (plaid_account_id, amount, iso_currency_code, date, authorized_date, name, merchant_name, transaction_id)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+               (plaid_account_id, amount, iso_currency_code, date, authorized_date, name, merchant_name, pending,
+                pending_transaction_id, transaction_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [...values, txn.transaction_id]
           );
           counts.added++;
-        } else if (existing.status === 'new') {
-          await tx.run(
-            `UPDATE plaid_transactions SET plaid_account_id = ?, amount = ?, iso_currency_code = ?, date = ?,
-               authorized_date = ?, name = ?, merchant_name = ?
-             WHERE id = ?`,
-            [...values, existing.id]
-          );
+        } else if (existing.status === 'new' || (existing.pending && pending)) {
+          await tx.run(`UPDATE plaid_transactions SET ${SET_FIELDS} WHERE id = ?`, [...values, existing.id]);
           counts.updated++;
+          if (existing.status !== 'new' && existing.expenseId && existing.amount !== txn.amount) {
+            settlements.push({
+              plaidTransactionId: existing.id, expenseId: existing.expenseId, settled: false,
+              previousAmount: existing.amount, amount: txn.amount, postedDate: null
+            });
+          }
         }
       }
 
       for (const transactionId of removedIds) {
         const { changes } = await tx.run(
-          "DELETE FROM plaid_transactions WHERE transaction_id = ? AND status = 'new'",
+          "DELETE FROM plaid_transactions WHERE transaction_id = ? AND (status = 'new' OR (status = 'ignored' AND pending = 1))",
           [transactionId]
         );
-        counts.removed += changes;
+        const { changes: flagged } = await tx.run(
+          `UPDATE plaid_transactions SET removed_at = CURRENT_TIMESTAMP
+           WHERE transaction_id = ? AND pending = 1 AND status IN ('added', 'matched') AND removed_at IS NULL`,
+          [transactionId]
+        );
+        counts.removed += changes + flagged;
       }
 
       await tx.run(
@@ -142,7 +184,7 @@ class PlaidRepository {
         [cursor, plaidItemId]
       );
 
-      return counts;
+      return { ...counts, settlements };
     });
   }
 
@@ -445,17 +487,74 @@ class PlaidRepository {
       const chunk = expenseIds.slice(i, i + CHUNK);
       const rows = await dbHelper.queryAll(
         `SELECT expense_id AS expenseId, status, COALESCE(merchant_name, name) AS name, name AS rawName,
-                COALESCE(authorized_date, date) AS date, amount
+                COALESCE(authorized_date, date) AS date, amount, pending, removed_at IS NOT NULL AS removed
          FROM plaid_transactions
          WHERE expense_id IN (${chunk.map(() => '?').join(',')})`,
         chunk
       );
       for (const row of rows) {
-        const { expenseId, ...link } = row;
-        links.set(expenseId, link);
+        const { expenseId, pending, removed, ...link } = row;
+        links.set(expenseId, { ...link, pending: Boolean(pending), removed: Boolean(removed) });
       }
     }
     return links;
+  }
+
+  // ─── Pending ───
+
+  /**
+   * Pending charges that were added or matched as expenses and then dropped by the bank, for review.
+   */
+  async findCancelledPending() {
+    return dbHelper.queryAll(
+      `SELECT ${TXN_COLUMNS},
+              pa.name AS accountName, pa.mask AS accountMask,
+              pa.payment_method_id AS paymentMethodId, pm.display_name AS paymentMethodName, pm.type AS paymentMethodType,
+              e.place AS expensePlace, e.amount AS expenseAmount, e.date AS expenseDate
+       FROM plaid_transactions pt
+       LEFT JOIN plaid_accounts pa ON pa.id = pt.plaid_account_id
+       LEFT JOIN payment_methods pm ON pm.id = pa.payment_method_id
+       LEFT JOIN expenses e ON e.id = pt.expense_id
+       WHERE pt.pending = 1 AND pt.removed_at IS NOT NULL AND pt.status IN ('added', 'matched')
+       ORDER BY pt.date DESC, pt.id DESC`
+    );
+  }
+
+  /**
+   * Posted rows still waiting for review on the given accounts within a date range: candidates for a
+   * cancelled pending charge that actually settled under a new reference.
+   */
+  async findPostedNewOnAccounts(plaidAccountIds, fromDate, toDate) {
+    if (plaidAccountIds.length === 0) return [];
+    return dbHelper.queryAll(
+      `SELECT ${TXN_COLUMNS} FROM plaid_transactions pt
+       WHERE pt.status = 'new' AND pt.pending = 0
+         AND pt.plaid_account_id IN (${plaidAccountIds.map(() => '?').join(',')})
+         AND pt.date >= ? AND pt.date <= ?
+       ORDER BY pt.date`,
+      [...plaidAccountIds, fromDate, toDate]
+    );
+  }
+
+  /**
+   * Move an expense link from a dropped pending row to the posted row it settled as, atomically.
+   * @returns {Promise<boolean>} false when the posted row was no longer 'new'
+   */
+  async transferPendingLink(pendingRowId, postedRowId, status, expenseId) {
+    return dbHelper.runInTransaction(async (tx) => {
+      await tx.run('DELETE FROM plaid_transactions WHERE id = ?', [pendingRowId]);
+      const { changes } = await tx.run(
+        "UPDATE plaid_transactions SET status = ?, expense_id = ? WHERE id = ? AND status = 'new' AND pending = 0",
+        [status, expenseId, postedRowId]
+      );
+      if (changes === 0) throw Object.assign(new Error('That bank transaction was already reviewed'), { statusCode: 409 });
+      return true;
+    });
+  }
+
+  async deleteTransaction(id) {
+    const { changes } = await dbHelper.execute('DELETE FROM plaid_transactions WHERE id = ?', [id]);
+    return changes > 0;
   }
 }
 

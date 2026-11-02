@@ -493,11 +493,14 @@ Posted bank transactions staged for review in the Import Inbox.
 | name, merchant_name | TEXT | Raw bank description and Plaid's cleaned merchant name |
 | status | TEXT NOT NULL DEFAULT 'new' | 'new', 'added', 'matched' or 'ignored' (CHECK) |
 | expense_id | INTEGER | Linked expense for 'added'/'matched' (ON DELETE SET NULL) |
+| pending | INTEGER NOT NULL DEFAULT 0 | 1 while the transaction is pending at the bank |
+| pending_transaction_id | TEXT | For a settled transaction, Plaid's id of its pending version |
+| removed_at | TEXT | Set when the bank dropped a pending row that was added/matched (kept for review: cancelled hold or settled under a new reference) |
 | created_at, updated_at | TEXT NOT NULL | Timestamps |
 
 **Indexes**: `idx_plaid_transactions_status_date` (status, date), `idx_plaid_transactions_account` (plaid_account_id), `idx_plaid_transactions_expense` (UNIQUE on expense_id WHERE expense_id IS NOT NULL: one bank transaction per expense)
 
-Sync only modifies or deletes rows whose status is still 'new'. Deleting a linked expense puts its row back to 'new' (trigger `plaid_transactions_unlink_on_expense_delete`).
+Sync only modifies or deletes rows whose status is still 'new', except pending ones: a settled transaction replaces its pending row in place (keeping status and links), and a linked pending row the bank drops gets `removed_at` instead of being deleted. Deleting a linked expense puts its row back to 'new' (trigger `plaid_transactions_unlink_on_expense_delete`).
 
 ### plaid_fixed_expense_links
 
@@ -668,7 +671,7 @@ Migration tracking for database schema changes.
 | migration_name | TEXT NOT NULL UNIQUE | Name of the migration |
 | applied_at | TEXT DEFAULT CURRENT_TIMESTAMP | When the migration was applied |
 
-Current entries written by `runMigrations()`: `consolidated_schema_v1`, `auth_infrastructure_v1`, `dismissed_anomalies_nullable_expense_id_v1`, `performance_compound_indexes_v1`, `analytics_hub_revamp_v1`, `fixed_expenses_payment_method_id_backfill_v1`. See [Database Migrations](DATABASE_MIGRATIONS.md).
+Current entries written by `runMigrations()`: `consolidated_schema_v1`, `auth_infrastructure_v1`, `dismissed_anomalies_nullable_expense_id_v1`, `performance_compound_indexes_v1`, `analytics_hub_revamp_v1`, `fixed_expenses_payment_method_id_backfill_v1`, `plaid_transactions_pending_v1`. See [Database Migrations](DATABASE_MIGRATIONS.md).
 
 ## Relationships
 

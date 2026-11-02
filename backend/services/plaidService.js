@@ -4,6 +4,8 @@ const plaidRepository = require('../repositories/plaidRepository');
 const paymentMethodRepository = require('../repositories/paymentMethodRepository');
 const settingsRepository = require('../repositories/settingsRepository');
 const activityLogService = require('./activityLogService');
+const plaidInboxService = require('./plaidInboxService');
+const { runWithTabId } = require('../utils/requestContext');
 const { encrypt, decrypt } = require('../utils/tokenCrypto');
 const logger = require('../config/logger');
 
@@ -214,7 +216,7 @@ class PlaidService {
 
   /**
    * Pull all changes since the stored cursor and apply them atomically.
-   * Pending transactions are skipped; Plaid reports them again once posted.
+   * Pending transactions are staged; when they settle, linked expenses are brought in line (applySettlements).
    */
   async syncItem(id) {
     if (this._syncing.has(id)) {
@@ -235,8 +237,13 @@ class PlaidService {
       for (let attempt = 0; ; attempt++) {
         try {
           const batch = await this._fetchAllPages(accessToken, item.syncCursor);
-          const counts = await plaidRepository.applySyncBatch(id, batch);
-          logger.info('Plaid sync completed', { plaidItemId: id, ...counts });
+          const { settlements, ...counts } = await plaidRepository.applySyncBatch(id, batch);
+          logger.info('Plaid sync completed', { plaidItemId: id, ...counts, settled: settlements.length });
+          if (settlements.length > 0) {
+            // After the batch is committed: expense updates go through expenseService (validation, card balance, log),
+            // outside any request's tab context so every tab (including one that pressed Sync now) refreshes
+            await runWithTabId(null, () => plaidInboxService.applySettlements(settlements));
+          }
           return { id, institutionName: item.institutionName, ...counts, updateStatus: batch.updateStatus };
         } catch (err) {
           const code = plaidErrorOf(err)?.error_code;
@@ -277,9 +284,8 @@ class PlaidService {
     while (hasMore) {
       const { data } = await this._client().transactionsSync({ access_token: accessToken, cursor, count: SYNC_PAGE_SIZE });
       for (const account of data.accounts || []) accounts.set(account.account_id, account);
-      for (const txn of [...data.added, ...data.modified]) {
-        if (!txn.pending) upserts.push(txn);
-      }
+      // Pending transactions are staged too (shown as Pending; they settle in place, see applySyncBatch)
+      upserts.push(...data.added, ...data.modified);
       for (const removed of data.removed) removedIds.push(removed.transaction_id);
       cursor = data.next_cursor;
       hasMore = data.has_more;

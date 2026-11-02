@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.16.0] - 2026-11-02
+
+### Bank import: automatic sync (scheduled and on opening the app), bank badge on mapped payment methods, activity log for inbox decisions, mapping changes and sync failures, faster inbox loading
+
 ## [1.15.0] - 2026-11-02
 
 ### Bank import: confirm expected income with bank deposits (or add unplanned deposits as income); bank-confirmed payment methods are coloured green with bank details on hover

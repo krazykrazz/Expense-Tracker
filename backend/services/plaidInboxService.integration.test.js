@@ -102,6 +102,34 @@ describe('plaidInboxService', () => {
       expect(transactions[0].matchCandidates.map(c => c.id)).toEqual([exact, close]);
     });
 
+    test('reimbursed and insurance-tracked expenses are offered on the amount actually charged', async () => {
+      const reimbursed = await run(
+        "INSERT INTO expenses (date, place, amount, original_cost, type, week, method, payment_method_id) VALUES ('2026-10-10', 'Hardware', 15, 25.5, 'Other', 2, 'Debit', ?)",
+        [DEBIT]
+      );
+      const insured = await run(
+        "INSERT INTO expenses (date, place, amount, original_cost, type, week, method, payment_method_id, insurance_eligible, claim_status) VALUES ('2026-10-11', 'Clinic', 5.5, 25.5, 'Tax - Medical', 2, 'Debit', ?, 1, 'paid')",
+        [DEBIT]
+      );
+      // Out-of-pocket equals the bank amount, but the card was charged more: not a candidate
+      await run(
+        "INSERT INTO expenses (date, place, amount, original_cost, type, week, method, payment_method_id) VALUES ('2026-10-10', 'Other shop', 25.5, 40, 'Other', 2, 'Debit', ?)",
+        [DEBIT]
+      );
+      const id = await stage('t1');
+
+      const { transactions } = await plaidInboxService.listInbox('new');
+
+      expect(transactions[0].matchCandidates).toEqual([
+        expect.objectContaining({ id: reimbursed, amount: 15, originalCost: 25.5, chargedAmount: 25.5 }),
+        expect.objectContaining({ id: insured, amount: 5.5, originalCost: 25.5, chargedAmount: 25.5 })
+      ]);
+
+      await plaidInboxService.matchToExpense(id, insured);
+      const expenses = await expenseService.getExpenses({ year: 2026, month: 10 });
+      expect(expenses.find(e => e.id === insured)).toMatchObject({ amount: 5.5, original_cost: 25.5, bankLink: expect.objectContaining({ status: 'matched', amount: 25.5 }) });
+    });
+
     test('refunds are listed but cannot be added', async () => {
       await stage('refund', { amount: -10 });
       const { transactions } = await plaidInboxService.listInbox('new');

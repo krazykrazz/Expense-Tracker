@@ -210,11 +210,15 @@ class PlaidRepository {
 
   /**
    * Expenses not yet linked to any bank transaction, for the given payment methods and date window.
+   * `chargedAmount` is what the card/account was actually charged: `original_cost` for reimbursed or
+   * insurance-tracked expenses (where `amount` is only the out-of-pocket share), else `amount`.
    */
   async findUnlinkedExpenses(paymentMethodIds, fromDate, toDate) {
     if (paymentMethodIds.length === 0) return [];
     return dbHelper.queryAll(
-      `SELECT e.id, e.date, e.place, e.amount, e.type, e.notes, e.payment_method_id AS paymentMethodId
+      `SELECT e.id, e.date, e.place, e.amount, e.original_cost AS originalCost,
+              COALESCE(e.original_cost, e.amount) AS chargedAmount,
+              e.type, e.notes, e.payment_method_id AS paymentMethodId
        FROM expenses e
        WHERE e.payment_method_id IN (${paymentMethodIds.map(() => '?').join(',')})
          AND e.date >= ? AND e.date <= ?

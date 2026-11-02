@@ -76,7 +76,9 @@ class PlaidInboxService {
     );
 
     for (const row of rows) {
-      result.set(row.id, findMatchCandidates(row, expenses).map(({ id, date, place, amount, type, notes }) => ({ id, date, place, amount, type, notes })));
+      result.set(row.id, findMatchCandidates(row, expenses).map(({ id, date, place, amount, originalCost, chargedAmount, type, notes }) => (
+        { id, date, place, amount, originalCost: originalCost ?? null, chargedAmount, type, notes }
+      )));
     }
     return result;
   }

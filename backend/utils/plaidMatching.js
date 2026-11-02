@@ -1,6 +1,8 @@
 /**
  * Pure helpers for matching staged bank transactions to existing expenses.
- * A candidate has the same payment method, the same amount to the cent, and a date within ±MATCH_WINDOW_DAYS.
+ * A candidate has the same payment method, the same *charged* amount to the cent, and a date within
+ * ±MATCH_WINDOW_DAYS. The charged amount is `chargedAmount` when given (original cost of a reimbursed or
+ * insurance-tracked expense), else `amount`.
  */
 
 const MATCH_WINDOW_DAYS = 3;
@@ -22,13 +24,16 @@ const shiftDate = (date, days) => new Date((toUtcDay(date) + days) * DAY_MS).toI
 /** The purchase date: Plaid's authorized date when present, else the posted date. */
 const transactionDate = (txn) => txn.authorizedDate || txn.date;
 
+/** What the bank actually charged for an expense. */
+const chargedAmount = (expense) => expense.chargedAmount ?? expense.amount;
+
 /**
  * @param {{paymentMethodId: number, amount: number, date: string, authorizedDate?: string}} txn
- * @param {{paymentMethodId: number, amount: number, date: string}} expense
+ * @param {{paymentMethodId: number, amount: number, chargedAmount?: number, date: string}} expense
  */
 function isMatchCandidate(txn, expense) {
   return expense.paymentMethodId === txn.paymentMethodId
-    && toCents(expense.amount) === toCents(txn.amount)
+    && toCents(chargedAmount(expense)) === toCents(txn.amount)
     && dayDiff(transactionDate(txn), expense.date) <= MATCH_WINDOW_DAYS;
 }
 
@@ -48,6 +53,7 @@ module.exports = {
   dayDiff,
   shiftDate,
   transactionDate,
+  chargedAmount,
   isMatchCandidate,
   findMatchCandidates
 };

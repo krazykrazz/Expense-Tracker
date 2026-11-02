@@ -78,7 +78,7 @@ Lists posted transactions waiting for review, newest first, with the place (Plai
 | Action | What happens |
 |--------|--------------|
 | **Add** | Opens an inline editor pre-filled with place, date and a category suggested from your history for that place. **Add expense** creates a normal expense (validation, activity log and sync all apply). For credit cards, the bank's posting date is stored as the posted date when it is later than the purchase date. |
-| **Match** | Shown when existing expenses could be the same purchase: same payment method, same amount to the cent, date within ±3 days, and not already linked. Links the transaction to the chosen expense without changing it. |
+| **Match** | Shown when existing expenses could be the same purchase: same payment method, same **charged** amount to the cent, date within ±3 days, and not already linked. For reimbursed or insurance-tracked expenses the charged amount is the original cost (what the card was charged), not the out-of-pocket amount; the picker shows both. Links the transaction to the chosen expense without changing it. |
 | **Ignore** | Hides the transaction. The **Ignored** filter lists ignored transactions with **Undo ignore**. |
 
 - Refunds and credits (zero or negative amounts) are labelled *Refund / credit* and can only be ignored.
@@ -134,4 +134,6 @@ These are deferred to later phases:
 - Categories come only from your own history for the place; Plaid's categories are not used.
 - No bulk actions, no inbox count badge, no medical/donation people allocation in the inline editor (edit the expense afterwards).
 - Card payments, transfers and refunds are not recorded (ignore them).
+- **Fixed expenses are not matched.** A bank charge for something tracked under Fixed Expenses (rent, utilities, subscriptions) never shows "Possible match". **Ignore it**: adding it would count it twice, once as a fixed expense and again as a variable expense.
+- **Medical, donation, insurance and reimbursement details** are not in the inline Add form. Add the expense, then edit it in the expense list to set people, insurance, receipts or a reimbursement. Its bank icon keeps comparing against the original charged amount.
 - Card balances (Liabilities) and investments are not imported.

@@ -1,8 +1,10 @@
 /**
  * @invariant Match candidate rule: a bank transaction and an expense are match candidates exactly when they
- * share a payment method, are equal to the cent, and are at most 3 calendar days apart (using the authorized
- * date when present). Randomizing amounts (float noise around cent boundaries), dates (month/year/leap-year
- * boundaries) and offsets checks the predicate against an independent integer-cents / day-number oracle.
+ * share a payment method, the transaction equals what the expense *charged* (original cost when reimbursed or
+ * insurance-tracked, else amount) to the cent, and they are at most 3 calendar days apart (using the authorized
+ * date when present). Randomizing amounts (float noise around cent boundaries), out-of-pocket shares, dates
+ * (month/year/leap-year boundaries) and offsets checks the predicate against an independent integer-cents /
+ * day-number oracle.
  */
 
 const fc = require('fast-check');
@@ -30,6 +32,29 @@ describe('plaidMatching', () => {
 
           const expected = txnPm === expensePm && centDelta === 0 && Math.abs(dayOffset) <= MATCH_WINDOW_DAYS;
           expect(isMatchCandidate(txn, expense)).toBe(expected);
+        }
+      ),
+      pbtOptions()
+    );
+  });
+
+  test('reimbursed / insured expenses match on the charged amount, never the out-of-pocket amount', () => {
+    fc.assert(
+      fc.property(
+        arbDate, arbCents, fc.integer({ min: 1, max: 99 }), fc.integer({ min: -1, max: 1 }),
+        (date, chargedCents, outOfPocketPercent, centDelta) => {
+          const outOfPocketCents = Math.max(0, Math.floor(chargedCents * outOfPocketPercent / 100));
+          const expense = {
+            id: 1, paymentMethodId: 1, date,
+            amount: outOfPocketCents / 100,
+            chargedAmount: (chargedCents + centDelta) / 100
+          };
+
+          expect(isMatchCandidate({ paymentMethodId: 1, amount: chargedCents / 100, date }, expense)).toBe(centDelta === 0);
+          // The out-of-pocket share alone never matches (unless it happens to equal the charge)
+          if (outOfPocketCents !== chargedCents + centDelta) {
+            expect(isMatchCandidate({ paymentMethodId: 1, amount: outOfPocketCents / 100, date }, expense)).toBe(false);
+          }
         }
       ),
       pbtOptions()

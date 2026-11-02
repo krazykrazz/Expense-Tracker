@@ -46,7 +46,7 @@ Nothing becomes an expense without an explicit action. Anything not needed to an
 6. **Inbox.**
    - Lists `new` staged transactions from mapped accounts, newest first: date, place (`merchant_name ?? name`), amount, payment method, Plaid's raw `name`.
    - Rows with amount ≤ 0 (refunds/credits; Plaid uses positive = money out) are listed but can only be ignored.
-   - **Match candidates:** non-linked expenses with the same `payment_method_id`, the same amount to the cent, and a date within ±3 days, closest date first. When candidates exist the row shows a "Possible match" hint.
+   - **Match candidates:** non-linked expenses with the same `payment_method_id`, the same **charged** amount (`COALESCE(original_cost, amount)`, the same rule credit card balances use) to the cent, and a date within ±3 days, closest date first. When candidates exist the row shows a "Possible match" hint.
 7. **Inbox actions.** Each action changes one row, and the row leaves the inbox.
    - **Add as new:** inline editor pre-filled with date, place, amount and payment method; category from `categorySuggestionService` for the place (else empty, so the user must pick); optional notes. It creates the expense through `expenseService.createExpense`, so normal validation, week calculation, activity logging and SSE apply. Status becomes `added`.
    - **Match:** choose one of the match candidates. No expense is created or changed. Status becomes `matched`.
@@ -134,6 +134,7 @@ New tables only, so `schema.js` (`CREATE TABLE IF NOT EXISTS`) creates them on e
 - Plaid category mapping (beyond `categorySuggestionService`) and Plaid's merchant-name cleanup
 - Bulk actions; header badge
 - Transfers / credit-card payments → `credit_card_payments`; refunds as negative or credit entries
+- **Match to fixed expense:** link a bank transaction to a `fixed_expenses` row (same month and payment method, same amount; due day only ranks candidates), optionally marking the fixed expense as bank-confirmed paid. Until then, adding such a transaction double-counts it, so users must ignore it.
 - Liabilities (card balances and due dates); Investments; auto-approve rules
 - Medical/donation people and insurance fields in the inline editor (use the full expense form later)
 
@@ -215,6 +216,12 @@ Deferred (Low, phase 2):
 - No activity log, and therefore no cross-tab refresh, for account mapping, sync, match and ignore.
 - Per-place category-suggestion queries on every inbox load.
 - The settings-changed event only reaches the current tab.
+
+### Staging review (2026-11-02)
+
+- **Fixed:** match candidates compared the bank amount with `expenses.amount`, which for reimbursed and insurance-tracked expenses is only the out-of-pocket share. A $200 charge with $50 out of pocket was never offered, leaving Add (a duplicate) or Ignore. Matching now uses `COALESCE(original_cost, amount)`, and the picker shows both amounts.
+- **Confirmed:** inline Add goes through `expenseService.createExpense`, so medical, donation, insurance and reimbursement details are set by editing the expense afterwards. The bank icon compares against the charged amount.
+- **Gap, phase 2:** fixed expenses are not matched (see Out of scope); users must ignore those bank charges.
 
 ## Tasks
 

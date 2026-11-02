@@ -67,7 +67,7 @@ describe('ImportInbox', () => {
   });
 
   it('matches to a candidate expense', async () => {
-    const candidate = { id: 42, date: '2026-10-10', place: 'Coffee', amount: 25.5, type: 'Dining Out', notes: null };
+    const candidate = { id: 42, date: '2026-10-10', place: 'Coffee', amount: 25.5, originalCost: null, chargedAmount: 25.5, type: 'Dining Out', notes: null };
     plaidApi.getInbox
       .mockResolvedValueOnce({ transactions: [txn({ matchCandidates: [candidate] })], hiddenUnmapped: 0 })
       .mockResolvedValue({ transactions: [], hiddenUnmapped: 0 });
@@ -80,6 +80,18 @@ describe('ImportInbox', () => {
     fireEvent.click(within(picker).getByRole('button', { name: 'Match' }));
 
     await waitFor(() => expect(plaidApi.matchInboxTransaction).toHaveBeenCalledWith(1, 42));
+  });
+
+  it('shows the charged amount and the out-of-pocket share for reimbursed candidates', async () => {
+    const candidate = { id: 7, date: '2026-10-10', place: 'Clinic', amount: 5.5, originalCost: 25.5, chargedAmount: 25.5, type: 'Tax - Medical', notes: null };
+    plaidApi.getInbox.mockResolvedValue({ transactions: [txn({ matchCandidates: [candidate] })], hiddenUnmapped: 0 });
+
+    renderInbox();
+    fireEvent.click(await screen.findByRole('button', { name: 'Match' }));
+
+    const row = screen.getByText(/Same payment method and amount/).parentElement;
+    expect(within(row).getByText(/Clinic · Tax - Medical · \$25\.50/)).toBeInTheDocument();
+    expect(within(row).getByText(/you paid \$5\.50 after reimbursement/)).toBeInTheDocument();
   });
 
   it('refunds can only be ignored', async () => {

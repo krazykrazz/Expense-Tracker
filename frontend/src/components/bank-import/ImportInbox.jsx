@@ -45,15 +45,19 @@ const MatchPicker = ({ txn, onMatch, onCancel, busy }) => (
   <div className="inbox-match-picker">
     <div className="bank-import-muted">Same payment method and amount, within 3 days:</div>
     <ul>
-      {txn.matchCandidates.map(candidate => (
-        <li key={candidate.id}>
-          <span>
-            {formatDate(candidate.date)} · {candidate.place || '-'} · {candidate.type} · {formatCurrency(candidate.amount)}
-            {candidate.notes ? <span className="bank-import-muted"> — {candidate.notes}</span> : null}
-          </span>
-          <button className="bank-import-primary" onClick={() => onMatch(candidate.id)} disabled={busy}>Match</button>
-        </li>
-      ))}
+      {txn.matchCandidates.map(candidate => {
+        const reimbursed = candidate.originalCost != null && candidate.originalCost !== candidate.amount;
+        return (
+          <li key={candidate.id}>
+            <span>
+              {formatDate(candidate.date)} · {candidate.place || '-'} · {candidate.type} · {formatCurrency(candidate.chargedAmount ?? candidate.amount)}
+              {reimbursed && <span className="bank-import-muted"> (you paid {formatCurrency(candidate.amount)} after reimbursement)</span>}
+              {candidate.notes ? <span className="bank-import-muted"> — {candidate.notes}</span> : null}
+            </span>
+            <button className="bank-import-primary" onClick={() => onMatch(candidate.id)} disabled={busy}>Match</button>
+          </li>
+        );
+      })}
     </ul>
     <button className="bank-import-secondary" onClick={onCancel} disabled={busy}>Cancel</button>
   </div>

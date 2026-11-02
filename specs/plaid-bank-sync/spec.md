@@ -39,8 +39,9 @@ Small slices found while using Phase 1 with real banks, shipped ahead of the pha
 | Automatic sync (scheduled + on opening the app) | 2.2 (Status) | feature/plaid-auto-sync |
 | Financial page: bank badge on payment methods mapped to a bank account (`useBankAccountLinks`, `BankLinkedBadge`; frontend only, no calls without Plaid) | here | feature/payment-method-bank-badge |
 | Activity-log gaps and Phase 1 cleanup (inbox decisions, mapping, sync failures; batched category suggestions; atomic disconnect; inbox reload race) | 2.3, 2.6 | #436 |
-| Pending transactions: add the day you spend; the expense settles in place (yellow → green pill) | 3.5 (Status) | feature/plaid-pending-transactions |
-| Linked balances: investments and loans/lines of credit kept current from bank balances | [below](#linked-balances-next-slice) | not started (after pending) |
+| Pending transactions: add the day you spend; the expense settles in place (yellow → green pill) | 3.5 (Status) | #438 (v1.17.0) |
+| Linked balances: investments and loans/lines of credit kept current from bank balances | [below](#linked-balances-next-slice) | not started |
+| Credit cards: record card payments from the bank, balance check, utilization, (CIBC) statements | [below](#credit-cards-next-slice-candidates) | not started |
 
 ### Linked balances (next slice)
 
@@ -70,7 +71,7 @@ Small slices found while using Phase 1 with real banks, shipped ahead of the pha
 7. **Partial data:** when an item sums several accounts and one bank's sync failed or has no balance, the item is not updated for that sync. A partial sum would look like a real drop.
 8. **Visibility:**
    - Linked investments and loans on the Financial page show a bank badge (as payment methods do) and "Bank: $X · as of 3:20 pm".
-   - Credit card rows show the bank balance next to the tracker's calculated `current_balance`, with the difference. This is a hint of missed or unreviewed transactions; it never changes the card balance.
+   - Credit card rows show the bank balance next to the tracker's, compared the way [Credit cards](#credit-cards-next-slice-candidates) item 1 describes (as of today, pending allowed for, future-dated listed separately). This is a hint of missed or unreviewed transactions; it never changes the card balance.
 9. **Reminders:** the monthly "update investment values / loan balances" reminders are satisfied by bank rows automatically, because they only check that a row exists. Verify this in `reminderService`.
 10. **Without Plaid:** no change; everything stays manual (principle 7).
 
@@ -105,6 +106,63 @@ Small slices found while using Phase 1 with real banks, shipped ahead of the pha
 
 **Out of scope:** holdings and securities (Investments product); card APR, statements and due dates (Liabilities, 4.2); RESP type; real-time balances (`/accounts/balance/get`, billed per call).
 
+### Credit cards (next slice candidates)
+
+Cards are where the household spends most, and every card account already returns its owed balance, limit and (CIBC) available credit at no cost. Items 1–3 use only data we already receive; item 4 needs Liabilities (CIBC only).
+
+**1. Balance check: does the tracker agree with the bank?**
+- **Compare like with like.** On 2026-11-02 a naive comparison showed CIBC −$646.81 and WS VISA −$1,000.00. Both were explained:
+  - the tracker's `current_balance` field also counts some future-dated expenses (e.g. a $1,000 car payment logged for Nov 12);
+  - CIBC's balance excludes pending charges, but its available credit includes them;
+  - Wealthsimple's balance lags its transactions.
+- **Compared correctly, they matched:** CIBC to the cent ($1,554.40), and WS VISA within $14.69 (one charge still pending at Wealthsimple).
+- **Rules:**
+  - **Tracker side:** the balance as of today (business date): the last statement anchor, plus expenses with `COALESCE(posted_date, date)` ≤ today, minus payments to date. This is the same calculation as `creditCardPaymentService._calculateCurrentBalanceInTransaction`. Never the raw `payment_methods.current_balance`.
+  - **Bank side:** when `available` and `limit` are both present, owed including pending = `limit − available` (CIBC); otherwise `current`, labelled "may exclude charges still pending" (Wealthsimple).
+  - **Show three numbers:** bank, tracker as of today, and future-dated entries this cycle as a separate line ("+ $1,250.33 dated after today"). Differences within the expenses linked in the last 2 days are labelled "settling", not "missing".
+- **Where:** the card row on the Financial page (next to Current), and the credit card detail view. When the gap is real, list the likely causes: unreviewed inbox rows on that card, and card payments seen at the bank but not recorded (item 2).
+- **Open check:** `payment_methods.current_balance` is incremented on expense create whatever the date, but recalculated as of today on payment record/delete. So the stored value can include some future-dated expenses and not others. Before building, confirm which screens read it, and decide whether it should be "as of today" everywhere.
+
+**2. Card payments from the bank (brings 2.4's card part forward)**
+- **What's in the data:** card payments appear on both sides. On the card it's a credit, e.g. "Credit Card Payment - From: Cash" −$3,471.31, which shows today as *Refund / credit* with only Ignore. From chequing it's a debit with PFC `LOAN_PAYMENTS_CREDIT_CARD_PAYMENT` or `TRANSFER_OUT`.
+- **Payment received on the card:** a credit on a card account whose PFC is `LOAN_PAYMENTS` / `TRANSFER_IN`, or whose description says "payment", is labelled **Card payment** with **Record payment**. It creates a `credit_card_payments` row (amount, posted date) through `creditCardPaymentService.recordPayment`, so balance, activity log and cross-tab sync apply. The bank row is linked (new `plaid_card_payment_links`; deleting the payment returns the row to the inbox).
+- **Already recorded by hand:** if a payment for the same card, amount and ±5 days exists, offer **Match** instead (no duplicate).
+- **Debit from chequing:** offer **Same payment** (link it to the card payment recorded from the card side) or Ignore. Never record twice. Q3's default (the chequing side records) flips to the **card side records**, because the card credit always names the card.
+- **Effect:** with payments recorded automatically, the balance check (item 1) stays meaningful without manual entry.
+
+**3. Utilization and limit**
+- Show utilization (owed ÷ limit) on the card row.
+- Offer to fill `payment_methods.credit_limit` from the bank's `limit` when it's empty or different. Never silently.
+
+**4. Statements and due dates (Liabilities: CIBC only)**
+- 4.2 as written: last statement balance and date, minimum payment, next due date, APR, last payment.
+  - Fills `credit_card_billing_cycles.actual_statement_balance` for the matching cycle (never overwriting a user-entered value).
+  - Feeds the payment-due reminders.
+- **Consent:** needs one update-mode consent for CIBC (`additional_consented_products: ['liabilities']`, no new Trial slot), which depends on 2.1's update mode.
+- **Wealthsimple** doesn't support Liabilities, so its cards stay on manual statements.
+
+**Order suggested:** 2 (removes the most manual work) → 1 → 3 → 4 (after 2.1).
+
+### Untapped Plaid data (reference)
+
+What else the connected banks offer, with the most useful first. Rows marked *now* need nothing new: we already receive the data and discard it.
+
+| Data | Available | Useful for | Notes |
+|---|---|---|---|
+| `personal_finance_category` (primary, detailed, confidence) on every transaction | now, both banks | Category suggestions (3.1); classifying transfers, card payments and income (2.4); card payment detection (credit cards 2) | Store it on sync (`pfc_*` columns, 2.4). Use only HIGH/VERY_HIGH for suggestions; Wealthsimple is mostly LOW |
+| Account balances, limit, available | now, every account | [Linked balances](#linked-balances-next-slice), [Credit cards](#credit-cards-next-slice-candidates) | |
+| `merchant_entity_id`, `counterparties`, `logo_url`, `website` | now, 20–45% of rows | Rules keyed by merchant id instead of description text (3.2); merchant logos in the inbox and expense list; place-name standardization | Id survives description variants ("SQ *COFFEE 123" vs "SQ *COFFEE 456") |
+| `original_description` | now, all rows | Better rule matching and dedup | |
+| `payment_channel` (online / in store) | now | Analytics: online vs in-store spending | Low priority |
+| `location` (city, region) | now, CIBC only | Travel detection (spending outside home city) | Low priority |
+| Recurring transactions (`/transactions/recurring/get`) | CIBC only | Detect subscriptions and suggest fixed expenses; flag price increases | Would cover only one bank, so lower value than our own matching |
+| Investments: holdings and investment transactions | Wealthsimple only | RRSP/TFSA **contributions** from investment transactions (contribution-room tracking); holdings detail | Needs the Investments product (included in the Trial, billed on paid plans) and update-mode consent |
+| Liabilities | CIBC only | Card statements, due dates, APR (credit cards 4); loan and mortgage details where supported | Same consent caveat |
+| Transactions refresh (`/transactions/refresh`) | both | "Ask the bank for fresh data" on Sync now (2.2) | Billed per call on paid plans; manual only |
+| Identity (account holder names, already consented) | both | Little: maybe pre-filling who owns an account | **Don't use**: personal data with no clear need |
+| Auth (account/routing numbers), Assets, Income, Transfer, Pay by bank | both | Not relevant to an expense tracker | Excluded |
+| Statements (PDF) | not supported by either bank | | |
+
 ---
 
 ## Phase 0: real-bank validation (gate for Phases 2–3)
@@ -121,6 +179,26 @@ Not code. Connect **one** real bank (the one you use most) on the Trial plan in 
 | Share of inbox rows that are transfers / card payments / payroll | Sizes Phase 2.4 |
 | Fixed expenses confirmed vs missed, and how late they landed | Tunes the −3/+10 window |
 | Item health over the period (`last_error`) | Sizes the urgency of Phase 2.1 |
+
+### Phase 0 findings (first real-bank day, 2026-11-02)
+
+Two banks connected in production on the Trial plan: **Wealthsimple** (chequing, Visa, line of credit, 4 RRSP, 3 RESP) and **CIBC** (Mastercard). Measured with read-only calls; only counts and amounts, no descriptions.
+
+| Measure | CIBC | Wealthsimple | Consequence |
+|---|---|---|---|
+| Login | Credentials, not OAuth | Credentials, not OAuth | **Q1 decided:** the desktop pop-up is enough; no `redirect_uri`. Consent has no expiry date |
+| Purchase date (`authorized_date`) | 20/20 | 0/86 | CIBC expenses get the day of purchase (on average 1.2 days before posting); Wealthsimple ones get the posting date |
+| Pending charges | Marked `pending`; settle under a new id with `pending_transaction_id` | **Marked as settled** (`pending: false`) while still pending in the Wealthsimple app | CIBC uses the 3.5 flow (yellow → green). Wealthsimple charges arrive the same day but green at once; a later amount change would come as a modified transaction (see below) |
+| Balance includes pending | Yes, via available credit (limit − available) | No: the cached balance lags the transactions | Balance checks must allow for this (see [Credit cards](#credit-cards-next-slice-candidates)) |
+| `merchant_name` filled | 18/20 | 51/86 | Default place falls back to the raw description for about 40% of Wealthsimple rows |
+| `merchant_entity_id` / logo / website | 9/20 | 17/86 | Stable merchant ids for rules (3.2) and logos, where present |
+| `personal_finance_category` | 20/20, 13 HIGH or VERY_HIGH | 86/86, 31 HIGH or VERY_HIGH (55 LOW) | Category suggestions (3.1) must use confidence; Wealthsimple is mostly LOW |
+| Transfers / card payments / income share | 1 LOAN_PAYMENTS | 10 TRANSFER_OUT, 7 TRANSFER_IN, 5 INCOME, 3 LOAN_PAYMENTS of 86 | About 30% of Wealthsimple rows aren't spending: 2.4 matters |
+| Location (city) | 18/20 | 0/86 | Only CIBC; low value |
+| Extra products the bank supports | Liabilities, Recurring transactions, Transactions refresh | Investments, Transactions refresh (**no** Liabilities, **no** Recurring) | Card statements and due dates (4.2) only for CIBC; investment holdings only for Wealthsimple |
+| Balances for every account (card, chequing, RRSP, RESP, LOC) | Yes | Yes | Basis for [Linked balances](#linked-balances-next-slice) |
+
+**Wealthsimple: a known gap to watch.** A charge that is still pending at Wealthsimple reaches us as settled. If it later settles at a different amount (tips, gas, hotel holds), Plaid sends it as *modified*. Today a modified row that was already added or matched is ignored, so the expense keeps the first amount. Fix when it is observed: treat a modified amount on an added/matched row like `pending_changed` (follow the bank if the expense still has the previous amount; log it).
 
 ---
 
@@ -378,7 +456,7 @@ Original plan, kept for reference:
 
 ### 4.2 Credit card balances and statements (Plaid Liabilities)
 
-**Partly covered by [Linked balances](#linked-balances-next-slice):** the card's current balance next to the tracker's comes free. This section keeps the statement balance, statement date, minimum payment, due date and APR, which need Liabilities.
+**Partly covered by [Linked balances](#linked-balances-next-slice) and [Credit cards](#credit-cards-next-slice-candidates):** the card's current balance next to the tracker's comes free. This section keeps the statement balance, statement date, minimum payment, due date and APR, which need Liabilities. Phase 0 found Liabilities is **supported by CIBC only**, not Wealthsimple.
 
 **Requirements**
 1. For connected credit card accounts mapped to a credit card payment method, fetch (daily, with the scheduled sync) the **current balance**, **last statement balance and date**, **minimum payment**, **next due date**, **last payment amount/date** (`/liabilities/get` + account balances).
@@ -448,13 +526,13 @@ Only for installs that already have a public HTTPS hostname. The maintainer's in
 
 ## Open questions
 
-Decided (owner review): Q2, Q3, Q4, Q5, Q6, Q8, Q9, Q12. Still open: Q1 (after Phase 0), Q7, Q10, Q11 (defaults apply unless changed before that phase).
+Decided (owner review): Q1, Q2, Q3, Q4, Q5, Q6, Q8, Q9, Q12. Still open: Q7, Q10, Q11 (defaults apply unless changed before that phase).
 
 | # | Question | Decision / default |
 |---|---|---|
-| Q1 | After Phase 0: does your bank use OAuth, and did the desktop pop-up work? If not, we need a registered HTTPS `redirect_uri` (your public hostname would work) | Desktop pop-up only |
+| Q1 | After Phase 0: does your bank use OAuth, and did the desktop pop-up work? If not, we need a registered HTTPS `redirect_uri` (your public hostname would work) | **Decided (Phase 0):** both banks use credentials, not OAuth, so the desktop pop-up is enough |
 | Q2 | Sync schedule default? | **Decided:** every 30 minutes 06:00–23:00, none overnight, plus sync on open when older than 30 minutes (revised after the first real-bank connection) |
-| Q3 | Card payments when **both** accounts are connected: record from the chequing side (debit) and link the card side automatically? | **Decided:** yes, chequing side records, card side links |
+| Q3 | Card payments when **both** accounts are connected: record from the chequing side (debit) and link the card side automatically? | **Revised (Phase 0):** the **card side** records, because the card credit always names the card; the chequing debit links to it. Proposed in [Credit cards](#credit-cards-next-slice-candidates) item 2; confirm when building |
 | Q4 | Classify existing staged rows (2.4)? Plaid doesn't resend old transactions, so old rows would need a one-off re-fetch (a full re-sync from an empty cursor, which also re-stages everything already reviewed, deduplicated by `transaction_id`) | **Decided:** new rows only |
 | Q5 | Full refunds: delete the original expense (it never really cost anything), or keep it and ignore the refund? | **Decided:** ask each time |
 | Q6 | Auto-add (3.3): build it at all, or keep everything manual with rules only pre-filling? | **Decided:** don't build; rules only pre-fill |

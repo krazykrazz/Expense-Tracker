@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.16.0',
+    date: 'November 2, 2026',
+    added: [],
+    changed: ['Bank import: automatic sync (scheduled and on opening the app), bank badge on mapped payment methods, activity log for inbox decisions, mapping changes and sync failures, faster inbox loading'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.15.0',
     date: 'November 2, 2026',
     added: [],

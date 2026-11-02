@@ -1215,6 +1215,13 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v1.16.0</div>
+                <div className="changelog-date">November 2, 2026</div>
+                <ul className="changelog-items">
+                  <li>Bank import: automatic sync (scheduled and on opening the app), bank badge on mapped payment methods, activity log for inbox decisions, mapping changes and sync failures, faster inbox loading</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v1.15.0</div>
                 <div className="changelog-date">November 2, 2026</div>
                 <ul className="changelog-items">

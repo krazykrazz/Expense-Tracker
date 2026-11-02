@@ -11,7 +11,7 @@ The application uses SQLite3 for data persistence. The database file lives at `<
 - All `id` primary keys are `INTEGER PRIMARY KEY AUTOINCREMENT`. Timestamp columns default to `CURRENT_TIMESTAMP` (UTC).
 - `updated_at` is maintained by application code, except for `budgets`, `budget_allocations`, `credit_card_billing_cycles` and the three `plaid_*` tables, which also have `AFTER UPDATE` triggers (see [Triggers](#triggers)).
 
-The schema contains **30 tables**:
+The schema contains **31 tables**:
 
 | Group | Tables |
 |-------|--------|
@@ -19,7 +19,7 @@ The schema contains **30 tables**:
 | Financial tracking | `loans`, `loan_balances`, `loan_payments`, `mortgage_payments`, `investments`, `investment_values`, `budgets`, `budget_allocations` |
 | Medical & tax | `people`, `expense_people`, `expense_invoices` |
 | Payment methods | `payment_methods`, `credit_card_payments`, `credit_card_statements`, `credit_card_billing_cycles` |
-| Bank import (Plaid) | `plaid_items`, `plaid_accounts`, `plaid_transactions` |
+| Bank import (Plaid) | `plaid_items`, `plaid_accounts`, `plaid_transactions`, `plaid_fixed_expense_links` |
 | Authentication | `users` |
 | Utility | `place_names`, `reminders`, `dismissed_anomalies`, `anomaly_suppression_rules`, `activity_logs`, `settings`, `schema_migrations` |
 
@@ -99,8 +99,8 @@ Recurring monthly expenses with loan linkage support.
 | name | TEXT NOT NULL | Fixed expense name |
 | amount | REAL NOT NULL | Expense amount (CHECK >= 0) |
 | category | TEXT DEFAULT 'Other' | Expense category (same list as `expenses.type`, validated in code) |
-| payment_type | TEXT DEFAULT 'Fixed' | Payment method display name (validated in code against `payment_methods.display_name`) |
-| payment_method_id | INTEGER | Optional foreign key to payment_methods table |
+| payment_type | TEXT DEFAULT 'Fixed' | Payment method display name (validated in code against `payment_methods.display_name`); kept in step on rename |
+| payment_method_id | INTEGER | Foreign key to payment_methods, resolved from `payment_type` on create/update/carry-forward (NULL for legacy names such as 'Fixed') |
 | payment_due_day | INTEGER | Optional day of month payment is due (CHECK NULL or 1-31) |
 | linked_loan_id | INTEGER | Optional foreign key to loans table |
 | created_at | TEXT | Creation timestamp |
@@ -444,7 +444,7 @@ Billing cycle history with statement balances.
 
 ## Plaid Tables
 
-Optional bank import ([Plaid Bank Import](features/PLAID_INTEGRATION.md)). All three tables have `AFTER UPDATE` triggers that set `updated_at`.
+Optional bank import ([Plaid Bank Import](features/PLAID_INTEGRATION.md)). `plaid_items`, `plaid_accounts` and `plaid_transactions` have `AFTER UPDATE` triggers that set `updated_at`.
 
 ### plaid_items
 
@@ -498,6 +498,21 @@ Posted bank transactions staged for review in the Import Inbox.
 **Indexes**: `idx_plaid_transactions_status_date` (status, date), `idx_plaid_transactions_account` (plaid_account_id), `idx_plaid_transactions_expense` (UNIQUE on expense_id WHERE expense_id IS NOT NULL: one bank transaction per expense)
 
 Sync only modifies or deletes rows whose status is still 'new'. Deleting a linked expense puts its row back to 'new' (trigger `plaid_transactions_unlink_on_expense_delete`).
+
+### plaid_fixed_expense_links
+
+A bank transaction confirming a planned fixed expense (Import Inbox → Match → Confirm). The transaction's status is `matched` with `expense_id` NULL.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | INTEGER PRIMARY KEY | Unique identifier |
+| plaid_transaction_id | INTEGER NOT NULL UNIQUE | Foreign key to plaid_transactions (ON DELETE CASCADE) |
+| fixed_expense_id | INTEGER NOT NULL UNIQUE | Foreign key to fixed_expenses (ON DELETE CASCADE); one confirmation per fixed expense |
+| landed_date | TEXT NOT NULL | Date the payment actually landed (the transaction's posted date) |
+| planned_amount | REAL | Fixed expense amount before confirming (it is updated to the bank amount when they differed) |
+| created_at | TEXT NOT NULL | Timestamp |
+
+Deleting a confirmed fixed expense puts its transaction back to `'new'` (trigger `plaid_transactions_unlink_on_fixed_expense_delete`) and removes the link (cascade).
 
 ## Authentication Tables
 
@@ -638,7 +653,7 @@ Migration tracking for database schema changes.
 | migration_name | TEXT NOT NULL UNIQUE | Name of the migration |
 | applied_at | TEXT DEFAULT CURRENT_TIMESTAMP | When the migration was applied |
 
-Current entries written by `runMigrations()`: `consolidated_schema_v1`, `auth_infrastructure_v1`, `dismissed_anomalies_nullable_expense_id_v1`, `performance_compound_indexes_v1`, `analytics_hub_revamp_v1`. See [Database Migrations](DATABASE_MIGRATIONS.md).
+Current entries written by `runMigrations()`: `consolidated_schema_v1`, `auth_infrastructure_v1`, `dismissed_anomalies_nullable_expense_id_v1`, `performance_compound_indexes_v1`, `analytics_hub_revamp_v1`, `fixed_expenses_payment_method_id_backfill_v1`. See [Database Migrations](DATABASE_MIGRATIONS.md).
 
 ## Relationships
 
@@ -660,6 +675,7 @@ Current entries written by `runMigrations()`: `consolidated_schema_v1`, `auth_in
 - `plaid_items` → `plaid_accounts` → `plaid_transactions`
 - `payment_methods` → `plaid_accounts` (optional, via payment_method_id)
 - `expenses` → `plaid_transactions` (at most one, via expense_id)
+- `fixed_expenses` ↔ `plaid_transactions` (at most one each, via plaid_fixed_expense_links)
 
 ### Many-to-Many Relationships
 
@@ -683,6 +699,7 @@ All indexes are listed per table above. `schema.js` (`INDEX_STATEMENTS`) creates
 | `update_plaid_accounts_timestamp` | plaid_accounts | AFTER UPDATE: sets `updated_at = CURRENT_TIMESTAMP` |
 | `update_plaid_transactions_timestamp` | plaid_transactions | AFTER UPDATE: sets `updated_at = CURRENT_TIMESTAMP` |
 | `plaid_transactions_unlink_on_expense_delete` | expenses | BEFORE DELETE: linked `plaid_transactions` go back to `status = 'new'`, `expense_id = NULL`, so the bank transaction returns to the Import Inbox instead of being stranded |
+| `plaid_transactions_unlink_on_fixed_expense_delete` | fixed_expenses | BEFORE DELETE: the confirming `plaid_transactions` row goes back to `status = 'new'` (its link row is removed by cascade) |
 
 ## Foreign Key Constraints
 
@@ -696,6 +713,7 @@ Foreign keys are enforced (`PRAGMA foreign_keys = ON` per connection):
   - dismissed_anomalies (when expense deleted)
   - credit_card_payments, credit_card_statements, credit_card_billing_cycles (when payment method deleted)
   - plaid_accounts (when plaid item deleted)
+  - plaid_fixed_expense_links (when its plaid transaction or fixed expense is deleted)
 
 - **SET NULL**: Foreign key is set to NULL when parent is deleted
   - fixed_expenses.linked_loan_id (when loan deleted)
@@ -726,7 +744,7 @@ Foreign keys are enforced (`PRAGMA foreign_keys = ON` per connection):
 - `payment_methods`: (display_name)
 - `credit_card_billing_cycles`: (payment_method_id, cycle_end_date)
 - `users`: (username)
-- `plaid_items`: (item_id); `plaid_accounts`: (account_id); `plaid_transactions`: (transaction_id), and expense_id when not NULL
+- `plaid_items`: (item_id); `plaid_accounts`: (account_id); `plaid_transactions`: (transaction_id), and expense_id when not NULL; `plaid_fixed_expense_links`: (plaid_transaction_id), (fixed_expense_id)
 - `schema_migrations`: (migration_name)
 
 ### Check Constraints

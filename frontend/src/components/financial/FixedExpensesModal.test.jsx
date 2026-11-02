@@ -113,6 +113,28 @@ describe('FixedExpensesModal', () => {
         expect(screen.getByText('$1580.00')).toBeInTheDocument();
       });
     });
+
+    it('marks fixed expenses confirmed by a bank transaction, and keeps the mark after editing', async () => {
+      const bankConfirmation = { landedDate: '2024-12-03', amount: 1500, plannedAmount: 1500, name: 'RENT PMT', expectedDate: '2024-12-01', daysFromDue: 2 };
+      fixedExpenseApi.getMonthlyFixedExpenses.mockResolvedValue({
+        items: [{ ...mockFixedExpenses.items[0], payment_due_day: 1, bankConfirmation }, { ...mockFixedExpenses.items[1], bankConfirmation: null }],
+        total: 1580
+      });
+      fixedExpenseApi.updateFixedExpense.mockResolvedValue({ ...mockFixedExpenses.items[0], name: 'Rent (apt)', payment_due_day: 1 });
+
+      render(<FixedExpensesModal {...defaultProps} />);
+
+      const indicator = await screen.findByTestId('fixed-confirmation-indicator');
+      expect(indicator.getAttribute('title')).toContain('landed Dec 3, 2024 (2 days after the due date)');
+      expect(screen.getAllByTestId('fixed-confirmation-indicator')).toHaveLength(1);
+
+      fireEvent.click(screen.getAllByTitle('Edit')[0]);
+      fireEvent.change(screen.getByDisplayValue('Rent'), { target: { value: 'Rent (apt)' } });
+      fireEvent.click(screen.getByRole('button', { name: '✓' }));
+
+      await waitFor(() => expect(screen.getByText('Rent (apt)')).toBeInTheDocument());
+      expect(screen.getByTestId('fixed-confirmation-indicator')).toBeInTheDocument();
+    });
   });
 
   describe('Add Fixed Expense', () => {

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
-  getInbox, addInboxTransaction, matchInboxTransaction, ignoreInboxTransaction, unignoreInboxTransaction
+  getInbox, addInboxTransaction, matchInboxTransaction, matchInboxTransactionToFixed,
+  ignoreInboxTransaction, unignoreInboxTransaction
 } from '../../services/plaidApi';
 import { CATEGORIES } from '../../utils/constants';
 import { formatCurrency, formatDate } from '../../utils/formatters';
@@ -8,6 +9,12 @@ import { formatCurrency, formatDate } from '../../utils/formatters';
 const EXPECTED_CURRENCY = 'CAD';
 
 const formatSigned = (amount) => (amount < 0 ? `-${formatCurrency(Math.abs(amount))}` : formatCurrency(amount));
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const dueLabel = (fixed) => (fixed.expectedDate ? `due ${formatDate(fixed.expectedDate)}` : `${MONTHS[fixed.month - 1]} ${fixed.year}, no due day`);
+
+/** A fixed expense "closely" matches when the amounts are within 10% (or exactly equal). */
+const isCloseFixed = (txn, fixed) => !fixed.amountDiffers || Math.abs(fixed.amount - txn.amount) <= Math.abs(fixed.amount) * 0.1;
 
 const AddForm = ({ txn, onSubmit, onCancel, busy }) => {
   const [fields, setFields] = useState({
@@ -41,26 +48,53 @@ const AddForm = ({ txn, onSubmit, onCancel, busy }) => {
   );
 };
 
-const MatchPicker = ({ txn, onMatch, onCancel, busy }) => (
+const MatchPicker = ({ txn, onMatch, onMatchFixed, onCancel, busy }) => (
   <div className="inbox-match-picker">
-    <div className="bank-import-muted">Same payment method and amount, within 3 days:</div>
-    <ul>
-      {txn.matchCandidates.map(candidate => (
-        <li key={candidate.id}>
-          <span>
-            {formatDate(candidate.date)} · {candidate.place || '-'} · {candidate.type} · {formatCurrency(candidate.amount)}
-            {candidate.notes ? <span className="bank-import-muted"> — {candidate.notes}</span> : null}
-          </span>
-          <button className="bank-import-primary" onClick={() => onMatch(candidate.id)} disabled={busy}>Match</button>
-        </li>
-      ))}
-    </ul>
+    {txn.matchCandidates.length > 0 && (
+      <>
+        <div className="bank-import-muted">Expenses: same payment method and amount, within 3 days</div>
+        <ul>
+          {txn.matchCandidates.map(candidate => {
+            const reimbursed = candidate.originalCost != null && candidate.originalCost !== candidate.amount;
+            return (
+              <li key={`e-${candidate.id}`}>
+                <span>
+                  {formatDate(candidate.date)} · {candidate.place || '-'} · {candidate.type} · {formatCurrency(candidate.chargedAmount ?? candidate.amount)}
+                  {reimbursed && <span className="bank-import-muted"> (you paid {formatCurrency(candidate.amount)} after reimbursement)</span>}
+                  {candidate.notes ? <span className="bank-import-muted"> — {candidate.notes}</span> : null}
+                </span>
+                <button className="bank-import-primary" onClick={() => onMatch(candidate.id)} disabled={busy}>Match</button>
+              </li>
+            );
+          })}
+        </ul>
+      </>
+    )}
+    {txn.fixedCandidates.length > 0 && (
+      <>
+        <div className="bank-import-muted">Fixed expenses: same payment method, due within 3 days before to 10 days after</div>
+        <ul>
+          {txn.fixedCandidates.map(fixed => (
+            <li key={`f-${fixed.id}`} data-testid="fixed-candidate">
+              <span>
+                {fixed.name} · {dueLabel(fixed)} · {formatCurrency(fixed.amount)}
+                {fixed.amountDiffers && (
+                  <span className="bank-import-muted"> (planned amount will be updated to {formatCurrency(txn.amount)})</span>
+                )}
+              </span>
+              <button className="bank-import-primary" onClick={() => onMatchFixed(fixed.id)} disabled={busy}>Confirm</button>
+            </li>
+          ))}
+        </ul>
+      </>
+    )}
     <button className="bank-import-secondary" onClick={onCancel} disabled={busy}>Cancel</button>
   </div>
 );
 
 const InboxRow = ({ txn, filter, expanded, onExpand, onAction, busy, error }) => {
-  const hasMatches = txn.matchCandidates.length > 0;
+  const hasCandidates = txn.matchCandidates.length > 0 || txn.fixedCandidates.length > 0;
+  const closeFixed = txn.fixedCandidates.filter(fixed => isCloseFixed(txn, fixed));
   const isOpen = (mode) => expanded === mode;
 
   return (
@@ -82,7 +116,12 @@ const InboxRow = ({ txn, filter, expanded, onExpand, onAction, busy, error }) =>
         </div>
         <div className="inbox-row-badges">
           {filter === 'new' && !txn.canAdd && <span className="inbox-badge">Refund / credit</span>}
-          {filter === 'new' && hasMatches && <span className="inbox-badge match">Possible match</span>}
+          {filter === 'new' && txn.matchCandidates.length > 0 && <span className="inbox-badge match">Possible match</span>}
+          {filter === 'new' && closeFixed.length > 0 && (
+            <span className="inbox-badge match" title="Matches a planned fixed expense: confirm it instead of adding, to avoid counting it twice">
+              Fixed: {closeFixed[0].name}
+            </span>
+          )}
         </div>
         <div className="inbox-row-actions">
           {filter === 'new' ? (
@@ -90,7 +129,7 @@ const InboxRow = ({ txn, filter, expanded, onExpand, onAction, busy, error }) =>
               {txn.canAdd && (
                 <button className="bank-import-secondary" onClick={() => onExpand(isOpen('add') ? null : 'add')} disabled={busy}>Add</button>
               )}
-              {hasMatches && (
+              {hasCandidates && (
                 <button className="bank-import-secondary" onClick={() => onExpand(isOpen('match') ? null : 'match')} disabled={busy}>Match</button>
               )}
               <button className="bank-import-secondary" onClick={() => onAction('ignore')} disabled={busy}>Ignore</button>
@@ -105,7 +144,13 @@ const InboxRow = ({ txn, filter, expanded, onExpand, onAction, busy, error }) =>
         <AddForm txn={txn} busy={busy} onCancel={() => onExpand(null)} onSubmit={(fields) => onAction('add', fields)} />
       )}
       {isOpen('match') && (
-        <MatchPicker txn={txn} busy={busy} onCancel={() => onExpand(null)} onMatch={(expenseId) => onAction('match', expenseId)} />
+        <MatchPicker
+          txn={txn}
+          busy={busy}
+          onCancel={() => onExpand(null)}
+          onMatch={(expenseId) => onAction('match', expenseId)}
+          onMatchFixed={(fixedExpenseId) => onAction('match-fixed', fixedExpenseId)}
+        />
       )}
     </li>
   );
@@ -147,14 +192,16 @@ const ImportInbox = ({ onExpensesChanged, onOpenConnections }) => {
     try {
       if (action === 'add') await addInboxTransaction(txn.id, payload);
       else if (action === 'match') await matchInboxTransaction(txn.id, payload);
+      else if (action === 'match-fixed') await matchInboxTransactionToFixed(txn.id, payload);
       else if (action === 'ignore') await ignoreInboxTransaction(txn.id);
       else if (action === 'unignore') await unignoreInboxTransaction(txn.id);
 
       setData(prev => ({ ...prev, transactions: prev.transactions.filter(t => t.id !== txn.id) }));
       setExpanded({ id: null, mode: null });
-      if (action === 'add' || action === 'match') {
+      if (action === 'add' || action === 'match' || action === 'match-fixed') {
+        // Also refreshes the summary, whose fixed-expense total changes when a planned amount is updated
         onExpensesChanged?.();
-        // A matched or added expense is no longer a candidate for other rows
+        // A matched expense or fixed expense is no longer a candidate for other rows
         await load();
       }
     } catch (err) {

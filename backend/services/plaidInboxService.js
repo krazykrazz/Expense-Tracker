@@ -1,19 +1,25 @@
 const plaidRepository = require('../repositories/plaidRepository');
 const expenseRepository = require('../repositories/expenseRepository');
 const expenseService = require('./expenseService');
+const fixedExpenseService = require('./fixedExpenseService');
+const fixedExpenseRepository = require('../repositories/fixedExpenseRepository');
 const categorySuggestionService = require('./categorySuggestionService');
 const logger = require('../config/logger');
-const { MATCH_WINDOW_DAYS, shiftDate, transactionDate, findMatchCandidates } = require('../utils/plaidMatching');
+const {
+  MATCH_WINDOW_DAYS, toCents, shiftDate, transactionDate, findMatchCandidates,
+  fixedExpectedDate, isFixedCandidate, findFixedCandidates
+} = require('../utils/plaidMatching');
 
 const INBOX_STATUSES = ['new', 'ignored'];
 
 const fail = (message, statusCode) => Object.assign(new Error(message), { statusCode });
 const round2 = (n) => Math.round(n * 100) / 100;
 const defaultPlace = (txn) => (txn.merchantName || txn.name || '').trim();
+const monthIndexOf = (date) => Number(date.slice(0, 4)) * 12 + Number(date.slice(5, 7)) - 1;
 
 /**
  * Import Inbox: review staged bank transactions and add them as expenses, match them to
- * existing expenses, or ignore them. Nothing becomes an expense without an explicit action.
+ * existing expenses or fixed expenses, or ignore them. Nothing becomes an expense without an explicit action.
  */
 class PlaidInboxService {
   constructor() {
@@ -34,8 +40,12 @@ class PlaidInboxService {
       plaidRepository.countNewUnmapped()
     ]);
 
-    const candidatesByRow = status === 'new' ? await this._matchCandidates(rows) : new Map();
-    const suggestions = status === 'new' ? await this._suggestCategories(rows) : new Map();
+    const isNew = status === 'new';
+    const [candidatesByRow, fixedByRow, suggestions] = await Promise.all([
+      isNew ? this._matchCandidates(rows) : new Map(),
+      isNew ? this._fixedCandidates(rows) : new Map(),
+      isNew ? this._suggestCategories(rows) : new Map()
+    ]);
 
     const transactions = rows.map(row => {
       const place = defaultPlace(row);
@@ -56,11 +66,42 @@ class PlaidInboxService {
         status: row.status,
         canAdd: row.amount > 0,
         suggestedCategory: suggestions.get(place.toLowerCase()) ?? null,
-        matchCandidates: candidatesByRow.get(row.id) ?? []
+        matchCandidates: candidatesByRow.get(row.id) ?? [],
+        fixedCandidates: fixedByRow.get(row.id) ?? []
       };
     });
 
     return { transactions, hiddenUnmapped };
+  }
+
+  async _fixedCandidates(rows) {
+    const result = new Map();
+    const charges = rows.filter(row => row.amount > 0);
+    if (charges.length === 0) return result;
+
+    // The landing window can reach into the previous or next month
+    const monthIdxs = charges.map(row => monthIndexOf(row.date));
+    const fixedExpenses = await plaidRepository.findUnlinkedFixedExpenses(
+      [...new Set(charges.map(row => row.paymentMethodId))],
+      Math.min(...monthIdxs) - 1,
+      Math.max(...monthIdxs) + 1
+    );
+
+    for (const row of charges) {
+      result.set(row.id, findFixedCandidates(row, fixedExpenses).map(fixed => ({
+        id: fixed.id,
+        year: fixed.year,
+        month: fixed.month,
+        name: fixed.name,
+        category: fixed.category,
+        amount: fixed.amount,
+        dueDay: fixed.dueDay ?? null,
+        expectedDate: fixedExpectedDate(fixed),
+        amountDiffers: toCents(fixed.amount) !== toCents(row.amount),
+        linkedLoanId: fixed.linkedLoanId ?? null
+      })));
+    }
+    return result;
   }
 
   async _matchCandidates(rows) {
@@ -76,7 +117,9 @@ class PlaidInboxService {
     );
 
     for (const row of rows) {
-      result.set(row.id, findMatchCandidates(row, expenses).map(({ id, date, place, amount, type, notes }) => ({ id, date, place, amount, type, notes })));
+      result.set(row.id, findMatchCandidates(row, expenses).map(({ id, date, place, amount, originalCost, chargedAmount, type, notes }) => (
+        { id, date, place, amount, originalCost: originalCost ?? null, chargedAmount, type, notes }
+      )));
     }
     return result;
   }
@@ -183,6 +226,60 @@ class PlaidInboxService {
         throw err;
       }
       return { transaction: await plaidRepository.findTransactionById(id) };
+    });
+  }
+
+  /**
+   * Confirm a planned fixed expense with a bank transaction and record when it actually landed.
+   * When the bank amount differs from the planned amount, the fixed expense is updated to the bank amount
+   * (through fixedExpenseService, so validation and the activity log apply).
+   */
+  async matchToFixedExpense(id, fixedExpenseId, tabId = null) {
+    return this._exclusive(id, async () => {
+      const txn = await this._requireNew(id);
+      const parsedId = parseInt(fixedExpenseId, 10);
+      const fixed = Number.isNaN(parsedId) ? null : await plaidRepository.findFixedExpenseForMatching(parsedId);
+      if (!fixed) {
+        throw fail('Fixed expense not found', 404);
+      }
+      if (fixed.linked) {
+        throw fail('That fixed expense is already confirmed by another bank transaction', 409);
+      }
+      if (!isFixedCandidate(txn, fixed)) {
+        throw fail('That fixed expense uses a different payment method or is not due around this transaction\'s date', 400);
+      }
+
+      const landedDate = txn.date;
+      const plannedAmount = fixed.amount;
+      try {
+        if (!(await plaidRepository.linkFixedExpense(id, fixed.id, landedDate, plannedAmount))) {
+          throw fail('Bank transaction was already reviewed', 409);
+        }
+      } catch (err) {
+        if (err.message && err.message.includes('UNIQUE constraint failed')) {
+          throw fail('That fixed expense is already confirmed by another bank transaction', 409);
+        }
+        throw err;
+      }
+
+      let updated = false;
+      if (toCents(plannedAmount) !== toCents(txn.amount)) {
+        try {
+          const current = await fixedExpenseRepository.findById(fixed.id);
+          await fixedExpenseService.updateFixedExpense(fixed.id, { ...current, amount: round2(txn.amount) }, tabId);
+          updated = true;
+        } catch (err) {
+          // Keep link and amount consistent: undo the link if the amount could not be updated
+          await plaidRepository.unlinkFixedExpense(id);
+          logger.warn('Updating fixed expense amount from bank transaction failed', { fixedExpenseId: fixed.id, error: err.message });
+          throw fail(`Could not update the fixed expense amount: ${err.message}`, err.statusCode || 400);
+        }
+      }
+
+      return {
+        transaction: await plaidRepository.findTransactionById(id),
+        fixedExpense: { id: fixed.id, name: fixed.name, plannedAmount, amount: round2(txn.amount), amountUpdated: updated, landedDate }
+      };
     });
   }
 

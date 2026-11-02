@@ -46,10 +46,11 @@ Nothing becomes an expense without an explicit action. Anything not needed to an
 6. **Inbox.**
    - Lists `new` staged transactions from mapped accounts, newest first: date, place (`merchant_name ?? name`), amount, payment method, Plaid's raw `name`.
    - Rows with amount ≤ 0 (refunds/credits; Plaid uses positive = money out) are listed but can only be ignored.
-   - **Match candidates:** non-linked expenses with the same `payment_method_id`, the same amount to the cent, and a date within ±3 days, closest date first. When candidates exist the row shows a "Possible match" hint.
+   - **Match candidates:** non-linked expenses with the same `payment_method_id`, the same **charged** amount (`COALESCE(original_cost, amount)`, the same rule credit card balances use) to the cent, and a date within ±3 days, closest date first. When candidates exist the row shows a "Possible match" hint.
 7. **Inbox actions.** Each action changes one row, and the row leaves the inbox.
    - **Add as new:** inline editor pre-filled with date, place, amount and payment method; category from `categorySuggestionService` for the place (else empty, so the user must pick); optional notes. It creates the expense through `expenseService.createExpense`, so normal validation, week calculation, activity logging and SSE apply. Status becomes `added`.
    - **Match:** choose one of the match candidates. No expense is created or changed. Status becomes `matched`.
+   - **Confirm a fixed expense:** choose a planned fixed expense the charge pays (same payment method, due from 3 days before to 10 days after the landing date). Records the landing date; a different amount updates the plan to the bank amount. Status becomes `matched`, with no expense.
    - **Ignore:** status becomes `ignored`. An **Ignored** filter shows these rows with an **Undo** action that puts them back to `new`.
 8. **Disconnect.** Calls `/item/remove`. The confirmation warns that in `production` the Trial slot is not refunded. Staged rows still `new` or `ignored` are deleted. Expenses already created are untouched.
 9. **Bank-confirmed indicator in the expense list.**
@@ -134,6 +135,7 @@ New tables only, so `schema.js` (`CREATE TABLE IF NOT EXISTS`) creates them on e
 - Plaid category mapping (beyond `categorySuggestionService`) and Plaid's merchant-name cleanup
 - Bulk actions; header badge
 - Transfers / credit-card payments → `credit_card_payments`; refunds as negative or credit entries
+- **Auto-logged payments from bank confirmations:** use the confirmed landing date (`plaid_fixed_expense_links.landed_date`) instead of the due day for loan-linked fixed expenses.
 - Liabilities (card balances and due dates); Investments; auto-approve rules
 - Medical/donation people and insurance fields in the inline editor (use the full expense form later)
 
@@ -215,6 +217,20 @@ Deferred (Low, phase 2):
 - No activity log, and therefore no cross-tab refresh, for account mapping, sync, match and ignore.
 - Per-place category-suggestion queries on every inbox load.
 - The settings-changed event only reaches the current tab.
+
+### Staging review (2026-11-02)
+
+- **Fixed:** match candidates compared the bank amount with `expenses.amount`, which for reimbursed and insurance-tracked expenses is only the out-of-pocket share. A $200 charge with $50 out of pocket was never offered, leaving Add (a duplicate) or Ignore. Matching now uses `COALESCE(original_cost, amount)`, and the picker shows both amounts.
+- **Confirmed:** inline Add goes through `expenseService.createExpense`, so medical, donation, insurance and reimbursement details are set by editing the expense afterwards. The bank icon compares against the charged amount.
+- **Fixed expenses (added):** a charge can **confirm** a planned fixed expense instead of being added, which would double-count it.
+  - **Candidates:** same payment method (`payment_method_id`, else the `payment_type` display name as a fallback), due from 3 days before to 10 days after the posted date (due day clamped to the month length; no due day means the same month), any amount, exact amounts ranked first.
+- **Fixed expense payment method link (fixed):** fixed expenses stored only the payment method's display name. The create/update queries never wrote `payment_method_id`, so a rename orphaned them (⚠️ in the modal, failing edits, no bank matches) and edits left stale ids (4 rows on the staging copy pointed at the old, inactive "Debit").
+  - **Writes:** create, update and carry-forward now resolve `payment_method_id` from the name.
+  - **Migration:** `fixed_expenses_payment_method_id_backfill_v1` links existing rows and corrects stale ids. On the staging copy, linked rows went 25 → 71 and mismatches 4 → 0; only the 192 legacy 'Fixed' rows (2009–2024) stay unlinked.
+  - **Renames:** renaming a payment method updates stored names on its fixed expenses and expenses.
+  - **Confirming:** stores the landing date in `plaid_fixed_expense_links` (a new table, so no migration). A different amount updates the plan through `fixedExpenseService.updateFixedExpense`; if that fails, the link is undone.
+  - **Display:** Fixed Expenses shows a bank icon with when the payment landed and how many days from the due date, amber if the plan is later edited away from the bank amount.
+  - **Delete:** deleting the fixed expense returns the transaction to the inbox.
 
 ## Tasks
 

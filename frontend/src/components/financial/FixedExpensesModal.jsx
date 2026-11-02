@@ -15,6 +15,7 @@ import { getMonthNameLong } from '../../utils/formatters';
 import { CATEGORIES } from '../../utils/constants';
 import { createLogger } from '../../utils/logger';
 import ConfirmDialog from '../shared/ConfirmDialog';
+import FixedConfirmationIndicator from '../bank-import/FixedConfirmationIndicator';
 
 const logger = createLogger('FixedExpensesModal');
 
@@ -416,9 +417,9 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
         linked_loan_id: linkedLoanId
       });
       
-      // Update local state
+      // Update local state (the update response has no bank confirmation; editing never changes it)
       const updatedExpenses = fixedExpenses.map(expense =>
-        expense.id === editingId ? updatedExpense : expense
+        expense.id === editingId ? { ...updatedExpense, bankConfirmation: expense.bankConfirmation ?? null } : expense
       );
       setFixedExpenses(updatedExpenses);
       setTotalFixed(calculateTotal(updatedExpenses));
@@ -754,7 +755,15 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
                         </div>
                       ) : (
                         <div className="fixed-expense-display">
-                          <span className="fixed-expense-name">{expense.name}</span>
+                          <span className="fixed-expense-name">
+                            {expense.name}
+                            {expense.bankConfirmation && (
+                              <>
+                                {' '}
+                                <FixedConfirmationIndicator fixedExpense={expense} />
+                              </>
+                            )}
+                          </span>
                           <span className="fixed-expense-category">{expense.category || 'Other'}</span>
                           <span className={`fixed-expense-payment ${
                             (expense.payment_method_id && inactivePaymentMethods[expense.payment_method_id]) ||

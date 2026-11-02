@@ -89,7 +89,7 @@ Lists posted transactions waiting for review, newest first, with the place (Plai
 Fixed expenses (rent, mortgage, utilities, subscriptions) are usually logged ahead, often copied from the previous month. A bank charge that pays one should **confirm** it, not be added as a new expense: adding it would count the bill twice.
 
 - **Which fixed expenses are offered:** for a charge (not a refund), the Match picker lists fixed expenses that:
-  - use the **same payment method**: the fixed expense's payment method ID, or its payment method name for older entries;
+  - use the **same payment method** (the fixed expense's linked payment method; its name is only a fallback for very old entries);
   - are **due from 3 days before to 10 days after** the date the charge landed (the bank's posted date), with the due day clamped to the month length. A fixed expense without a due day is offered for any charge in its month. The window crosses month ends, so a bill due on the 30th that lands on the 2nd still matches;
   - are **not already confirmed**.
 

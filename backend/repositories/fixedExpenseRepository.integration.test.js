@@ -92,6 +92,8 @@ describe('fixedExpenseRepository', () => {
       mockDb.run.mockImplementation(function(sql, params, callback) {
         callback.call({ lastID: 1 }, null);
       });
+      // Follow-up lookup of the payment_method_id resolved from payment_type
+      mockDb.get.mockImplementation((sql, params, callback) => callback(null, { payment_method_id: null }));
 
       const result = await fixedExpenseRepository.createFixedExpense(expenseData);
 
@@ -99,6 +101,7 @@ describe('fixedExpenseRepository', () => {
       expect(result.id).toBe(1);
       expect(result.name).toBe('Rent');
       expect(result.amount).toBe(1200);
+      expect(result.payment_method_id).toBeNull();
     });
 
     it('should handle insert errors', async () => {
@@ -237,6 +240,7 @@ describe('fixedExpenseRepository', () => {
         runCallCount++;
         callback.call({ lastID: runCallCount + 2 }, null);
       });
+      mockDb.get.mockImplementation((sql, params, callback) => callback(null, { payment_method_id: null }));
 
       const result = await fixedExpenseRepository.copyFixedExpenses(2024, 11, 2024, 12);
 

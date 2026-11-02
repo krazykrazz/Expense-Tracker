@@ -99,8 +99,8 @@ Recurring monthly expenses with loan linkage support.
 | name | TEXT NOT NULL | Fixed expense name |
 | amount | REAL NOT NULL | Expense amount (CHECK >= 0) |
 | category | TEXT DEFAULT 'Other' | Expense category (same list as `expenses.type`, validated in code) |
-| payment_type | TEXT DEFAULT 'Fixed' | Payment method display name (validated in code against `payment_methods.display_name`) |
-| payment_method_id | INTEGER | Optional foreign key to payment_methods table |
+| payment_type | TEXT DEFAULT 'Fixed' | Payment method display name (validated in code against `payment_methods.display_name`); kept in step on rename |
+| payment_method_id | INTEGER | Foreign key to payment_methods, resolved from `payment_type` on create/update/carry-forward (NULL for legacy names such as 'Fixed') |
 | payment_due_day | INTEGER | Optional day of month payment is due (CHECK NULL or 1-31) |
 | linked_loan_id | INTEGER | Optional foreign key to loans table |
 | created_at | TEXT | Creation timestamp |
@@ -653,7 +653,7 @@ Migration tracking for database schema changes.
 | migration_name | TEXT NOT NULL UNIQUE | Name of the migration |
 | applied_at | TEXT DEFAULT CURRENT_TIMESTAMP | When the migration was applied |
 
-Current entries written by `runMigrations()`: `consolidated_schema_v1`, `auth_infrastructure_v1`, `dismissed_anomalies_nullable_expense_id_v1`, `performance_compound_indexes_v1`, `analytics_hub_revamp_v1`. See [Database Migrations](DATABASE_MIGRATIONS.md).
+Current entries written by `runMigrations()`: `consolidated_schema_v1`, `auth_infrastructure_v1`, `dismissed_anomalies_nullable_expense_id_v1`, `performance_compound_indexes_v1`, `analytics_hub_revamp_v1`, `fixed_expenses_payment_method_id_backfill_v1`. See [Database Migrations](DATABASE_MIGRATIONS.md).
 
 ## Relationships
 

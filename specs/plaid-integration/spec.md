@@ -223,7 +223,11 @@ Deferred (Low, phase 2):
 - **Fixed:** match candidates compared the bank amount with `expenses.amount`, which for reimbursed and insurance-tracked expenses is only the out-of-pocket share. A $200 charge with $50 out of pocket was never offered, leaving Add (a duplicate) or Ignore. Matching now uses `COALESCE(original_cost, amount)`, and the picker shows both amounts.
 - **Confirmed:** inline Add goes through `expenseService.createExpense`, so medical, donation, insurance and reimbursement details are set by editing the expense afterwards. The bank icon compares against the charged amount.
 - **Fixed expenses (added):** a charge can **confirm** a planned fixed expense instead of being added, which would double-count it.
-  - **Candidates:** same payment method (`payment_method_id`, else the `payment_type` display name, which is all most rows store), due from 3 days before to 10 days after the posted date (due day clamped to the month length; no due day means the same month), any amount, exact amounts ranked first.
+  - **Candidates:** same payment method (`payment_method_id`, else the `payment_type` display name as a fallback), due from 3 days before to 10 days after the posted date (due day clamped to the month length; no due day means the same month), any amount, exact amounts ranked first.
+- **Fixed expense payment method link (fixed):** fixed expenses stored only the payment method's display name. The create/update queries never wrote `payment_method_id`, so a rename orphaned them (⚠️ in the modal, failing edits, no bank matches) and edits left stale ids (4 rows on the staging copy pointed at the old, inactive "Debit").
+  - **Writes:** create, update and carry-forward now resolve `payment_method_id` from the name.
+  - **Migration:** `fixed_expenses_payment_method_id_backfill_v1` links existing rows and corrects stale ids. On the staging copy, linked rows went 25 → 71 and mismatches 4 → 0; only the 192 legacy 'Fixed' rows (2009–2024) stay unlinked.
+  - **Renames:** renaming a payment method updates stored names on its fixed expenses and expenses.
   - **Confirming:** stores the landing date in `plaid_fixed_expense_links` (a new table, so no migration). A different amount updates the plan through `fixedExpenseService.updateFixedExpense`; if that fails, the link is undone.
   - **Display:** Fixed Expenses shows a bank icon with when the payment landed and how many days from the due date, amber if the plan is later edited away from the bank amount.
   - **Delete:** deleting the fixed expense returns the transaction to the inbox.

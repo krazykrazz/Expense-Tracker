@@ -219,6 +219,24 @@ class PaymentMethodRepository {
   }
 
   /**
+   * After renaming a payment method, update the display names stored alongside it: fixed expenses
+   * (linked by id, or still only by the old name) and expenses' `method` text (linked by id).
+   * @returns {Promise<{fixedExpenses: number, expenses: number}>} rows updated
+   */
+  async renameReferences(id, oldName, newName) {
+    const dbHelper = require('../utils/dbHelper');
+    return dbHelper.runInTransaction(async (tx) => {
+      const fixed = await tx.run(
+        `UPDATE fixed_expenses SET payment_type = ?, payment_method_id = ?
+         WHERE payment_method_id = ? OR (payment_method_id IS NULL AND payment_type = ?)`,
+        [newName, id, id, oldName]
+      );
+      const expenses = await tx.run('UPDATE expenses SET method = ? WHERE payment_method_id = ? AND method <> ?', [newName, id, newName]);
+      return { fixedExpenses: fixed.changes, expenses: expenses.changes };
+    });
+  }
+
+  /**
    * Delete a payment method (only if no associated expenses)
    * @param {number} id - Payment method ID
    * @returns {Promise<boolean>} True if deleted, false if not found

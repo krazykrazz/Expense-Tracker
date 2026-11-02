@@ -178,6 +178,23 @@ const MIGRATIONS = [
 
       logger.info('Analytics hub revamp migration applied');
     }
+  },
+  {
+    // Fixed expenses only stored the payment method's display name; link them by id (as expenses are)
+    // so renaming a payment method no longer orphans them. Also corrects ids left stale by edits (the
+    // update query never touched payment_method_id): the name is what the user chose and what the UI shows.
+    // Legacy names ('Fixed') match no payment method and stay as they are.
+    name: 'fixed_expenses_payment_method_id_backfill_v1',
+    async apply(db) {
+      await runSql(db, `
+        UPDATE fixed_expenses
+        SET payment_method_id = (SELECT pm.id FROM payment_methods pm WHERE pm.display_name = fixed_expenses.payment_type)
+        WHERE payment_type IN (SELECT display_name FROM payment_methods)
+          AND (payment_method_id IS NULL
+               OR payment_method_id <> (SELECT pm.id FROM payment_methods pm WHERE pm.display_name = fixed_expenses.payment_type))
+      `);
+      logger.info('Backfilled fixed_expenses.payment_method_id from payment_type');
+    }
   }
 ];
 

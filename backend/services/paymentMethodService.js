@@ -129,6 +129,11 @@ class PaymentMethodService {
       const changes = [];
       if (existing.display_name !== updated.display_name) {
         changes.push(`name: ${existing.display_name} → ${updated.display_name}`);
+        // Keep stored names in step so fixed expenses aren't orphaned (they used to be linked by name only)
+        const renamed = await paymentMethodRepository.renameReferences(id, existing.display_name, updated.display_name);
+        if (renamed.fixedExpenses > 0 || renamed.expenses > 0) {
+          changes.push(`renamed on ${renamed.fixedExpenses} fixed expense(s) and ${renamed.expenses} expense(s)`);
+        }
       }
       if (existing.type !== updated.type) {
         changes.push(`type: ${existing.type} → ${updated.type}`);

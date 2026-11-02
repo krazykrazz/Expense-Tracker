@@ -31,6 +31,7 @@ Open the **💼 Financial** button in the month selector; payment methods appear
 - **Deactivate / Activate** from the edit form, or **Deactivate** in the credit card detail view; inactive cards can be **Reactivated** from the Inactive tab. The last active payment method cannot be deactivated
 - Inactive methods are hidden from new-expense dropdowns; when editing an expense that uses one, it is shown under an "Inactive" group with an "(inactive)" suffix
 - **Delete** is API-only (`DELETE /api/payment-methods/:id`) and is rejected if the method has any expenses or is the last active method
+- **Renaming** (changing the display name) also updates the stored name on its fixed expenses (`payment_type`) and expenses (`method`), so they stay linked and show the new name
 
 ### Credit Card Features
 
@@ -110,7 +111,8 @@ Billing cycle records live in `credit_card_billing_cycles` — see [Credit Card 
 
 ### expenses / fixed_expenses
 
-- `payment_method_id` (FK to payment_methods); the `method` text column still holds the display name
+- `payment_method_id` (FK to payment_methods); the `method` (expenses) and `payment_type` (fixed expenses) text columns still hold the display name
+- Fixed expenses are submitted with the display name only; `payment_method_id` is resolved from it on create, update and carry-forward (NULL for legacy names such as `Fixed`). Migration `fixed_expenses_payment_method_id_backfill_v1` linked existing rows the same way and corrected ids left stale by earlier edits
 - `expenses.posted_date` – see [Credit Card Posted Date](./CREDIT_CARD_POSTED_DATE.md)
 
 Expenses can be submitted with either `payment_method_id` or `method` (display name); the service resolves one from the other.

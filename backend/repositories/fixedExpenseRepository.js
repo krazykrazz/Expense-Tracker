@@ -10,7 +10,7 @@ class FixedExpenseRepository {
     const db = await getDatabase();
     return new Promise((resolve, reject) => {
       const sql = `
-        SELECT id, year, month, name, amount, category, payment_type, 
+        SELECT id, year, month, name, amount, category, payment_type, payment_method_id, 
                payment_due_day, linked_loan_id, created_at, updated_at
         FROM fixed_expenses
         WHERE id = ?
@@ -35,7 +35,7 @@ class FixedExpenseRepository {
     const db = await getDatabase();
     return new Promise((resolve, reject) => {
       const sql = `
-        SELECT id, year, month, name, amount, category, payment_type, 
+        SELECT id, year, month, name, amount, category, payment_type, payment_method_id, 
                payment_due_day, linked_loan_id, created_at, updated_at
         FROM fixed_expenses
         WHERE year = ? AND month = ?
@@ -84,8 +84,8 @@ class FixedExpenseRepository {
     const db = await getDatabase();
     return new Promise((resolve, reject) => {
       const sql = `
-        INSERT INTO fixed_expenses (year, month, name, amount, category, payment_type, payment_due_day, linked_loan_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO fixed_expenses (year, month, name, amount, category, payment_type, payment_method_id, payment_due_day, linked_loan_id)
+        VALUES (?, ?, ?, ?, ?, ?, (SELECT id FROM payment_methods WHERE display_name = ?), ?, ?)
       `;
       const params = [
         fixedExpense.year,
@@ -93,6 +93,8 @@ class FixedExpenseRepository {
         fixedExpense.name,
         fixedExpense.amount,
         fixedExpense.category,
+        fixedExpense.payment_type,
+        // payment_method_id is resolved from the display name (NULL for legacy names such as 'Fixed')
         fixedExpense.payment_type,
         fixedExpense.payment_due_day !== undefined ? fixedExpense.payment_due_day : null,
         fixedExpense.linked_loan_id !== undefined ? fixedExpense.linked_loan_id : null
@@ -103,13 +105,20 @@ class FixedExpenseRepository {
           reject(err);
         } else {
           // Return the created fixed expense with the new ID
-          resolve({
-            id: this.lastID,
-            ...fixedExpense,
-            payment_due_day: fixedExpense.payment_due_day !== undefined ? fixedExpense.payment_due_day : null,
-            linked_loan_id: fixedExpense.linked_loan_id !== undefined ? fixedExpense.linked_loan_id : null,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+          db.get('SELECT payment_method_id FROM fixed_expenses WHERE id = ?', [this.lastID], (lookupErr, row) => {
+            if (lookupErr) {
+              reject(lookupErr);
+              return;
+            }
+            resolve({
+              id: this.lastID,
+              ...fixedExpense,
+              payment_method_id: row ? row.payment_method_id : null,
+              payment_due_day: fixedExpense.payment_due_day !== undefined ? fixedExpense.payment_due_day : null,
+              linked_loan_id: fixedExpense.linked_loan_id !== undefined ? fixedExpense.linked_loan_id : null,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
           });
         }
       });
@@ -127,7 +136,8 @@ class FixedExpenseRepository {
     return new Promise((resolve, reject) => {
       const sql = `
         UPDATE fixed_expenses
-        SET name = ?, amount = ?, category = ?, payment_type = ?, 
+        SET name = ?, amount = ?, category = ?, payment_type = ?,
+            payment_method_id = (SELECT id FROM payment_methods WHERE display_name = ?),
             payment_due_day = ?, linked_loan_id = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `;
@@ -135,6 +145,7 @@ class FixedExpenseRepository {
         updates.name, 
         updates.amount, 
         updates.category, 
+        updates.payment_type,
         updates.payment_type,
         updates.payment_due_day !== undefined ? updates.payment_due_day : null,
         updates.linked_loan_id !== undefined ? updates.linked_loan_id : null,
@@ -190,7 +201,7 @@ class FixedExpenseRepository {
     const db = await getDatabase();
     return new Promise((resolve, reject) => {
       const sql = `
-        SELECT id, year, month, name, amount, category, payment_type, 
+        SELECT id, year, month, name, amount, category, payment_type, payment_method_id, 
                payment_due_day, linked_loan_id, created_at, updated_at
         FROM fixed_expenses
         WHERE year = ? AND month = ? AND category = ?
@@ -217,7 +228,7 @@ class FixedExpenseRepository {
     const db = await getDatabase();
     return new Promise((resolve, reject) => {
       const sql = `
-        SELECT id, year, month, name, amount, category, payment_type, 
+        SELECT id, year, month, name, amount, category, payment_type, payment_method_id, 
                payment_due_day, linked_loan_id, created_at, updated_at
         FROM fixed_expenses
         WHERE year = ? AND month = ? AND payment_type = ?
@@ -340,7 +351,7 @@ class FixedExpenseRepository {
     return new Promise((resolve, reject) => {
       const sql = `
         SELECT 
-          fe.id, fe.year, fe.month, fe.name, fe.amount, fe.category, fe.payment_type,
+          fe.id, fe.year, fe.month, fe.name, fe.amount, fe.category, fe.payment_type, fe.payment_method_id,
           fe.payment_due_day, fe.linked_loan_id, fe.created_at, fe.updated_at,
           l.name as loan_name, l.loan_type, l.is_paid_off
         FROM fixed_expenses fe

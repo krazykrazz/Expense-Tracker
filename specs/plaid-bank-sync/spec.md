@@ -24,6 +24,20 @@ Out of scope throughout: other users' money movement (Transfer/Payment Initiatio
 4. **Reuse existing services for writes** (`expenseService`, `fixedExpenseService`, `creditCardPaymentService`, `loanPaymentService`, `investmentValueService`) so validation, balances, activity log and SSE behave as for manual entry.
 5. **Secrets stay where Phase 1 put them:** encrypted with the key in `/config/secrets` (or `PLAID_TOKEN_KEY`), never logged, never sent to the browser, not in backups.
 6. **Every user-visible mutation emits an activity-log event** whose `entity_type` is routed by `useDataSync` (directly or via `ENTITY_TYPE_ALIASES`).
+7. **The tracker is complete without Plaid; Plaid only makes it smarter.** Every feature works with manual entry. Plaid UI (header button, badges, coloured pills, inbox) appears only when Plaid is configured, Plaid calls are skipped while it isn't (check `/api/plaid/status` first; no background jobs run), and no screen depends on bank data to function.
+
+---
+
+## Phase 1.5: small enhancements from daily use (shipped as they come)
+
+Small slices found while using Phase 1 with real banks, shipped ahead of the phase they belong to:
+
+| Slice | Where specified | PR |
+|---|---|---|
+| Confirm expected income with deposits / Add income | 2.0 | #431 |
+| Bank-confirmed state as a coloured payment method pill (replaces the bank icon) | Phase 1 spec, Findings | #432 |
+| Automatic sync (scheduled + on opening the app) | 2.2 (Status) | feature/plaid-auto-sync |
+| Financial page: bank badge on payment methods mapped to a bank account (`useBankAccountLinks`, `BankLinkedBadge`; frontend only, no calls without Plaid) | here | feature/payment-method-bank-badge |
 
 ---
 

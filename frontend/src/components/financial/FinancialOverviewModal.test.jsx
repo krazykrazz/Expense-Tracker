@@ -116,6 +116,8 @@ vi.mock('../loans/LoanPaymentForm', () => ({
   )
 }));
 
+vi.mock('../../hooks/useBankAccountLinks', () => ({ useBankAccountLinks: vi.fn() }));
+
 // Row components are real — they render simple markup
 // No need to mock them since they're lightweight
 
@@ -124,6 +126,7 @@ import * as fixedExpenseApi from '../../services/fixedExpenseApi';
 import * as investmentApi from '../../services/investmentApi';
 import * as paymentMethodApi from '../../services/paymentMethodApi';
 import * as creditCardApi from '../../services/creditCardApi';
+import { useBankAccountLinks } from '../../hooks/useBankAccountLinks';
 import FinancialOverviewModal from './FinancialOverviewModal';
 
 const mockLoans = [
@@ -156,6 +159,7 @@ beforeEach(() => {
   paymentMethodApi.getPaymentMethods.mockResolvedValue(mockPaymentMethods);
   paymentMethodApi.getPaymentMethod.mockResolvedValue({ current_cycle: null });
   creditCardApi.getCurrentCycleStatus.mockResolvedValue(null);
+  useBankAccountLinks.mockReturnValue(new Map());
 
   global.fetch = vi.fn().mockResolvedValue({
     ok: true,
@@ -342,6 +346,24 @@ describe('FinancialOverviewModal', () => {
         fireEvent.click(activeTab);
         expect(activeTab).toHaveClass('active');
       });
+    });
+
+    it('marks payment methods linked to a bank account, cards and others alike', async () => {
+      paymentMethodApi.getPaymentMethods.mockResolvedValue([
+        { id: 1, type: 'cash', display_name: 'My Cash Wallet', is_active: true },
+        { id: 2, type: 'debit', display_name: 'Debit - WS', is_active: true },
+        { id: 3, type: 'credit_card', display_name: 'WS VISA', is_active: true, current_balance: 0 }
+      ]);
+      useBankAccountLinks.mockReturnValue(new Map([
+        [2, [{ institutionName: 'Wealthsimple', accountName: 'Chequing', mask: '5070' }]],
+        [3, [{ institutionName: 'Wealthsimple', accountName: 'Visa', mask: null }]]
+      ]));
+
+      render(<FinancialOverviewModal {...defaultProps} />);
+
+      await waitFor(() => expect(screen.getAllByTestId('bank-linked-badge')).toHaveLength(2));
+      expect(screen.getByRole('img', { name: 'Debit - WS linked to bank: Wealthsimple · Chequing ••5070' })).toBeInTheDocument();
+      expect(screen.getByRole('img', { name: 'WS VISA linked to bank: Wealthsimple · Visa' })).toBeInTheDocument();
     });
 
     it('should display only active payment methods when Active tab is selected', async () => {

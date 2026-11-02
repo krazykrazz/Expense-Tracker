@@ -399,7 +399,12 @@
   }
 }
 
-/* Income Management indicator (income has no payment method pill) */
+/* Income Management indicator (income has no payment method pill), and the Financial page's
+   "linked to bank" badge on payment methods */
+
+.bank-linked-badge {
+  margin-left: 6px;
+}
 
 .bank-confirmed-indicator {
   position: relative;

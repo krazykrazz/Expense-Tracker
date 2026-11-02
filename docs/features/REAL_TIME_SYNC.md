@@ -55,6 +55,7 @@ A window `syncEvent` does nothing by itself; components subscribe with `useSyncE
 | `FinancialOverviewModal` investments section | `investment` | Investment list and totals |
 | `FinancialOverviewModal` payment methods / credit card summary | `credit_card` | Card balances and cycle status |
 | `ImportInbox`, `BankConnections` (Bank Import modal) | `plaid` | Inbox rows; last-synced times and bank errors |
+| `useBankAccountLinks` (Financial page payment method bank badges) | `plaid` | Which payment methods are mapped to bank accounts |
 
 Not refreshed live (they load when opened): the loan, investment and credit card detail views, the Income and Fixed Expenses editors, Budgets modal tabs, Annual Summary, and the Analytics Hub.
 

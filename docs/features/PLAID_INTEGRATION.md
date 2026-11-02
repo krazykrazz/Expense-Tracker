@@ -96,7 +96,7 @@ Fixed expenses (rent, mortgage, utilities, subscriptions) are usually logged ahe
   Exact amounts are listed first. When an amount is exact or within 10%, the row gets a **"Fixed: <name>"** badge.
 - **Confirm:** links the transaction to the fixed expense and records when the payment **actually landed**. No expense is created.
 - **Different amount:** bills vary, and copied-forward amounts go stale. The planned amount is updated to the bank amount through the normal fixed-expense update (validated, logged as `fixed_expense_updated`), and the picker says so before you confirm. If that update fails, the confirmation is undone.
-- **In Fixed Expenses**, a confirmed item shows the bank icon. Its tooltip gives the bank description, the date it landed and how many days before or after the due date, the bank amount, and the planned amount when it was updated. The icon turns amber if the planned amount is later edited away from the bank amount.
+- **In Fixed Expenses**, a confirmed item's **payment type pill turns green**. Hovering it shows the bank description, the date it landed and how many days before or after the due date, the bank amount, and the planned amount when it was updated. The pill turns amber if the planned amount is later edited away from the bank amount.
 - **Each month is separate:** copying fixed expenses forward creates new, unconfirmed items. Deleting a confirmed fixed expense returns its transaction to the inbox.
 
 The landing dates are the groundwork for a later phase: auto-logged loan payments (currently created on the due day) could use the actual date the payment landed.
@@ -111,14 +111,15 @@ Expected income (Income Management) is a monthly list of sources: a name, catego
 - **Confirm:** links the deposit to the income source and records when it **landed**. One deposit per income source: log pay that arrives more than once a month as separate sources.
 - **Different amount:** the picker offers **Update to $X** (pre-checked). Checked, the income amount becomes the deposit amount through the normal income update (logged as `income_source_updated`); unchecked, the income keeps its amount. If the update fails, the confirmation is undone.
 - **Add income:** for a deposit with no expected source (a one-off government payment, a gift), creates an income source in the deposit's month with the deposit amount. The name and category are pre-filled from an earlier confirmation of the same description, else the description and *Other*.
-- **In Income Management**, a received income source shows the bank icon with the description, the date it landed and the deposit amount. It turns amber when the income amount differs from the deposit. Deleting the income source returns the deposit to the inbox.
-### Bank-confirmed icon in the expense list
+- **In Income Management**, a received income source shows the bank icon (income has no payment method pill) with the description, the date it landed and the deposit amount. It turns amber when the income amount differs from the deposit. Deleting the income source returns the deposit to the inbox.
 
-Expenses that were added from, or matched to, a bank transaction show a small bank icon next to the other indicators.
+### Bank-confirmed payment method in the expense list
 
-- The tooltip shows the bank's description, date and amount, and whether the expense was added from or matched to the bank.
-- If the expense amount is later edited so it no longer equals the bank amount to the cent, the icon turns amber and the tooltip starts with "Amount differs from bank". Reimbursed expenses are compared using their original cost, since that is what the bank charged.
-- Expenses without a link (cash, cheques, or anything not yet reviewed) show nothing.
+Expenses that were added from, or matched to, a bank transaction show their **payment method pill in green**, so no extra icon is needed.
+
+- Hovering the pill shows the bank's description, date and amount, and whether the expense was added from or matched to the bank. Screen readers hear "(confirmed by bank)" after the method name.
+- If the expense amount is later edited so it no longer equals the bank amount to the cent, the pill turns amber and the hover text starts with "Amount differs from bank". Reimbursed expenses are compared using their original cost, since that is what the bank charged.
+- Expenses without a link (cash, cheques, or anything not yet reviewed) keep the normal grey pill.
 
 ## How it works
 
@@ -163,5 +164,5 @@ These are deferred to later phases:
 - No bulk actions, no inbox count badge, no medical/donation people allocation in the inline editor (edit the expense afterwards).
 - Card payments, transfers and refunds are not recorded (ignore them).
 - Confirmed fixed expenses don't yet feed auto-logged loan payments (those still use the due day).
-- **Medical, donation, insurance and reimbursement details** are not in the inline Add form. Add the expense, then edit it in the expense list to set people, insurance, receipts or a reimbursement. Its bank icon keeps comparing against the original charged amount.
+- **Medical, donation, insurance and reimbursement details** are not in the inline Add form. Add the expense, then edit it in the expense list to set people, insurance, receipts or a reimbursement. its bank colour keeps comparing against the original charged amount.
 - Card balances (Liabilities) and investments are not imported.

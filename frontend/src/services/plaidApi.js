@@ -103,6 +103,13 @@ export const matchInboxTransactionToIncome = (id, { incomeSourceId, updateAmount
 export const addInboxTransactionAsIncome = (id, fields) =>
   call('adding bank deposit as income', () => apiPost(API_ENDPOINTS.PLAID_INBOX_ACTION(id, 'add-income'), fields, 'add income'));
 
+/**
+ * Review a pending charge (added as an expense) that the bank dropped.
+ * @param {{action: 'keep'|'delete_expense'|'link', postedId?: number}} decision
+ */
+export const resolveCancelledPending = (id, decision) =>
+  call('reviewing cancelled pending charge', () => apiPost(API_ENDPOINTS.PLAID_INBOX_ACTION(id, 'cancelled'), decision, 'review cancelled charge'));
+
 export const ignoreInboxTransaction = (id) =>
   call('ignoring bank transaction', () => apiPost(API_ENDPOINTS.PLAID_INBOX_ACTION(id, 'ignore'), {}, 'ignore transaction'));
 

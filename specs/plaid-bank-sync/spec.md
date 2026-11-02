@@ -38,8 +38,9 @@ Small slices found while using Phase 1 with real banks, shipped ahead of the pha
 | Bank-confirmed state as a coloured payment method pill (replaces the bank icon) | Phase 1 spec, Findings | #432 |
 | Automatic sync (scheduled + on opening the app) | 2.2 (Status) | feature/plaid-auto-sync |
 | Financial page: bank badge on payment methods mapped to a bank account (`useBankAccountLinks`, `BankLinkedBadge`; frontend only, no calls without Plaid) | here | feature/payment-method-bank-badge |
-| Activity-log gaps and Phase 1 cleanup (inbox decisions, mapping, sync failures; batched category suggestions; atomic disconnect; inbox reload race) | 2.3, 2.6 | feature/plaid-audit-cleanup |
-| Linked balances: investments and loans/lines of credit kept current from bank balances | [below](#linked-balances-next-slice) | not started |
+| Activity-log gaps and Phase 1 cleanup (inbox decisions, mapping, sync failures; batched category suggestions; atomic disconnect; inbox reload race) | 2.3, 2.6 | #436 |
+| Pending transactions: add the day you spend; the expense settles in place (yellow → green pill) | 3.5 (Status) | feature/plaid-pending-transactions |
+| Linked balances: investments and loans/lines of credit kept current from bank balances | [below](#linked-balances-next-slice) | not started (after pending) |
 
 ### Linked balances (next slice)
 
@@ -326,7 +327,20 @@ Rules only pre-fill. The inbox stays the single review point; bulk Add (3.4) cov
 2. Bulk **Add** (each row uses its pre-filled place and category; rows without a category are skipped and reported), bulk **Ignore**, bulk **Mark reviewed** (not-expenses).
 3. Server-side: `POST /api/plaid/inbox/bulk` with `{ action, ids, overrides? }`; each row processed independently (per-row results), one activity event per row (cross-tab sync) plus a summary toast.
 
-### 3.5 Pending transactions (decide after Phase 0)
+### 3.5 Pending transactions
+
+**Status: built as a Phase 1.5 slice (owner, 2026-11-02),** going further than the read-only plan below so that expenses can be added the day the money is spent:
+- **The gap it closes:** CIBC reports pending charges and purchase dates, which settle about 1.2 days later on average. Wealthsimple reports neither, so for it the 30-minute auto sync is the main lever.
+- **Pending rows can be added or matched** as expenses. Fixed-expense and income confirmation stay settled-only.
+- **Pill colours:** a pending-linked expense's payment method pill is **yellow**. It turns **green** when the charge settles. "Amount differs" moved from amber to **red-orange**, which is shared with "pending charge dropped".
+- **Settlement:** `applySyncBatch` updates the pending row in place when the posted transaction names it (`pending_transaction_id`), keeping status and links. Linked rows are returned as `settlements`, and `plaidInboxService.applySettlements` then:
+  - updates the expense amount only if it still equals the previous bank amount, and the expense isn't reimbursed or insurance-tracked (owner decision: update automatically);
+  - sets `posted_date` for credit cards;
+  - logs `plaid_transaction_updated` (`settled` / `pending_changed`).
+- **Dropped pending rows:** a linked pending row the bank removes gets `removed_at` and appears in the inbox as **Cancelled at bank**, with Link (to a settled row on the same account within 10 days and 25% of the amount), Keep expense or Delete expense. Unlinked removed rows are deleted.
+- **Schema:** `plaid_transactions.pending`, `pending_transaction_id`, `removed_at` (migration `plaid_transactions_pending_v1`).
+
+Original plan, kept for reference:
 
 1. Stage pending rows read-only (greyed, "Pending"): no actions except Ignore.
 2. When Plaid posts the transaction, the posted row (new `transaction_id`, with `pending_transaction_id` pointing at the pending one) replaces it and inherits any ignore. Pending rows removed by Plaid disappear.

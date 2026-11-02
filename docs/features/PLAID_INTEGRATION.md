@@ -86,7 +86,7 @@ Nobody needs to know about Sync now:
 
 ### Inbox tab
 
-Lists posted transactions waiting for review, newest first, with the place (Plaid's merchant name, or the raw bank description), the bank's raw description, amount and payment method.
+Lists bank transactions waiting for review, newest first, with the place (Plaid's merchant name, or the raw bank description), the bank's raw description, amount and payment method. Transactions not yet settled at the bank are included with a **Pending** badge (see [Pending transactions](#pending-transactions)).
 
 | Action | What happens |
 |--------|--------------|
@@ -96,6 +96,22 @@ Lists posted transactions waiting for review, newest first, with the place (Plai
 
 - Refunds and credits on a credit card (zero or negative amounts) are labelled *Refund / credit* and can only be ignored. Money coming into a bank account is labelled *Deposit* (see [Income](#income-confirm-a-deposit)).
 - Amounts in a currency other than CAD get a badge; they are not converted.
+
+### Pending transactions
+
+So you can add an expense the day you spend instead of waiting 1-3 days for the charge to settle:
+
+- **Pending charges** appear with a yellow **Pending** badge (for banks that report them to Plaid; in testing CIBC did, Wealthsimple did not). They can be **added** or **matched** to an expense, or ignored. Fixed-expense and income confirmation wait until they settle, because their point is the date the money actually landed.
+- **Expense list:** an expense from a pending charge shows its payment method pill in **yellow**. Hovering it says "Pending at bank … updates when it settles".
+- **When it settles**, Plaid sends the settled transaction pointing at its pending one. The sync updates the bank row in place, so the expense stays linked and the pill turns **green**. Nothing needs reviewing again. Then:
+  - if the settled amount differs (a tip, a gas pre-authorization), the expense amount follows the bank, but only if it still has the pending amount. An amount you edited by hand, and reimbursed or insurance-tracked expenses, are kept, and the pill turns red-orange ("Amount differs from bank");
+  - credit card expenses get the bank's posting date;
+  - the change is logged (`plaid_transaction_updated`, action `settled`, plus the normal `expense_updated`).
+- **When a pending charge you added disappears** (a hold that was cancelled, or a charge that settled without Plaid linking the two), it shows at the top of the inbox as **Cancelled at bank**, and the pill turns red-orange. Choose:
+  - **Link**, when a settled transaction on the same card within 10 days and 25% of the amount is offered: it takes over the link and the expense follows its amount;
+  - **Keep expense**: the expense stays, no longer linked to the bank;
+  - **Delete expense**: the charge never happened.
+- Unreviewed pending rows simply follow the bank: they turn into the settled transaction in place, or disappear if the bank drops them.
 
 ### Fixed expenses: confirm instead of adding
 
@@ -109,7 +125,7 @@ Fixed expenses (rent, mortgage, utilities, subscriptions) are usually logged ahe
   Exact amounts are listed first. When an amount is exact or within 10%, the row gets a **"Fixed: <name>"** badge.
 - **Confirm:** links the transaction to the fixed expense and records when the payment **actually landed**. No expense is created.
 - **Different amount:** bills vary, and copied-forward amounts go stale. The planned amount is updated to the bank amount through the normal fixed-expense update (validated, logged as `fixed_expense_updated`), and the picker says so before you confirm. If that update fails, the confirmation is undone.
-- **In Fixed Expenses**, a confirmed item's **payment type pill turns green**. Hovering it shows the bank description, the date it landed and how many days before or after the due date, the bank amount, and the planned amount when it was updated. The pill turns amber if the planned amount is later edited away from the bank amount.
+- **In Fixed Expenses**, a confirmed item's **payment type pill turns green**. Hovering it shows the bank description, the date it landed and how many days before or after the due date, the bank amount, and the planned amount when it was updated. The pill turns red-orange if the planned amount is later edited away from the bank amount.
 - **Each month is separate:** copying fixed expenses forward creates new, unconfirmed items. Deleting a confirmed fixed expense returns its transaction to the inbox.
 
 The landing dates are the groundwork for a later phase: auto-logged loan payments (currently created on the due day) could use the actual date the payment landed.
@@ -128,10 +144,16 @@ Expected income (Income Management) is a monthly list of sources: a name, catego
 
 ### Bank-confirmed payment method in the expense list
 
-Expenses that were added from, or matched to, a bank transaction show their **payment method pill in green**, so no extra icon is needed.
+Expenses that were added from, or matched to, a bank transaction colour their **payment method pill**, so no extra icon is needed:
 
-- Hovering the pill shows the bank's description, date and amount, and whether the expense was added from or matched to the bank. Screen readers hear "(confirmed by bank)" after the method name.
-- If the expense amount is later edited so it no longer equals the bank amount to the cent, the pill turns amber and the hover text starts with "Amount differs from bank". Reimbursed expenses are compared using their original cost, since that is what the bank charged.
+| Colour | Meaning |
+|--------|---------|
+| Green | Settled at the bank, amount equal |
+| Yellow | Still pending at the bank; updates when it settles |
+| Red-orange | Needs attention: the amount differs from the bank, or the bank dropped the pending charge (review in the inbox) |
+
+- Hovering the pill shows the bank's description, date and amount, and whether the expense was added from or matched to the bank. Screen readers hear the state ("(confirmed by bank)", "(pending at bank)", …) after the method name.
+- "Amount differs" means the expense amount no longer equals the bank amount to the cent; the hover text starts with "Amount differs from bank". Reimbursed expenses are compared using their original cost, since that is what the bank charged.
 - Expenses without a link (cash, cheques, or anything not yet reviewed) keep the normal grey pill.
 
 ## How it works
@@ -143,9 +165,9 @@ Expenses that were added from, or matched to, a bank transaction show their **pa
   - If Plaid reports data changed mid-pagination, the sync restarts from the saved cursor (up to 3 times).
   - Two syncs of the same bank never run at once.
 - **Staging rules:**
-  - Pending transactions are skipped; Plaid sends them again once posted.
+  - Pending transactions are staged with `pending = 1`. A settled transaction that names its pending version (`pending_transaction_id`) replaces that row in place, keeping its review state and links.
   - New transactions are inserted once (unique `transaction_id`, so re-syncing is safe).
-  - Modified and removed transactions only affect rows still waiting for review. Anything you have added, matched or ignored is never changed by a sync.
+  - Modified and removed transactions only affect rows still waiting for review. Anything you have added, matched or ignored is never changed by a sync, except pending charges: they settle in place (see [Pending transactions](#pending-transactions)), and a linked one the bank drops is kept and flagged (`removed_at`) for review.
 - **One link per expense:** a unique index on `plaid_transactions.expense_id` ensures an expense is linked to at most one bank transaction.
 - **Deleting a linked expense** sends its bank transaction back to the inbox (as "To review"), so it can be re-added, matched to another expense, or ignored. It is never silently lost.
 - **Trial counter:** every Production connection increments the `plaid_production_items_created` setting, which is never decremented, matching Plaid's rule.
@@ -175,7 +197,7 @@ These are deferred to later phases:
 
 - No webhooks: new transactions arrive with the next automatic sync, not instantly.
 - No reconnect (Plaid "update mode") for an expired bank login. The connection shows the error; in the PoC, disconnect and reconnect (in Production this uses a Trial slot).
-- Pending transactions are not shown. Changes made at the bank after you review a transaction are not reflected.
+- Changes made at the bank to a settled transaction after you review it are not reflected (pending charges are; see above).
 - Categories come only from your own history for the place; Plaid's categories are not used.
 - No bulk actions, no inbox count badge, no medical/donation people allocation in the inline editor (edit the expense afterwards).
 - Card payments, transfers and refunds are not recorded (ignore them).

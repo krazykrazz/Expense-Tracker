@@ -71,12 +71,13 @@ const signedDayDiff = (from, to) => toUtcDay(to) - toUtcDay(from);
 /**
  * A bank transaction can confirm a fixed expense when it was charged to the same payment method and landed
  * (posted date) within [due − 3, due + 10] days; without a due day, anywhere in the fixed expense's month.
- * The amount may differ (bills vary, and copied-forward amounts go stale).
- * @param {{paymentMethodId: number, amount: number, date: string}} txn
+ * The amount may differ (bills vary, and copied-forward amounts go stale). Pending transactions never confirm:
+ * the point is the date the payment actually landed.
+ * @param {{paymentMethodId: number, amount: number, date: string, pending?: (boolean|number)}} txn
  * @param {{paymentMethodId: number, year: number, month: number, dueDay: (number|null)}} fixed
  */
 function isFixedCandidate(txn, fixed) {
-  if (fixed.paymentMethodId !== txn.paymentMethodId || !(txn.amount > 0)) return false;
+  if (txn.pending || fixed.paymentMethodId !== txn.paymentMethodId || !(txn.amount > 0)) return false;
   const expected = fixedExpectedDate(fixed);
   if (!expected) {
     return txn.date.slice(0, 7) === `${fixed.year}-${pad2(fixed.month)}`;
@@ -112,8 +113,8 @@ const monthIndex = (year, month) => year * 12 + month - 1;
 /** Lower-case words of a bank description or income source name ("JAT - Direct deposit" → jat, direct, deposit). */
 const nameTokens = (text) => String(text || '').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
 
-/** A bank deposit (money in) on a non-credit-card account. Plaid amounts are negative for money in. */
-const isDeposit = (txn) => txn.amount < 0 && txn.paymentMethodType !== 'credit_card';
+/** A settled bank deposit (money in) on a non-credit-card account. Plaid amounts are negative for money in. */
+const isDeposit = (txn) => txn.amount < 0 && !txn.pending && txn.paymentMethodType !== 'credit_card';
 
 /**
  * Months (signed offset from the deposit's month) whose income a deposit can confirm: its own month, plus the

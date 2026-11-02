@@ -478,6 +478,28 @@ describe('plaidInboxService', () => {
     });
   });
 
+  describe('pending transactions', () => {
+    test('are listed as pending and can be added or matched, but never confirm fixed expenses or income', async () => {
+      await run("INSERT INTO fixed_expenses (year, month, name, amount, category, payment_type, payment_method_id, payment_due_day) VALUES (2026, 10, 'Mortgage', 1500, 'Housing', 'Debit', ?, 10)", [DEBIT]);
+      await run("INSERT INTO income_sources (year, month, name, amount, category) VALUES (2026, 10, 'Pay', 500, 'Salary')");
+      const charge = await stage('p-charge', { amount: 1500, date: '2026-10-11', authorizedDate: '2026-10-11' });
+      const deposit = await stage('p-deposit', { amount: -500, date: '2026-10-11', authorizedDate: null });
+      await run("UPDATE plaid_transactions SET pending = 1 WHERE transaction_id IN ('p-charge', 'p-deposit')");
+
+      const { transactions } = await plaidInboxService.listInbox('new');
+      const pendingCharge = transactions.find(t => t.id === charge);
+      const pendingDeposit = transactions.find(t => t.id === deposit);
+
+      expect(pendingCharge).toMatchObject({ pending: true, canAdd: true, fixedCandidates: [] });
+      expect(pendingDeposit).toMatchObject({ pending: true, isDeposit: false, incomeCandidates: [] });
+      await expect(plaidInboxService.matchToFixedExpense(charge, 1)).rejects.toMatchObject({ statusCode: 400, message: expect.stringContaining('still pending') });
+      await expect(plaidInboxService.addAsIncome(deposit, {})).rejects.toMatchObject({ statusCode: 400 });
+
+      const { expense } = await plaidInboxService.addAsExpense(charge, { type: 'Housing' });
+      expect(expense).toMatchObject({ amount: 1500, date: '2026-10-11', posted_date: null });
+    });
+  });
+
   describe('expense list bankLink', () => {
     test('deleting a linked expense puts its bank transaction back in the inbox', async () => {
       const matched = await addExpense();
@@ -503,7 +525,7 @@ describe('plaidInboxService', () => {
       const expenses = await expenseService.getExpenses({ year: 2026, month: 10 });
 
       expect(expenses.find(e => e.id === matched).bankLink).toEqual({
-        status: 'matched', name: 'Coffee Shop', rawName: 'SQ *COFFEE SHOP', date: '2026-10-10', amount: 25.5
+        status: 'matched', name: 'Coffee Shop', rawName: 'SQ *COFFEE SHOP', date: '2026-10-10', amount: 25.5, pending: false, removed: false
       });
       expect(expenses.find(e => e.id !== matched).bankLink).toBeNull();
     });

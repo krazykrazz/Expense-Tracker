@@ -41,7 +41,7 @@
     "cors": "^2.8.6",
     "csv-parser": "^3.2.1",
     "express": "^5.3.0",
-    "express-rate-limit": "^8.7.1",
+    "express-rate-limit": "^8.7.2",
     "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.5.0",
@@ -52,7 +52,7 @@
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",
-    "baseline-browser-mapping": "^2.11.31",
+    "baseline-browser-mapping": "^2.11.34",
     "cross-env": "^10.1.0",
     "fast-check": "^4.10.2",
     "jest": "^30.5.2",

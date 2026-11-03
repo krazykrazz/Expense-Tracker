@@ -1215,6 +1215,13 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v1.19.1</div>
+                <div className="changelog-date">November 3, 2026</div>
+                <ul className="changelog-items">
+                  <li>Fix: refresh card balances after every bank sync, so the balance check works when a sync brings nothing new</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v1.19.0</div>
                 <div className="changelog-date">November 3, 2026</div>
                 <ul className="changelog-items">

@@ -7,9 +7,12 @@ vi.mock('../../services/plaidApi', () => ({
   getPlaidStatus: vi.fn(),
   syncBanksIfStale: vi.fn(),
   PLAID_SETTINGS_CHANGED_EVENT: 'plaid-settings-changed',
+  OPEN_BANK_IMPORT_EVENT: 'open-bank-import',
 }));
 
-vi.mock('./BankImportModal', () => ({ default: () => <div data-testid="bank-import-modal" /> }));
+vi.mock('./BankImportModal', () => ({
+  default: ({ initialTab }) => <div data-testid="bank-import-modal">{initialTab}</div>,
+}));
 
 vi.mock('../../contexts/ExpenseContext', () => ({
   useExpenseContext: () => ({ refreshExpenses: vi.fn() }),
@@ -58,6 +61,57 @@ describe('BankImportButton', () => {
     act(() => { window.dispatchEvent(new CustomEvent('plaid-settings-changed')); });
 
     expect(await screen.findByRole('button', { name: 'Bank import' })).toBeInTheDocument();
+  });
+});
+
+describe('BankImportButton when a bank needs attention', () => {
+  const expired = { enabled: true, environment: 'production', trial: null, needsAttention: [{ id: 3, institutionName: 'CIBC', status: 'needs_login' }] };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    syncBanksIfStale.mockResolvedValue({ started: false, banks: 0 });
+  });
+
+  it('opens on the Inbox and shows no dot when every bank is fine', async () => {
+    getPlaidStatus.mockResolvedValue({ enabled: true, environment: 'production', trial: null, needsAttention: [] });
+
+    render(<BankImportButton />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Bank import' }));
+
+    expect(screen.queryByTestId('bank-attention-dot')).not.toBeInTheDocument();
+    expect(await screen.findByTestId('bank-import-modal')).toHaveTextContent('inbox');
+  });
+
+  it('shows a warning dot naming the bank and opens on Connections', async () => {
+    getPlaidStatus.mockResolvedValue(expired);
+
+    render(<BankImportButton />);
+    const button = await screen.findByRole('button', { name: /CIBC needs your attention/ });
+    expect(screen.getByTestId('bank-attention-dot')).toBeInTheDocument();
+
+    fireEvent.click(button);
+    expect(await screen.findByTestId('bank-import-modal')).toHaveTextContent('connections');
+  });
+
+  it('flags the bank as soon as a background sync reports the failure', async () => {
+    getPlaidStatus.mockResolvedValueOnce({ enabled: true, environment: 'production', trial: null, needsAttention: [] });
+    render(<BankImportButton />);
+    await screen.findByRole('button', { name: 'Bank import' });
+
+    getPlaidStatus.mockResolvedValueOnce(expired);
+    act(() => { window.dispatchEvent(new CustomEvent('syncEvent', { detail: { entityType: 'plaid' } })); });
+
+    expect(await screen.findByTestId('bank-attention-dot')).toBeInTheDocument();
+  });
+
+  it('opens on the requested tab from openBankImport', async () => {
+    getPlaidStatus.mockResolvedValue(expired);
+    render(<BankImportButton />);
+    await screen.findByTestId('bank-attention-dot');
+
+    act(() => { window.dispatchEvent(new CustomEvent('open-bank-import', { detail: { tab: 'connections' } })); });
+
+    expect(await screen.findByTestId('bank-import-modal')).toHaveTextContent('connections');
   });
 });
 

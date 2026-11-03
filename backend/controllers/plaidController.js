@@ -39,9 +39,18 @@ const clearSettings = asyncHandler(async (req, res) => {
   res.json(await plaidSettingsService.clearSettings(tabIdOf(req)));
 });
 
-/** POST /api/plaid/link-token */
+/**
+ * POST /api/plaid/link-token
+ * Body: { itemId? } — with itemId, a token to repair that connection (Plaid update mode)
+ */
 const createLinkToken = asyncHandler(async (req, res) => {
-  res.json(await plaidService.createLinkToken());
+  const { itemId } = req.body || {};
+  res.json(await plaidService.createLinkToken({ itemId: itemId === undefined || itemId === null ? undefined : itemId }));
+});
+
+/** POST /api/plaid/items/:id/reconnected — the user logged in again through update mode */
+const reconnectedItem = asyncHandler(async (req, res) => {
+  res.json(await plaidService.markReconnected(idParam(req)));
 });
 
 /**
@@ -177,6 +186,7 @@ module.exports = {
   testSettings,
   clearSettings,
   createLinkToken,
+  reconnectedItem,
   connectItem,
   listItems,
   disconnectItem,

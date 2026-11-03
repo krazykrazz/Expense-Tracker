@@ -12,8 +12,8 @@ const TABS = [
 /**
  * Bank Import modal: review synced bank transactions (Inbox) and manage Plaid connections.
  */
-const BankImportModal = ({ status, onStatusChange, onExpensesChanged, onClose }) => {
-  const [activeTab, setActiveTab] = useState('inbox');
+const BankImportModal = ({ status, initialTab = 'inbox', onStatusChange, onExpensesChanged, onClose }) => {
+  const [activeTab, setActiveTab] = useState(initialTab);
 
   useEffect(() => {
     const onKeyDown = (event) => {

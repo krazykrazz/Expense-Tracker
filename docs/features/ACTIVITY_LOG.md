@@ -219,6 +219,7 @@ Update events include detailed change tracking showing old → new values for mo
 | `version_upgraded` | system | Application version upgrade detected on startup (includes old_version, new_version) |
 | `plaid_item_added` | plaid_item | Bank connected through Plaid (institution name and environment only; never tokens) |
 | `plaid_item_deleted` | plaid_item | Bank disconnected (institution name, count of unreviewed transactions removed) |
+| `plaid_item_updated` | plaid_item | Bank reconnected through Plaid update mode after an expired login (institution name and the error it cleared) |
 | `plaid_sync_completed` | plaid_transaction | A bank sync (manual, scheduled or on opening the app) that added, changed or removed staged transactions: source and counts only |
 | `plaid_transaction_updated` | plaid_transaction | An Import Inbox decision: `metadata.action` is `add`, `match`, `match_fixed`, `match_income`, `add_income`, `ignore`, `unignore`, `cancelled_keep` or `cancelled_delete`, with the bank description, amount, date and the linked expense / fixed expense / income source id. Also logged by the sync when a pending charge linked to an expense settles (`settled`) or changes amount while pending (`pending_changed`), with the previous amount and whether the expense was updated. The created or changed record is logged by its own service as well (`expense_added`, `expense_updated`, `fixed_expense_updated`, `income_source_added`/`_updated`) |
 | `plaid_account_updated` | plaid_account | A bank account's import mapping changed (payment method, or Don't import) |

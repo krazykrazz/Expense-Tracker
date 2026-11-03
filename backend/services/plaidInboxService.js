@@ -508,7 +508,9 @@ class PlaidInboxService {
         if (amountChanged && s.amount > 0 && expense.original_cost == null && toCents(expense.amount) === toCents(s.previousAmount)) {
           changes.amount = round2(s.amount);
         }
-        if (s.settled && s.postedDate && txn.paymentMethodType === 'credit_card' && !expense.posted_date && s.postedDate > expense.date) {
+        // The expense's own payment method decides: after a reconnect the bank account may not be mapped yet
+        const isCard = expense.payment_method_type === 'credit_card' || txn.paymentMethodType === 'credit_card';
+        if (s.settled && s.postedDate && isCard && !expense.posted_date && s.postedDate > expense.date) {
           changes.posted_date = s.postedDate;
         }
         if (Object.keys(changes).length > 0) {

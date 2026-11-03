@@ -13,10 +13,23 @@ const PRODUCTION_ITEMS_KEY = 'plaid_production_items_created';
 const MAX_SYNC_RESTARTS = 3;
 const SYNC_PAGE_SIZE = 500;
 const GONE_ITEM_CODES = new Set(['ITEM_NOT_FOUND', 'INVALID_ACCESS_TOKEN']);
-/** Errors only the user can fix (log in again, reconnect): automatic sync skips these banks. */
-const NEEDS_USER_CODES = new Set([
-  'ITEM_LOGIN_REQUIRED', 'INVALID_CREDENTIALS', 'INVALID_MFA', 'USER_SETUP_REQUIRED', 'PENDING_DISCONNECT', ...GONE_ITEM_CODES
-]);
+/** Errors the user fixes by logging in to the bank again (Reconnect, Plaid update mode). */
+const LOGIN_CODES = new Set(['ITEM_LOGIN_REQUIRED', 'INVALID_CREDENTIALS', 'INVALID_MFA', 'USER_SETUP_REQUIRED', 'PENDING_DISCONNECT']);
+/** Errors only the user can fix (log in again, or the connection is gone): automatic sync skips these banks. */
+const NEEDS_USER_CODES = new Set([...LOGIN_CODES, ...GONE_ITEM_CODES]);
+
+/**
+ * A bank connection's health, from its last sync error:
+ * 'ok', 'needs_login' (Reconnect fixes it without a new Trial connection), 'gone' (removed at the bank or
+ * token rejected: disconnect), or 'error' (anything else; usually temporary, retried automatically).
+ * @param {{lastError: (string|null)}} item
+ */
+function connectionStatus(item) {
+  if (!item.lastError) return 'ok';
+  if (LOGIN_CODES.has(item.lastError)) return 'needs_login';
+  if (GONE_ITEM_CODES.has(item.lastError)) return 'gone';
+  return 'error';
+}
 
 /** SQLite CURRENT_TIMESTAMP ('YYYY-MM-DD HH:MM:SS', UTC) → epoch ms; 0 when missing. */
 const sqliteUtcMs = (value) => {
@@ -36,8 +49,9 @@ function toServiceError(err, action) {
   const plaidError = plaidErrorOf(err);
   if (!plaidError) return err;
   let message = `Plaid ${action} failed: ${plaidError.error_message || plaidError.error_code}`;
-  if (plaidError.error_code === 'ITEM_LOGIN_REQUIRED') {
-    message = 'The bank login has expired. Disconnect and reconnect this bank.';
+  if (LOGIN_CODES.has(plaidError.error_code)) {
+    // Never suggest disconnecting: reconnecting from scratch uses a new Trial connection and duplicates history
+    message = 'The bank needs you to log in again. Use Reconnect on the Connections tab (no new Trial connection is used).';
   }
   return fail(message, 502, { plaidErrorCode: plaidError.error_code });
 }
@@ -65,33 +79,95 @@ class PlaidService {
   }
 
   /**
-   * @returns {Promise<{enabled: boolean, environment?: string, trial?: {limit: number, used: number}|null}>}
+   * @returns {Promise<{enabled: boolean, environment?: string, trial?: {limit: number, used: number}|null,
+   *   needsAttention?: Array<{id: number, institutionName: string, status: string}>}>} needsAttention lists the
+   *   banks the user has to act on (log in again, or removed at the bank), for the header dot and main-screen banner
    */
   async getStatus() {
     const config = plaidConfig.getPlaidConfig();
     if (!config.enabled) {
       return { enabled: false, source: config.source };
     }
-    const trial = config.environment === 'production'
-      ? { limit: plaidConfig.TRIAL_ITEM_LIMIT, used: await this._productionItemsCreated() }
-      : null;
-    return { enabled: true, source: config.source, environment: config.environment, trial };
+    const [trial, items] = await Promise.all([
+      config.environment === 'production'
+        ? this._productionItemsCreated().then(used => ({ limit: plaidConfig.TRIAL_ITEM_LIMIT, used }))
+        : null,
+      plaidRepository.findAllItems()
+    ]);
+    const needsAttention = items
+      .filter(item => item.environment === config.environment)
+      .map(item => ({ id: item.id, institutionName: item.institutionName, status: connectionStatus(item) }))
+      .filter(item => item.status === 'needs_login' || item.status === 'gone');
+    return { enabled: true, source: config.source, environment: config.environment, trial, needsAttention };
   }
 
-  async createLinkToken() {
+  /**
+   * A Link token to connect a new bank, or with `itemId` to repair an existing connection (Plaid update mode:
+   * the user logs in again; same connection, no new Trial slot, sync cursor kept).
+   */
+  async createLinkToken({ itemId } = {}) {
+    const request = {
+      user: { client_user_id: 'expense-tracker-household' },
+      client_name: 'Expense Tracker',
+      country_codes: plaidConfig.COUNTRY_CODES,
+      language: 'en'
+    };
+    if (itemId !== undefined && itemId !== null) {
+      request.access_token = await this._accessTokenFor(itemId);
+    } else {
+      request.products = [Products.Transactions];
+      request.transactions = { days_requested: plaidConfig.DAYS_REQUESTED };
+    }
     try {
-      const { data } = await this._client().linkTokenCreate({
-        user: { client_user_id: 'expense-tracker-household' },
-        client_name: 'Expense Tracker',
-        products: [Products.Transactions],
-        country_codes: plaidConfig.COUNTRY_CODES,
-        language: 'en',
-        transactions: { days_requested: plaidConfig.DAYS_REQUESTED }
-      });
+      const { data } = await this._client().linkTokenCreate(request);
       return { linkToken: data.link_token, expiration: data.expiration };
     } catch (err) {
       throw toServiceError(err, 'link token creation');
     }
+  }
+
+  /** Decrypted access token of a bank connected in the current environment. */
+  async _accessTokenFor(id) {
+    const item = await plaidRepository.findItemWithTokenById(parseInt(id, 10));
+    if (!item) {
+      throw fail('Bank connection not found', 404);
+    }
+    const { environment } = plaidConfig.getPlaidConfig();
+    if (item.environment !== environment) {
+      throw fail(`${item.institutionName} was connected in ${item.environment}; Plaid is now set to ${environment}.`, 409);
+    }
+    return decrypt(item.accessTokenEnc);
+  }
+
+  /**
+   * After the user logged in again through Link update mode. There is no public token to exchange: the
+   * connection (and its access token) is unchanged. Clears the error, logs it, and syncs straight away.
+   */
+  async markReconnected(id) {
+    const item = await plaidRepository.findItemById(parseInt(id, 10));
+    if (!item) {
+      throw fail('Bank connection not found', 404);
+    }
+    const { environment } = plaidConfig.getPlaidConfig();
+    if (item.environment !== environment) {
+      throw fail(`${item.institutionName} was connected in ${item.environment}; Plaid is now set to ${environment}.`, 409);
+    }
+    await plaidRepository.setItemError(item.id, null);
+    this._lastAttemptAt.delete(item.id);
+    await activityLogService.logEvent(
+      'plaid_item_updated',
+      'plaid_item',
+      item.id,
+      `Reconnected bank: ${item.institutionName}`,
+      { institutionName: item.institutionName, previousError: item.lastError }
+    );
+    let sync = null;
+    try {
+      sync = await this.syncItem(item.id);
+    } catch (err) {
+      sync = { error: err.message };
+    }
+    return { item: await this.getItem(item.id), sync };
   }
 
   /**
@@ -172,13 +248,17 @@ class PlaidService {
     const item = await plaidRepository.findItemById(id);
     if (!item) return null;
     const accounts = await plaidRepository.findAccountsByItemIds([id]);
-    return { ...item, accounts };
+    return { ...item, status: connectionStatus(item), accounts };
   }
 
   async listItems() {
     const items = await plaidRepository.findAllItems();
     const accounts = await plaidRepository.findAccountsByItemIds(items.map(item => item.id));
-    return items.map(item => ({ ...item, accounts: accounts.filter(account => account.plaidItemId === item.id) }));
+    return items.map(item => ({
+      ...item,
+      status: connectionStatus(item),
+      accounts: accounts.filter(account => account.plaidItemId === item.id)
+    }));
   }
 
   /**

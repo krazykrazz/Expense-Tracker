@@ -186,6 +186,14 @@ Balance check on the same day, done right (4.2 rules): CIBC tracker $1,554.40 = 
 
 ### 2.2 Reconnect expired logins (update mode) and item status
 
+> **Status: mostly built (v1.18.0)**, after the 2026-11-03 CIBC incident (an expired login noticed only on the Connections tab, then fixed with disconnect, which cost a slot and left orphaned rows). Built without a migration:
+> - `connectionStatus(item)` derives `ok` / `needs_login` / `gone` / `error` from `last_error` (`LOGIN_CODES`, `GONE_ITEM_CODES`); items carry `status`, `/status` returns `needsAttention`.
+> - `createLinkToken({ itemId })` (update mode), `markReconnected(id)` + `POST /items/:id/reconnected`, `plaid_item_updated`.
+> - Header attention dot (opens Connections), main-screen `BankAttentionBanner`, status chips + Reconnect, shared `usePlaidStatus` hook, `openBankImport(tab)` event.
+> - Not in the original design, added for the incident: **re-attach on reconnect.** A disconnect + new connection re-sends ~30 days under new transaction ids; `applySyncBatch` re-attaches kept rows (`plaid_account_id IS NULL`, added/matched) by exact match, or a posted txn to a kept pending one (purchase date, name, amount ±25%), instead of inserting duplicates. `bankLink.disconnected` explains a pending pill that can't settle.
+>
+> **Still open:** `consent_expiring` / `/item/get` refresh (req. 1, 5; no current bank has an expiry, so low value), the `institution_down` split from `error`, and the status column migration (only needed if status must survive something other than `last_error`, e.g. webhooks in Phase 7). Sandbox `reset_login` verification (2.x acceptance) is still to be done by hand.
+
 **Problem:** a password change or MFA reset makes the Item fail with `ITEM_LOGIN_REQUIRED`. Today the only fix is disconnect + reconnect, which costs a Trial slot and the cursor.
 
 **Requirements**
@@ -217,7 +225,7 @@ Balance check on the same day, done right (4.2 rules): CIBC tracker $1,554.40 = 
 
 ### 2.3 Inbox count badge
 
-**Requirements:** the header bank icon shows the number to review (status `new`, mapped accounts, not pending-cancelled; later only `review_bucket = 'spending'`), plus 2.2's attention dot.
+**Requirements:** the header bank icon shows the number to review (status `new`, mapped accounts, not pending-cancelled; later only `review_bucket = 'spending'`), next to 2.2's attention dot (built; the count must not hide it).
 
 **Design:**
 - `GET /status` adds `toReview` and `needsAttention` (one indexed `COUNT(*)`).

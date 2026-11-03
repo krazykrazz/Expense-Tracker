@@ -217,6 +217,63 @@
   min-width: 180px;
 }
 
+/* Header button: warning dot when a bank needs the user (login expired, removed at the bank) */
+
+.bank-import-header-button {
+  position: relative;
+}
+
+.bank-attention-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--color-negative-dark, #dc2626);
+  box-shadow: 0 0 0 2px var(--bg-card, #fff);
+}
+
+/* Connections: per-bank status */
+
+.bank-connection-status {
+  display: inline-block;
+  margin-left: var(--spacing-2, 8px);
+  padding: 1px 8px;
+  border-radius: var(--radius-full, 999px);
+  font-size: var(--text-xs, 12px);
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+.bank-connection-status.needs_login,
+.bank-connection-status.gone {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.bank-connection-status.error {
+  background: var(--color-warning-light, #fef3c7);
+  color: #92400e;
+}
+
+:root[data-theme='dark'] .bank-connection-status.needs_login,
+:root[data-theme='dark'] .bank-connection-status.gone {
+  background: rgba(220, 38, 38, 0.18);
+  color: #fca5a5;
+}
+
+:root[data-theme='dark'] .bank-connection-status.error {
+  background: rgba(245, 158, 11, 0.16);
+  color: #fbbf24;
+}
+
+.bank-connection-actions {
+  display: flex;
+  gap: var(--spacing-2, 8px);
+  align-items: center;
+}
+
 .auto-sync-settings {
   display: flex;
   align-items: center;

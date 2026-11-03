@@ -29,7 +29,10 @@ export const bankLinkTitle = (expense) => {
     return [`Pending charge dropped by the bank: ${name}`, amountLine, 'Review it in Bank Import → Inbox'].join('\n');
   }
   if (state === 'pending') {
-    return [`Pending at bank: ${name}`, amountLine, `${origin}; updates when it settles`].join('\n');
+    const settleLine = bankLink.disconnected
+      ? `${origin}; the bank was disconnected. Connect it again to update when it settles`
+      : `${origin}; updates when it settles`;
+    return [`Pending at bank: ${name}`, amountLine, settleLine].join('\n');
   }
   const lines = [`Confirmed by bank: ${name}`, amountLine, origin];
   if (state === 'differs') lines.unshift(`Amount differs from bank: ${formatCurrency(bankLink.amount)}`);

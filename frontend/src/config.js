@@ -175,6 +175,7 @@ export const API_ENDPOINTS = {
   PLAID_LINK_TOKEN: `${API_BASE_URL}/api/plaid/link-token`,
   PLAID_ITEMS: `${API_BASE_URL}/api/plaid/items`,
   PLAID_ITEM_BY_ID: (id) => `${API_BASE_URL}/api/plaid/items/${id}`,
+  PLAID_ITEM_RECONNECTED: (id) => `${API_BASE_URL}/api/plaid/items/${id}/reconnected`,
   PLAID_ACCOUNT_BY_ID: (id) => `${API_BASE_URL}/api/plaid/accounts/${id}`,
   PLAID_SYNC: `${API_BASE_URL}/api/plaid/sync`,
   PLAID_SYNC_IF_STALE: (minutes) => `${API_BASE_URL}/api/plaid/sync?ifStaleMinutes=${encodeURIComponent(minutes)}`,

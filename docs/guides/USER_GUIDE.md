@@ -197,6 +197,12 @@ An expense that came from (or was matched to) the bank colours its payment metho
 
 Payment methods linked to a bank account show a small green bank icon on the Financial page.
 
+### When a Bank Asks You to Log In Again
+
+Banks sometimes need your login again (for example after a password change). Until then, that bank's transactions stop arriving. You'll see a **red dot** on the bank icon and a notification on the main screen naming the bank. Click either one, then **Reconnect** next to the bank and log in. That's all: the same connection is repaired, nothing is imported twice, and no new Trial connection is used.
+
+Don't use **Disconnect** for this. If a bank was disconnected anyway, connecting it again re-links the transactions you already reviewed instead of importing them twice.
+
 ## Income & Fixed Expenses
 
 ### Managing Income

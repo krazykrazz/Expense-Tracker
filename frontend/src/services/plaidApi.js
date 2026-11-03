@@ -41,9 +41,20 @@ export const testPlaidSettings = (fields) =>
 export const clearPlaidSettings = () =>
   call('removing Plaid settings', () => apiDelete(API_ENDPOINTS.PLAID_SETTINGS, 'remove bank import settings')).then(announceSettingsChange);
 
-/** @returns {Promise<{linkToken: string, expiration: string}>} */
-export const createLinkToken = () =>
-  call('creating Plaid link token', () => apiPost(API_ENDPOINTS.PLAID_LINK_TOKEN, {}, 'start bank connection'));
+/**
+ * @param {number} [itemId] repair this connection (Plaid update mode: log in again, no new Trial slot)
+ * @returns {Promise<{linkToken: string, expiration: string}>}
+ */
+export const createLinkToken = (itemId) =>
+  call('creating Plaid link token', () => apiPost(API_ENDPOINTS.PLAID_LINK_TOKEN, itemId ? { itemId } : {}, 'start bank connection'));
+
+/** After logging in again through update mode: clears the error and syncs. */
+export const reconnectBank = (id) =>
+  call('reconnecting bank', () => apiPost(API_ENDPOINTS.PLAID_ITEM_RECONNECTED(id), {}, 'reconnect bank'));
+
+/** Window event asking the header Bank Import button to open its modal, e.g. `{ detail: { tab: 'connections' } }`. */
+export const OPEN_BANK_IMPORT_EVENT = 'open-bank-import';
+export const openBankImport = (tab = 'inbox') => window.dispatchEvent(new CustomEvent(OPEN_BANK_IMPORT_EVENT, { detail: { tab } }));
 
 /** Exchange the Plaid Link public token; returns the stored item with its accounts. */
 export const connectBank = (publicToken, institutionName) =>

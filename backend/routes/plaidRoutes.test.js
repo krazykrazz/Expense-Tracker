@@ -200,6 +200,25 @@ describe('plaid routes', () => {
     expect(plaidSyncSchedulerService.saveSettings).toHaveBeenCalledWith({ enabled: false }, 'tab-3');
   });
 
+  test('POST /link-token passes an itemId for update mode, none for a new bank', async () => {
+    plaidService.createLinkToken.mockResolvedValue({ linkToken: 'link-x' });
+
+    await request(app).post('/api/plaid/link-token').send({});
+    await request(app).post('/api/plaid/link-token').send({ itemId: 2 });
+
+    expect(plaidService.createLinkToken).toHaveBeenNthCalledWith(1, { itemId: undefined });
+    expect(plaidService.createLinkToken).toHaveBeenNthCalledWith(2, { itemId: 2 });
+  });
+
+  test('POST /items/:id/reconnected', async () => {
+    plaidService.markReconnected.mockResolvedValue({ item: { id: 2, status: 'ok' }, sync: { added: 0 } });
+
+    const res = await request(app).post('/api/plaid/items/2/reconnected');
+
+    expect(res.status).toBe(200);
+    expect(plaidService.markReconnected).toHaveBeenCalledWith(2);
+  });
+
   test('POST /inbox/:id/add-income returns 201', async () => {
     plaidInboxService.addAsIncome.mockResolvedValue({ transaction: {}, incomeSource: { id: 10 } });
 

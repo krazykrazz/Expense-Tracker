@@ -452,6 +452,16 @@ const SystemModal = () => {
           <div className="changelog">
             <div className="changelog-entry">
               <div className="changelog-version">
+                v1.18.0
+                {isCurrentVersion('v1.18.0') && <span className="current-version-badge">Current Version</span>}
+              </div>
+              <div className="changelog-date">November 3, 2026</div>
+              <ul className="changelog-items">
+                <li>Plaid: Reconnect for expired bank logins (no new Trial slot), connection-problem alerts (header dot, main-screen notification, status chips), and no duplicates when a disconnected bank is connected again</li>
+              </ul>
+            </div>
+            <div className="changelog-entry">
+              <div className="changelog-version">
                 v1.17.0
                 {isCurrentVersion('v1.17.0') && <span className="current-version-badge">Current Version</span>}
               </div>

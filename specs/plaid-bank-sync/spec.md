@@ -425,7 +425,7 @@ The budget plan already has monthly allocations ("RRSP $300", optionally linked 
 ### 4.2 Credit card balance check, utilization, limit
 
 > **Status: built ahead of Phase 2** (see the order change under Status). As built:
-> - `plaid_account_balances_v1` stores balances on every sync (`upsertAccount`; a page without balances keeps the last).
+> - `plaid_account_balances_v1` stores balances on every sync: `syncItem` calls `/accounts/get` (free; Plaid's cached balances) after the batch, because `/transactions/sync` only lists accounts that had transactions in the response. Found in production right after 1.19.0, where quiet syncs left the balances empty.
 > - `plaidCardBalanceService.getCardBalances()` → `GET /api/plaid/card-balances`; `POST /card-balances/:id/use-bank-limit`.
 > - Causes come from pairing bank rows (`new` **and `ignored`**: an ignored refund is a classic cause) with unlinked tracker expenses and card payments since the bank's first date: same signed amount within 5 days, then one tracker entry against two bank rows (split Amazon charges). Leftovers are `bank_only` / `tracker_only` / `settling` causes with their effect; the rest is `unexplained`.
 > - UI: `CardBalanceCheckMark` under Current on the Financial page card table; `CardBankBalancePanel` in the card detail view. Utilization stays on the existing Credit Limit card (one figure, from the tracker balance).

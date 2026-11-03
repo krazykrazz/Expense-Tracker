@@ -264,6 +264,30 @@ describe('plaidService', () => {
   });
 
   describe('syncItem', () => {
+    test('stores every account balance after a sync, even one with no transactions', async () => {
+      const item = await connect();
+      client.transactionsSync.mockResolvedValueOnce(page({ accounts: [] }));
+      client.accountsGet.mockResolvedValueOnce({ data: { accounts: [account('acc-1', {
+        type: 'credit', balances: { current: 1554.4, available: 9839.6, limit: 12000, iso_currency_code: 'CAD' }
+      })] } });
+
+      await plaidService.syncItem(item.id);
+
+      expect(client.accountsGet).toHaveBeenLastCalledWith({ access_token: 'access-Test Bank' });
+      expect(await get("SELECT current_balance, available_balance, credit_limit, balance_currency FROM plaid_accounts WHERE account_id = 'acc-1'"))
+        .toEqual({ current_balance: 1554.4, available_balance: 9839.6, credit_limit: 12000, balance_currency: 'CAD' });
+    });
+
+    test('a failed balance refresh keeps the previous balances and does not fail the sync', async () => {
+      const item = await connect();
+      await run("UPDATE plaid_accounts SET current_balance = 10 WHERE account_id = 'acc-1'");
+      client.transactionsSync.mockResolvedValueOnce(page({ added: [txn('t1')] }));
+      client.accountsGet.mockRejectedValueOnce(plaidError('INTERNAL_SERVER_ERROR'));
+
+      expect(await plaidService.syncItem(item.id)).toMatchObject({ added: 1 });
+      expect((await get("SELECT current_balance FROM plaid_accounts WHERE account_id = 'acc-1'")).current_balance).toBe(10);
+    });
+
     test('pages through has_more, stages pending transactions flagged, and saves the final cursor', async () => {
       const item = await connect();
       client.transactionsSync

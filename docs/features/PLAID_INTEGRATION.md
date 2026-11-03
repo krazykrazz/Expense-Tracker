@@ -202,6 +202,7 @@ Each sync also stores the balance the bank reports for every account. For credit
   - All pages are fetched first. The staged changes and the new cursor are then saved in one database transaction, so a failure part-way leaves nothing half-applied.
   - If Plaid reports data changed mid-pagination, the sync restarts from the saved cursor (up to 3 times).
   - Two syncs of the same bank never run at once.
+  - Afterwards, every account's balance is refreshed from Plaid's `/accounts/get` (free; Plaid's cached balances), because `/transactions/sync` only includes accounts that had transactions in that response. A failure there keeps the previous balances and doesn't fail the sync.
 - **Staging rules:**
   - Pending transactions are staged with `pending = 1`. A settled transaction that names its pending version (`pending_transaction_id`) replaces that row in place, keeping its review state and links.
   - New transactions are inserted once (unique `transaction_id`, so re-syncing is safe).

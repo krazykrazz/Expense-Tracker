@@ -319,6 +319,7 @@ class PlaidService {
           const batch = await this._fetchAllPages(accessToken, item.syncCursor);
           const { settlements, ...counts } = await plaidRepository.applySyncBatch(id, batch);
           logger.info('Plaid sync completed', { plaidItemId: id, ...counts, settled: settlements.length });
+          await this._refreshBalances(id, accessToken);
           if (settlements.length > 0) {
             // After the batch is committed: expense updates go through expenseService (validation, card balance, log),
             // outside any request's tab context so every tab (including one that pressed Sync now) refreshes
@@ -350,6 +351,22 @@ class PlaidService {
       }
     } finally {
       this._syncing.delete(id);
+    }
+  }
+
+  /**
+   * Store every account's balances after a sync. /transactions/sync only lists accounts that had transactions
+   * in the response, so a quiet sync carries no balances; /accounts/get returns Plaid's cached balances for
+   * all of them (free, unlike /accounts/balance/get). A failure only leaves the previous balances in place.
+   */
+  async _refreshBalances(id, accessToken) {
+    try {
+      const { data } = await this._client().accountsGet({ access_token: accessToken });
+      for (const account of data.accounts || []) {
+        await plaidRepository.upsertAccount(id, account);
+      }
+    } catch (err) {
+      logger.warn('Plaid balance refresh failed', { plaidItemId: id, errorCode: plaidErrorOf(err)?.error_code ?? err.message });
     }
   }
 

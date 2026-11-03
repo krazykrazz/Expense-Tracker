@@ -7,6 +7,7 @@ Complete guide to using the Expense Tracker application.
 - [Getting Started](#getting-started)
 - [Expense Management](#expense-management)
 - [Payment Methods](#payment-methods)
+- [Bank Import (optional)](#bank-import-optional)
 - [Income & Fixed Expenses](#income--fixed-expenses)
 - [Loans & Lines of Credit](#loans--lines-of-credit)
 - [Investment Tracking](#investment-tracking)
@@ -161,6 +162,40 @@ Toggle payment methods active/inactive. Inactive methods are hidden from the exp
 ### Deleting Payment Methods
 
 Only payment methods that no expenses use can be deleted; deactivate the others instead.
+
+## Bank Import (optional)
+
+Connect your bank and credit card accounts so transactions arrive in the tracker without typing them. Everything else works the same without it. Full reference: [Plaid Bank Import](../features/PLAID_INTEGRATION.md).
+
+### Setting It Up
+
+1. Create a free Plaid account and get your keys (see [Setup](../features/PLAID_INTEGRATION.md#setup)).
+2. **⚙️ Settings → Bank Import:** enter the keys, **Test**, **Save**. A bank icon appears in the header.
+3. Click the bank icon → **Connections** → **Connect a bank**, and log in to your bank in the Plaid window.
+4. For each account, choose the **payment method** it pays from, or *Don't import*.
+
+Banks then sync on their own: every 30 minutes from 06:00 to 23:00, and whenever you open the app. Change this under **Connections → Automatic sync**. **Sync now** forces a sync.
+
+### Reviewing Transactions
+
+Click the bank icon → **Inbox**. Each row is one bank transaction:
+
+- **Add**: creates an expense, with the place, date and a suggested category filled in.
+- **Match**: links it to an expense you already logged, a planned **fixed expense** (records when it actually landed) or expected **income** (for deposits).
+- **Add income**: records an unplanned deposit as income.
+- **Ignore**: hides it (the **Ignored** filter has **Undo ignore**).
+
+Charges still **Pending** at the bank can be added right away; the expense updates itself when the charge settles. If the bank cancels a pending charge you added, it shows at the top of the inbox to keep or delete.
+
+### Reading the Colours
+
+An expense that came from (or was matched to) the bank colours its payment method pill. Hover it for the bank details:
+
+- **Green**: confirmed by the bank.
+- **Yellow**: still pending at the bank.
+- **Red-orange**: needs a look, because the amount differs from the bank or the bank dropped the charge.
+
+Payment methods linked to a bank account show a small green bank icon on the Financial page.
 
 ## Income & Fixed Expenses
 

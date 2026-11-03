@@ -67,7 +67,7 @@ See **[Startup Guide](./docs/guides/STARTUP_GUIDE.md)** for detailed development
 - ⚙️ **Settings & System** - Separate modals for user settings and system information
 - 🔒 **Optional Password** - Off by default; enable a password gate from Settings
 - 🌐 **Multi-Device Access** - Access from any device on your local network, kept in sync in real time
-- 🏦 **Bank Import (PoC)** - Optional Plaid connection: review synced bank transactions and add, match or ignore them
+- 🏦 **Bank Import (optional)** - Connect banks through Plaid; transactions sync automatically into an inbox where you add, match or confirm them (including pending charges, fixed expenses and income). Off until Plaid keys are added
 
 For a complete feature list, see **[Feature Documentation](./docs/features/)**.
 

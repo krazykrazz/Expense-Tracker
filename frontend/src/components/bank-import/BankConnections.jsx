@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { usePlaidLink } from 'react-plaid-link';
 import {
-  createLinkToken, connectBank, getBankConnections, disconnectBank, mapBankAccount, syncBanks, getPlaidStatus
+  createLinkToken, connectBank, reconnectBank, getBankConnections, disconnectBank, mapBankAccount, syncBanks, getPlaidStatus
 } from '../../services/plaidApi';
 import { getPaymentMethods } from '../../services/paymentMethodApi';
 import { formatDateTime } from '../../utils/formatters';
@@ -9,6 +9,18 @@ import { useSyncEvent } from '../../hooks/useSyncEvent';
 import AutoSyncSettings from './AutoSyncSettings';
 
 const MAPPABLE_TYPES = ['debit', 'credit_card'];
+
+const STATUS_LABELS = {
+  needs_login: 'Needs login',
+  gone: 'Connection removed',
+  error: 'Sync problem'
+};
+
+const STATUS_HELP = {
+  needs_login: 'The bank needs you to log in again. Reconnect keeps this connection: no new Trial slot, nothing re-imported. Automatic sync is paused until then.',
+  gone: 'The bank or Plaid no longer recognises this connection. Disconnect it, then connect the bank again.',
+  error: 'Usually temporary at the bank; automatic sync keeps retrying.'
+};
 
 const describeSync = ({ totals, results }) => {
   const parts = [`${totals.added} new, ${totals.updated} updated, ${totals.removed} removed`];
@@ -33,6 +45,8 @@ const BankConnections = ({ status, onStatusChange }) => {
   const [error, setError] = useState(null);
   const [message, setMessage] = useState(null);
   const [linkToken, setLinkToken] = useState(null);
+  // Bank being repaired through Plaid update mode (null when connecting a new bank)
+  const reconnectItemRef = useRef(null);
 
   const load = useCallback(async (signal) => {
     try {
@@ -70,10 +84,20 @@ const BankConnections = ({ status, onStatusChange }) => {
 
   const onSuccess = useCallback(async (publicToken, metadata) => {
     setLinkToken(null);
+    const reconnecting = reconnectItemRef.current;
+    reconnectItemRef.current = null;
     setBusy(true);
     try {
-      const item = await connectBank(publicToken, metadata?.institution?.name);
-      setMessage(`Connected ${item.institutionName}. Choose a payment method for each account, then Sync now.`);
+      if (reconnecting) {
+        // Update mode: same connection, nothing to exchange
+        const { item, sync } = await reconnectBank(reconnecting.id);
+        setMessage(sync && sync.error
+          ? `Reconnected ${item.institutionName}, but the first sync failed: ${sync.error}`
+          : `Reconnected ${item.institutionName}. Transactions are syncing again.`);
+      } else {
+        const item = await connectBank(publicToken, metadata?.institution?.name);
+        setMessage(`Connected ${item.institutionName}. Choose a payment method for each account, then Sync now.`);
+      }
       await Promise.all([load(), refreshStatus()]);
     } catch (err) {
       setError(err.message);
@@ -85,7 +109,10 @@ const BankConnections = ({ status, onStatusChange }) => {
   const { open, ready } = usePlaidLink({
     token: linkToken,
     onSuccess,
-    onExit: () => setLinkToken(null)
+    onExit: () => {
+      reconnectItemRef.current = null;
+      setLinkToken(null);
+    }
   });
 
   useEffect(() => {
@@ -104,7 +131,21 @@ const BankConnections = ({ status, onStatusChange }) => {
     setError(null);
     setMessage(null);
     try {
+      reconnectItemRef.current = null;
       const { linkToken: token } = await createLinkToken();
+      setLinkToken(token);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  /** Log in to the bank again through Plaid update mode: same connection, no new Trial slot. */
+  const handleReconnect = async (item) => {
+    setError(null);
+    setMessage(null);
+    try {
+      const { linkToken: token } = await createLinkToken(item.id);
+      reconnectItemRef.current = item;
       setLinkToken(token);
     } catch (err) {
       setError(err.message);
@@ -117,7 +158,8 @@ const BankConnections = ({ status, onStatusChange }) => {
     try {
       const result = await syncBanks();
       setMessage(`Sync complete: ${describeSync(result)}`);
-      await load();
+      // A failure may have changed a bank's status (header dot, Reconnect)
+      await Promise.all([load(), refreshStatus()]);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -140,10 +182,13 @@ const BankConnections = ({ status, onStatusChange }) => {
 
   const handleDisconnect = async (item) => {
     const trialNote = item.environment === 'production'
-      ? ' The Plaid Trial connection slot is not given back.'
+      ? ' The Plaid Trial connection slot is not given back, and connecting the bank again uses a new one.'
+      : '';
+    const loginNote = item.status === 'needs_login'
+      ? 'This bank only needs you to log in again: use Reconnect instead.\n\n'
       : '';
     if (!window.confirm(
-      `Disconnect ${item.institutionName}? Unreviewed and ignored transactions from it are removed; expenses already added are kept.${trialNote}`
+      `${loginNote}Disconnect ${item.institutionName}? Unreviewed and ignored transactions from it are removed; expenses already added are kept.${trialNote}`
     )) {
       return;
     }
@@ -152,7 +197,7 @@ const BankConnections = ({ status, onStatusChange }) => {
     try {
       await disconnectBank(item.id);
       setMessage(`Disconnected ${item.institutionName}.`);
-      await load();
+      await Promise.all([load(), refreshStatus()]);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -193,14 +238,27 @@ const BankConnections = ({ status, onStatusChange }) => {
             <div className="bank-connection-header">
               <div>
                 <strong>{item.institutionName}</strong>
+                {STATUS_LABELS[item.status] && (
+                  <span className={`bank-connection-status ${item.status}`} data-testid="bank-connection-status">
+                    {STATUS_LABELS[item.status]}
+                  </span>
+                )}
                 <div className="bank-import-muted">
                   {item.lastSyncedAt ? `Last synced ${formatDateTime(item.lastSyncedAt.replace(' ', 'T') + 'Z')}` : 'Never synced'}
                   {item.lastError && <span className="bank-connection-error"> · Last error: {item.lastError}</span>}
                 </div>
+                {STATUS_HELP[item.status] && <div className="bank-import-muted">{STATUS_HELP[item.status]}</div>}
               </div>
-              <button className="bank-import-link-danger" onClick={() => handleDisconnect(item)} disabled={busy}>
-                Disconnect
-              </button>
+              <div className="bank-connection-actions">
+                {item.status === 'needs_login' && (
+                  <button className="bank-import-primary" onClick={() => handleReconnect(item)} disabled={busy || Boolean(linkToken)}>
+                    Reconnect
+                  </button>
+                )}
+                <button className="bank-import-link-danger" onClick={() => handleDisconnect(item)} disabled={busy}>
+                  Disconnect
+                </button>
+              </div>
             </div>
             <ul className="bank-account-list">
               {item.accounts.map(account => (

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import BankConnections from './BankConnections';
 import * as plaidApi from '../../services/plaidApi';
 import { getPaymentMethods } from '../../services/paymentMethodApi';
@@ -13,6 +13,7 @@ vi.mock('react-plaid-link', () => ({
 vi.mock('../../services/plaidApi', () => ({
   createLinkToken: vi.fn(),
   connectBank: vi.fn(),
+  reconnectBank: vi.fn(),
   getBankConnections: vi.fn(),
   disconnectBank: vi.fn(),
   mapBankAccount: vi.fn(),
@@ -143,5 +144,73 @@ describe('BankConnections', () => {
 
     expect(confirm).toHaveBeenCalledWith(expect.stringContaining('not given back'));
     await waitFor(() => expect(plaidApi.disconnectBank).toHaveBeenCalledWith(1));
+  });
+
+  it('refreshes the status after a manual sync so a failing bank is flagged', async () => {
+    plaidApi.syncBanks.mockResolvedValue({ totals: { added: 0, updated: 0, removed: 0 }, results: [] });
+    const fresh = { ...production, needsAttention: [{ id: 1, institutionName: 'Test Bank', status: 'needs_login' }] };
+    plaidApi.getPlaidStatus.mockResolvedValue(fresh);
+    const onStatusChange = vi.fn();
+
+    render(<BankConnections status={production} onStatusChange={onStatusChange} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Sync now' }));
+
+    await waitFor(() => expect(onStatusChange).toHaveBeenCalledWith(fresh));
+  });
+
+  describe('a bank that needs a new login', () => {
+    const expired = { ...item, status: 'needs_login', lastError: 'The bank needs you to log in again.' };
+
+    beforeEach(() => {
+      plaidApi.getBankConnections.mockResolvedValue({ items: [expired] });
+    });
+
+    it('shows the status and reconnects through update mode without using a Trial slot', async () => {
+      const { usePlaidLink } = await import('react-plaid-link');
+      const confirm = vi.spyOn(window, 'confirm');
+      plaidApi.createLinkToken.mockResolvedValue({ linkToken: 'link-update-1' });
+      plaidApi.reconnectBank.mockResolvedValue({ item: { ...expired, status: 'ok' }, sync: { added: 2 } });
+      plaidApi.getPlaidStatus.mockResolvedValue(production);
+
+      render(<BankConnections status={production} onStatusChange={vi.fn()} />);
+      expect(await screen.findByTestId('bank-connection-status')).toHaveTextContent('Needs login');
+      fireEvent.click(screen.getByRole('button', { name: 'Reconnect' }));
+
+      await waitFor(() => expect(plaidApi.createLinkToken).toHaveBeenCalledWith(1));
+      expect(confirm).not.toHaveBeenCalled();
+
+      // Plaid Link finishes: the stored connection is repaired, no new bank is exchanged
+      const { onSuccess } = usePlaidLink.mock.calls.at(-1)[0];
+      await act(() => onSuccess('public-ignored', { institution: { name: 'Test Bank' } }));
+
+      expect(plaidApi.reconnectBank).toHaveBeenCalledWith(1);
+      expect(plaidApi.connectBank).not.toHaveBeenCalled();
+      expect(await screen.findByRole('status')).toHaveTextContent('Reconnected Test Bank');
+    });
+
+    it('reports a first sync that still fails after reconnecting', async () => {
+      const { usePlaidLink } = await import('react-plaid-link');
+      plaidApi.createLinkToken.mockResolvedValue({ linkToken: 'link-update-2' });
+      plaidApi.reconnectBank.mockResolvedValue({ item: expired, sync: { error: 'INSTITUTION_DOWN' } });
+      plaidApi.getPlaidStatus.mockResolvedValue(production);
+
+      render(<BankConnections status={production} onStatusChange={vi.fn()} />);
+      fireEvent.click(await screen.findByRole('button', { name: 'Reconnect' }));
+      await waitFor(() => expect(plaidApi.createLinkToken).toHaveBeenCalledWith(1));
+
+      await act(() => usePlaidLink.mock.calls.at(-1)[0].onSuccess('public-ignored', {}));
+
+      expect(await screen.findByRole('status')).toHaveTextContent('first sync failed: INSTITUTION_DOWN');
+    });
+
+    it('steers the user to Reconnect when they try to disconnect', async () => {
+      const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+      render(<BankConnections status={production} onStatusChange={vi.fn()} />);
+      fireEvent.click(await screen.findByRole('button', { name: 'Disconnect' }));
+
+      expect(confirm).toHaveBeenCalledWith(expect.stringContaining('use Reconnect instead'));
+      expect(plaidApi.disconnectBank).not.toHaveBeenCalled();
+    });
   });
 });

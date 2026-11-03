@@ -38,6 +38,13 @@ describe('expense bank link', () => {
     expect(bankPillProps('pending', 't').srText).toBe(' (pending at bank)');
     expect(bankPillProps('cancelled', 't').className).toBe(' bank-pill-cancelled');
   });
+
+  it('a pending charge from a disconnected bank says it will not update until reconnected', () => {
+    const orphan = { amount: 25.5, bankLink: link({ status: 'added', pending: true, removed: false, disconnected: true }) };
+
+    expect(bankLinkState(orphan)).toBe('pending');
+    expect(bankLinkTitle(orphan)).toContain('the bank was disconnected. Connect it again to update when it settles');
+  });
 });
 
 describe('fixed expense confirmation', () => {

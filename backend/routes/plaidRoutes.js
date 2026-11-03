@@ -20,6 +20,7 @@ router.use((req, res, next) => {
 router.post('/link-token', plaidController.createLinkToken);
 router.get('/items', plaidController.listItems);
 router.post('/items', plaidController.connectItem);
+router.post('/items/:id/reconnected', plaidController.reconnectedItem);
 router.delete('/items/:id', plaidController.disconnectItem);
 router.put('/accounts/:id', plaidController.updateAccount);
 router.post('/sync', plaidController.sync);

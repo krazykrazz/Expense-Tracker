@@ -525,7 +525,7 @@ describe('plaidInboxService', () => {
       const expenses = await expenseService.getExpenses({ year: 2026, month: 10 });
 
       expect(expenses.find(e => e.id === matched).bankLink).toEqual({
-        status: 'matched', name: 'Coffee Shop', rawName: 'SQ *COFFEE SHOP', date: '2026-10-10', amount: 25.5, pending: false, removed: false
+        status: 'matched', name: 'Coffee Shop', rawName: 'SQ *COFFEE SHOP', date: '2026-10-10', amount: 25.5, pending: false, removed: false, disconnected: false
       });
       expect(expenses.find(e => e.id !== matched).bankLink).toBeNull();
     });

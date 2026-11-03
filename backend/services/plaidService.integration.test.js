@@ -98,7 +98,113 @@ describe('plaidService', () => {
     });
 
     test('sandbox has no Trial counter', async () => {
-      expect(await plaidService.getStatus()).toEqual({ enabled: true, source: 'env', environment: 'sandbox', trial: null });
+      expect(await plaidService.getStatus()).toEqual({ enabled: true, source: 'env', environment: 'sandbox', trial: null, needsAttention: [] });
+    });
+
+    test('lists banks that need the user: login expired, or removed at the bank; not temporary errors', async () => {
+      const login = await connect('Login Bank');
+      const gone = await connect('Gone Bank');
+      const down = await connect('Down Bank');
+      await run("UPDATE plaid_items SET last_error = 'ITEM_LOGIN_REQUIRED' WHERE id = ?", [login.id]);
+      await run("UPDATE plaid_items SET last_error = 'ITEM_NOT_FOUND' WHERE id = ?", [gone.id]);
+      await run("UPDATE plaid_items SET last_error = 'INSTITUTION_DOWN' WHERE id = ?", [down.id]);
+
+      expect((await plaidService.getStatus()).needsAttention).toEqual([
+        { id: gone.id, institutionName: 'Gone Bank', status: 'gone' },
+        { id: login.id, institutionName: 'Login Bank', status: 'needs_login' }
+      ]);
+      expect((await plaidService.listItems()).map(item => item.status).sort()).toEqual(['error', 'gone', 'needs_login']);
+    });
+  });
+
+  describe('reconnect (update mode)', () => {
+    test('a link token for an existing bank carries its access token and no products', async () => {
+      const item = await connect();
+      client.linkTokenCreate.mockResolvedValue({ data: { link_token: 'link-update', expiration: 'x' } });
+
+      expect(await plaidService.createLinkToken({ itemId: item.id })).toEqual({ linkToken: 'link-update', expiration: 'x' });
+      const [request] = client.linkTokenCreate.mock.calls[0];
+      expect(request.access_token).toBe('access-Test Bank');
+      expect(request).not.toHaveProperty('products');
+
+      await plaidService.createLinkToken();
+      expect(client.linkTokenCreate.mock.calls[1][0]).toMatchObject({ products: ['transactions'] });
+      expect(client.linkTokenCreate.mock.calls[1][0]).not.toHaveProperty('access_token');
+      await expect(plaidService.createLinkToken({ itemId: 99999 })).rejects.toMatchObject({ statusCode: 404 });
+    });
+
+    test('reconnected clears the error, logs it, syncs at once, and uses no Trial slot', async () => {
+      process.env.PLAID_ENV = 'production';
+      const item = await connect();
+      const usedBefore = (await plaidService.getStatus()).trial.used;
+      await run("UPDATE plaid_items SET last_error = 'ITEM_LOGIN_REQUIRED' WHERE id = ?", [item.id]);
+      client.transactionsSync.mockResolvedValueOnce(page({ added: [txn('t1')] }));
+
+      const result = await plaidService.markReconnected(item.id);
+
+      expect(result.item).toMatchObject({ id: item.id, status: 'ok', lastError: null });
+      expect(result.sync).toMatchObject({ added: 1 });
+      expect((await plaidService.getStatus()).trial.used).toBe(usedBefore);
+      expect(activityLogService.logEvent).toHaveBeenCalledWith(
+        'plaid_item_updated', 'plaid_item', item.id, 'Reconnected bank: Test Bank',
+        { institutionName: 'Test Bank', previousError: 'ITEM_LOGIN_REQUIRED' }
+      );
+    });
+
+    test('reconnected refuses an unknown bank or one from the other environment', async () => {
+      const item = await connect();
+      await run("UPDATE plaid_items SET environment = 'production', last_error = 'ITEM_LOGIN_REQUIRED' WHERE id = ?", [item.id]);
+
+      await expect(plaidService.markReconnected(99999)).rejects.toMatchObject({ statusCode: 404 });
+      await expect(plaidService.markReconnected(item.id)).rejects.toMatchObject({ statusCode: 409 });
+      expect((await plaidService.getItem(item.id)).lastError).toBe('ITEM_LOGIN_REQUIRED');
+      expect(activityLogService.logEvent).not.toHaveBeenCalledWith('plaid_item_updated', expect.anything(), expect.anything(), expect.anything(), expect.anything());
+    });
+  });
+
+  describe('connecting a bank again after disconnecting', () => {
+    const CREDIT_CARD = 4;
+    const plaidInboxService = require('./plaidInboxService');
+
+    test('re-sent history re-attaches to the kept rows instead of coming back as duplicates', async () => {
+      const first = await connect('Card Bank');
+      await plaidService.updateAccountMapping(first.accounts[0].id, CREDIT_CARD);
+      client.transactionsSync.mockResolvedValueOnce(page({
+        added: [
+          txn('old-coffee', { amount: 5, date: '2026-10-10', name: 'COFFEE #1' }),
+          txn('old-pending', { amount: 40, date: '2026-10-12', authorized_date: '2026-10-12', name: 'RESTAURANT', merchant_name: 'Restaurant', pending: true }),
+          txn('old-unreviewed', { amount: 9, date: '2026-10-11', name: 'SHOP' })
+        ]
+      }));
+      await plaidService.syncItem(first.id);
+      const coffee = await get("SELECT id FROM plaid_transactions WHERE transaction_id = 'old-coffee'");
+      const pendingRow = await get("SELECT id FROM plaid_transactions WHERE transaction_id = 'old-pending'");
+      const { expense: coffeeExpense } = await plaidInboxService.addAsExpense(coffee.id, { type: 'Dining Out' });
+      const { expense: dinner } = await plaidInboxService.addAsExpense(pendingRow.id, { type: 'Dining Out' });
+      await plaidService.disconnectItem(first.id);
+
+      // Kept while disconnected; the pending one says so in the expense list
+      const links = await require('./expenseService').getExpenses({ year: 2026, month: 10 });
+      expect(links.find(e => e.id === dinner.id).bankLink).toMatchObject({ pending: true, disconnected: true });
+
+      const second = await connect('Card Bank');
+      client.transactionsSync.mockResolvedValueOnce(page({
+        added: [
+          txn('new-coffee', { amount: 5, date: '2026-10-10', name: 'COFFEE #1' }),
+          // The pending charge settled (with a tip) while the bank was disconnected: new id, no pending link
+          txn('new-dinner', { amount: 46, date: '2026-10-14', authorized_date: '2026-10-12', name: 'RESTAURANT #9', merchant_name: 'Restaurant' }),
+          txn('new-unreviewed', { amount: 9, date: '2026-10-11', name: 'SHOP' })
+        ]
+      }));
+      const result = await plaidService.syncItem(second.id);
+
+      expect(result).toMatchObject({ added: 1, reattached: 2 });
+      expect(await all('SELECT id, transaction_id, status, expense_id, pending FROM plaid_transactions ORDER BY id')).toEqual([
+        { id: coffee.id, transaction_id: 'new-coffee', status: 'added', expense_id: coffeeExpense.id, pending: 0 },
+        { id: pendingRow.id, transaction_id: 'new-dinner', status: 'added', expense_id: dinner.id, pending: 0 },
+        expect.objectContaining({ transaction_id: 'new-unreviewed', status: 'new' })
+      ]);
+      expect(await get('SELECT amount, posted_date FROM expenses WHERE id = ?', [dinner.id])).toEqual({ amount: 46, posted_date: '2026-10-14' });
     });
   });
 
@@ -235,7 +341,7 @@ describe('plaidService', () => {
         .mockResolvedValueOnce(page({ added: [txn('t1')], next_cursor: 'c1', has_more: true }))
         .mockRejectedValueOnce(plaidError('ITEM_LOGIN_REQUIRED'));
 
-      await expect(plaidService.syncItem(item.id)).rejects.toMatchObject({ statusCode: 502, message: expect.stringContaining('reconnect') });
+      await expect(plaidService.syncItem(item.id)).rejects.toMatchObject({ statusCode: 502, message: expect.stringContaining('log in again') });
 
       expect((await get('SELECT COUNT(*) AS n FROM plaid_transactions')).n).toBe(0);
       expect(await get('SELECT sync_cursor, last_error FROM plaid_items WHERE id = ?', [item.id]))

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 vi.mock('../../utils/fetchProvider', async () => {
   const actual = await vi.importActual('../../utils/fetchProvider');
@@ -18,6 +18,13 @@ import SummaryPanel from './SummaryPanel';
 vi.mock('./IncomeManagementModal', () => ({
   default: () => null
 }));
+
+// Plaid status is fetched independently of the summary; keep it out of the ordered fetch mocks below
+const plaidStatusMock = vi.hoisted(() => ({ value: { enabled: false } }));
+vi.mock('../../hooks/usePlaidStatus', async () => {
+  const actual = await vi.importActual('../../hooks/usePlaidStatus');
+  return { ...actual, usePlaidStatus: () => [plaidStatusMock.value, () => {}] };
+});
 
 vi.mock('./FixedExpensesModal', () => ({
   default: () => null
@@ -226,6 +233,45 @@ describe('SummaryPanel', () => {
       ])('is not shown when %s', async (_, current) => {
         await renderWith(current);
         expect(screen.queryByTestId('over-planned-banner')).not.toBeInTheDocument();
+      });
+    });
+
+    describe('bank needs attention notification', () => {
+      afterEach(() => { plaidStatusMock.value = { enabled: false }; });
+
+      const renderPanel = async () => {
+        global.fetch.mockResolvedValueOnce({ ok: true, json: async () => baseResponse });
+        renderWithProviders(<SummaryPanel selectedYear={2025} selectedMonth={11} refreshTrigger={0} />);
+        await waitFor(() => expect(document.querySelector('.loading-message')).not.toBeInTheDocument());
+      };
+
+      it('is not shown when no bank needs attention', async () => {
+        plaidStatusMock.value = { enabled: true, needsAttention: [] };
+        await renderPanel();
+        expect(screen.queryByTestId('bank-attention-banner')).not.toBeInTheDocument();
+      });
+
+      it('names the bank and opens Bank Import on the Connections tab', async () => {
+        plaidStatusMock.value = { enabled: true, needsAttention: [{ id: 3, institutionName: 'CIBC', status: 'needs_login' }] };
+        const opened = vi.fn();
+        window.addEventListener('open-bank-import', opened);
+        try {
+          await renderPanel();
+          const banner = screen.getByTestId('bank-attention-banner');
+          expect(banner.textContent).toContain('CIBC needs you to log in again');
+          fireEvent.click(banner);
+          expect(opened).toHaveBeenCalledTimes(1);
+          expect(opened.mock.calls[0][0].detail).toEqual({ tab: 'connections' });
+        } finally {
+          window.removeEventListener('open-bank-import', opened);
+        }
+      });
+
+      it('hides when dismissed', async () => {
+        plaidStatusMock.value = { enabled: true, needsAttention: [{ id: 3, institutionName: 'CIBC', status: 'gone' }] };
+        await renderPanel();
+        fireEvent.click(screen.getByRole('button', { name: 'Dismiss reminder' }));
+        expect(screen.queryByTestId('bank-attention-banner')).not.toBeInTheDocument();
       });
     });
 

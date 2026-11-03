@@ -108,8 +108,10 @@ class PlaidRepository {
       const accountRows = await tx.all('SELECT id, account_id FROM plaid_accounts WHERE plaid_item_id = ?', [plaidItemId]);
       const accountIdMap = new Map(accountRows.map(row => [row.account_id, row.id]));
 
-      const counts = { added: 0, updated: 0, removed: 0 };
+      const counts = { added: 0, updated: 0, removed: 0, reattached: 0 };
       const settlements = [];
+      // Rows kept from a disconnected bank (added/matched) already claimed by a transaction in this batch
+      const claimedOrphans = new Set();
       const SET_FIELDS = `plaid_account_id = ?, amount = ?, iso_currency_code = ?, date = ?, authorized_date = ?,
         name = ?, merchant_name = ?, pending = ?, pending_transaction_id = ?`;
 
@@ -146,6 +148,25 @@ class PlaidRepository {
         }
 
         if (!existing) {
+          // Same bank connected again: Plaid re-sends recent history under new ids. Re-attach rows kept from the
+          // old connection instead of staging duplicates the user would have to recognise and ignore.
+          const orphan = await this._findReconnectOrphan(tx, txn, claimedOrphans);
+          if (orphan) {
+            claimedOrphans.add(orphan.id);
+            await tx.run(
+              `UPDATE plaid_transactions SET transaction_id = ?, ${SET_FIELDS}, removed_at = NULL WHERE id = ?`,
+              [txn.transaction_id, ...values, orphan.id]
+            );
+            counts.reattached++;
+            const settledNow = Boolean(orphan.pending) && !pending;
+            if (orphan.expenseId && (settledNow || orphan.amount !== txn.amount)) {
+              settlements.push({
+                plaidTransactionId: orphan.id, expenseId: orphan.expenseId, settled: settledNow,
+                previousAmount: orphan.amount, amount: txn.amount, postedDate: pending ? null : txn.date
+              });
+            }
+            continue;
+          }
           await tx.run(
             `INSERT INTO plaid_transactions
                (plaid_account_id, amount, iso_currency_code, date, authorized_date, name, merchant_name, pending,
@@ -186,6 +207,39 @@ class PlaidRepository {
 
       return { ...counts, settlements };
     });
+  }
+
+  /**
+   * A reviewed row (added/matched) whose bank was disconnected (`plaid_account_id IS NULL`) that an incoming
+   * transaction from a newly connected bank is the same as:
+   * - same pending state, amount (to the cent), raw description and posted date; or
+   * - a pending orphan that has since settled: same purchase date (authorized date, else posted), same
+   *   description or merchant, amount within 25%.
+   * @param {Set<number>} claimed orphan ids already re-attached in this batch
+   */
+  async _findReconnectOrphan(tx, txn, claimed) {
+    const exclude = claimed.size > 0 ? `AND id NOT IN (${[...claimed].map(() => '?').join(',')})` : '';
+    const excluded = [...claimed];
+    const columns = 'id, amount, pending, expense_id AS expenseId';
+    const exact = await tx.get(
+      `SELECT ${columns} FROM plaid_transactions
+       WHERE plaid_account_id IS NULL AND status IN ('added', 'matched') ${exclude}
+         AND pending = ? AND ABS(amount - ?) < 0.005 AND COALESCE(name, '') = COALESCE(?, '') AND date = ?
+       ORDER BY id LIMIT 1`,
+      [...excluded, txn.pending ? 1 : 0, txn.amount, txn.name ?? null, txn.date]
+    );
+    if (exact || txn.pending) return exact || null;
+
+    const purchaseDate = txn.authorized_date || txn.date;
+    return (await tx.get(
+      `SELECT ${columns} FROM plaid_transactions
+       WHERE plaid_account_id IS NULL AND status IN ('added', 'matched') AND pending = 1 ${exclude}
+         AND COALESCE(authorized_date, date) = ?
+         AND ABS(amount - ?) <= ABS(amount) * 0.25
+         AND (COALESCE(name, '') = COALESCE(?, '') OR (merchant_name IS NOT NULL AND merchant_name = ?))
+       ORDER BY ABS(amount - ?), id LIMIT 1`,
+      [...excluded, purchaseDate, txn.amount, txn.name ?? null, txn.merchant_name ?? null, txn.amount]
+    )) || null;
   }
 
   /**
@@ -487,14 +541,15 @@ class PlaidRepository {
       const chunk = expenseIds.slice(i, i + CHUNK);
       const rows = await dbHelper.queryAll(
         `SELECT expense_id AS expenseId, status, COALESCE(merchant_name, name) AS name, name AS rawName,
-                COALESCE(authorized_date, date) AS date, amount, pending, removed_at IS NOT NULL AS removed
+                COALESCE(authorized_date, date) AS date, amount, pending, removed_at IS NOT NULL AS removed,
+                plaid_account_id IS NULL AS disconnected
          FROM plaid_transactions
          WHERE expense_id IN (${chunk.map(() => '?').join(',')})`,
         chunk
       );
       for (const row of rows) {
-        const { expenseId, pending, removed, ...link } = row;
-        links.set(expenseId, { ...link, pending: Boolean(pending), removed: Boolean(removed) });
+        const { expenseId, pending, removed, disconnected, ...link } = row;
+        links.set(expenseId, { ...link, pending: Boolean(pending), removed: Boolean(removed), disconnected: Boolean(disconnected) });
       }
     }
     return links;

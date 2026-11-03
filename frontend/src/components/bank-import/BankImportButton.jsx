@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import Icon from '../shared/Icon';
 import ErrorBoundary from '../shared/ErrorBoundary';
-import { getPlaidStatus, syncBanksIfStale, PLAID_SETTINGS_CHANGED_EVENT } from '../../services/plaidApi';
+import { syncBanksIfStale, OPEN_BANK_IMPORT_EVENT } from '../../services/plaidApi';
+import { usePlaidStatus, banksNeedingAttention } from '../../hooks/usePlaidStatus';
 import { useExpenseContext } from '../../contexts/ExpenseContext';
+import './BankImport.css';
 
 const BankImportModal = lazy(() => import('./BankImportModal'));
 
@@ -14,40 +16,24 @@ const MIN_CHECK_GAP_MS = 5 * 60 * 1000;
 /**
  * Header entry point for Plaid bank import. Renders nothing until Plaid is configured
  * (Settings → Bank Import, or PLAID_* environment variables), and re-checks when settings change.
- * While Plaid is enabled it also starts an automatic sync of stale banks when the app is opened, when the
- * tab becomes visible again and when the modal opens, so nobody has to know about Sync now.
+ * - Starts an automatic sync of stale banks when the app is opened, when the tab becomes visible again and
+ *   when the modal opens, so nobody has to know about Sync now.
+ * - Shows a warning dot when a bank needs the user (login expired, removed at the bank); the modal then opens
+ *   on Connections. Other components open it with `openBankImport(tab)`.
  */
 const BankImportButton = () => {
-  const [status, setStatus] = useState(null);
-  const [open, setOpen] = useState(false);
+  const [status, setStatus] = usePlaidStatus();
+  const [openTab, setOpenTab] = useState(null);
   const { refreshExpenses } = useExpenseContext();
   const lastCheckRef = useRef(0);
   const enabled = Boolean(status && status.enabled);
+  const attention = banksNeedingAttention(status);
 
   const syncIfStale = useCallback((force = false) => {
     if (!force && Date.now() - lastCheckRef.current < MIN_CHECK_GAP_MS) return;
     lastCheckRef.current = Date.now();
-    // Silent: failures show as the bank's last error on the Connections tab
+    // Silent: failures show as the bank's status (header dot, Connections tab)
     syncBanksIfStale(SYNC_ON_OPEN_MINUTES).catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    let controller = new AbortController();
-    const load = () => {
-      controller.abort();
-      controller = new AbortController();
-      getPlaidStatus({ signal: controller.signal })
-        .then(setStatus)
-        .catch((err) => {
-          if (err.name !== 'AbortError') setStatus(null);
-        });
-    };
-    load();
-    window.addEventListener(PLAID_SETTINGS_CHANGED_EVENT, load);
-    return () => {
-      window.removeEventListener(PLAID_SETTINGS_CHANGED_EVENT, load);
-      controller.abort();
-    };
   }, []);
 
   useEffect(() => {
@@ -60,29 +46,42 @@ const BankImportButton = () => {
     return () => document.removeEventListener('visibilitychange', onVisibility);
   }, [enabled, syncIfStale]);
 
+  useEffect(() => {
+    if (!enabled) return undefined;
+    const onOpenRequest = (event) => setOpenTab(event.detail?.tab || 'inbox');
+    window.addEventListener(OPEN_BANK_IMPORT_EVENT, onOpenRequest);
+    return () => window.removeEventListener(OPEN_BANK_IMPORT_EVENT, onOpenRequest);
+  }, [enabled]);
+
   if (!enabled) return null;
+
+  const attentionText = attention.length > 0
+    ? `${attention.map(bank => bank.institutionName).join(', ')} ${attention.length === 1 ? 'needs' : 'need'} your attention: open to reconnect`
+    : null;
 
   return (
     <>
       <button
-        className="header-icon-button"
+        className="header-icon-button bank-import-header-button"
         onClick={() => {
           syncIfStale(true);
-          setOpen(true);
+          setOpenTab(attention.length > 0 ? 'connections' : 'inbox');
         }}
-        aria-label="Bank import"
-        title="Bank connections and import inbox"
+        aria-label={attentionText ? `Bank import: ${attentionText}` : 'Bank import'}
+        title={attentionText || 'Bank connections and import inbox'}
       >
         <Icon name="bank" />
+        {attention.length > 0 && <span className="bank-attention-dot" data-testid="bank-attention-dot" aria-hidden="true" />}
       </button>
-      {open && (
+      {openTab && (
         <Suspense fallback={null}>
           <ErrorBoundary name="BankImportModal">
             <BankImportModal
               status={status}
+              initialTab={openTab}
               onStatusChange={setStatus}
               onExpensesChanged={refreshExpenses}
-              onClose={() => setOpen(false)}
+              onClose={() => setOpenTab(null)}
             />
           </ErrorBoundary>
         </Suspense>

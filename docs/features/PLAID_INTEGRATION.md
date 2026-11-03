@@ -77,7 +77,21 @@ The **bank icon** in the header opens the Bank Import modal. It appears as soon 
    - The first sync covers about 30 days of history. Plaid may need a minute after connecting before history is ready.
    - Each bank shows when it last synced (date and time) and its last error.
 4. **Automatic sync** (shown once a bank is connected): on by default, every **30 minutes from 06:00 to 23:00** in the business timezone (Settings), nothing overnight. Choose 30, 60 or 120 minutes and the hours, or turn it off. See [Automatic sync](#automatic-sync).
-5. **Disconnect** removes the connection at Plaid and locally. Unreviewed and ignored transactions are deleted. Expenses already added, and their bank-confirmed colours, are kept.
+5. **Disconnect** removes the connection at Plaid and locally. Unreviewed and ignored transactions are deleted. Expenses already added, and their bank-confirmed colours, are kept. For a bank that only needs a new login, the confirmation steers you to **Reconnect** instead.
+
+### When a bank needs you (expired login)
+
+Banks periodically ask for the login again (a changed password, a security check). Until then Plaid returns `ITEM_LOGIN_REQUIRED`, and automatic sync pauses that bank, so new transactions silently stop arriving. The app makes this hard to miss:
+
+- **Header:** the bank icon gets a **red dot**, and its hover text names the bank. Clicking it opens Bank Import on **Connections** instead of the Inbox.
+- **Main screen:** a notification in the Notifications panel ("CIBC needs you to log in again: bank transactions stopped syncing"). Clicking it opens Connections. Dismissing hides it until the page is reloaded.
+- **Connections:** the bank shows a status chip (**Needs login**, **Connection removed**, or **Sync problem** for temporary bank errors that keep retrying) with a line explaining what to do.
+- **Reconnect** (shown for *Needs login*) opens Plaid Link in *update mode*: you log in to the bank again and the same connection is repaired. It uses **no new Trial slot**, keeps the sync position, so nothing is re-imported, and syncs straight away. Logged as `plaid_item_updated` ("Reconnected bank: CIBC").
+- **Connection removed** (the bank or Plaid no longer knows the connection) can't be repaired: Disconnect it, then connect the bank again.
+
+The status is worked out from the bank's last sync error, and all of the above refreshes in every open tab as soon as a sync fails or a bank is reconnected.
+
+**Connecting a disconnected bank again:** a new connection gets new transaction ids from Plaid, so the first ~30 days would otherwise arrive as duplicates of transactions you already reviewed. Instead, when a new transaction looks like one kept from the disconnected bank (same amount, description and date; or a settled charge for a kept pending one: same purchase date and description, amount within 25%), the kept row is re-attached to it. Its expense stays linked, a kept pending charge settles as usual (green pill), and nothing reappears in the inbox. Ignored transactions were deleted on disconnect, so they come back to the inbox once. While a bank is disconnected, a pending expense from it stays yellow, and its hover text says it will update once the bank is connected again.
 
 ### Automatic sync
 
@@ -85,7 +99,7 @@ Nobody needs to know about Sync now:
 
 - **On a schedule:** a check runs every 5 minutes and syncs each bank whose last sync is older than the interval (with 3 minutes of slack, so "30 minutes" stays 30), during the active hours only.
 - **When the app is opened:** loading the app, coming back to its tab (at most once every 5 minutes) or opening Bank Import syncs, in the background, any bank not synced in the last 30 minutes. This works at any hour, including overnight.
-- **What is skipped:** banks waiting for you (expired login, removed at the bank) until they are reconnected, banks from another Plaid environment, and a bank that just failed (it is retried at the next interval, not every 5 minutes). Nothing runs while Plaid is not configured.
+- **What is skipped:** banks waiting for you (expired login, removed at the bank) until they are reconnected (see [When a bank needs you](#when-a-bank-needs-you-expired-login)), banks from another Plaid environment, and a bank that just failed (it is retried at the next interval, not every 5 minutes). Nothing runs while Plaid is not configured.
 - **Results:** a sync that brings new, changed or removed transactions refreshes the inbox and connections in every open tab (toast "↻ Bank import updated"). Syncs with nothing new are silent.
 - **Cost:** Plaid does not charge per sync call (Transactions is billed per connected account per month on paid plans, and is included in the Trial). Plaid itself collects new data from most banks 1 to 4 times a day, so most syncs find nothing new.
 
@@ -154,7 +168,7 @@ Expenses that were added from, or matched to, a bank transaction colour their **
 | Colour | Meaning |
 |--------|---------|
 | Green | Settled at the bank, amount equal |
-| Yellow | Still pending at the bank; updates when it settles |
+| Yellow | Still pending at the bank; updates when it settles (or, if its bank was disconnected, once it is connected again) |
 | Red-orange | Needs attention: the amount differs from the bank, or the bank dropped the pending charge (review in the inbox) |
 
 - Hovering the pill shows the bank's description, date and amount, and whether the expense was added from or matched to the bank. Screen readers hear the state ("(confirmed by bank)", "(pending at bank)", …) after the method name.
@@ -180,7 +194,7 @@ Expenses that were added from, or matched to, a bank transaction colour their **
 
 ### Data
 
-Tables `plaid_items`, `plaid_accounts`, `plaid_transactions`, `plaid_fixed_expense_links` and `plaid_income_links`; see [Database Schema](../DATABASE_SCHEMA.md#plaid-tables). The expense list (`GET /api/expenses`) adds a `bankLink` field to every expense: `{ status, name, rawName, date, amount }` or `null`. Fixed expenses and income sources get `bankConfirmation` (`{ landedDate, amount, plannedAmount, name }`) or `null`.
+Tables `plaid_items`, `plaid_accounts`, `plaid_transactions`, `plaid_fixed_expense_links` and `plaid_income_links`; see [Database Schema](../DATABASE_SCHEMA.md#plaid-tables). The expense list (`GET /api/expenses`) adds a `bankLink` field to every expense: `{ status, name, rawName, date, amount, pending, removed, disconnected }` or `null` (`disconnected`: its bank was disconnected). Fixed expenses and income sources get `bankConfirmation` (`{ landedDate, amount, plannedAmount, name }`) or `null`. A bank's `status` (`ok`, `needs_login`, `gone`, `error`) is derived from its stored `last_error`; there is no status column.
 
 ### API
 
@@ -188,7 +202,7 @@ All under `/api/plaid`; see the [Endpoint Reference](../API_DOCUMENTATION.md#pla
 
 ### Activity log
 
-- `plaid_item_added` and `plaid_item_deleted` (entity `plaid_item`, institution name only).
+- `plaid_item_added` and `plaid_item_deleted` (entity `plaid_item`, institution name only). Reconnecting a bank (update mode) logs `plaid_item_updated` with the institution name and the error it cleared.
 - Saving or removing Plaid keys logs `settings_updated` (entity `settings`) describing what changed, e.g. "environment: Sandbox → Production, secret changed", never the values.
 - Adding a transaction as an expense logs the normal `expense_added`. Confirming income with a different amount logs `income_source_updated`; Add income logs `income_source_added`.
 - A sync that changed the inbox (Sync now, scheduled or on opening the app) logs `plaid_sync_completed` (entity `plaid_transaction`, counts and source only). Changing the automatic sync schedule logs `settings_updated` with `section: 'plaid_auto_sync'`.
@@ -211,7 +225,7 @@ What a bank sends Plaid varies. As measured on the first two connected banks:
 
 These are deferred to later phases (see the [roadmap](../../specs/plaid-bank-sync/spec.md)):
 
-- **Expired bank logins:** there's no reconnect (Plaid "update mode") yet. The connection shows the error. Disconnecting and connecting again works, but in Production uses a new Trial slot.
+- **Connection alerts are in-app only:** a bank needing a new login is flagged in the app (header dot, notification), not by email or push, so it is noticed the next time the app is opened.
 - **Not-spending rows:** card payments, transfers, investment contributions, loan payments and refunds can't be recorded from the inbox yet; ignore them. Income can be confirmed.
 - **Bank changes after review:** a settled transaction the bank changes after you reviewed it is not followed. Pending charges are; see above. For Wealthsimple, whose pending charges arrive as settled, a later amount change isn't followed either.
 - **Categories:** they come only from your own history for the place; Plaid's categories are not used.

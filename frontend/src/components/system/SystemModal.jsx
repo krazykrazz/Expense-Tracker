@@ -452,6 +452,16 @@ const SystemModal = () => {
           <div className="changelog">
             <div className="changelog-entry">
               <div className="changelog-version">
+                v1.19.1
+                {isCurrentVersion('v1.19.1') && <span className="current-version-badge">Current Version</span>}
+              </div>
+              <div className="changelog-date">November 3, 2026</div>
+              <ul className="changelog-items">
+                <li>Fix: refresh card balances after every bank sync, so the balance check works when a sync brings nothing new</li>
+              </ul>
+            </div>
+            <div className="changelog-entry">
+              <div className="changelog-version">
                 v1.19.0
                 {isCurrentVersion('v1.19.0') && <span className="current-version-badge">Current Version</span>}
               </div>

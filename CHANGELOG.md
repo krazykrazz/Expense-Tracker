@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.19.1] - 2026-11-03
+
+### Fix: refresh card balances after every bank sync, so the balance check works when a sync brings nothing new
+
 ## [1.19.0] - 2026-11-03
 
 ### Credit card balance check: bank vs tracker balance on the Financial page and card details, with likely causes of a difference (unrecorded refunds, typos, unreviewed charges) and the bank credit limit

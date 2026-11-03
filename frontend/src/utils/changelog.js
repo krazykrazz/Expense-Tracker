@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.19.1',
+    date: 'November 3, 2026',
+    added: [],
+    changed: ['Fix: refresh card balances after every bank sync, so the balance check works when a sync brings nothing new'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.19.0',
     date: 'November 3, 2026',
     added: [],

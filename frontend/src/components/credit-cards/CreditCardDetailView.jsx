@@ -7,6 +7,7 @@ import CreditCardPaymentForm from './CreditCardPaymentForm';
 import BillingCycleHistoryForm from './BillingCycleHistoryForm';
 import UnifiedBillingCycleList from './UnifiedBillingCycleList';
 import HelpTooltip from '../shared/HelpTooltip';
+import CardBankBalancePanel from '../bank-import/CardBankBalancePanel';
 import './CreditCardDetailView.css';
 import '../financial/FinancialOverviewModal.css';
 
@@ -469,6 +470,9 @@ const CreditCardDetailView = ({
                 </div>
               )}
             </div>
+
+            {/* Bank balance check (only for cards linked to a bank through Bank Import) */}
+            <CardBankBalancePanel paymentMethodId={paymentMethodId} refreshKey={paymentMethod} onLimitChanged={fetchData} />
 
             {/* Quick Actions */}
             <div className="cc-detail-actions">

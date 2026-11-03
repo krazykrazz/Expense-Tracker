@@ -175,6 +175,25 @@ Expenses that were added from, or matched to, a bank transaction colour their **
 - "Amount differs" means the expense amount no longer equals the bank amount to the cent; the hover text starts with "Amount differs from bank". Reimbursed expenses are compared using their original cost, since that is what the bank charged.
 - Expenses without a link (cash, cheques, or anything not yet reviewed) keep the normal grey pill.
 
+### Credit card balance check
+
+Each sync also stores the balance the bank reports for every account. For credit cards mapped to a bank account, the app compares it with the tracker's own balance, so you can see whether they agree and, if not, why.
+
+- **Financial page → Payment Methods:** under a linked card's **Current** balance, a green **✓** when it matches the bank to the cent, or an amber **Δ $x** when it doesn't. Hovering shows both balances and the likely causes. Cards not linked to a bank show nothing.
+- **Card details (View):** a **Bank balance check** panel with:
+  - **Bank:** what the bank says is owed. When the bank sends available credit, this is `limit − available`, which includes pending charges (CIBC). Otherwise it's the bank's balance, which may leave out charges still pending (Wealthsimple). The time of the sync it came from is shown;
+  - **Tracker:** the card's current balance as of today (the same number as on the Financial page);
+  - **Not counted:** entries dated after today (e.g. a car service logged for next week), which neither balance includes;
+  - **Likely causes** of a difference, each with its amount:
+    - *At the bank, not in the tracker:* a charge or credit still waiting in the Inbox, or one that was **ignored**, such as a refund that was never recorded. **Open Inbox** goes straight there;
+    - *In the tracker, not at the bank:* an expense or payment since the bank's history starts (about 30 days before connecting) that no bank transaction is linked to: a typo, the wrong card, a duplicate, or not posted yet;
+    - *Still pending:* an expense added from a pending charge, on a bank whose balance leaves pending charges out;
+    - anything left over is shown as not explained by the bank's recent transactions (e.g. an old entry, or a wrong statement balance);
+  - a count of Inbox transactions that already have a matching tracker entry (they cancel out; **Match** them to tidy up);
+  - the **bank credit limit**, with **Use bank limit** when the card's limit is empty or different. Nothing else is ever changed automatically.
+- **How causes are found:** bank rows and tracker entries for the same amount within 5 days cancel out (a payment entered by hand pairs with the bank's payment). One tracker entry also cancels out two bank charges that add up to it, e.g. an Amazon order shipped and charged in two parts.
+- The check refreshes after every sync, payment and expense change. A bank that isn't syncing is flagged, since its balance may be out of date.
+
 ## How it works
 
 - **Tokens:** Plaid access tokens are encrypted with AES-256-GCM using the Plaid encryption key (`secrets/plaid.key`, or `PLAID_TOKEN_KEY`) and stored in `plaid_items.access_token_enc`. The key is never written to the database, and the `secrets/` folder is not backed up, so backups never contain a usable token. Tokens are never logged, returned to the browser, or written to the activity log.
@@ -232,5 +251,5 @@ These are deferred to later phases (see the [roadmap](../../specs/plaid-bank-syn
 - **Inbox conveniences:** no bulk actions and no count badge on the header icon.
 - **Loan payments:** confirmed fixed expenses don't yet feed auto-logged loan payments (those still use the due day).
 - **Medical, donation, insurance and reimbursement details** are not in the inline Add form. Add the expense, then edit it in the expense list to set people, insurance, receipts or a reimbursement. Its bank colour keeps comparing against the original charged amount.
-- **Balances:** account balances (cards, investments, loans) are received but not yet shown or used.
+- **Balances:** credit card balances are checked against the bank (see [Credit card balance check](#credit-card-balance-check)); investment, loan and line-of-credit balances are received but not yet shown or used.
 - **No webhooks:** new transactions arrive with the next automatic sync, not instantly.

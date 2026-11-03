@@ -180,6 +180,8 @@ export const API_ENDPOINTS = {
   PLAID_SYNC: `${API_BASE_URL}/api/plaid/sync`,
   PLAID_SYNC_IF_STALE: (minutes) => `${API_BASE_URL}/api/plaid/sync?ifStaleMinutes=${encodeURIComponent(minutes)}`,
   PLAID_SYNC_SETTINGS: `${API_BASE_URL}/api/plaid/sync-settings`,
+  PLAID_CARD_BALANCES: `${API_BASE_URL}/api/plaid/card-balances`,
+  PLAID_CARD_USE_BANK_LIMIT: (paymentMethodId) => `${API_BASE_URL}/api/plaid/card-balances/${paymentMethodId}/use-bank-limit`,
   PLAID_INBOX: (status = 'new') => `${API_BASE_URL}/api/plaid/inbox?status=${encodeURIComponent(status)}`,
   PLAID_INBOX_ACTION: (id, action) => `${API_BASE_URL}/api/plaid/inbox/${id}/${action}`,
 

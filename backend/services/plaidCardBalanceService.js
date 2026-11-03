@@ -1,0 +1,246 @@
+const plaidConfig = require('../config/plaid');
+const plaidRepository = require('../repositories/plaidRepository');
+const paymentMethodRepository = require('../repositories/paymentMethodRepository');
+const paymentMethodBalanceService = require('./paymentMethodBalanceService');
+const paymentMethodService = require('./paymentMethodService');
+const { getTodayString } = require('../utils/dateUtils');
+
+/** Bank and tracker items on either side within this many days, same amount, are the same transaction. */
+const PAIR_DAYS = 5;
+
+const round2 = (n) => Math.round(n * 100) / 100;
+const cents = (n) => Math.round(n * 100);
+const dayNumber = (dateStr) => Date.UTC(+dateStr.slice(0, 4), +dateStr.slice(5, 7) - 1, +dateStr.slice(8, 10)) / 86400000;
+
+/**
+ * What the bank says is owed on one card account.
+ * - `limit − available` when the bank sends both: includes pending charges (CIBC).
+ * - otherwise `current`, which may leave out pending charges (Wealthsimple).
+ */
+function bankOwed(account) {
+  if (account.currentBalance == null && account.availableBalance == null) return null;
+  if (account.creditLimit != null && account.availableBalance != null) {
+    return { owed: round2(account.creditLimit - account.availableBalance), includesPending: true };
+  }
+  if (account.currentBalance == null) return null;
+  return { owed: round2(account.currentBalance), includesPending: false };
+}
+
+/**
+ * Pair bank rows with tracker entries for the same money (signed effect on the balance equal to the cent,
+ * dates within PAIR_DAYS), then one tracker entry with two bank rows that add up to it. Paired items cancel
+ * out; what's left explains the difference.
+ * @returns {{bankOnly: Array, trackerOnly: Array, pairs: Array<{bank: object, tracker: object}>,
+ *   splits: Array<{bank: object[], tracker: object}>}}
+ */
+function pairUp(bankItems, trackerItems) {
+  const unusedTracker = [...trackerItems];
+  const bankOnly = [];
+  const pairs = [];
+  for (const bank of bankItems) {
+    let best = -1;
+    let bestGap = Infinity;
+    unusedTracker.forEach((tracker, index) => {
+      if (cents(tracker.effect) !== cents(bank.effect)) return;
+      const gap = Math.abs(dayNumber(tracker.date) - dayNumber(bank.date));
+      if (gap <= PAIR_DAYS && gap < bestGap) {
+        best = index;
+        bestGap = gap;
+      }
+    });
+    if (best === -1) {
+      bankOnly.push(bank);
+    } else {
+      pairs.push({ bank, tracker: unusedTracker[best] });
+      unusedTracker.splice(best, 1);
+    }
+  }
+
+  // One order charged in two parts (Amazon ships separately): two bank rows adding up to one tracker entry
+  const splits = [];
+  for (let t = unusedTracker.length - 1; t >= 0; t--) {
+    const tracker = unusedTracker[t];
+    const near = bankOnly.filter(bank => Math.abs(dayNumber(bank.date) - dayNumber(tracker.date)) <= PAIR_DAYS);
+    let found = null;
+    for (let i = 0; i < near.length && !found; i++) {
+      for (let j = i + 1; j < near.length && !found; j++) {
+        if (cents(near[i].effect) + cents(near[j].effect) === cents(tracker.effect)) found = [near[i], near[j]];
+      }
+    }
+    if (found) {
+      splits.push({ bank: found, tracker });
+      unusedTracker.splice(t, 1);
+      for (const bank of found) bankOnly.splice(bankOnly.indexOf(bank), 1);
+    }
+  }
+  return { bankOnly, trackerOnly: unusedTracker, pairs, splits };
+}
+
+/**
+ * Credit card balance check: the bank's balance (from the last sync) against the tracker's balance as of
+ * today, with the likely causes of any difference. Read-only, apart from `applyBankCreditLimit`.
+ */
+class PlaidCardBalanceService {
+  /**
+   * @returns {Promise<{cards: Array<object>}>} one entry per credit card mapped to a bank account
+   */
+  async getCardBalances() {
+    const { environment } = plaidConfig.getPlaidConfig();
+    const accounts = await plaidRepository.findMappedCardAccounts(environment);
+    const byCard = new Map();
+    for (const account of accounts) {
+      const list = byCard.get(account.paymentMethodId) || [];
+      list.push(account);
+      byCard.set(account.paymentMethodId, list);
+    }
+    const today = getTodayString();
+    const cards = [];
+    for (const [paymentMethodId, cardAccounts] of byCard) {
+      cards.push(await this._checkCard(paymentMethodId, cardAccounts, today));
+    }
+    return { cards };
+  }
+
+  async _checkCard(paymentMethodId, accounts, today) {
+    const first = accounts[0];
+    const owedParts = accounts.map(bankOwed);
+    const bank = owedParts.some(part => part === null) ? null : {
+      owed: round2(owedParts.reduce((sum, part) => sum + part.owed, 0)),
+      includesPending: owedParts.every(part => part.includesPending),
+      asOf: accounts.map(a => a.balanceAsOf).sort()[0] || null,
+      currency: first.currency || null
+    };
+
+    const [tracker, future] = await Promise.all([
+      paymentMethodBalanceService.calculateCurrentBalance(paymentMethodId),
+      plaidRepository.sumFutureCardActivity(paymentMethodId, today)
+    ]);
+
+    const difference = bank ? round2(bank.owed - tracker) : null;
+    const status = bank === null ? 'unknown' : Math.abs(difference) < 0.005 ? 'match' : 'differs';
+    const explanation = await this._explain(paymentMethodId, accounts, bank, today);
+    const explained = round2(explanation.causes.reduce((sum, cause) => sum + cause.effect, 0));
+
+    const bankLimit = accounts.every(a => a.creditLimit != null)
+      ? round2(accounts.reduce((sum, a) => sum + a.creditLimit, 0))
+      : null;
+
+    return {
+      paymentMethodId,
+      name: first.paymentMethodName,
+      accounts: accounts.map(a => ({ institutionName: a.institutionName, name: a.name, mask: a.mask ?? null })),
+      bankError: accounts.some(a => a.lastError) ? 'This bank is not syncing; its balance may be out of date.' : null,
+      status,
+      bank,
+      tracker,
+      difference,
+      futureDated: { amount: round2(future.expenses - future.payments), count: future.count },
+      causes: explanation.causes,
+      unexplained: difference === null || status === 'match' ? 0 : round2(difference - explained),
+      awaitingMatch: explanation.awaitingMatch,
+      splitCharges: explanation.splitCharges,
+      limit: {
+        bank: bankLimit,
+        tracker: first.trackerCreditLimit ?? null,
+        utilization: bank && bankLimit ? Math.round((bank.owed / bankLimit) * 1000) / 10 : null
+      }
+    };
+  }
+
+  /**
+   * Likely causes of a difference, each with its `effect` on (bank − tracker):
+   * - `bank_only`: at the bank (unreviewed or ignored in the Inbox), not in the tracker (a refund, fee,
+   *   or charge nobody entered);
+   * - `tracker_only`: entered in the tracker since the bank history starts, but not at the bank (a typo,
+   *   a wrong card, a duplicate, or not posted yet);
+   * - `settling`: added from a pending charge on a bank whose balance leaves pending charges out.
+   * Inbox rows that match an entry already in the tracker cancel out; they are counted in `awaitingMatch`.
+   */
+  async _explain(paymentMethodId, accounts, bank, today) {
+    const includesPending = bank ? bank.includesPending : true;
+    const { rows, firstDate } = await plaidRepository.findBalanceCheckRows(accounts.map(a => a.id));
+
+    const bankItems = [];
+    const settling = [];
+    for (const row of rows) {
+      if (row.date > today) continue;
+      if (row.expenseId != null) {
+        // Linked pending charge: in the tracker; in the bank balance only when the bank counts pending
+        if (!includesPending) settling.push(row);
+        continue;
+      }
+      if (row.pending && !includesPending) continue;
+      bankItems.push({ ...row, effect: row.amount });
+    }
+
+    let trackerItems = [];
+    if (firstDate) {
+      const { expenses, payments } = await plaidRepository.findUnlinkedCardActivity(paymentMethodId, firstDate, today);
+      trackerItems = [
+        ...expenses.map(e => ({ kind: 'expense', id: e.id, date: e.date, name: e.place, amount: e.amount, effect: e.amount })),
+        ...payments.map(p => ({ kind: 'payment', id: p.id, date: p.date, name: 'Payment', amount: p.amount, effect: -p.amount }))
+      ];
+    }
+
+    // Ignored bank rows only explain something when nothing in the tracker accounts for them, e.g. a refund
+    // that was ignored because it couldn't be recorded. A card payment recorded by hand pairs with its bank row.
+    const { bankOnly, trackerOnly, pairs, splits } = pairUp(bankItems, trackerItems);
+
+    const causes = [
+      ...bankOnly.map(row => ({
+        type: 'bank_only',
+        transactionId: row.id,
+        date: row.date,
+        name: row.name,
+        amount: row.amount,
+        pending: Boolean(row.pending),
+        inboxStatus: row.status,
+        effect: round2(row.amount)
+      })),
+      ...trackerOnly.map(item => ({
+        type: 'tracker_only',
+        kind: item.kind,
+        id: item.id,
+        date: item.date,
+        name: item.name,
+        amount: item.amount,
+        effect: round2(-item.effect)
+      })),
+      ...settling.map(row => ({
+        type: 'settling',
+        transactionId: row.id,
+        expenseId: row.expenseId,
+        date: row.date,
+        name: row.name,
+        amount: row.amount,
+        effect: round2(-row.amount)
+      }))
+    ].sort((a, b) => a.date.localeCompare(b.date));
+
+    return {
+      causes,
+      awaitingMatch: pairs.filter(pair => pair.bank.status === 'new').length,
+      splitCharges: splits.length
+    };
+  }
+
+  /**
+   * Set a card's credit limit to the one the bank reports (the user chose to). Logged as payment_method_updated.
+   */
+  async applyBankCreditLimit(paymentMethodId) {
+    const id = parseInt(paymentMethodId, 10);
+    const { cards } = await this.getCardBalances();
+    const card = cards.find(c => c.paymentMethodId === id);
+    if (!card) {
+      throw Object.assign(new Error('No bank account is linked to this credit card'), { statusCode: 404 });
+    }
+    if (card.limit.bank == null) {
+      throw Object.assign(new Error('The bank did not report a credit limit for this card'), { statusCode: 400 });
+    }
+    const existing = await paymentMethodRepository.findById(id);
+    return paymentMethodService.updatePaymentMethod(id, { ...existing, credit_limit: card.limit.bank });
+  }
+}
+
+module.exports = new PlaidCardBalanceService();
+module.exports._internal = { bankOwed, pairUp };

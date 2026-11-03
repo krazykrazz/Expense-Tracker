@@ -117,6 +117,7 @@ vi.mock('../loans/LoanPaymentForm', () => ({
 }));
 
 vi.mock('../../hooks/useBankAccountLinks', () => ({ useBankAccountLinks: vi.fn() }));
+vi.mock('../../hooks/useCardBalanceChecks', () => ({ useCardBalanceChecks: vi.fn() }));
 
 // Row components are real — they render simple markup
 // No need to mock them since they're lightweight
@@ -127,6 +128,7 @@ import * as investmentApi from '../../services/investmentApi';
 import * as paymentMethodApi from '../../services/paymentMethodApi';
 import * as creditCardApi from '../../services/creditCardApi';
 import { useBankAccountLinks } from '../../hooks/useBankAccountLinks';
+import { useCardBalanceChecks } from '../../hooks/useCardBalanceChecks';
 import FinancialOverviewModal from './FinancialOverviewModal';
 
 const mockLoans = [
@@ -160,6 +162,7 @@ beforeEach(() => {
   paymentMethodApi.getPaymentMethod.mockResolvedValue({ current_cycle: null });
   creditCardApi.getCurrentCycleStatus.mockResolvedValue(null);
   useBankAccountLinks.mockReturnValue(new Map());
+  useCardBalanceChecks.mockReturnValue(new Map());
 
   global.fetch = vi.fn().mockResolvedValue({
     ok: true,
@@ -364,6 +367,30 @@ describe('FinancialOverviewModal', () => {
       await waitFor(() => expect(screen.getAllByTestId('bank-linked-badge')).toHaveLength(2));
       expect(screen.getByRole('img', { name: 'Debit - WS linked to bank: Wealthsimple · Chequing ••5070' })).toBeInTheDocument();
       expect(screen.getByRole('img', { name: 'WS VISA linked to bank: Wealthsimple · Visa' })).toBeInTheDocument();
+    });
+
+    it('marks each linked card balance as matching the bank or not', async () => {
+      paymentMethodApi.getPaymentMethods.mockResolvedValue([
+        { id: 3, type: 'credit_card', display_name: 'WS VISA', is_active: true, current_balance: 2129.92 },
+        { id: 4, type: 'credit_card', display_name: 'CIBC MC', is_active: true, current_balance: 2210.4 },
+        { id: 5, type: 'credit_card', display_name: 'PCF MC', is_active: true, current_balance: 165.02 }
+      ]);
+      const base = { bank: { owed: 0, includesPending: true, asOf: null }, causes: [], unexplained: 0, futureDated: { amount: 0, count: 0 } };
+      useCardBalanceChecks.mockReturnValue(new Map([
+        [3, { ...base, paymentMethodId: 3, status: 'match', tracker: 2129.92, difference: 0 }],
+        [4, {
+          ...base, paymentMethodId: 4, status: 'differs', tracker: 2210.4, difference: -50,
+          causes: [{ type: 'tracker_only', kind: 'expense', id: 9, date: '2026-11-02', name: 'Typo', amount: 50, effect: -50 }]
+        }]
+      ]));
+
+      render(<FinancialOverviewModal {...defaultProps} />);
+
+      await waitFor(() => expect(screen.getAllByTestId('card-balance-mark')).toHaveLength(2));
+      expect(screen.getByRole('img', { name: 'Matches the bank' })).toHaveTextContent('✓');
+      const differs = screen.getByRole('img', { name: 'Tracker is $50.00 higher than the bank' });
+      expect(differs).toHaveTextContent('Δ $50.00');
+      expect(differs.getAttribute('title')).toContain('In the tracker, not at the bank: Typo $50.00 (2026-11-02)');
     });
 
     it('should display only active payment methods when Active tab is selected', async () => {

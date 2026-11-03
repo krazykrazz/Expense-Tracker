@@ -1,6 +1,7 @@
 const { asyncHandler } = require('../middleware/errorHandler');
 const plaidService = require('../services/plaidService');
 const plaidInboxService = require('../services/plaidInboxService');
+const plaidCardBalanceService = require('../services/plaidCardBalanceService');
 const plaidSettingsService = require('../services/plaidSettingsService');
 const plaidSyncSchedulerService = require('../services/plaidSyncSchedulerService');
 const { runWithTabId } = require('../utils/requestContext');
@@ -51,6 +52,22 @@ const createLinkToken = asyncHandler(async (req, res) => {
 /** POST /api/plaid/items/:id/reconnected — the user logged in again through update mode */
 const reconnectedItem = asyncHandler(async (req, res) => {
   res.json(await plaidService.markReconnected(idParam(req)));
+});
+
+/**
+ * GET /api/plaid/card-balances
+ * Bank vs tracker balance for every credit card mapped to a bank account, with likely causes of a difference.
+ */
+const getCardBalances = asyncHandler(async (req, res) => {
+  res.json(await plaidCardBalanceService.getCardBalances());
+});
+
+/**
+ * POST /api/plaid/card-balances/:id/use-bank-limit
+ * Set the credit card's limit (payment method :id) to the one the bank reports.
+ */
+const useBankCreditLimit = asyncHandler(async (req, res) => {
+  res.json(await plaidCardBalanceService.applyBankCreditLimit(idParam(req)));
 });
 
 /**
@@ -180,6 +197,8 @@ const unignore = asyncHandler(async (req, res) => {
 });
 
 module.exports = {
+  getCardBalances,
+  useBankCreditLimit,
   getStatus,
   getSettings,
   saveSettings,

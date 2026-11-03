@@ -473,6 +473,9 @@ Bank accounts under an item, and the payment method their transactions are impor
 | account_id | TEXT NOT NULL UNIQUE | Plaid account id |
 | name, mask, type, subtype | TEXT | Account details from Plaid |
 | payment_method_id | INTEGER | Payment method for imported expenses; NULL = don't import (ON DELETE SET NULL) |
+| current_balance, available_balance, credit_limit | REAL | Balances as received on the last sync (NULL until then or when the bank doesn't send them). For a credit card, `current_balance` is what's owed; `credit_limit − available_balance` also counts pending charges |
+| balance_currency | TEXT | Currency of the balances |
+| balance_as_of | TEXT | When the balances were received (ISO 8601) |
 | created_at, updated_at | TEXT NOT NULL | Timestamps |
 
 **Indexes**: `idx_plaid_accounts_item` (plaid_item_id)

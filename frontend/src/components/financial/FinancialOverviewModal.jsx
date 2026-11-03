@@ -8,7 +8,9 @@ import { getCurrentCycleStatus } from '../../services/creditCardApi';
 import { authAwareFetch } from '../../utils/fetchProvider';
 import { useSyncEvent } from '../../hooks/useSyncEvent';
 import { useBankAccountLinks } from '../../hooks/useBankAccountLinks';
+import { useCardBalanceChecks } from '../../hooks/useCardBalanceChecks';
 import BankLinkedBadge from '../bank-import/BankLinkedBadge';
+import CardBalanceCheckMark from '../bank-import/CardBalanceCheckMark';
 import CreditCardPaymentForm from '../credit-cards/CreditCardPaymentForm';
 import LoanRow from '../loans/LoanRow';
 import InvestmentRow from '../loans/InvestmentRow';
@@ -170,6 +172,7 @@ const TYPE_LABELS = { debit: 'Debit', cheque: 'Cheque', cash: 'Cash' };
 const PaymentMethodsSection = ({ paymentMethods, loading, onPaymentRecorded, onViewDetails, onAddNew }) => {
   const [activeTab, setActiveTab] = useState('active');
   const bankLinks = useBankAccountLinks();
+  const balanceChecks = useCardBalanceChecks(paymentMethods);
   const [cardData, setCardData] = useState([]);
   const [cardLoading, setCardLoading] = useState(true);
   const [payingCardId, setPayingCardId] = useState(null);
@@ -313,7 +316,10 @@ const PaymentMethodsSection = ({ paymentMethods, loading, onPaymentRecorded, onV
                           {card.name}
                           <BankLinkedBadge accounts={bankLinks.get(card.id)} name={card.name} />
                         </span>
-                        <span className="financial-cc-amount">{formatCurrency(card.currentBalance)}</span>
+                        <span className="financial-cc-amount">
+                          {formatCurrency(card.currentBalance)}
+                          <CardBalanceCheckMark check={balanceChecks.get(card.id)} />
+                        </span>
                         <span className="financial-cc-amount">{card.statementBalance != null ? formatCurrency(card.statementBalance) : '—'}</span>
                         <span className="financial-cc-amount">{card.cycleBalance != null ? formatCurrency(card.cycleBalance) : '—'}</span>
                         <span className="financial-cc-pay-cell">

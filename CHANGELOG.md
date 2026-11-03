@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.18.0] - 2026-11-03
+
+### Plaid: Reconnect for expired bank logins (no new Trial slot), connection-problem alerts (header dot, main-screen notification, status chips), and no duplicates when a disconnected bank is connected again
+
 ## [1.17.0] - 2026-11-02
 
 ### Bank import: pending transactions can be added the day you spend (yellow payment pill) and update automatically when they settle (green); dropped pending charges are flagged for review

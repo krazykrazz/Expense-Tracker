@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.18.0',
+    date: 'November 3, 2026',
+    added: [],
+    changed: ['Plaid: Reconnect for expired bank logins (no new Trial slot), connection-problem alerts (header dot, main-screen notification, status chips), and no duplicates when a disconnected bank is connected again'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.17.0',
     date: 'November 2, 2026',
     added: [],

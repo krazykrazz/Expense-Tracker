@@ -9,10 +9,12 @@ jest.mock('../services/plaidService');
 jest.mock('../services/plaidInboxService');
 jest.mock('../services/plaidSettingsService');
 jest.mock('../services/plaidSyncSchedulerService');
+jest.mock('../services/plaidCardBalanceService');
 jest.mock('../config/plaid', () => ({ isEnabled: jest.fn() }));
 
 const plaidService = require('../services/plaidService');
 const plaidInboxService = require('../services/plaidInboxService');
+const plaidCardBalanceService = require('../services/plaidCardBalanceService');
 const plaidSettingsService = require('../services/plaidSettingsService');
 const plaidSyncSchedulerService = require('../services/plaidSyncSchedulerService');
 const { isEnabled } = require('../config/plaid');
@@ -217,6 +219,24 @@ describe('plaid routes', () => {
 
     expect(res.status).toBe(200);
     expect(plaidService.markReconnected).toHaveBeenCalledWith(2);
+  });
+
+  test('GET /card-balances and POST /card-balances/:id/use-bank-limit', async () => {
+    plaidCardBalanceService.getCardBalances.mockResolvedValue({ cards: [{ paymentMethodId: 4, status: 'match' }] });
+    plaidCardBalanceService.applyBankCreditLimit.mockResolvedValue({ id: 4, credit_limit: 12000 });
+
+    const list = await request(app).get('/api/plaid/card-balances');
+    const limit = await request(app).post('/api/plaid/card-balances/4/use-bank-limit');
+
+    expect(list.body).toEqual({ cards: [{ paymentMethodId: 4, status: 'match' }] });
+    expect(limit.body).toEqual({ id: 4, credit_limit: 12000 });
+    expect(plaidCardBalanceService.applyBankCreditLimit).toHaveBeenCalledWith(4);
+  });
+
+  test('card balances are behind the 503 gate', async () => {
+    isEnabled.mockReturnValue(false);
+    expect((await request(app).get('/api/plaid/card-balances')).status).toBe(503);
+    expect(plaidCardBalanceService.getCardBalances).not.toHaveBeenCalled();
   });
 
   test('POST /inbox/:id/add-income returns 201', async () => {

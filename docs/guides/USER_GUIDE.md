@@ -197,6 +197,15 @@ An expense that came from (or was matched to) the bank colours its payment metho
 
 Payment methods linked to a bank account show a small green bank icon on the Financial page.
 
+### Checking Card Balances Against the Bank
+
+On the Financial page, a linked credit card's **Current** balance gets a green **✓** when it matches the bank, or an amber **Δ** with the difference when it doesn't. Hover it for a quick summary, or click **View** for the **Bank balance check** panel. It lists the likely causes, each with its amount:
+
+- something at the bank that isn't in the tracker, such as a refund you ignored or a charge still in the Inbox;
+- something in the tracker the bank doesn't have, such as a typo, the wrong card, a duplicate, or a charge not posted yet.
+
+Entries dated after today are shown separately and aren't counted. If the card's credit limit is missing, **Use bank limit** fills it in from the bank.
+
 ### When a Bank Asks You to Log In Again
 
 Banks sometimes need your login again (for example after a password change). Until then, that bank's transactions stop arriving. You'll see a **red dot** on the bank icon and a notification on the main screen naming the bank. Click either one, then **Reconnect** next to the bank and log in. That's all: the same connection is repaired, nothing is imported twice, and no new Trial connection is used.

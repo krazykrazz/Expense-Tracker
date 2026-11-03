@@ -15,8 +15,12 @@ Phase 1 (the PoC) is archived at [`specs/archive/plaid-integration/spec.md`](../
 | 1.15.0 | #431, #432 | Confirm income with deposits / Add income; bank state as a coloured payment-method pill |
 | 1.16.0 | #434, #435, #436 | Automatic sync (scheduled + on open); bank badge on mapped payment methods; activity log for inbox decisions, mappings and sync failures; batched category suggestions; atomic disconnect |
 | 1.17.0 | #438 | Pending transactions: add the day you spend, settle in place, cancelled-charge review |
+| 1.18.0 | #440 | Reconnect expired logins (update mode), connection alerts, re-attach on reconnect (most of 2.2) |
+| next | — | Credit card balance check (4.2, pulled forward) with the balance capture part of 2.1 |
 
-**Next:** Phase 2 (foundation: capture what Plaid already sends, reconnect, refactors). Then Phase 3 (money that isn't spending) and Phase 4 (balances).
+**Next:** 3.2 card payments (Record payment from the Inbox), the other half of card reconciliation. Then the rest of Phase 2 (capture the other Plaid fields, inbox badge, refactors), Phase 3 and the rest of Phase 4.
+
+**Order change (2026-11-03):** card balance reconciliation is the biggest day-to-day problem, so 4.2 was built before the rest of Phase 2. It only needed balance capture from 2.1, done as its own migration `plaid_account_balances_v1`; the transaction columns of 2.1 still come in `plaid_capture_v1`.
 
 ## Guiding principles
 
@@ -166,7 +170,7 @@ Balance check on the same day, done right (4.2 rules): CIBC tracker $1,554.40 = 
    - `personal_finance_category` primary, detailed and confidence;
    - `merchant_entity_id`, `logo_url`, `website`, `original_description`;
    - `payment_channel`.
-2. Store, for every account on every sync: `current`, `available`, `limit`, currency, and the time received.
+2. Store, for every account on every sync: `current`, `available`, `limit`, currency, and the time received. **Done with 4.2** (`plaid_account_balances_v1`); drop the `plaid_accounts` columns from `plaid_capture_v1`.
 3. No behaviour change in this PR beyond showing a merchant logo (when present) in inbox rows.
 
 **Design**
@@ -419,6 +423,13 @@ The budget plan already has monthly allocations ("RRSP $300", optionally linked 
 **Tests:** summing; partial skip; never-overwrite-manual (PBT over sequences); rate carry-forward; month rollover; one summary event; nothing without Plaid.
 
 ### 4.2 Credit card balance check, utilization, limit
+
+> **Status: built ahead of Phase 2** (see the order change under Status). As built:
+> - `plaid_account_balances_v1` stores balances on every sync (`upsertAccount`; a page without balances keeps the last).
+> - `plaidCardBalanceService.getCardBalances()` → `GET /api/plaid/card-balances`; `POST /card-balances/:id/use-bank-limit`.
+> - Causes come from pairing bank rows (`new` **and `ignored`**: an ignored refund is a classic cause) with unlinked tracker expenses and card payments since the bank's first date: same signed amount within 5 days, then one tracker entry against two bank rows (split Amazon charges). Leftovers are `bank_only` / `tracker_only` / `settling` causes with their effect; the rest is `unexplained`.
+> - UI: `CardBalanceCheckMark` under Current on the Financial page card table; `CardBankBalancePanel` in the card detail view. Utilization stays on the existing Credit Limit card (one figure, from the tracker balance).
+> - Verified on production data: CIBC and Wealthsimple both matched to the cent.
 
 **Requirements**
 1. **Tracker side:** the balance as of today (business date), as the Financial page already computes it (`paymentMethodService.calculateCurrentBalance`). Never the stored `current_balance` (2.4 R7).

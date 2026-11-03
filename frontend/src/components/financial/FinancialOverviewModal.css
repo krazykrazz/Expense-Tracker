@@ -261,6 +261,12 @@
   text-align: right;
 }
 
+/* Bank balance check mark sits on its own line under the 90px Current amount */
+.financial-cc-summary-row .financial-cc-amount .card-balance-mark {
+  display: table;
+  margin: 3px 0 0 auto;
+}
+
 .financial-cc-summary-header-row span:last-child {
   width: 110px;
 }

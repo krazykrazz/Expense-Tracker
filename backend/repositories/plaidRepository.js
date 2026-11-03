@@ -49,18 +49,28 @@ class PlaidRepository {
   // ─── Accounts ───
 
   /**
-   * Insert or refresh an account's descriptive fields (never touches its payment-method mapping).
+   * Insert or refresh an account's descriptive fields and, when Plaid sent them, its balances (never touches
+   * its payment-method mapping). Balances are only overwritten when present, so a page without them keeps the last.
    * @param {object} [tx] runInTransaction helpers; defaults to the shared connection
    */
-  async upsertAccount(plaidItemId, { account_id, name, mask, type, subtype }, tx = null) {
+  async upsertAccount(plaidItemId, { account_id, name, mask, type, subtype, balances }, tx = null) {
     const run = tx ? tx.run : dbHelper.execute;
+    const hasBalances = Boolean(balances) && (balances.current != null || balances.available != null);
+    const balanceValues = hasBalances
+      ? [balances.current ?? null, balances.available ?? null, balances.limit ?? null,
+        balances.iso_currency_code ?? balances.unofficial_currency_code ?? null, new Date().toISOString()]
+      : [null, null, null, null, null];
     await run(
-      `INSERT INTO plaid_accounts (plaid_item_id, account_id, name, mask, type, subtype)
-       VALUES (?, ?, ?, ?, ?, ?)
+      `INSERT INTO plaid_accounts (plaid_item_id, account_id, name, mask, type, subtype,
+         current_balance, available_balance, credit_limit, balance_currency, balance_as_of)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(account_id) DO UPDATE SET
          plaid_item_id = excluded.plaid_item_id, name = excluded.name, mask = excluded.mask,
-         type = excluded.type, subtype = excluded.subtype`,
-      [plaidItemId, account_id, name ?? null, mask ?? null, type ?? null, subtype ?? null]
+         type = excluded.type, subtype = excluded.subtype
+         ${hasBalances ? `, current_balance = excluded.current_balance, available_balance = excluded.available_balance,
+         credit_limit = excluded.credit_limit, balance_currency = excluded.balance_currency,
+         balance_as_of = excluded.balance_as_of` : ''}`,
+      [plaidItemId, account_id, name ?? null, mask ?? null, type ?? null, subtype ?? null, ...balanceValues]
     );
   }
 
@@ -610,6 +620,92 @@ class PlaidRepository {
   async deleteTransaction(id) {
     const { changes } = await dbHelper.execute('DELETE FROM plaid_transactions WHERE id = ?', [id]);
     return changes > 0;
+  }
+
+  // ─── Card balance check ───
+
+  /**
+   * Bank credit card accounts mapped to an active credit card payment method in the given environment,
+   * with the balances received on the last sync.
+   */
+  async findMappedCardAccounts(environment) {
+    return dbHelper.queryAll(
+      `SELECT pa.id, pa.name, pa.mask, pa.payment_method_id AS paymentMethodId,
+              pa.current_balance AS currentBalance, pa.available_balance AS availableBalance,
+              pa.credit_limit AS creditLimit, pa.balance_currency AS currency, pa.balance_as_of AS balanceAsOf,
+              pi.institution_name AS institutionName, pi.last_error AS lastError,
+              pm.display_name AS paymentMethodName, pm.credit_limit AS trackerCreditLimit
+       FROM plaid_accounts pa
+       JOIN plaid_items pi ON pi.id = pa.plaid_item_id
+       JOIN payment_methods pm ON pm.id = pa.payment_method_id
+       WHERE pi.environment = ? AND pa.type = 'credit' AND pm.type = 'credit_card' AND pm.is_active = 1
+       ORDER BY pm.display_name, pa.id`,
+      [environment]
+    );
+  }
+
+  /**
+   * Bank rows on the given accounts that can explain a card balance difference: rows not recorded in the
+   * tracker (unreviewed or ignored in the Inbox), and pending charges already linked to an expense. Also the
+   * earliest date the bank sent, so tracker-only entries are only looked for where bank history exists.
+   */
+  async findBalanceCheckRows(plaidAccountIds) {
+    if (plaidAccountIds.length === 0) return { rows: [], firstDate: null };
+    const placeholders = plaidAccountIds.map(() => '?').join(',');
+    const [rows, first] = await Promise.all([
+      dbHelper.queryAll(
+        `SELECT pt.id, pt.amount, COALESCE(pt.authorized_date, pt.date) AS date, COALESCE(pt.merchant_name, pt.name) AS name,
+                pt.status, pt.pending, pt.expense_id AS expenseId
+         FROM plaid_transactions pt
+         WHERE pt.plaid_account_id IN (${placeholders}) AND pt.removed_at IS NULL
+           AND (pt.status IN ('new', 'ignored') OR (pt.pending = 1 AND pt.expense_id IS NOT NULL))
+         ORDER BY date, pt.id`,
+        plaidAccountIds
+      ),
+      dbHelper.queryOne(
+        `SELECT MIN(COALESCE(authorized_date, date)) AS firstDate FROM plaid_transactions WHERE plaid_account_id IN (${placeholders})`,
+        plaidAccountIds
+      )
+    ]);
+    return { rows, firstDate: first?.firstDate ?? null };
+  }
+
+  /**
+   * Expenses on a card from `fromDate` to `toDate` (as the balance counts them: posted date when set) that no
+   * bank transaction is linked to, and card payments in the same window, for the card balance check.
+   */
+  async findUnlinkedCardActivity(paymentMethodId, fromDate, toDate) {
+    const [expenses, payments] = await Promise.all([
+      dbHelper.queryAll(
+        `SELECT e.id, e.date, e.place, COALESCE(e.original_cost, e.amount) AS amount
+         FROM expenses e
+         WHERE e.payment_method_id = ? AND COALESCE(e.posted_date, e.date) >= ? AND COALESCE(e.posted_date, e.date) <= ?
+           AND NOT EXISTS (SELECT 1 FROM plaid_transactions pt WHERE pt.expense_id = e.id)
+         ORDER BY e.date, e.id`,
+        [paymentMethodId, fromDate, toDate]
+      ),
+      dbHelper.queryAll(
+        `SELECT id, payment_date AS date, amount FROM credit_card_payments
+         WHERE payment_method_id = ? AND payment_date >= ? AND payment_date <= ?
+         ORDER BY payment_date, id`,
+        [paymentMethodId, fromDate, toDate]
+      )
+    ]);
+    return { expenses, payments };
+  }
+
+  /** Card activity dated after today, which the as-of-today tracker balance leaves out. */
+  async sumFutureCardActivity(paymentMethodId, today) {
+    const row = await dbHelper.queryOne(
+      `SELECT
+         (SELECT COALESCE(SUM(COALESCE(original_cost, amount)), 0) FROM expenses
+            WHERE payment_method_id = ? AND COALESCE(posted_date, date) > ?) AS expenses,
+         (SELECT COALESCE(SUM(amount), 0) FROM credit_card_payments
+            WHERE payment_method_id = ? AND payment_date > ?) AS payments,
+         (SELECT COUNT(*) FROM expenses WHERE payment_method_id = ? AND COALESCE(posted_date, date) > ?) AS count`,
+      [paymentMethodId, today, paymentMethodId, today, paymentMethodId, today]
+    );
+    return { expenses: row?.expenses || 0, payments: row?.payments || 0, count: row?.count || 0 };
   }
 }
 

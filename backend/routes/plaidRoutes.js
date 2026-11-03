@@ -24,6 +24,8 @@ router.post('/items/:id/reconnected', plaidController.reconnectedItem);
 router.delete('/items/:id', plaidController.disconnectItem);
 router.put('/accounts/:id', plaidController.updateAccount);
 router.post('/sync', plaidController.sync);
+router.get('/card-balances', plaidController.getCardBalances);
+router.post('/card-balances/:id/use-bank-limit', plaidController.useBankCreditLimit);
 router.get('/sync-settings', plaidController.getSyncSettings);
 router.put('/sync-settings', plaidController.saveSyncSettings);
 router.get('/inbox', plaidController.getInbox);

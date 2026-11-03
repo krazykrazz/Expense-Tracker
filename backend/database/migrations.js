@@ -215,6 +215,27 @@ const MIGRATIONS = [
       }
       logger.info('Added pending columns to plaid_transactions');
     }
+  },
+  {
+    // Account balances as received on every sync (card balance check). Plaid sends them with every
+    // /transactions/sync page; they were discarded before.
+    name: 'plaid_account_balances_v1',
+    async apply(db) {
+      for (const column of [
+        'current_balance REAL',
+        'available_balance REAL',
+        'credit_limit REAL',
+        'balance_currency TEXT',
+        'balance_as_of TEXT'
+      ]) {
+        try {
+          await runSql(db, `ALTER TABLE plaid_accounts ADD COLUMN ${column}`);
+        } catch (err) {
+          if (!err.message.includes('duplicate column name')) throw err;
+        }
+      }
+      logger.info('Added balance columns to plaid_accounts');
+    }
   }
 ];
 

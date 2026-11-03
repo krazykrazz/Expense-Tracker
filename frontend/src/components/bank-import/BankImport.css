@@ -695,3 +695,126 @@
 .plaid-settings-footnote {
   margin-top: var(--spacing-3, 12px);
 }
+
+/* Credit card balance check (bank vs tracker) */
+
+.card-balance-mark {
+  display: inline-block;
+  margin-left: var(--spacing-2, 8px);
+  padding: 0 6px;
+  border-radius: var(--radius-full, 999px);
+  font-size: var(--text-xs, 12px);
+  font-weight: 600;
+  line-height: 18px;
+  white-space: nowrap;
+  vertical-align: middle;
+  cursor: help;
+}
+
+.card-balance-mark.match {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.card-balance-mark.differs {
+  background: var(--color-warning-light, #fef3c7);
+  color: #92400e;
+}
+
+.card-balance-mark.stale {
+  opacity: 0.6;
+}
+
+:root[data-theme='dark'] .card-balance-mark.match {
+  background: rgba(34, 197, 94, 0.16);
+  color: #86efac;
+}
+
+:root[data-theme='dark'] .card-balance-mark.differs {
+  background: rgba(245, 158, 11, 0.16);
+  color: #fbbf24;
+}
+
+.card-bank-panel {
+  margin: var(--spacing-3, 12px) 0;
+  padding: var(--spacing-3, 12px);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md, 8px);
+  background: var(--bg-card);
+  font-size: 0.9em;
+}
+
+.card-bank-panel.differs {
+  border-color: #f59e0b;
+}
+
+.card-bank-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-2, 8px);
+  margin-bottom: var(--spacing-2, 8px);
+}
+
+.card-bank-panel-header .card-balance-mark {
+  cursor: default;
+}
+
+.card-bank-panel-title,
+.card-bank-panel-subtitle {
+  font-weight: 600;
+}
+
+.card-bank-panel-numbers {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 2px var(--spacing-3, 12px);
+  margin: 0;
+}
+
+.card-bank-panel-numbers dt {
+  color: var(--text-secondary);
+}
+
+.card-bank-panel-numbers dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.card-bank-panel-asof {
+  margin-top: 2px;
+}
+
+.card-bank-panel-warning {
+  margin-bottom: var(--spacing-2, 8px);
+  color: #92400e;
+}
+
+:root[data-theme='dark'] .card-bank-panel-warning {
+  color: #fbbf24;
+}
+
+.card-bank-panel-causes {
+  margin-top: var(--spacing-3, 12px);
+}
+
+.card-bank-panel-causes ul {
+  margin: var(--spacing-1, 4px) 0 var(--spacing-2, 8px);
+  padding-left: 1.2em;
+  list-style: disc;
+}
+
+.card-bank-panel-causes li {
+  margin-bottom: 2px;
+}
+
+.card-bank-panel-limit {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--spacing-2, 8px);
+  margin-top: var(--spacing-3, 12px);
+  padding-top: var(--spacing-2, 8px);
+  border-top: 1px solid var(--border-muted);
+}

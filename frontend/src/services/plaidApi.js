@@ -56,6 +56,17 @@ export const reconnectBank = (id) =>
 export const OPEN_BANK_IMPORT_EVENT = 'open-bank-import';
 export const openBankImport = (tab = 'inbox') => window.dispatchEvent(new CustomEvent(OPEN_BANK_IMPORT_EVENT, { detail: { tab } }));
 
+/**
+ * Bank vs tracker balance for each credit card linked to a bank account, with likely causes of a difference.
+ * @returns {Promise<{cards: Array<object>}>}
+ */
+export const getCardBalanceChecks = (options = {}) =>
+  call('fetching card balance checks', () => apiGet(API_ENDPOINTS.PLAID_CARD_BALANCES, 'check card balances with the bank', options));
+
+/** Set a credit card's limit to the one its bank reports. */
+export const applyBankCreditLimit = (paymentMethodId) =>
+  call('using bank credit limit', () => apiPost(API_ENDPOINTS.PLAID_CARD_USE_BANK_LIMIT(paymentMethodId), {}, 'use the bank credit limit'));
+
 /** Exchange the Plaid Link public token; returns the stored item with its accounts. */
 export const connectBank = (publicToken, institutionName) =>
   call('connecting bank', () => apiPost(API_ENDPOINTS.PLAID_ITEMS, { publicToken, institutionName }, 'connect bank'));

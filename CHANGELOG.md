@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.19.0] - 2026-11-03
+
+### Credit card balance check: bank vs tracker balance on the Financial page and card details, with likely causes of a difference (unrecorded refunds, typos, unreviewed charges) and the bank credit limit
+
 ## [1.18.0] - 2026-11-03
 
 ### Plaid: Reconnect for expired bank logins (no new Trial slot), connection-problem alerts (header dot, main-screen notification, status chips), and no duplicates when a disconnected bank is connected again

@@ -1215,6 +1215,13 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v1.19.0</div>
+                <div className="changelog-date">November 3, 2026</div>
+                <ul className="changelog-items">
+                  <li>Credit card balance check: bank vs tracker balance on the Financial page and card details, with likely causes of a difference (unrecorded refunds, typos, unreviewed charges) and the bank credit limit</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v1.18.0</div>
                 <div className="changelog-date">November 3, 2026</div>
                 <ul className="changelog-items">

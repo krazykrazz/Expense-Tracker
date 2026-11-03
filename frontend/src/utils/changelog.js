@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.19.0',
+    date: 'November 3, 2026',
+    added: [],
+    changed: ['Credit card balance check: bank vs tracker balance on the Financial page and card details, with likely causes of a difference (unrecorded refunds, typos, unreviewed charges) and the bank credit limit'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.18.0',
     date: 'November 3, 2026',
     added: [],

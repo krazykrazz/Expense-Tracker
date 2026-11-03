@@ -128,7 +128,7 @@ New tables only, so `schema.js` (`CREATE TABLE IF NOT EXISTS`) creates them on e
 
 ## Out of scope (later phases)
 
-Planned in detail in [`specs/plaid-bank-sync/spec.md`](../plaid-bank-sync/spec.md).
+Planned in detail in [`specs/plaid-bank-sync/spec.md`](../../plaid-bank-sync/spec.md).
 
 - Scheduled sync / webhooks
 - Pending→posted handling

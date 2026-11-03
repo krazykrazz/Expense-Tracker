@@ -1,10 +1,15 @@
-# Plaid Bank Import (Phase 1 PoC)
+# Plaid Bank Import
 
-Connect bank and credit card accounts through [Plaid](https://plaid.com/docs/), pull their posted transactions, and review them in an **Import Inbox**: add each one as a new expense, match it to an expense you already entered, or ignore it. Nothing becomes an expense without an explicit action.
+Connect bank and credit card accounts through [Plaid](https://plaid.com/docs/), pull their transactions automatically, and review them in an **Import Inbox**:
+- add each one as a new expense, or match it to an expense you already entered;
+- confirm a planned fixed expense or expected income with it;
+- or ignore it.
 
-This is a proof of concept. Sync is manual, and only the Plaid **Transactions** product is used. See [Limitations](#limitations).
+Nothing becomes an expense without an explicit action. The feature is optional: without Plaid keys the tracker works exactly as before, and none of this appears.
 
-Spec: [specs/plaid-integration/spec.md](../../specs/plaid-integration/spec.md).
+Only the Plaid **Transactions** product is used (balances come with it). See [Limitations](#limitations).
+
+Specs: [Phase 1](../../specs/archive/plaid-integration/spec.md) (archived) and [bank sync roadmap](../../specs/plaid-bank-sync/spec.md).
 
 ## Setup
 
@@ -191,16 +196,27 @@ All under `/api/plaid`; see the [Endpoint Reference](../API_DOCUMENTATION.md#pla
 - Changing an account's mapping logs `plaid_account_updated`; a bank going into error logs `plaid_sync_failed` once (not on every retry).
 - All Plaid events refresh open Bank Import modals and Financial page bank badges in other tabs.
 
+## How banks differ
+
+What a bank sends Plaid varies. As measured on the first two connected banks:
+
+| | CIBC (credit card) | Wealthsimple (chequing, card) |
+|---|---|---|
+| Purchase date | Yes: expenses get the day you spent | No: expenses get the posting date (usually 1-2 days later); change it in the Add form if needed |
+| Pending charges | Marked pending: yellow pill, green when settled | Sent as already settled: green pill at once |
+| Balance includes pending charges | Yes (via available credit) | No: the balance lags new charges |
+| Login | Username and password (no OAuth) | Username and password (no OAuth) |
+
 ## Limitations
 
-These are deferred to later phases:
+These are deferred to later phases (see the [roadmap](../../specs/plaid-bank-sync/spec.md)):
 
-- No webhooks: new transactions arrive with the next automatic sync, not instantly.
-- No reconnect (Plaid "update mode") for an expired bank login. The connection shows the error; in the PoC, disconnect and reconnect (in Production this uses a Trial slot).
-- Changes made at the bank to a settled transaction after you review it are not reflected (pending charges are; see above).
-- Categories come only from your own history for the place; Plaid's categories are not used.
-- No bulk actions, no inbox count badge, no medical/donation people allocation in the inline editor (edit the expense afterwards).
-- Card payments, transfers and refunds are not recorded (ignore them).
-- Confirmed fixed expenses don't yet feed auto-logged loan payments (those still use the due day).
-- **Medical, donation, insurance and reimbursement details** are not in the inline Add form. Add the expense, then edit it in the expense list to set people, insurance, receipts or a reimbursement. its bank colour keeps comparing against the original charged amount.
-- Card balances (Liabilities) and investments are not imported.
+- **Expired bank logins:** there's no reconnect (Plaid "update mode") yet. The connection shows the error. Disconnecting and connecting again works, but in Production uses a new Trial slot.
+- **Not-spending rows:** card payments, transfers, investment contributions, loan payments and refunds can't be recorded from the inbox yet; ignore them. Income can be confirmed.
+- **Bank changes after review:** a settled transaction the bank changes after you reviewed it is not followed. Pending charges are; see above. For Wealthsimple, whose pending charges arrive as settled, a later amount change isn't followed either.
+- **Categories:** they come only from your own history for the place; Plaid's categories are not used.
+- **Inbox conveniences:** no bulk actions and no count badge on the header icon.
+- **Loan payments:** confirmed fixed expenses don't yet feed auto-logged loan payments (those still use the due day).
+- **Medical, donation, insurance and reimbursement details** are not in the inline Add form. Add the expense, then edit it in the expense list to set people, insurance, receipts or a reimbursement. Its bank colour keeps comparing against the original charged amount.
+- **Balances:** account balances (cards, investments, loans) are received but not yet shown or used.
+- **No webhooks:** new transactions arrive with the next automatic sync, not instantly.

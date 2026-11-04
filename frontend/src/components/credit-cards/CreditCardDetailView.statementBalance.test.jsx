@@ -156,8 +156,32 @@ describe('CreditCardDetailView - Statement Balance Display', () => {
       expect(screen.getByText('✓ Paid')).toBeInTheDocument();
     });
 
-    // Check for "Statement paid in full" description
-    expect(screen.getByText('Statement paid in full')).toBeInTheDocument();
+    // Check for "Paid in full" description
+    expect(screen.getByText('Paid in full')).toBeInTheDocument();
+  });
+
+  it('keeps showing the statement amount once it is paid, matching the Financial page', async () => {
+    creditCardApi.getCreditCardDetail.mockResolvedValue(buildUnifiedResponse({
+      statementBalanceInfo: mockStatementBalancePaid,
+      currentCycleStatus: {
+        hasActualBalance: true,
+        cycleStartDate: '2026-01-26',
+        cycleEndDate: '2026-02-25',
+        actualBalance: 4104.59,
+        calculatedBalance: 4100,
+        daysUntilCycleEnd: 10,
+        needsEntry: false
+      }
+    }));
+
+    const { container } = render(
+      <CreditCardDetailView paymentMethodId={1} isOpen={true} onClose={() => {}} onUpdate={() => {}} />
+    );
+
+    await waitFor(() => expect(screen.getByText('✓ Paid')).toBeInTheDocument());
+    const card = container.querySelector('.statement-balance-card');
+    expect(card).toHaveTextContent('$4,104.59');
+    expect(card).toHaveTextContent('From your statement · paid in full');
   });
 
   /**

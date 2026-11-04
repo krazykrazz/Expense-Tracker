@@ -71,10 +71,12 @@ afterAll(() => cleanupIsolatedTestDb(db));
 
 beforeEach(async () => {
   activityLogService.logEvent.mockClear();
+  await run('DELETE FROM plaid_fixed_expense_links');
   await run('DELETE FROM plaid_transactions');
   await run('DELETE FROM plaid_accounts');
   await run('DELETE FROM plaid_items');
   await run('DELETE FROM expenses');
+  await run('DELETE FROM fixed_expenses');
   await run('DELETE FROM credit_card_payments');
   await run('DELETE FROM credit_card_billing_cycles');
   await run('UPDATE payment_methods SET credit_limit = NULL WHERE id = ?', [CREDIT_CARD]);
@@ -188,6 +190,63 @@ describe('plaidCardBalanceService', () => {
   test('refuses to use a limit the bank did not report', async () => {
     await setBank({ current: 10 });
     await expect(plaidCardBalanceService.applyBankCreditLimit(CREDIT_CARD)).rejects.toMatchObject({ statusCode: 400 });
+  });
+
+  test('names a pending charge the bank cancelled while the tracker still has its expense', async () => {
+    const dinner = await addExpense('2026-11-01', 40, 'Dinner');
+    await run(
+      `INSERT INTO plaid_transactions (transaction_id, plaid_account_id, amount, date, name, status, pending, expense_id, removed_at)
+       VALUES ('t-hold', ?, 40, '2026-11-01', 'HOLD', 'added', 1, ?, CURRENT_TIMESTAMP)`,
+      [cardAccountId, dinner]
+    );
+    await setBank({ current: 0, available: 1000, limit: 1000 });
+
+    const card = await cardCheck();
+
+    expect(card).toMatchObject({ status: 'differs', difference: -40, unexplained: 0 });
+    expect(card.causes).toEqual([expect.objectContaining({ type: 'cancelled', expenseId: dinner, name: 'HOLD', effect: -40 })]);
+  });
+
+  test('names a charge confirmed as a fixed expense, which the card balance does not include', async () => {
+    const fixedId = await run(
+      "INSERT INTO fixed_expenses (year, month, name, amount, payment_method_id) VALUES (2026, 11, 'Streaming', 18.99, ?)",
+      [CREDIT_CARD]
+    );
+    const rowId = await stage('t-streaming', { amount: 18.99, date: '2026-11-02', status: 'matched', name: 'STREAMING' });
+    await run("INSERT INTO plaid_fixed_expense_links (plaid_transaction_id, fixed_expense_id, landed_date) VALUES (?, ?, '2026-11-02')", [rowId, fixedId]);
+    await setBank({ current: 18.99, available: 981.01, limit: 1000 });
+
+    const card = await cardCheck();
+
+    expect(card).toMatchObject({ status: 'differs', difference: 18.99, unexplained: 0 });
+    expect(card.causes).toEqual([expect.objectContaining({ type: 'fixed_expense', name: 'STREAMING', effect: 18.99 })]);
+  });
+
+  test('explains a credit balance at the bank, which the tracker shows as $0', async () => {
+    await setBank({ current: -25, available: 1025, limit: 1000 });
+
+    const card = await cardCheck();
+
+    expect(card).toMatchObject({ status: 'differs', bank: { owed: -25 }, tracker: 0, unexplained: 0 });
+    expect(card.causes).toEqual([expect.objectContaining({ type: 'credit_balance', amount: -25, effect: -25 })]);
+  });
+
+  test('ignores activity already covered by a statement entered from the real statement', async () => {
+    // Statement to Oct 15 entered as $100: that's the anchor; the unlinked Oct 12 entry is inside it
+    await run(
+      `INSERT INTO credit_card_billing_cycles (payment_method_id, cycle_start_date, cycle_end_date, actual_statement_balance,
+         calculated_statement_balance, is_user_entered) VALUES (?, '2026-09-16', '2026-10-15', 100, 95, 1)`,
+      [CREDIT_CARD]
+    );
+    await stage('t-first', { amount: 100, date: '2026-10-05', status: 'matched' });
+    await addExpense('2026-10-12', 5, 'Inside the statement');
+    await addExpense('2026-10-20', 30, 'Typo after the statement');
+    await setBank({ current: 100, available: 900, limit: 1000 });
+
+    const card = await cardCheck();
+
+    expect(card).toMatchObject({ status: 'differs', tracker: 130, difference: -30, unexplained: 0 });
+    expect(card.causes.map(c => c.name)).toEqual(['Typo after the statement']);
   });
 
   test('balances received on sync are stored, and kept when a page omits them', async () => {

@@ -646,19 +646,27 @@ class PlaidRepository {
 
   /**
    * Bank rows on the given accounts that can explain a card balance difference: rows not recorded in the
-   * tracker (unreviewed or ignored in the Inbox), and pending charges already linked to an expense. Also the
-   * earliest date the bank sent, so tracker-only entries are only looked for where bank history exists.
+   * tracker (unreviewed or ignored in the Inbox), pending charges already linked to an expense (including
+   * ones the bank cancelled, `removed`), and charges confirmed as a fixed expense (`fixedExpense`: fixed
+   * expenses aren't part of the tracker's card balance). Also the earliest date the bank sent, so
+   * tracker-only entries are only looked for where bank history exists.
    */
   async findBalanceCheckRows(plaidAccountIds) {
     if (plaidAccountIds.length === 0) return { rows: [], firstDate: null };
     const placeholders = plaidAccountIds.map(() => '?').join(',');
     const [rows, first] = await Promise.all([
       dbHelper.queryAll(
-        `SELECT pt.id, pt.amount, COALESCE(pt.authorized_date, pt.date) AS date, COALESCE(pt.merchant_name, pt.name) AS name,
-                pt.status, pt.pending, pt.expense_id AS expenseId
+        `SELECT pt.id, pt.amount, COALESCE(pt.authorized_date, pt.date) AS date, pt.date AS postedDate,
+                COALESCE(pt.merchant_name, pt.name) AS name, pt.status, pt.pending, pt.expense_id AS expenseId,
+                pt.removed_at IS NOT NULL AS removed,
+                EXISTS (SELECT 1 FROM plaid_fixed_expense_links fl WHERE fl.plaid_transaction_id = pt.id) AS fixedExpense
          FROM plaid_transactions pt
-         WHERE pt.plaid_account_id IN (${placeholders}) AND pt.removed_at IS NULL
-           AND (pt.status IN ('new', 'ignored') OR (pt.pending = 1 AND pt.expense_id IS NOT NULL))
+         WHERE pt.plaid_account_id IN (${placeholders})
+           AND (
+             (pt.removed_at IS NULL AND (pt.status IN ('new', 'ignored') OR (pt.pending = 1 AND pt.expense_id IS NOT NULL)))
+             OR (pt.removed_at IS NOT NULL AND pt.pending = 1 AND pt.expense_id IS NOT NULL)
+             OR (pt.removed_at IS NULL AND EXISTS (SELECT 1 FROM plaid_fixed_expense_links fl WHERE fl.plaid_transaction_id = pt.id))
+           )
          ORDER BY date, pt.id`,
         plaidAccountIds
       ),
@@ -677,7 +685,7 @@ class PlaidRepository {
   async findUnlinkedCardActivity(paymentMethodId, fromDate, toDate) {
     const [expenses, payments] = await Promise.all([
       dbHelper.queryAll(
-        `SELECT e.id, e.date, e.place, COALESCE(e.original_cost, e.amount) AS amount
+        `SELECT e.id, e.date, COALESCE(e.posted_date, e.date) AS postedDate, e.place, COALESCE(e.original_cost, e.amount) AS amount
          FROM expenses e
          WHERE e.payment_method_id = ? AND COALESCE(e.posted_date, e.date) >= ? AND COALESCE(e.posted_date, e.date) <= ?
            AND NOT EXISTS (SELECT 1 FROM plaid_transactions pt WHERE pt.expense_id = e.id)
@@ -685,7 +693,7 @@ class PlaidRepository {
         [paymentMethodId, fromDate, toDate]
       ),
       dbHelper.queryAll(
-        `SELECT id, payment_date AS date, amount FROM credit_card_payments
+        `SELECT id, payment_date AS date, payment_date AS postedDate, amount FROM credit_card_payments
          WHERE payment_method_id = ? AND payment_date >= ? AND payment_date <= ?
          ORDER BY payment_date, id`,
         [paymentMethodId, fromDate, toDate]

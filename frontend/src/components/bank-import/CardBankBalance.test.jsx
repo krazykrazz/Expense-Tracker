@@ -86,6 +86,24 @@ describe('CardBankBalanceCauses', () => {
     const { container } = render(<CardBankBalanceCauses check={matching} />);
     expect(container).toBeEmptyDOMElement();
   });
+
+  it('describes a cancelled pending charge, a fixed-expense charge and a credit balance', () => {
+    render(<CardBankBalanceCauses check={{
+      ...differing,
+      unexplained: 0,
+      causes: [
+        { type: 'cancelled', transactionId: 3, expenseId: 9, date: '2026-11-01', name: 'HOLD', amount: 40, effect: -40 },
+        { type: 'fixed_expense', transactionId: 4, date: '2026-11-02', name: 'STREAMING', amount: 18.99, effect: 18.99 },
+        { type: 'credit_balance', date: '2026-11-03', name: 'Credit balance', amount: -25, effect: -25 }
+      ]
+    }} />);
+
+    expect(screen.getByText(/Pending charge the bank cancelled, still an expense in the tracker: HOLD \$40.00/)).toBeInTheDocument();
+    expect(screen.getByText(/Confirmed as a fixed expense, which the card balance doesn't include: STREAMING \$18.99/)).toBeInTheDocument();
+    expect(screen.getByText("The card is $25.00 in credit at the bank; the tracker's balance stops at $0.00")).toBeInTheDocument();
+    // A cancelled charge is reviewed in the Inbox
+    expect(screen.getByRole('button', { name: 'Open Inbox' })).toBeInTheDocument();
+  });
 });
 
 describe('CardBankLimitAction', () => {

@@ -37,7 +37,7 @@ export const CardBankBalanceLine = ({ check }) => {
 export const CardBankBalanceCauses = ({ check }) => {
   if (!check || check.status !== 'differs') return null;
   const causes = check.causes || [];
-  const hasInboxCause = causes.some(cause => cause.type === 'bank_only');
+  const hasInboxCause = causes.some(cause => cause.type === 'bank_only' || cause.type === 'cancelled');
   const unexplained = Math.abs(check.unexplained || 0) >= 0.005;
   return (
     <section className="card-bank-causes" data-testid="card-bank-causes" aria-label="Why the balance differs from the bank">
@@ -49,7 +49,7 @@ export const CardBankBalanceCauses = ({ check }) => {
       </div>
       <ul>
         {causes.map(cause => (
-          <li key={`${cause.type}-${cause.transactionId ?? cause.kind}-${cause.id ?? cause.expenseId ?? ''}`}>{describeCause(cause)}</li>
+          <li key={`${cause.type}-${cause.transactionId ?? cause.kind ?? ''}-${cause.id ?? cause.expenseId ?? ''}`}>{describeCause(cause)}</li>
         ))}
         {unexplained && (
           <li>

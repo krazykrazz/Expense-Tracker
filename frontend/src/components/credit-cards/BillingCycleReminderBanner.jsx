@@ -46,6 +46,8 @@ const BillingCycleReminderBanner = ({
   };
 
   const handleKeyDown = (e) => {
+    // Keys from a child (the dismiss button, a card row) are theirs: Enter on × must dismiss, not open
+    if (e.target !== e.currentTarget) return;
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       handleClick(e);

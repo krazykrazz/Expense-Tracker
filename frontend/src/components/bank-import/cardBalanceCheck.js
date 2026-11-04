@@ -46,6 +46,12 @@ export function describeCause(cause) {
         : `In the tracker, not at the bank: ${what}. A typo, the wrong card, a duplicate, or not posted yet?`;
     case 'settling':
       return `Still pending at the bank, which leaves pending charges out of its balance: ${what}`;
+    case 'cancelled':
+      return `Pending charge the bank cancelled, still an expense in the tracker: ${what}. Review it in the Inbox`;
+    case 'fixed_expense':
+      return `Confirmed as a fixed expense, which the card balance doesn't include: ${what}`;
+    case 'credit_balance':
+      return `The card is ${formatCurrency(Math.abs(cause.amount))} in credit at the bank; the tracker's balance stops at $0.00`;
     default:
       return what;
   }

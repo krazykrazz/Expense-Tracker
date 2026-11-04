@@ -67,12 +67,13 @@
   box-shadow: var(--shadow-md), 0 0 0 1px var(--color-positive);
 }
 
-.balance-card {
+/* .summary-card only: the credit card detail view's cards also carry a `balance-card` class */
+.summary-card.balance-card {
   background: linear-gradient(135deg, var(--bg-card) 0%, var(--color-warning-light) 100%);
   border-color: var(--color-warning);
 }
 
-.balance-card:hover {
+.summary-card.balance-card:hover {
   box-shadow: var(--shadow-md), 0 0 0 1px var(--color-warning);
 }
 

@@ -149,6 +149,51 @@ Past confirmed-true patterns on THIS repo:
   investments, credit cards, invoices, income copy, passed none), so the sending tab also
   got its own event. Fixed centrally with `utils/requestContext.js` (AsyncLocalStorage set
   by middleware; `logEvent` falls back to it). Don't re-add per-call `tabId` threading.
+- **Keyboard bubbling in clickable banners** (found 2026-11, 8 banners: Over-planned,
+  Bank attention, Budget/Credit card/Billing cycle/Loan payment/Insurance reminders,
+  Auto-generated cycle). The banner `div role="button"` guards its `onClick` with
+  `e.target.closest('.reminder-dismiss-btn')` but its `onKeyDown` doesn't: Enter/Space on the
+  focused × bubbles up, `preventDefault()` cancels the button's own activation, and the
+  banner action runs instead of dismissing. Fixed 2026-11 (PR #446) with
+  `if (e.target !== e.currentTarget) return;` at the top of each handler; new banners copy this
+  template, so check the guard is there.
+- **`formatCurrency` put the sign after the `$`** (`$-72,941.61` for a negative net worth;
+  fixed 2026-11, PR #446: the sign is decided on the rounded value, so `-0.001` is `$0.00`).
+  Watch for the same bug in any hand-rolled `'$' + value` formatting.
+- **Dark theme gaps in the Financial modal** (fixed 2026-11, PR #446): the `--financial-*`
+  palette in `FinancialOverviewModal.css` had no dark values, so `loan-row`, `investment-row`,
+  the Active tabs, type badges and secondary/danger buttons stayed near-white in dark mode. Now
+  remapped in one dark block at the end of that file. The `--color-*-light` tints are still
+  light-only app-wide by design: small chips with dark text read fine; override them only on
+  large surfaces that hold theme text (cards, rows). Screenshots can miss it; measure (see 2a).
+- **Global class-name collisions**: `SummaryPanel.css` styled a bare `.balance-card` with a
+  yellow gradient, which leaked into the credit card detail view's `balance-card` cards
+  (yellow in light mode, a light gradient under light text in dark mode). Fixed by scoping it
+  to `.summary-card.balance-card`. When a style shows up where it shouldn't, list the matching
+  rules (`document.styleSheets` + `el.matches(rule.selectorText)`) to find the source file.
+- **CSS selector-list edits by string replace**: a light selector like
+  `.x.bank-pill-differs {` is a substring of `:root[data-theme='dark'] .x.bank-pill-differs {`,
+  so a scripted replace that appends `,\n.y.bank-pill-differs {` also lands in the dark block
+  WITHOUT the prefix, and dark colours win in the light theme. After editing grouped
+  selectors, grep the dark block for lines that lack `:root[data-theme='dark']`.
+- **Plaid (bank import)** confirmed patterns:
+  - `/transactions/sync` only returns `accounts` that had transactions in that response; a
+    quiet sync carries no balances. Balances need `/accounts/get` (fixed in 1.19.1).
+  - A sync whose only changes are re-attached rows (`counts.reattached`) or refreshed
+    balances logs no `plaid_sync_completed`, so other tabs/open views don't refresh.
+  - Card balance check causes first covered only unreviewed/ignored bank rows and unlinked
+    tracker entries, so these surfaced as "unexplained": a linked pending charge the bank
+    cancelled (`removed_at` set), a bank charge matched to a card-paid fixed expense (fixed
+    expenses aren't in the card balance), and a card in credit (tracker balance is clamped
+    with `Math.max(0, …)`, bank `limit − available` goes negative). Fixed 2026-11 (PR #446):
+    `cancelled`, `fixed_expense`, `credit_balance` causes.
+  - Reconciliation must respect the tracker's balance anchor: `calculateCurrentBalance` starts
+    from the latest billing cycle's effective balance and only adds activity posted after its
+    end date. With a user-entered (actual) statement, earlier entries can't cause a difference,
+    so listing them as causes was wrong (fixed in the same PR). Check any new "why does X
+    differ" logic against how X is actually computed.
+  - Status is fetched by several hooks (`usePlaidStatus` ×2, `useBankAccountLinks`,
+    `useCardBalanceChecks`), each re-requesting `/api/plaid/status` on every `plaid` event.
 Past confirmed-false patterns (subagent hallucinations on THIS repo):
 - "Duplicate `findById()` in `loanPaymentRepository.js`" — FALSE, there is only
   one `findById()` (line 98). The two methods at lines 47/68 are `findByLoan` and
@@ -163,6 +208,9 @@ Past confirmed-false patterns (subagent hallucinations on THIS repo):
 - "`createPayment` vs `updatePayment` guard drift on `balanceOverride`" — FALSE
   for current code. Both now use identical `!= null && !== ''` guards (lines 38
   and 150 in the controller). Was true historically but since fixed.
+- "Financial card table shows amounts without thousands separators (`$2129.92`)" —
+  FALSE in the browser. Both formatters group digits; jsdom's `toLocaleString` doesn't,
+  so the text only lacks commas inside Vitest. Don't "fix" it from a test failure.
 
 Downgrade or drop any finding you cannot reproduce by reading the source.
 
@@ -182,6 +230,21 @@ A notification row ends up with about **215px on desktop and 165px on tablet**.
   the layout, not the viewport.
 - `flex: 1; min-width: 0` on a text label next to `flex-shrink: 0` siblings lets the
   label collapse to zero width and overlap them; that was the banner-overlap bug.
+
+**Checking a view for real (UI and dark theme):**
+- Run the dev servers on a throwaway COPY of production data: `VACUUM INTO` inside the
+  container, `docker cp` it under the session folder, point `CONFIG_DIR` at it. In the copy,
+  delete the `plaid_client_id`/`plaid_secret_enc`/`plaid_environment` settings (the secret
+  can't be decrypted locally) and set `plaid_items.environment = 'sandbox'`; load the
+  `PLAID_*` values from `backend/.env` into the server's environment (it doesn't read `.env`).
+  Stop the servers by PID and delete the copy afterwards; a stale `node server.js` keeps the
+  port and the new one silently never binds.
+- Measure, don't eyeball: in dark mode, list elements whose computed `backgroundColor` has
+  r, g and b above 200 (`page.evaluate` over the modal). That found 11 light elements a
+  screenshot didn't make obvious.
+- Browser tool quirks: `screenshotPage` can return a stale frame after HMR (check computed
+  styles to confirm a CSS fix); `click()` can time out waiting for "stable" in animated
+  modals, so use `locator.dispatchEvent('click')`.
 
 ### 2b. Performance-specific audit patterns
 When auditing for performance issues, check these verified patterns:

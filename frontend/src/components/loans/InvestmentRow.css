@@ -1,8 +1,8 @@
 /* InvestmentRow — flat row style for unified Financial Overview */
 
 .investment-row {
-  background: #f8f9fa;
-  border: 1px solid #e2e8f0;
+  background: var(--financial-bg-base, #f8f9fa);
+  border: 1px solid var(--financial-border, #e2e8f0);
   border-radius: 6px;
   padding: 12px 16px;
   margin-bottom: 8px;
@@ -10,7 +10,7 @@
 }
 
 .investment-row:hover {
-  background: #f1f5f9;
+  background: var(--financial-bg-hover, #f1f5f9);
 }
 
 .investment-row.needs-update {

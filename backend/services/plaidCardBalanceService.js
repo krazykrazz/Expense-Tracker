@@ -2,6 +2,8 @@ const plaidConfig = require('../config/plaid');
 const plaidRepository = require('../repositories/plaidRepository');
 const paymentMethodRepository = require('../repositories/paymentMethodRepository');
 const paymentMethodBalanceService = require('./paymentMethodBalanceService');
+const billingCycleRepository = require('../repositories/billingCycleRepository');
+const { calculateEffectiveBalance } = require('../utils/effectiveBalanceUtil');
 const paymentMethodService = require('./paymentMethodService');
 const { getTodayString } = require('../utils/dateUtils');
 
@@ -118,7 +120,7 @@ class PlaidCardBalanceService {
 
     const difference = bank ? round2(bank.owed - tracker) : null;
     const status = bank === null ? 'unknown' : Math.abs(difference) < 0.005 ? 'match' : 'differs';
-    const explanation = await this._explain(paymentMethodId, accounts, bank, today);
+    const explanation = await this._explain(paymentMethodId, accounts, bank, tracker, today);
     const explained = round2(explanation.causes.reduce((sum, cause) => sum + cause.effect, 0));
 
     const bankLimit = accounts.every(a => a.creditLimit != null)
@@ -148,55 +150,76 @@ class PlaidCardBalanceService {
   }
 
   /**
+   * The billing cycle the tracker's current balance starts from, when its balance is the one entered from the
+   * real statement: everything posted up to its end date is already reconciled by that statement, so only
+   * later activity can explain a difference. Null without such a cycle (calculated balances are sums of the
+   * tracker's own entries, so earlier entries still count).
+   */
+  async _statementAnchorEnd(paymentMethodId) {
+    const latest = await billingCycleRepository.findByPaymentMethod(paymentMethodId, { limit: 1 });
+    const cycle = Array.isArray(latest) && latest.length > 0 ? latest[0] : null;
+    if (!cycle || !cycle.cycle_end_date) return null;
+    return calculateEffectiveBalance(cycle).balanceType === 'actual' ? cycle.cycle_end_date : null;
+  }
+
+  /**
    * Likely causes of a difference, each with its `effect` on (bank − tracker):
    * - `bank_only`: at the bank (unreviewed or ignored in the Inbox), not in the tracker (a refund, fee,
    *   or charge nobody entered);
    * - `tracker_only`: entered in the tracker since the bank history starts, but not at the bank (a typo,
    *   a wrong card, a duplicate, or not posted yet);
-   * - `settling`: added from a pending charge on a bank whose balance leaves pending charges out.
+   * - `settling`: added from a pending charge on a bank whose balance leaves pending charges out;
+   * - `cancelled`: added from a pending charge the bank then dropped (review it in the Inbox);
+   * - `fixed_expense`: a charge confirmed as a fixed expense, which the card balance doesn't include;
+   * - `credit_balance`: the card is in credit at the bank, and the tracker's balance stops at $0.
+   * Only activity posted after a statement entered from the real statement counts (see _statementAnchorEnd).
    * Inbox rows that match an entry already in the tracker cancel out; they are counted in `awaitingMatch`.
    */
-  async _explain(paymentMethodId, accounts, bank, today) {
+  async _explain(paymentMethodId, accounts, bank, tracker, today) {
     const includesPending = bank ? bank.includesPending : true;
-    const { rows, firstDate } = await plaidRepository.findBalanceCheckRows(accounts.map(a => a.id));
+    const [{ rows, firstDate }, anchorEnd] = await Promise.all([
+      plaidRepository.findBalanceCheckRows(accounts.map(a => a.id)),
+      this._statementAnchorEnd(paymentMethodId)
+    ]);
+    const afterAnchor = (postedDate) => !anchorEnd || postedDate > anchorEnd;
 
     const bankItems = [];
     const settling = [];
+    const cancelled = [];
+    const fixedCharges = [];
     for (const row of rows) {
-      if (row.date > today) continue;
-      if (row.expenseId != null) {
+      if (row.date > today || !afterAnchor(row.postedDate)) continue;
+      if (row.removed) {
+        // The bank dropped it, the tracker still has its expense
+        cancelled.push(row);
+      } else if (row.fixedExpense) {
+        fixedCharges.push(row);
+      } else if (row.expenseId != null) {
         // Linked pending charge: in the tracker; in the bank balance only when the bank counts pending
         if (!includesPending) settling.push(row);
-        continue;
+      } else if (!(row.pending && !includesPending)) {
+        bankItems.push({ ...row, effect: row.amount });
       }
-      if (row.pending && !includesPending) continue;
-      bankItems.push({ ...row, effect: row.amount });
     }
 
     let trackerItems = [];
     if (firstDate) {
       const { expenses, payments } = await plaidRepository.findUnlinkedCardActivity(paymentMethodId, firstDate, today);
       trackerItems = [
-        ...expenses.map(e => ({ kind: 'expense', id: e.id, date: e.date, name: e.place, amount: e.amount, effect: e.amount })),
-        ...payments.map(p => ({ kind: 'payment', id: p.id, date: p.date, name: 'Payment', amount: p.amount, effect: -p.amount }))
-      ];
+        ...expenses.map(e => ({ kind: 'expense', id: e.id, date: e.date, postedDate: e.postedDate, name: e.place, amount: e.amount, effect: e.amount })),
+        ...payments.map(p => ({ kind: 'payment', id: p.id, date: p.date, postedDate: p.postedDate, name: 'Payment', amount: p.amount, effect: -p.amount }))
+      ].filter(item => afterAnchor(item.postedDate));
     }
 
     // Ignored bank rows only explain something when nothing in the tracker accounts for them, e.g. a refund
     // that was ignored because it couldn't be recorded. A card payment recorded by hand pairs with its bank row.
     const { bankOnly, trackerOnly, pairs, splits } = pairUp(bankItems, trackerItems);
 
+    const bankCause = (type, row, effect, extra = {}) => ({
+      type, transactionId: row.id, date: row.date, name: row.name, amount: row.amount, effect: round2(effect), ...extra
+    });
     const causes = [
-      ...bankOnly.map(row => ({
-        type: 'bank_only',
-        transactionId: row.id,
-        date: row.date,
-        name: row.name,
-        amount: row.amount,
-        pending: Boolean(row.pending),
-        inboxStatus: row.status,
-        effect: round2(row.amount)
-      })),
+      ...bankOnly.map(row => bankCause('bank_only', row, row.amount, { pending: Boolean(row.pending), inboxStatus: row.status })),
       ...trackerOnly.map(item => ({
         type: 'tracker_only',
         kind: item.kind,
@@ -206,16 +229,15 @@ class PlaidCardBalanceService {
         amount: item.amount,
         effect: round2(-item.effect)
       })),
-      ...settling.map(row => ({
-        type: 'settling',
-        transactionId: row.id,
-        expenseId: row.expenseId,
-        date: row.date,
-        name: row.name,
-        amount: row.amount,
-        effect: round2(-row.amount)
-      }))
+      ...settling.map(row => bankCause('settling', row, -row.amount, { expenseId: row.expenseId })),
+      ...cancelled.map(row => bankCause('cancelled', row, -row.amount, { expenseId: row.expenseId })),
+      ...fixedCharges.map(row => bankCause('fixed_expense', row, row.amount))
     ].sort((a, b) => a.date.localeCompare(b.date));
+
+    // The tracker's balance never goes below $0 (paymentMethodBalanceService), so a credit at the bank can't match
+    if (bank && bank.owed < 0 && tracker === 0) {
+      causes.push({ type: 'credit_balance', date: today, name: 'Credit balance', amount: bank.owed, effect: round2(bank.owed) });
+    }
 
     return {
       causes,
@@ -223,7 +245,6 @@ class PlaidCardBalanceService {
       splitCharges: splits.length
     };
   }
-
   /**
    * Set a card's credit limit to the one the bank reports (the user chose to). Logged as payment_method_updated.
    */

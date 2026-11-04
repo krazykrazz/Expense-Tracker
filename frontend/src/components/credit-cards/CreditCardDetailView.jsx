@@ -390,16 +390,16 @@ const CreditCardDetailView = ({
                     )}
                   </div>
                   <div className="overview-value balance-value">
-                    {statementBalanceInfo?.isPaid 
-                      ? formatCurrency(0) 
-                      : currentCycleStatus?.hasActualBalance
-                        ? formatCurrency(currentCycleStatus.actualBalance)
-                        : formatCurrency(currentCycleStatus?.calculatedBalance ?? statementBalanceInfo?.statementBalance ?? paymentMethod.statement_balance)
+                    {/* The statement amount even once paid (the Paid badge says it's settled), so it matches the
+                        Statement column on the Financial page */}
+                    {currentCycleStatus?.hasActualBalance
+                      ? formatCurrency(currentCycleStatus.actualBalance)
+                      : formatCurrency(currentCycleStatus?.calculatedBalance ?? statementBalanceInfo?.statementBalance ?? paymentMethod.statement_balance)
                     }
                   </div>
                   <div className="balance-description">
                     {statementBalanceInfo?.isPaid 
-                      ? 'Statement paid in full'
+                      ? (currentCycleStatus?.hasActualBalance ? 'From your statement · paid in full' : 'Paid in full')
                       : currentCycleStatus?.hasActualBalance
                         ? 'From your statement'
                         : paymentMethod.payment_due_day 
@@ -420,12 +420,12 @@ const CreditCardDetailView = ({
                 <div className="cc-overview-card balance-card projected-balance-card">
                   <div className="overview-label">
                     Projected Balance
-                    <span className="pending-indicator" title="Includes future expenses">⏳</span>
+                    <span className="pending-indicator" role="img" aria-label="Includes entries dated after today" title="Includes entries dated after today">⏳</span>
                   </div>
                   <div className="overview-value balance-value">
                     {formatCurrency(paymentMethod.projected_balance)}
                   </div>
-                  <div className="balance-description">Including pending expenses</div>
+                  <div className="balance-description">Including entries dated after today</div>
                 </div>
               )}
             </div>
@@ -460,7 +460,8 @@ const CreditCardDetailView = ({
                   <div className="overview-label">Payment Due</div>
                   <div className="overview-value due-value">
                     {statementBalanceInfo?.isPaid ? (
-                      <span className="paid-status">✓ Paid</span>
+                      // The Statement Balance card already says Paid; say what that means for the due date
+                      <span className="paid-status">Nothing due</span>
                     ) : paymentMethod.days_until_due <= 0 ? (
                       <span className="overdue">Overdue!</span>
                     ) : paymentMethod.days_until_due === 1 ? (

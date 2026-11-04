@@ -186,9 +186,12 @@ Each sync also stores the balance the bank reports for every account. For credit
     - *At the bank, not in the tracker:* a charge or credit still waiting in the Inbox, or one that was **ignored**, such as a refund that was never recorded. **Open Inbox** goes straight there;
     - *In the tracker, not at the bank:* an expense or payment since the bank's history starts (about 30 days before connecting) that no bank transaction is linked to: a typo, the wrong card, a duplicate, or not posted yet;
     - *Still pending:* an expense added from a pending charge, on a bank whose balance leaves pending charges out;
+    - *Cancelled by the bank:* an expense added from a pending charge the bank then dropped (review it in the Inbox);
+    - *Fixed expense:* a charge confirmed as a fixed expense, which the card balance doesn't include;
+    - *Credit balance:* the card is in credit at the bank, while the tracker's balance stops at $0;
     - anything left over is shown as not explained by the bank's recent transactions (e.g. an old entry, or a wrong statement balance);
   - **Use bank limit** in the Credit Limit card (or on its own when the card has no limit), only when the bank reports a different limit. Nothing else is ever changed automatically.
-- **How causes are found:** bank rows and tracker entries for the same amount within 5 days cancel out (a payment entered by hand pairs with the bank's payment). One tracker entry also cancels out two bank charges that add up to it, e.g. an Amazon order shipped and charged in two parts.
+- **How causes are found:** bank rows and tracker entries for the same amount within 5 days cancel out (a payment entered by hand pairs with the bank's payment). One tracker entry also cancels out two bank charges that add up to it, e.g. an Amazon order shipped and charged in two parts. When the card's latest statement balance was entered from the real statement, only activity posted after that statement is considered: the statement already accounts for everything before it.
 - The check refreshes after every sync, payment and expense change. A bank that isn't syncing is flagged, since its balance may be out of date.
 
 ## How it works

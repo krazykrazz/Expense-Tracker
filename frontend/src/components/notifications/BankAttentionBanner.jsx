@@ -27,6 +27,8 @@ const BankAttentionBanner = ({ banks, onDismiss }) => {
         if (!event.target.closest('.reminder-dismiss-btn')) open();
       }}
       onKeyDown={(event) => {
+        // Keys from the dismiss button are its own: Enter on × must dismiss, not open
+        if (event.target !== event.currentTarget) return;
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault();
           open();

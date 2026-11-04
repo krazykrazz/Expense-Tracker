@@ -254,7 +254,7 @@ Every route except `/status` and `/settings` returns `503` until Plaid is config
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/plaid/status` | `{ enabled, source: 'settings'\|'env'\|'none', environment, trial: { limit, used } \| null, needsAttention: [{ id, institutionName, status: 'needs_login'\|'gone' }] }` (Production only reports Trial usage; `needsAttention` lists banks in the current environment that need the user) |
+| GET | `/api/plaid/status` | `{ enabled, source: 'settings'\|'env'\|'none', environment, trial: { limit, used } \| null, needsAttention: [{ id, institutionName, status: 'needs_login'\|'gone' }], staleData: [{ id, institutionName, bankUpdatedAt, institutionStatus }] }` (Production only reports Trial usage; `needsAttention` lists banks in the current environment that need the user, `staleData` banks Plaid hasn't had new data from for over 12 hours) |
 | GET | `/api/plaid/settings` | `{ source, editable, enabled, environment, clientIdHint, secretHint, problems, keySource, connectedBanks: { sandbox, production } }`; keys only as masked hints |
 | PUT | `/api/plaid/settings` | Save keys: body `{ clientId?, secret?, environment? }` (blank keeps the saved value). 400 invalid, 409 when `PLAID_*` env vars are set or banks from the other environment are connected |
 | POST | `/api/plaid/settings/test` | Check keys with Plaid without saving (same body): `{ ok, environment, message }` |
@@ -262,7 +262,7 @@ Every route except `/status` and `/settings` returns `503` until Plaid is config
 | POST | `/api/plaid/link-token` | Create a Plaid Link token (`{ linkToken, expiration }`). Body `{ itemId? }`: with `itemId`, a token for *update mode* to repair that bank's login (no Trial slot used; 404 unknown bank, 409 bank from the other environment) |
 | POST | `/api/plaid/items` | Connect a bank: body `{ publicToken, institutionName? }`; returns the item with its accounts (201) |
 | POST | `/api/plaid/items/:id/reconnected` | After update mode succeeds: clears the bank's error, logs `plaid_item_updated` and syncs it at once. Returns `{ item, sync }` (`sync` is the sync result, or `{ error }` if it still fails). 404 unknown bank, 409 other environment |
-| GET | `/api/plaid/items` | Connected banks with their accounts (`{ items }`), each with `status`: `ok`, `needs_login`, `gone` or `error`; never includes tokens |
+| GET | `/api/plaid/items` | Connected banks with their accounts (`{ items }`), each with `status`: `ok`, `needs_login`, `gone`, `error` or `stale` (no new data from Plaid for over 12 hours), and `bankUpdatedAt`, `bankUpdateFailedAt`, `institutionStatus`, `institutionStatusSince` (recorded after each sync); never includes tokens |
 | DELETE | `/api/plaid/items/:id` | Disconnect a bank (removes it at Plaid; keeps added/matched links) (204) |
 | PUT | `/api/plaid/accounts/:id` | Map an account to a payment method: body `{ paymentMethodId }` (`null` = don't import) |
 | POST | `/api/plaid/sync` | Sync all banks: `{ results: [{ id, institutionName, added, updated, removed, updateStatus } \| { id, institutionName, error }], totals }` |

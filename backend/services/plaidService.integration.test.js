@@ -74,7 +74,13 @@ beforeEach(async () => {
     itemPublicTokenExchange: jest.fn(),
     accountsGet: jest.fn(),
     transactionsSync: jest.fn(),
-    itemRemove: jest.fn().mockResolvedValue({ data: {} })
+    itemRemove: jest.fn().mockResolvedValue({ data: {} }),
+    itemGet: jest.fn().mockResolvedValue({
+      data: { item: { institution_id: 'ins_test' }, status: { transactions: { last_successful_update: new Date().toISOString(), last_failed_update: null } } }
+    }),
+    institutionsGetById: jest.fn().mockResolvedValue({
+      data: { institution: { status: { transactions_updates: { status: 'HEALTHY', last_status_change: '2026-11-01T00:00:00Z' } } } }
+    })
   };
   plaidConfig.getPlaidClient.mockReturnValue(client);
   activityLogService.logEvent.mockClear();
@@ -98,7 +104,34 @@ describe('plaidService', () => {
     });
 
     test('sandbox has no Trial counter', async () => {
-      expect(await plaidService.getStatus()).toEqual({ enabled: true, source: 'env', environment: 'sandbox', trial: null, needsAttention: [] });
+      expect(await plaidService.getStatus()).toEqual({ enabled: true, source: 'env', environment: 'sandbox', trial: null, needsAttention: [], staleData: [] });
+    });
+
+    test('a bank Plaid has had no new data from for over 12 hours is stale; a login problem takes precedence', async () => {
+      const quiet = await connect('Quiet Bank');
+      const fresh = await connect('Fresh Bank');
+      const expired = await connect('Expired Bank');
+      const hoursAgo = (h) => new Date(Date.now() - h * 3600 * 1000).toISOString();
+      const quietUpdated = hoursAgo(13);
+      await run("UPDATE plaid_items SET bank_updated_at = ?, institution_status = 'DOWN' WHERE id = ?", [quietUpdated, quiet.id]);
+      await run('UPDATE plaid_items SET bank_updated_at = ? WHERE id = ?', [hoursAgo(11), fresh.id]);
+      await run("UPDATE plaid_items SET bank_updated_at = ?, last_error = 'ITEM_LOGIN_REQUIRED' WHERE id = ?", [hoursAgo(30), expired.id]);
+
+      const status = await plaidService.getStatus();
+
+      expect(status.staleData).toEqual([
+        { id: quiet.id, institutionName: 'Quiet Bank', bankUpdatedAt: quietUpdated, institutionStatus: 'DOWN' }
+      ]);
+      expect(status.needsAttention.map(item => item.id)).toEqual([expired.id]);
+      const statuses = Object.fromEntries((await plaidService.listItems()).map(item => [item.institutionName, item.status]));
+      expect(statuses).toEqual({ 'Quiet Bank': 'stale', 'Fresh Bank': 'ok', 'Expired Bank': 'needs_login' });
+    });
+
+    test('a stale bank is still synced automatically (it is not waiting for the user)', async () => {
+      const quiet = await connect('Quiet Bank');
+      await run("UPDATE plaid_items SET bank_updated_at = '2026-01-01T00:00:00Z' WHERE id = ?", [quiet.id]);
+
+      expect((await plaidService.findStaleItems(30)).map(item => item.id)).toEqual([quiet.id]);
     });
 
     test('lists banks that need the user: login expired, or removed at the bank; not temporary errors', async () => {
@@ -286,6 +319,39 @@ describe('plaidService', () => {
 
       expect(await plaidService.syncItem(item.id)).toMatchObject({ added: 1 });
       expect((await get("SELECT current_balance FROM plaid_accounts WHERE account_id = 'acc-1'")).current_balance).toBe(10);
+    });
+
+    test('records when Plaid last fetched from the bank and its status for the institution', async () => {
+      const item = await connect();
+      client.transactionsSync.mockResolvedValueOnce(page());
+      client.itemGet.mockResolvedValueOnce({ data: {
+        item: { institution_id: 'ins_118273' },
+        status: { transactions: { last_successful_update: '2026-11-03T21:11:14.558Z', last_failed_update: '2026-11-04T09:21:24.494Z' } }
+      } });
+      client.institutionsGetById.mockResolvedValueOnce({ data: { institution: { status: {
+        transactions_updates: { status: 'DOWN', last_status_change: '2026-11-04T03:05:18Z' }
+      } } } });
+
+      await plaidService.syncItem(item.id);
+
+      expect(client.institutionsGetById).toHaveBeenLastCalledWith({ institution_id: 'ins_118273', country_codes: ['CA'], options: { include_status: true } });
+      expect(await plaidService.getItem(item.id)).toMatchObject({
+        status: 'stale',
+        bankUpdatedAt: '2026-11-03T21:11:14.558Z',
+        bankUpdateFailedAt: '2026-11-04T09:21:24.494Z',
+        institutionStatus: 'DOWN',
+        institutionStatusSince: '2026-11-04T03:05:18Z'
+      });
+    });
+
+    test('a failed status check keeps what was recorded and does not fail the sync', async () => {
+      const item = await connect();
+      await run("UPDATE plaid_items SET bank_updated_at = '2026-11-03T21:11:14Z', institution_status = 'DOWN' WHERE id = ?", [item.id]);
+      client.transactionsSync.mockResolvedValueOnce(page({ added: [txn('t1')] }));
+      client.itemGet.mockRejectedValueOnce(plaidError('INTERNAL_SERVER_ERROR'));
+
+      expect(await plaidService.syncItem(item.id)).toMatchObject({ added: 1 });
+      expect(await plaidService.getItem(item.id)).toMatchObject({ bankUpdatedAt: '2026-11-03T21:11:14Z', institutionStatus: 'DOWN' });
     });
 
     test('pages through has_more, stages pending transactions flagged, and saves the final cursor', async () => {

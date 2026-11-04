@@ -1,6 +1,8 @@
 const dbHelper = require('../utils/dbHelper');
 
-const PUBLIC_ITEM_COLUMNS = 'id, item_id AS itemId, institution_name AS institutionName, environment, last_synced_at AS lastSyncedAt, last_error AS lastError, created_at AS createdAt';
+const PUBLIC_ITEM_COLUMNS = `id, item_id AS itemId, institution_name AS institutionName, environment, last_synced_at AS lastSyncedAt,
+  last_error AS lastError, bank_updated_at AS bankUpdatedAt, bank_update_failed_at AS bankUpdateFailedAt,
+  institution_status AS institutionStatus, institution_status_since AS institutionStatusSince, created_at AS createdAt`;
 const ACCOUNT_COLUMNS = 'id, plaid_item_id AS plaidItemId, account_id AS accountId, name, mask, type, subtype, payment_method_id AS paymentMethodId';
 const TXN_COLUMNS = `pt.id, pt.transaction_id AS transactionId, pt.plaid_account_id AS plaidAccountId, pt.amount,
   pt.iso_currency_code AS isoCurrencyCode, pt.date, pt.authorized_date AS authorizedDate, pt.name,
@@ -44,6 +46,27 @@ class PlaidRepository {
 
   async setItemError(id, lastError) {
     await dbHelper.execute('UPDATE plaid_items SET last_error = ? WHERE id = ?', [lastError, id]);
+  }
+
+  /**
+   * Data freshness from Plaid: when it last fetched from the bank (successfully or not), and its status for
+   * the institution. Fields left undefined keep their stored value (e.g. the institution lookup failed).
+   */
+  async setItemHealth(id, { bankUpdatedAt, bankUpdateFailedAt, institutionStatus, institutionStatusSince }) {
+    const sets = [];
+    const params = [];
+    const add = (column, value) => {
+      if (value !== undefined) {
+        sets.push(`${column} = ?`);
+        params.push(value);
+      }
+    };
+    add('bank_updated_at', bankUpdatedAt);
+    add('bank_update_failed_at', bankUpdateFailedAt);
+    add('institution_status', institutionStatus);
+    add('institution_status_since', institutionStatusSince);
+    if (sets.length === 0) return;
+    await dbHelper.execute(`UPDATE plaid_items SET ${sets.join(', ')} WHERE id = ?`, [...params, id]);
   }
 
   // ─── Accounts ───

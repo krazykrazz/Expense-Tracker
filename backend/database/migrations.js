@@ -236,6 +236,26 @@ const MIGRATIONS = [
       }
       logger.info('Added balance columns to plaid_accounts');
     }
+  },
+  {
+    // Data freshness per bank, from Plaid (/item/get, /institutions/get_by_id): when Plaid last fetched from
+    // the bank, and Plaid's status for the institution. A bank with no new data for hours shows as stale.
+    name: 'plaid_item_freshness_v1',
+    async apply(db) {
+      for (const column of [
+        'bank_updated_at TEXT',
+        'bank_update_failed_at TEXT',
+        'institution_status TEXT',
+        'institution_status_since TEXT'
+      ]) {
+        try {
+          await runSql(db, `ALTER TABLE plaid_items ADD COLUMN ${column}`);
+        } catch (err) {
+          if (!err.message.includes('duplicate column name')) throw err;
+        }
+      }
+      logger.info('Added data freshness columns to plaid_items');
+    }
   }
 ];
 

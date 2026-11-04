@@ -775,3 +775,18 @@
 .financial-cc-amount.bank-pill-stale {
   opacity: 0.65;
 }
+
+/* Amber: a bank Plaid hasn't had new data from for hours (nothing for the user to do; red means act) */
+.bank-attention-dot.stale {
+  background: var(--color-warning, #f59e0b);
+}
+
+.bank-connection-status.stale {
+  background: var(--color-warning-light, #fef3c7);
+  color: #92400e;
+}
+
+:root[data-theme='dark'] .bank-connection-status.stale {
+  background: rgba(245, 158, 11, 0.16);
+  color: #fbbf24;
+}

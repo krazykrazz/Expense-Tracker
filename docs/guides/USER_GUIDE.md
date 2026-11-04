@@ -212,6 +212,10 @@ Banks sometimes need your login again (for example after a password change). Unt
 
 Don't use **Disconnect** for this. If a bank was disconnected anyway, connecting it again re-links the transactions you already reviewed instead of importing them twice.
 
+### When a Bank Stops Updating
+
+Sometimes Plaid itself can't get new data from a bank for a while. When that lasts over 12 hours, the bank icon gets an **amber dot**, and on **Connections** the bank shows **Not updating** with when Plaid last got data from it. There's nothing to do: it catches up on its own and nothing is lost. Don't disconnect.
+
 ## Income & Fixed Expenses
 
 ### Managing Income

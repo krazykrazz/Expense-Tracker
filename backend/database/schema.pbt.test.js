@@ -88,7 +88,7 @@ const EXPECTED_TABLES = {
   activity_logs: ['id', 'event_type', 'entity_type', 'entity_id', 'user_action', 'metadata', 'timestamp', 'created_at'],
   settings: ['key', 'value', 'updated_at'],
   users: ['id', 'username', 'password_hash', 'created_at', 'updated_at'],
-  plaid_items: ['id', 'item_id', 'institution_name', 'access_token_enc', 'sync_cursor', 'environment', 'last_synced_at', 'last_error', 'created_at', 'updated_at'],
+  plaid_items: ['id', 'item_id', 'institution_name', 'access_token_enc', 'sync_cursor', 'environment', 'last_synced_at', 'last_error', 'bank_updated_at', 'bank_update_failed_at', 'institution_status', 'institution_status_since', 'created_at', 'updated_at'],
   plaid_accounts: ['id', 'plaid_item_id', 'account_id', 'name', 'mask', 'type', 'subtype', 'payment_method_id', 'current_balance', 'available_balance', 'credit_limit', 'balance_currency', 'balance_as_of', 'created_at', 'updated_at'],
   plaid_transactions: ['id', 'transaction_id', 'plaid_account_id', 'amount', 'iso_currency_code', 'date', 'authorized_date', 'name', 'merchant_name', 'status', 'expense_id', 'pending', 'pending_transaction_id', 'removed_at', 'created_at', 'updated_at'],
   plaid_fixed_expense_links: ['id', 'plaid_transaction_id', 'fixed_expense_id', 'landed_date', 'planned_amount', 'created_at'],

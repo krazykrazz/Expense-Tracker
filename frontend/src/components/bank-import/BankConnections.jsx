@@ -13,13 +13,37 @@ const MAPPABLE_TYPES = ['debit', 'credit_card'];
 const STATUS_LABELS = {
   needs_login: 'Needs login',
   gone: 'Connection removed',
-  error: 'Sync problem'
+  error: 'Sync problem',
+  stale: 'Not updating'
 };
 
 const STATUS_HELP = {
   needs_login: 'The bank needs you to log in again. Reconnect keeps this connection: no new Trial slot, nothing re-imported. Automatic sync is paused until then.',
   gone: 'The bank or Plaid no longer recognises this connection. Disconnect it, then connect the bank again.',
-  error: 'Usually temporary at the bank; automatic sync keeps retrying.'
+  error: 'Usually temporary at the bank; automatic sync keeps retrying.',
+  stale: 'The app syncs fine, but Plaid hasn\'t received new data from this bank for over 12 hours. That\'s between Plaid and the bank: it catches up on its own and nothing is lost. Don\'t disconnect.'
+};
+
+/** Plaid's view of the bank, shown only when it isn't healthy (its status data isn't always reliable). */
+const INSTITUTION_STATUS_TEXT = { DOWN: 'down', DEGRADED: 'degraded' };
+
+const formatIso = (iso) => (iso ? formatDateTime(iso) : null);
+
+/** "Bank data updated by Plaid: <time>" plus, when it's unhealthy, Plaid's status for the institution. */
+const BankFreshness = ({ item }) => {
+  if (!item.bankUpdatedAt && !item.institutionStatus) return null;
+  const institution = INSTITUTION_STATUS_TEXT[item.institutionStatus];
+  return (
+    <div className="bank-import-muted" data-testid="bank-freshness">
+      {item.bankUpdatedAt && <>Bank data updated by Plaid: {formatIso(item.bankUpdatedAt)}</>}
+      {institution && (
+        <span className="bank-connection-error">
+          {item.bankUpdatedAt ? ' · ' : ''}Plaid reports {item.institutionName} updates {institution}
+          {item.institutionStatusSince ? ` since ${formatIso(item.institutionStatusSince)}` : ''}
+        </span>
+      )}
+    </div>
+  );
 };
 
 const describeSync = ({ totals, results }) => {
@@ -247,6 +271,7 @@ const BankConnections = ({ status, onStatusChange }) => {
                   {item.lastSyncedAt ? `Last synced ${formatDateTime(item.lastSyncedAt.replace(' ', 'T') + 'Z')}` : 'Never synced'}
                   {item.lastError && <span className="bank-connection-error"> · Last error: {item.lastError}</span>}
                 </div>
+                <BankFreshness item={item} />
                 {STATUS_HELP[item.status] && <div className="bank-import-muted">{STATUS_HELP[item.status]}</div>}
               </div>
               <div className="bank-connection-actions">

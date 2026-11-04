@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.19.2',
+    date: 'November 4, 2026',
+    added: [],
+    changed: ['Financial and credit card views: balance check coloured like the expense list pill and folded into the card view, dark theme fixes, statement amount shown once paid, negative amounts as -$, banner keyboard fix, more balance-check causes'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.19.1',
     date: 'November 3, 2026',
     added: [],

@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.19.2] - 2026-11-04
+
+### Financial and credit card views: balance check coloured like the expense list pill and folded into the card view, dark theme fixes, statement amount shown once paid, negative amounts as -$, banner keyboard fix, more balance-check causes
+
 ## [1.19.1] - 2026-11-03
 
 ### Fix: refresh card balances after every bank sync, so the balance check works when a sync brings nothing new

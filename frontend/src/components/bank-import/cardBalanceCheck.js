@@ -57,6 +57,22 @@ export function describeCause(cause) {
   }
 }
 
+/**
+ * Props that colour a card's Current balance by its bank check, like the expense list's payment pill:
+ * green when it matches the bank, red-orange when it differs; details in the hover text and, for screen
+ * readers, in `srText`. Nothing for cards not linked to a bank or before the bank has sent a balance.
+ * @param {object|undefined} check one card from GET /api/plaid/card-balances
+ */
+export function cardBalanceProps(check) {
+  if (!check || check.status === 'unknown') return { className: '', attrs: {}, srText: null };
+  const state = check.status === 'match' ? 'confirmed' : 'differs';
+  return {
+    className: ` bank-pill-${state}${check.bankError ? ' bank-pill-stale' : ''}`,
+    attrs: { title: balanceCheckTitle(check), 'data-testid': 'card-balance-check', 'data-bank-state': state },
+    srText: ` (${describeDifference(check.difference).toLowerCase()}${check.bankError ? '; bank not syncing' : ''})`
+  };
+}
+
 /** Hover text for the card table: the numbers, then the causes. */
 export function balanceCheckTitle(card) {
   const lines = [describeDifference(card.difference), bankBalanceLabel(card), `Tracker: ${formatCurrency(card.tracker)} as of today`];

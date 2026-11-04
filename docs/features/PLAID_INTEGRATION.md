@@ -179,7 +179,7 @@ Expenses that were added from, or matched to, a bank transaction colour their **
 
 Each sync also stores the balance the bank reports for every account. For credit cards mapped to a bank account, the app compares it with the tracker's own balance, so you can see whether they agree and, if not, why.
 
-- **Financial page → Payment Methods:** under a linked card's **Current** balance, a green **✓** when it matches the bank to the cent, or an amber **Δ $x** when it doesn't. Hovering shows both balances and the likely causes. Cards not linked to a bank show nothing.
+- **Financial page → Payment Methods:** a linked card's **Current** balance is coloured like the expense list's payment pill: **green** when it matches the bank to the cent, **red-orange** when it doesn't. Hovering shows both balances and the likely causes. Cards not linked to a bank keep the normal grey.
 - **Card details (View):** a **Bank balance check** panel with:
   - **Bank:** what the bank says is owed. When the bank sends available credit, this is `limit − available`, which includes pending charges (CIBC). Otherwise it's the bank's balance, which may leave out charges still pending (Wealthsimple). The time of the sync it came from is shown;
   - **Tracker:** the card's current balance as of today (the same number as on the Financial page);

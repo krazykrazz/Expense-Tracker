@@ -261,12 +261,6 @@
   text-align: right;
 }
 
-/* Bank balance check mark sits on its own line under the 90px Current amount */
-.financial-cc-summary-row .financial-cc-amount .card-balance-mark {
-  display: table;
-  margin: 3px 0 0 auto;
-}
-
 .financial-cc-summary-header-row span:last-child {
   width: 110px;
 }
@@ -284,6 +278,11 @@
   margin-left: -8px;
   margin-right: -8px;
   border-radius: 4px;
+}
+
+/* The financial palette has no dark values; keep the stripe dark so names and coloured balances stay readable */
+:root[data-theme='dark'] .financial-cc-summary-row:nth-child(even) {
+  background-color: var(--bg-subtle);
 }
 
 .financial-cc-summary-row:last-child {

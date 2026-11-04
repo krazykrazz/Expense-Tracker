@@ -369,7 +369,7 @@ describe('FinancialOverviewModal', () => {
       expect(screen.getByRole('img', { name: 'WS VISA linked to bank: Wealthsimple · Visa' })).toBeInTheDocument();
     });
 
-    it('marks each linked card balance as matching the bank or not', async () => {
+    it('colours each linked card balance by whether it matches the bank, like the expense list pill', async () => {
       paymentMethodApi.getPaymentMethods.mockResolvedValue([
         { id: 3, type: 'credit_card', display_name: 'WS VISA', is_active: true, current_balance: 2129.92 },
         { id: 4, type: 'credit_card', display_name: 'CIBC MC', is_active: true, current_balance: 2210.4 },
@@ -386,11 +386,14 @@ describe('FinancialOverviewModal', () => {
 
       render(<FinancialOverviewModal {...defaultProps} />);
 
-      await waitFor(() => expect(screen.getAllByTestId('card-balance-mark')).toHaveLength(2));
-      expect(screen.getByRole('img', { name: 'Matches the bank' })).toHaveTextContent('✓');
-      const differs = screen.getByRole('img', { name: 'Tracker is $50.00 higher than the bank' });
-      expect(differs).toHaveTextContent('Δ $50.00');
+      await waitFor(() => expect(screen.getAllByTestId('card-balance-check')).toHaveLength(2));
+      const [matches, differs] = screen.getAllByTestId('card-balance-check');
+      expect(matches).toHaveClass('bank-pill-confirmed');
+      expect(matches).toHaveTextContent('2129.92 (matches the bank)');
+      expect(differs).toHaveClass('bank-pill-differs');
+      expect(differs).toHaveTextContent('2210.40 (tracker is $50.00 higher than the bank)');
       expect(differs.getAttribute('title')).toContain('In the tracker, not at the bank: Typo $50.00 (2026-11-02)');
+      expect(screen.getAllByText(/165\.02/, { selector: '.financial-cc-amount' })[0]).not.toHaveAttribute('data-bank-state');
     });
 
     it('should display only active payment methods when Active tab is selected', async () => {

@@ -531,7 +531,8 @@
 
 .method-pill.bank-pill-confirmed,
 .fixed-expense-payment.bank-pill-confirmed,
-.financial-cc-amount.bank-pill-confirmed {
+.financial-cc-amount.bank-pill-confirmed,
+.cc-bank-line.bank-pill-confirmed {
   color: var(--color-positive-dark, #16a34a);
   background-color: var(--color-positive-light, #dcfce7);
   box-shadow: inset 0 0 0 1px rgba(34, 197, 94, 0.45);
@@ -548,7 +549,8 @@
 .method-pill.bank-pill-differs,
 .method-pill.bank-pill-cancelled,
 .fixed-expense-payment.bank-pill-differs,
-.financial-cc-amount.bank-pill-differs {
+.financial-cc-amount.bank-pill-differs,
+.cc-bank-line.bank-pill-differs {
   color: #9a3412;
   background-color: #ffedd5;
   box-shadow: inset 0 0 0 1px rgba(234, 88, 12, 0.55);
@@ -564,7 +566,8 @@
 
 :root[data-theme='dark'] .method-pill.bank-pill-confirmed,
 :root[data-theme='dark'] .fixed-expense-payment.bank-pill-confirmed,
-:root[data-theme='dark'] .financial-cc-amount.bank-pill-confirmed {
+:root[data-theme='dark'] .financial-cc-amount.bank-pill-confirmed,
+:root[data-theme='dark'] .cc-bank-line.bank-pill-confirmed {
   color: #4ade80;
   background-color: rgba(34, 197, 94, 0.14);
   box-shadow: inset 0 0 0 1px rgba(74, 222, 128, 0.45);
@@ -579,7 +582,8 @@
 :root[data-theme='dark'] .method-pill.bank-pill-differs,
 :root[data-theme='dark'] .method-pill.bank-pill-cancelled,
 :root[data-theme='dark'] .fixed-expense-payment.bank-pill-differs,
-:root[data-theme='dark'] .financial-cc-amount.bank-pill-differs {
+:root[data-theme='dark'] .financial-cc-amount.bank-pill-differs,
+:root[data-theme='dark'] .cc-bank-line.bank-pill-differs {
   color: #fb923c;
   background-color: rgba(234, 88, 12, 0.16);
   box-shadow: inset 0 0 0 1px rgba(251, 146, 60, 0.5);
@@ -700,129 +704,73 @@
   margin-top: var(--spacing-3, 12px);
 }
 
-/* Credit card balance check (bank vs tracker) */
-
-.card-balance-mark {
+/* Credit card detail view: bank balance line in the Current Balance card (coloured by the bank pill rules) */
+.cc-bank-line {
   display: inline-block;
-  margin-left: var(--spacing-2, 8px);
-  padding: 0 6px;
+  margin-top: var(--spacing-2, 8px);
+  padding: 2px 8px;
   border-radius: var(--radius-full, 999px);
   font-size: var(--text-xs, 12px);
   font-weight: 600;
-  line-height: 18px;
-  white-space: nowrap;
-  vertical-align: middle;
+  color: var(--text-secondary);
+  background: var(--bg-subtle);
   cursor: help;
 }
 
-.card-balance-mark.match {
-  background: #dcfce7;
-  color: #166534;
+.cc-bank-line-note {
+  font-weight: 400;
 }
 
-.card-balance-mark.differs {
-  background: var(--color-warning-light, #fef3c7);
-  color: #92400e;
+.cc-bank-line.bank-pill-stale {
+  opacity: 0.65;
 }
 
-.card-balance-mark.stale {
-  opacity: 0.6;
-}
-
-:root[data-theme='dark'] .card-balance-mark.match {
-  background: rgba(34, 197, 94, 0.16);
-  color: #86efac;
-}
-
-:root[data-theme='dark'] .card-balance-mark.differs {
-  background: rgba(245, 158, 11, 0.16);
-  color: #fbbf24;
-}
-
-.card-bank-panel {
+/* Only when the balances differ */
+.card-bank-causes {
   margin: var(--spacing-3, 12px) 0;
-  padding: var(--spacing-3, 12px);
-  border: 1px solid var(--border-default);
+  padding: var(--spacing-2, 8px) var(--spacing-3, 12px);
+  border: 1px solid rgba(234, 88, 12, 0.45);
   border-radius: var(--radius-md, 8px);
   background: var(--bg-card);
   font-size: 0.9em;
 }
 
-.card-bank-panel.differs {
-  border-color: #f59e0b;
-}
-
-.card-bank-panel-header {
+.card-bank-causes-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--spacing-2, 8px);
-  margin-bottom: var(--spacing-2, 8px);
 }
 
-.card-bank-panel-header .card-balance-mark {
-  cursor: default;
-}
-
-.card-bank-panel-title,
-.card-bank-panel-subtitle {
+.card-bank-causes-title {
   font-weight: 600;
 }
 
-.card-bank-panel-numbers {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 2px var(--spacing-3, 12px);
-  margin: 0;
-}
-
-.card-bank-panel-numbers dt {
-  color: var(--text-secondary);
-}
-
-.card-bank-panel-numbers dd {
-  margin: 0;
-  font-variant-numeric: tabular-nums;
-}
-
-.card-bank-panel-asof {
-  margin-top: 2px;
-}
-
-.card-bank-panel-warning {
-  margin-bottom: var(--spacing-2, 8px);
-  color: #92400e;
-}
-
-:root[data-theme='dark'] .card-bank-panel-warning {
-  color: #fbbf24;
-}
-
-.card-bank-panel-causes {
-  margin-top: var(--spacing-3, 12px);
-}
-
-.card-bank-panel-causes ul {
-  margin: var(--spacing-1, 4px) 0 var(--spacing-2, 8px);
+.card-bank-causes ul {
+  margin: var(--spacing-1, 4px) 0 0;
   padding-left: 1.2em;
   list-style: disc;
 }
 
-.card-bank-panel-causes li {
+.card-bank-causes li {
   margin-bottom: 2px;
 }
 
-.card-bank-panel-limit {
+/* "Use bank limit": inside the Credit Limit card, or on its own when the card has no limit */
+.cc-bank-limit {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   flex-wrap: wrap;
   gap: var(--spacing-2, 8px);
-  margin-top: var(--spacing-3, 12px);
-  padding-top: var(--spacing-2, 8px);
-  border-top: 1px solid var(--border-muted);
+  margin-top: var(--spacing-2, 8px);
+  font-size: var(--text-xs, 12px);
+  color: var(--text-secondary);
 }
 
+.cc-bank-limit .bank-import-secondary {
+  padding: 2px 8px;
+  font-size: var(--text-xs, 12px);
+}
 /* A card whose bank isn't syncing: its balance check may be out of date */
 .financial-cc-amount.bank-pill-stale {
   opacity: 0.65;

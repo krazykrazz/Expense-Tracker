@@ -7,7 +7,8 @@ import CreditCardPaymentForm from './CreditCardPaymentForm';
 import BillingCycleHistoryForm from './BillingCycleHistoryForm';
 import UnifiedBillingCycleList from './UnifiedBillingCycleList';
 import HelpTooltip from '../shared/HelpTooltip';
-import CardBankBalancePanel from '../bank-import/CardBankBalancePanel';
+import { CardBankBalanceLine, CardBankBalanceCauses, CardBankLimitAction } from '../bank-import/CardBankBalance';
+import { useCardBalanceChecks } from '../../hooks/useCardBalanceChecks';
 import './CreditCardDetailView.css';
 import '../financial/FinancialOverviewModal.css';
 
@@ -55,6 +56,8 @@ const CreditCardDetailView = ({
   const [deactivateConfirm, setDeactivateConfirm] = useState(false);
   const [pdfViewerCycle, setPdfViewerCycle] = useState(null);
   const [partialErrors, setPartialErrors] = useState([]);
+  // Bank balance check for this card (Plaid); only fetched while the view is open
+  const bankCheck = useCardBalanceChecks(paymentMethod, isOpen).get(paymentMethodId);
 
   // Track whether deep-link params have been consumed
   const deepLinkConsumedRef = useRef(false);
@@ -360,6 +363,7 @@ const CreditCardDetailView = ({
                   {formatCurrency(paymentMethod.current_balance)}
                 </div>
                 <div className="balance-description">What you owe today</div>
+                <CardBankBalanceLine check={bankCheck} />
               </div>
 
               {/* Statement Balance Card - Only show if billing cycle configured */}
@@ -444,6 +448,7 @@ const CreditCardDetailView = ({
                       {(paymentMethod.utilization_percentage || 0).toFixed(1)}% utilized
                     </span>
                   </div>
+                  <CardBankLimitAction check={bankCheck} onLimitChanged={fetchData} />
                 </div>
               )}
 
@@ -471,8 +476,10 @@ const CreditCardDetailView = ({
               )}
             </div>
 
-            {/* Bank balance check (only for cards linked to a bank through Bank Import) */}
-            <CardBankBalancePanel paymentMethodId={paymentMethodId} refreshKey={paymentMethod} onLimitChanged={fetchData} />
+            {/* Bank balance check (only for cards linked to a bank through Bank Import): causes only when it differs;
+                a bank limit for a card without one */}
+            <CardBankBalanceCauses check={bankCheck} />
+            {!(paymentMethod.credit_limit > 0) && <CardBankLimitAction check={bankCheck} onLimitChanged={fetchData} />}
 
             {/* Quick Actions */}
             <div className="cc-detail-actions">

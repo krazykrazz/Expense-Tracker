@@ -180,17 +180,14 @@ Expenses that were added from, or matched to, a bank transaction colour their **
 Each sync also stores the balance the bank reports for every account. For credit cards mapped to a bank account, the app compares it with the tracker's own balance, so you can see whether they agree and, if not, why.
 
 - **Financial page → Payment Methods:** a linked card's **Current** balance is coloured like the expense list's payment pill: **green** when it matches the bank to the cent, **red-orange** when it doesn't. Hovering shows both balances and the likely causes. Cards not linked to a bank keep the normal grey.
-- **Card details (View):** a **Bank balance check** panel with:
-  - **Bank:** what the bank says is owed. When the bank sends available credit, this is `limit − available`, which includes pending charges (CIBC). Otherwise it's the bank's balance, which may leave out charges still pending (Wealthsimple). The time of the sync it came from is shown;
-  - **Tracker:** the card's current balance as of today (the same number as on the Financial page);
-  - **Not counted:** entries dated after today (e.g. a car service logged for next week), which neither balance includes;
-  - **Likely causes** of a difference, each with its amount:
+- **Card details (View):** the check is folded into the existing cards, so it takes no extra space when everything matches:
+  - **Current Balance card:** a line such as **Bank $2,160.40 · matches** (green) or **· differs by $50.00** (red-orange). The bank figure is what the bank says is owed: `limit − available` when the bank sends available credit, which includes pending charges (CIBC); otherwise the bank's balance, marked *excl. pending* (Wealthsimple). Its hover text adds the sync time, entries dated after today (which neither balance counts) and Inbox transactions that already have a matching tracker entry (**Match** them to tidy up);
+  - **Why it differs from the bank** (only when the balances differ): the likely causes, each with its amount:
     - *At the bank, not in the tracker:* a charge or credit still waiting in the Inbox, or one that was **ignored**, such as a refund that was never recorded. **Open Inbox** goes straight there;
     - *In the tracker, not at the bank:* an expense or payment since the bank's history starts (about 30 days before connecting) that no bank transaction is linked to: a typo, the wrong card, a duplicate, or not posted yet;
     - *Still pending:* an expense added from a pending charge, on a bank whose balance leaves pending charges out;
     - anything left over is shown as not explained by the bank's recent transactions (e.g. an old entry, or a wrong statement balance);
-  - a count of Inbox transactions that already have a matching tracker entry (they cancel out; **Match** them to tidy up);
-  - the **bank credit limit**, with **Use bank limit** when the card's limit is empty or different. Nothing else is ever changed automatically.
+  - **Use bank limit** in the Credit Limit card (or on its own when the card has no limit), only when the bank reports a different limit. Nothing else is ever changed automatically.
 - **How causes are found:** bank rows and tracker entries for the same amount within 5 days cancel out (a payment entered by hand pairs with the bank's payment). One tracker entry also cancels out two bank charges that add up to it, e.g. an Amazon order shipped and charged in two parts.
 - The check refreshes after every sync, payment and expense change. A bank that isn't syncing is flagged, since its balance may be out of date.
 

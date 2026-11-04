@@ -27,12 +27,6 @@ export function bankBalanceLabel(card) {
   return `Bank: ${formatCurrency(card.bank.owed)}${card.bank.includesPending ? ' incl. pending' : ''}${when ? ` (as of ${when})` : ''}`;
 }
 
-/** "Bank balance from the sync at Nov 3, 5:21 PM", or null without a time. */
-export function bankAsOfLabel(card) {
-  const when = card.bank ? formatTime(card.bank.asOf) : null;
-  return when ? `Bank balance from the sync at ${when}` : null;
-}
-
 /** One line per likely cause of a difference. */
 export function describeCause(cause) {
   const what = `${cause.name || 'Unnamed'} ${formatCurrency(Math.abs(cause.amount))} (${cause.date})`;
@@ -83,6 +77,9 @@ export function balanceCheckTitle(card) {
   }
   if (card.futureDated?.count > 0) {
     lines.push(`Not counted: ${formatCurrency(card.futureDated.amount)} dated after today (${card.futureDated.count})`);
+  }
+  if (card.awaitingMatch > 0) {
+    lines.push(`${card.awaitingMatch} Inbox ${card.awaitingMatch === 1 ? 'transaction matches an entry' : 'transactions match entries'} already in the tracker: Match in Bank Import`);
   }
   return lines.join('\n');
 }

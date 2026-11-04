@@ -31,6 +31,18 @@ describe('useCardBalanceChecks', () => {
     await waitFor(() => expect(getCardBalanceChecks).toHaveBeenCalledTimes(4));
   });
 
+  it('makes no requests while disabled, and loads once enabled', async () => {
+    getCardBalanceChecks.mockResolvedValue({ cards: [{ paymentMethodId: 4, status: 'match' }] });
+    const { result, rerender } = renderHook(({ enabled }) => useCardBalanceChecks(null, enabled), { initialProps: { enabled: false } });
+
+    act(() => { window.dispatchEvent(new CustomEvent('syncEvent', { detail: { entityType: 'plaid' } })); });
+    expect(getPlaidStatus).not.toHaveBeenCalled();
+    expect(result.current.size).toBe(0);
+
+    rerender({ enabled: true });
+    await waitFor(() => expect(result.current.get(4)).toEqual({ paymentMethodId: 4, status: 'match' }));
+  });
+
   it('is empty without Plaid, and when the request fails', async () => {
     getPlaidStatus.mockResolvedValueOnce({ enabled: false });
     const { result } = renderHook(() => useCardBalanceChecks());

@@ -1215,6 +1215,13 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v1.20.0</div>
+                <div className="changelog-date">November 4, 2026</div>
+                <ul className="changelog-items">
+                  <li>Bank data freshness: flags a bank that Plaid has had no new data from for over 12 hours (amber dot, Not updating), and shows when Plaid last updated each bank and how Plaid rates it</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v1.19.2</div>
                 <div className="changelog-date">November 4, 2026</div>
                 <ul className="changelog-items">

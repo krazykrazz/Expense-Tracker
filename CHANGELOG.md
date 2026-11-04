@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.20.0] - 2026-11-04
+
+### Bank data freshness: flags a bank that Plaid has had no new data from for over 12 hours (amber dot, Not updating), and shows when Plaid last updated each bank and how Plaid rates it
+
 ## [1.19.2] - 2026-11-04
 
 ### Financial and credit card views: balance check coloured like the expense list pill and folded into the card view, dark theme fixes, statement amount shown once paid, negative amounts as -$, banner keyboard fix, more balance-check causes

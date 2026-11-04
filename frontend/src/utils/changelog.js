@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.20.0',
+    date: 'November 4, 2026',
+    added: [],
+    changed: ['Bank data freshness: flags a bank that Plaid has had no new data from for over 12 hours (amber dot, Not updating), and shows when Plaid last updated each bank and how Plaid rates it'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.19.2',
     date: 'November 4, 2026',
     added: [],

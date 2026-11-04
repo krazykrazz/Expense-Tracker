@@ -54,6 +54,19 @@ Layer-specific, high-signal checks. Confirm each finding against source before r
 - [ ] The `entity_type` of a new event is routed by `frontend/src/hooks/useDataSync.js`
       (directly or via `ENTITY_TYPE_ALIASES`), and a window `syncEvent` type has at least
       one `useSyncEvent` consumer; otherwise other tabs never refresh.
+- [ ] Background jobs that change what a screen shows (syncs, balance refreshes,
+      re-attachments) log an event when they change something, even if the change isn't one
+      of the counted kinds; otherwise open views stay stale.
+
+### Plaid / bank import
+- [ ] Data read from a Plaid response is only present when Plaid sends it (e.g.
+      `/transactions/sync` `accounts` only lists accounts with transactions in that page).
+      Don't treat "missing" as "unchanged" or "zero".
+- [ ] Reconciliation logic (card balance check) names every way the two sides can differ;
+      list what each query excludes (`removed_at`, linked rows, fixed-expense matches,
+      clamped balances) and check those cases fall into a named cause, not "unexplained".
+- [ ] Plaid errors never suggest Disconnect for a login problem (costs a Trial slot and
+      duplicates history); `LOGIN_CODES` → Reconnect.
 
 ### Loan / LOC subsystem
 - [ ] After removing loan-type exclusions (e.g. `loan_type !== 'line_of_credit'`),
@@ -102,6 +115,20 @@ Layer-specific, high-signal checks. Confirm each finding against source before r
       (e.g. list AND summary), not just the list via a local `filter`.
 - [ ] Clickable children inside a `role="button"` container have their own
       `onKeyDown` (Enter/Space + `stopPropagation`), matching their `onClick`.
+- [ ] A clickable banner's own `onKeyDown` ignores keys from its children
+      (`if (e.target !== e.currentTarget) return;`), or Enter on the × dismiss button runs
+      the banner action instead.
+
+### Theme & presentation
+- [ ] New CSS uses theme tokens (`--bg-card`, `--bg-subtle`, `--text-*`, `--border-*`) or
+      has a `:root[data-theme='dark']` override. Light-only palettes (`--financial-*`) and
+      hard-coded tints (`#f8f9fa`, `#fff3e0`, `#e3f2fd`) leave white blocks in dark mode.
+- [ ] Grouped selectors edited in both themes: every selector in a dark block carries
+      the `:root[data-theme='dark']` prefix.
+- [ ] Money that can be negative uses `formatCAD` (`formatCurrency` renders `$-12.00`).
+- [ ] The same label shows the same number everywhere (e.g. a card table's "Statement"
+      vs the detail view's "Statement Balance"), and a label says what is computed
+      ("pending" vs "future-dated").
 
 ### Data layer
 - [ ] All requests via `authAwareFetch`/`apiClient` (per `config.js`), not raw `fetch`.

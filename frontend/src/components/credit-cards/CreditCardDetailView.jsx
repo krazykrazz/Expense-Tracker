@@ -7,7 +7,8 @@ import CreditCardPaymentForm from './CreditCardPaymentForm';
 import BillingCycleHistoryForm from './BillingCycleHistoryForm';
 import UnifiedBillingCycleList from './UnifiedBillingCycleList';
 import HelpTooltip from '../shared/HelpTooltip';
-import CardBankBalancePanel from '../bank-import/CardBankBalancePanel';
+import { CardBankBalanceLine, CardBankBalanceCauses, CardBankLimitAction } from '../bank-import/CardBankBalance';
+import { useCardBalanceChecks } from '../../hooks/useCardBalanceChecks';
 import './CreditCardDetailView.css';
 import '../financial/FinancialOverviewModal.css';
 
@@ -55,6 +56,8 @@ const CreditCardDetailView = ({
   const [deactivateConfirm, setDeactivateConfirm] = useState(false);
   const [pdfViewerCycle, setPdfViewerCycle] = useState(null);
   const [partialErrors, setPartialErrors] = useState([]);
+  // Bank balance check for this card (Plaid); only fetched while the view is open
+  const bankCheck = useCardBalanceChecks(paymentMethod, isOpen).get(paymentMethodId);
 
   // Track whether deep-link params have been consumed
   const deepLinkConsumedRef = useRef(false);
@@ -360,6 +363,7 @@ const CreditCardDetailView = ({
                   {formatCurrency(paymentMethod.current_balance)}
                 </div>
                 <div className="balance-description">What you owe today</div>
+                <CardBankBalanceLine check={bankCheck} />
               </div>
 
               {/* Statement Balance Card - Only show if billing cycle configured */}
@@ -386,16 +390,16 @@ const CreditCardDetailView = ({
                     )}
                   </div>
                   <div className="overview-value balance-value">
-                    {statementBalanceInfo?.isPaid 
-                      ? formatCurrency(0) 
-                      : currentCycleStatus?.hasActualBalance
-                        ? formatCurrency(currentCycleStatus.actualBalance)
-                        : formatCurrency(currentCycleStatus?.calculatedBalance ?? statementBalanceInfo?.statementBalance ?? paymentMethod.statement_balance)
+                    {/* The statement amount even once paid (the Paid badge says it's settled), so it matches the
+                        Statement column on the Financial page */}
+                    {currentCycleStatus?.hasActualBalance
+                      ? formatCurrency(currentCycleStatus.actualBalance)
+                      : formatCurrency(currentCycleStatus?.calculatedBalance ?? statementBalanceInfo?.statementBalance ?? paymentMethod.statement_balance)
                     }
                   </div>
                   <div className="balance-description">
                     {statementBalanceInfo?.isPaid 
-                      ? 'Statement paid in full'
+                      ? (currentCycleStatus?.hasActualBalance ? 'From your statement · paid in full' : 'Paid in full')
                       : currentCycleStatus?.hasActualBalance
                         ? 'From your statement'
                         : paymentMethod.payment_due_day 
@@ -416,12 +420,12 @@ const CreditCardDetailView = ({
                 <div className="cc-overview-card balance-card projected-balance-card">
                   <div className="overview-label">
                     Projected Balance
-                    <span className="pending-indicator" title="Includes future expenses">⏳</span>
+                    <span className="pending-indicator" role="img" aria-label="Includes entries dated after today" title="Includes entries dated after today">⏳</span>
                   </div>
                   <div className="overview-value balance-value">
                     {formatCurrency(paymentMethod.projected_balance)}
                   </div>
-                  <div className="balance-description">Including pending expenses</div>
+                  <div className="balance-description">Including entries dated after today</div>
                 </div>
               )}
             </div>
@@ -444,6 +448,7 @@ const CreditCardDetailView = ({
                       {(paymentMethod.utilization_percentage || 0).toFixed(1)}% utilized
                     </span>
                   </div>
+                  <CardBankLimitAction check={bankCheck} onLimitChanged={fetchData} />
                 </div>
               )}
 
@@ -455,7 +460,8 @@ const CreditCardDetailView = ({
                   <div className="overview-label">Payment Due</div>
                   <div className="overview-value due-value">
                     {statementBalanceInfo?.isPaid ? (
-                      <span className="paid-status">✓ Paid</span>
+                      // The Statement Balance card already says Paid; say what that means for the due date
+                      <span className="paid-status">Nothing due</span>
                     ) : paymentMethod.days_until_due <= 0 ? (
                       <span className="overdue">Overdue!</span>
                     ) : paymentMethod.days_until_due === 1 ? (
@@ -471,8 +477,10 @@ const CreditCardDetailView = ({
               )}
             </div>
 
-            {/* Bank balance check (only for cards linked to a bank through Bank Import) */}
-            <CardBankBalancePanel paymentMethodId={paymentMethodId} refreshKey={paymentMethod} onLimitChanged={fetchData} />
+            {/* Bank balance check (only for cards linked to a bank through Bank Import): causes only when it differs;
+                a bank limit for a card without one */}
+            <CardBankBalanceCauses check={bankCheck} />
+            {!(paymentMethod.credit_limit > 0) && <CardBankLimitAction check={bankCheck} onLimitChanged={fetchData} />}
 
             {/* Quick Actions */}
             <div className="cc-detail-actions">

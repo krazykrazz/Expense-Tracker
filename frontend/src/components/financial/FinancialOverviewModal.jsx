@@ -10,7 +10,7 @@ import { useSyncEvent } from '../../hooks/useSyncEvent';
 import { useBankAccountLinks } from '../../hooks/useBankAccountLinks';
 import { useCardBalanceChecks } from '../../hooks/useCardBalanceChecks';
 import BankLinkedBadge from '../bank-import/BankLinkedBadge';
-import CardBalanceCheckMark from '../bank-import/CardBalanceCheckMark';
+import { cardBalanceProps } from '../bank-import/cardBalanceCheck';
 import CreditCardPaymentForm from '../credit-cards/CreditCardPaymentForm';
 import LoanRow from '../loans/LoanRow';
 import InvestmentRow from '../loans/InvestmentRow';
@@ -310,15 +310,17 @@ const PaymentMethodsSection = ({ paymentMethods, loading, onPaymentRecorded, onV
                       <span>Cycle</span>
                       <span></span>
                     </div>
-                    {filteredCardData.map(card => (
+                    {filteredCardData.map(card => {
+                      const balancePill = cardBalanceProps(balanceChecks.get(card.id));
+                      return (
                       <div key={card.id} className="financial-cc-summary-row">
                         <span className="financial-cc-name">
                           {card.name}
                           <BankLinkedBadge accounts={bankLinks.get(card.id)} name={card.name} />
                         </span>
-                        <span className="financial-cc-amount">
+                        <span className={`financial-cc-amount${balancePill.className}`} {...balancePill.attrs}>
                           {formatCurrency(card.currentBalance)}
-                          <CardBalanceCheckMark check={balanceChecks.get(card.id)} />
+                          {balancePill.srText && <span className="sr-only">{balancePill.srText}</span>}
                         </span>
                         <span className="financial-cc-amount">{card.statementBalance != null ? formatCurrency(card.statementBalance) : '—'}</span>
                         <span className="financial-cc-amount">{card.cycleBalance != null ? formatCurrency(card.cycleBalance) : '—'}</span>
@@ -352,7 +354,8 @@ const PaymentMethodsSection = ({ paymentMethods, loading, onPaymentRecorded, onV
                           )}
                         </span>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>

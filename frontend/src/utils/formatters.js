@@ -24,20 +24,23 @@ export const formatCAD = (amount) => {
 };
 
 /**
- * Format a number as currency with dollar sign
+ * Format a number as currency with dollar sign; negatives as "-$1,234.56" (sign before the $)
  * @param {number|string} amount - Amount to format
  * @param {boolean} useLocale - Whether to use locale string formatting (default: true)
  * @returns {string} Formatted currency string (e.g., "$1,234.56")
  */
 export const formatCurrency = (amount, useLocale = true) => {
   const value = parseFloat(amount || 0);
+  // Decide the sign on the rounded value so -0.001 shows as "$0.00", not "-$0.00"
+  const sign = Math.round(value * 100) < 0 ? '-' : '';
+  const magnitude = Math.abs(value);
   if (useLocale) {
-    return `$${value.toLocaleString('en-US', { 
-      minimumFractionDigits: 2, 
-      maximumFractionDigits: 2 
+    return `${sign}$${magnitude.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
     })}`;
   }
-  return `$${value.toFixed(2)}`;
+  return `${sign}$${magnitude.toFixed(2)}`;
 };
 
 /**

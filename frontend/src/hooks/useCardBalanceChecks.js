@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { getPlaidStatus, getCardBalanceChecks, PLAID_SETTINGS_CHANGED_EVENT } from '../services/plaidApi';
 import { useSyncEvent } from './useSyncEvent';
 
+const EMPTY = new Map();
+
 /**
  * Bank vs tracker balance check for each credit card linked to a bank account (Plaid), keyed by payment
  * method id. Empty without calling the bank endpoints while Plaid is not configured, and on failure, so
@@ -9,9 +11,10 @@ import { useSyncEvent } from './useSyncEvent';
  * Reloads after bank syncs and credit card changes in any tab, and whenever `refreshKey` changes (pass the
  * data the screen already reloads, e.g. its payment method list, so a new expense or payment re-checks).
  * @param {*} [refreshKey]
+ * @param {boolean} [enabled=true] false: no requests, empty Map (e.g. a view that is mounted but closed)
  * @returns {Map<number, object>}
  */
-export function useCardBalanceChecks(refreshKey) {
+export function useCardBalanceChecks(refreshKey, enabled = true) {
   const [checks, setChecks] = useState(() => new Map());
 
   const load = useCallback(async (signal) => {
@@ -29,20 +32,22 @@ export function useCardBalanceChecks(refreshKey) {
   }, []);
 
   useEffect(() => {
+    if (!enabled) return undefined;
     const controller = new AbortController();
     load(controller.signal);
     return () => controller.abort();
-  }, [load, refreshKey]);
+  }, [load, refreshKey, enabled]);
 
   useEffect(() => {
+    if (!enabled) return undefined;
     const reload = () => load();
     window.addEventListener(PLAID_SETTINGS_CHANGED_EVENT, reload);
     return () => window.removeEventListener(PLAID_SETTINGS_CHANGED_EVENT, reload);
-  }, [load]);
+  }, [load, enabled]);
 
-  useSyncEvent(['plaid', 'credit_card'], () => { load(); });
+  useSyncEvent(['plaid', 'credit_card'], () => { if (enabled) load(); });
 
-  return checks;
+  return enabled ? checks : EMPTY;
 }
 
 export default useCardBalanceChecks;

@@ -261,12 +261,6 @@
   text-align: right;
 }
 
-/* Bank balance check mark sits on its own line under the 90px Current amount */
-.financial-cc-summary-row .financial-cc-amount .card-balance-mark {
-  display: table;
-  margin: 3px 0 0 auto;
-}
-
 .financial-cc-summary-header-row span:last-child {
   width: 110px;
 }
@@ -284,6 +278,11 @@
   margin-left: -8px;
   margin-right: -8px;
   border-radius: 4px;
+}
+
+/* The financial palette has no dark values; keep the stripe dark so names and coloured balances stay readable */
+:root[data-theme='dark'] .financial-cc-summary-row:nth-child(even) {
+  background-color: var(--bg-subtle);
 }
 
 .financial-cc-summary-row:last-child {
@@ -1506,3 +1505,71 @@
   .payment-method-credit-info.clickable { transition: none; }
 }
 
+
+/* ══════════════════════════════════════════════════════════════════════════
+   DARK THEME
+   The financial palette above and the --color-*-light tints are light-only, so rows, tabs, badges and
+   secondary buttons stayed near-white in dark mode. Remap the palette to theme tokens and darken the tints.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+:root[data-theme='dark'] {
+  --financial-bg-base: var(--bg-subtle);
+  --financial-bg-hover: var(--bg-card-hover);
+  --financial-bg-alt: var(--bg-muted);
+  --financial-text-primary: var(--text-primary);
+  --financial-text-secondary: var(--text-secondary);
+  --financial-border: var(--border-default);
+  --financial-border-strong: var(--border-strong);
+  --financial-btn-secondary-bg: var(--bg-muted);
+  --financial-btn-secondary-hover: var(--border-default);
+  --financial-btn-secondary-border: var(--border-strong);
+  --financial-btn-secondary-border-hover: var(--text-muted);
+  --financial-btn-danger-text: #f87171;
+  --financial-btn-danger-hover-bg: rgba(239, 68, 68, 0.16);
+  --financial-btn-danger-border-hover: #f87171;
+}
+
+:root[data-theme='dark'] .payment-methods-tab,
+:root[data-theme='dark'] .loans-tab {
+  color: var(--text-tertiary);
+}
+
+:root[data-theme='dark'] .payment-methods-tab:hover,
+:root[data-theme='dark'] .loans-tab:hover {
+  background-color: var(--bg-muted);
+  color: var(--text-primary);
+}
+
+:root[data-theme='dark'] .payment-methods-tab.active,
+:root[data-theme='dark'] .loans-tab.active {
+  background-color: rgba(14, 165, 233, 0.16);
+  color: #7dd3fc;
+  border-bottom-color: #38bdf8;
+}
+
+:root[data-theme='dark'] .loan-row-type-badge.loan,
+:root[data-theme='dark'] .loan-row-type-badge.loc,
+:root[data-theme='dark'] .investment-row-type-badge {
+  background-color: rgba(14, 165, 233, 0.16);
+  color: #7dd3fc;
+}
+
+:root[data-theme='dark'] .loan-row-type-badge.mortgage {
+  background-color: rgba(34, 197, 94, 0.14);
+  color: #4ade80;
+}
+
+:root[data-theme='dark'] .loan-row-fixed-expense-badge {
+  background-color: rgba(245, 158, 11, 0.16);
+  color: #fbbf24;
+}
+
+:root[data-theme='dark'] .loan-row-balance-badge {
+  background-color: rgba(239, 68, 68, 0.16);
+  color: #fca5a5;
+}
+
+:root[data-theme='dark'] .investment-row.needs-update,
+:root[data-theme='dark'] .loan-row.needs-update {
+  background-color: rgba(245, 158, 11, 0.1);
+}

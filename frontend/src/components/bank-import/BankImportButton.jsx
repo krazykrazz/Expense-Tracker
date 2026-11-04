@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react'
 import Icon from '../shared/Icon';
 import ErrorBoundary from '../shared/ErrorBoundary';
 import { syncBanksIfStale, OPEN_BANK_IMPORT_EVENT } from '../../services/plaidApi';
-import { usePlaidStatus, banksNeedingAttention } from '../../hooks/usePlaidStatus';
+import { usePlaidStatus, banksNeedingAttention, banksWithStaleData } from '../../hooks/usePlaidStatus';
 import { useExpenseContext } from '../../contexts/ExpenseContext';
 import './BankImport.css';
 
@@ -28,6 +28,8 @@ const BankImportButton = () => {
   const lastCheckRef = useRef(0);
   const enabled = Boolean(status && status.enabled);
   const attention = banksNeedingAttention(status);
+  // Not updating at Plaid: shown in amber, and only when nothing needs the user (red wins)
+  const stale = attention.length > 0 ? [] : banksWithStaleData(status);
 
   const syncIfStale = useCallback((force = false) => {
     if (!force && Date.now() - lastCheckRef.current < MIN_CHECK_GAP_MS) return;
@@ -57,7 +59,9 @@ const BankImportButton = () => {
 
   const attentionText = attention.length > 0
     ? `${attention.map(bank => bank.institutionName).join(', ')} ${attention.length === 1 ? 'needs' : 'need'} your attention: open to reconnect`
-    : null;
+    : stale.length > 0
+      ? `${stale.map(bank => bank.institutionName).join(', ')}: no new data from Plaid for over 12 hours (a Plaid or bank delay; nothing to do)`
+      : null;
 
   return (
     <>
@@ -72,6 +76,7 @@ const BankImportButton = () => {
       >
         <Icon name="bank" />
         {attention.length > 0 && <span className="bank-attention-dot" data-testid="bank-attention-dot" aria-hidden="true" />}
+        {stale.length > 0 && <span className="bank-attention-dot stale" data-testid="bank-stale-dot" aria-hidden="true" />}
       </button>
       {openTab && (
         <Suspense fallback={null}>

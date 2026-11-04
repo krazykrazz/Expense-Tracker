@@ -360,6 +360,10 @@ const TABLE_STATEMENTS = [
     environment TEXT NOT NULL CHECK(environment IN ('sandbox', 'production')),
     last_synced_at TEXT,
     last_error TEXT,
+    bank_updated_at TEXT,
+    bank_update_failed_at TEXT,
+    institution_status TEXT,
+    institution_status_since TEXT,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   )`,

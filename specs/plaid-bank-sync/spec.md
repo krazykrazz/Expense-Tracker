@@ -16,7 +16,8 @@ Phase 1 (the PoC) is archived at [`specs/archive/plaid-integration/spec.md`](../
 | 1.16.0 | #434, #435, #436 | Automatic sync (scheduled + on open); bank badge on mapped payment methods; activity log for inbox decisions, mappings and sync failures; batched category suggestions; atomic disconnect |
 | 1.17.0 | #438 | Pending transactions: add the day you spend, settle in place, cancelled-charge review |
 | 1.18.0 | #440 | Reconnect expired logins (update mode), connection alerts, re-attach on reconnect (most of 2.2) |
-| next | — | Credit card balance check (4.2, pulled forward) with the balance capture part of 2.1 |
+| 1.19.0–1.19.2 | #442, #444, #446 | Credit card balance check (4.2, pulled forward) with the balance capture part of 2.1; balances refreshed via `/accounts/get`; card view and dark theme cleanup; more balance-check causes |
+| next | — | Data freshness: "Not updating" status from Plaid's `/item/get` and institution status (new 2.6) |
 
 **Next:** 3.2 card payments (Record payment from the Inbox), the other half of card reconciliation. Then the rest of Phase 2 (capture the other Plaid fields, inbox badge, refactors), Phase 3 and the rest of Phase 4.
 
@@ -263,6 +264,16 @@ Planned now, because Phase 3 adds five more inbox actions and three more link ta
 
 **Tests:** retention keeps linked rows; backfill runs once; modified linked row follows the bank only when untouched.
 **Docs:** PLAID_INTEGRATION (Staging rules, Limitations).
+
+### 2.6 Data freshness ("Not updating")
+
+> **Status: built.** Added after the 2026-11-04 Wealthsimple outage: Plaid couldn't fetch from Wealthsimple for 20+ hours (institution status DOWN, `error_plaid: 1`) while our syncs kept succeeding with nothing new, so the app looked healthy.
+
+- **Why:** a sync only proves our side works. Plaid's own fetch from the bank is separate and invisible without asking.
+- **Capture:** after each sync, `_refreshHealth` calls `/item/get` (`status.transactions.last_successful_update` / `last_failed_update`) and `/institutions/get_by_id` with `include_status` (`transactions_updates.status` / `last_status_change`). Both free. Stored by migration `plaid_item_freshness_v1`; failures keep the previous values and never fail the sync.
+- **Status:** `connectionStatus` returns `stale` when there is no `last_error` and `bank_updated_at` is over 12 hours old (`STALE_AFTER_HOURS`). Plaid's institution rating is shown but never used to flag: it showed CIBC DOWN for weeks while CIBC worked.
+- **UI:** `/status` adds `staleData`; amber header dot (red `needsAttention` wins); Connections shows a "Not updating" chip, "Bank data updated by Plaid: <time>" for every bank, and Plaid's rating when it's down or degraded. Stale banks keep syncing automatically.
+- **Not here:** the Dashboard's Institution Status page isn't available on the Trial plan, which is why this uses the API.
 
 ### Phase 2 exit criteria
 - [ ] 2.1 capture and backfill in production; PFC and balances visible in the DB for new rows.
@@ -513,6 +524,7 @@ Each needs a one-time update-mode consent for that bank (`additional_consented_p
 - A Sync now option calling `/transactions/refresh`.
 - Cooldown: 1 per Item per hour.
 - Never automatic (billed per call on paid plans).
+- **Tried 2026-11-03 (Trial):** Wealthsimple returned `INTERNAL_SERVER_ERROR` (Plaid's Wealthsimple connection was going down), CIBC `ITEM_LOGIN_REQUIRED` (it then needed a reconnect). Don't build this until it's been shown to work on a healthy Item.
 
 ## Phase 7: Webhooks (optional)
 

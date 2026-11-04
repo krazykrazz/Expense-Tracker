@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
-import { usePlaidStatus, banksNeedingAttention } from './usePlaidStatus';
+import { usePlaidStatus, banksNeedingAttention, banksWithStaleData } from './usePlaidStatus';
 import { getPlaidStatus } from '../services/plaidApi';
 
 vi.mock('../services/plaidApi', () => ({
@@ -46,5 +46,18 @@ describe('banksNeedingAttention', () => {
   it('returns the flagged banks', () => {
     const banks = [{ id: 1, institutionName: 'CIBC', status: 'gone' }];
     expect(banksNeedingAttention({ enabled: true, needsAttention: banks })).toBe(banks);
+  });
+});
+
+describe('banksWithStaleData', () => {
+  it('is empty without Plaid or without the list (an older server)', () => {
+    expect(banksWithStaleData(null)).toEqual([]);
+    expect(banksWithStaleData({ enabled: false, staleData: [{ id: 1 }] })).toEqual([]);
+    expect(banksWithStaleData({ enabled: true, needsAttention: [] })).toEqual([]);
+  });
+
+  it('returns the banks Plaid has had no new data from', () => {
+    const banks = [{ id: 1, institutionName: 'Wealthsimple', bankUpdatedAt: '2026-11-03T21:11:14Z' }];
+    expect(banksWithStaleData({ enabled: true, staleData: banks })).toBe(banks);
   });
 });

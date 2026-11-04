@@ -158,6 +158,35 @@ describe('BankConnections', () => {
     await waitFor(() => expect(onStatusChange).toHaveBeenCalledWith(fresh));
   });
 
+  it('shows when Plaid last updated the bank, and explains a bank that is not updating', async () => {
+    plaidApi.getBankConnections.mockResolvedValue({ items: [{
+      ...item, status: 'stale', bankUpdatedAt: '2026-11-03T21:11:14Z',
+      institutionStatus: 'DOWN', institutionStatusSince: '2026-11-04T03:05:18Z'
+    }] });
+    const confirm = vi.spyOn(window, 'confirm');
+
+    render(<BankConnections status={production} onStatusChange={vi.fn()} />);
+
+    expect(await screen.findByTestId('bank-connection-status')).toHaveTextContent('Not updating');
+    const freshness = screen.getByTestId('bank-freshness');
+    expect(freshness).toHaveTextContent('Bank data updated by Plaid:');
+    expect(freshness).toHaveTextContent('Plaid reports Test Bank updates down since');
+    expect(screen.getByText(/catches up on its own and nothing is lost/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Reconnect' })).not.toBeInTheDocument();
+    expect(confirm).not.toHaveBeenCalled();
+  });
+
+  it('shows the update time without a status line when Plaid reports the bank healthy', async () => {
+    plaidApi.getBankConnections.mockResolvedValue({ items: [{ ...item, status: 'ok', bankUpdatedAt: '2026-11-04T09:00:00Z', institutionStatus: 'HEALTHY' }] });
+
+    render(<BankConnections status={production} onStatusChange={vi.fn()} />);
+
+    const freshness = await screen.findByTestId('bank-freshness');
+    expect(freshness).toHaveTextContent('Bank data updated by Plaid:');
+    expect(freshness).not.toHaveTextContent('Plaid reports');
+    expect(screen.queryByTestId('bank-connection-status')).not.toBeInTheDocument();
+  });
+
   describe('a bank that needs a new login', () => {
     const expired = { ...item, status: 'needs_login', lastError: 'The bank needs you to log in again.' };
 

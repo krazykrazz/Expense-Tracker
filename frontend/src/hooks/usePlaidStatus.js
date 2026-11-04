@@ -38,4 +38,7 @@ export function usePlaidStatus() {
 /** Banks the user has to act on (log in again, or removed at the bank); empty without Plaid. */
 export const banksNeedingAttention = (status) => (status && status.enabled && status.needsAttention) || [];
 
+/** Banks Plaid has had no new data from for hours (nothing for the user to do); empty without Plaid. */
+export const banksWithStaleData = (status) => (status && status.enabled && status.staleData) || [];
+
 export default usePlaidStatus;

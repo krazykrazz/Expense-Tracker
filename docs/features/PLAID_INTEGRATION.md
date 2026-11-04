@@ -91,6 +91,15 @@ Banks periodically ask for the login again (a changed password, a security check
 
 The status is worked out from the bank's last sync error, and all of the above refreshes in every open tab as soon as a sync fails or a bank is reconnected.
 
+### When a bank stops updating (at Plaid)
+
+Our syncs only get what Plaid already has. Plaid fetches from each bank on its own schedule (usually 1-4 times a day), and sometimes its connection to a bank breaks for hours or days (Wealthsimple, Nov 2026). Our sync then still succeeds, just with nothing new, so this is checked separately:
+
+- **After every sync**, the app asks Plaid (free) when it last fetched from the bank (`/item/get`) and how Plaid rates that bank right now (`/institutions/get_by_id` with status).
+- **Connections:** every bank shows "Bank data updated by Plaid: <time>". When Plaid rates the bank down or degraded, it adds "Plaid reports <bank> updates down since <time>". Plaid's rating isn't always reliable (it showed CIBC down for weeks while it worked), so it's shown as information, not used to flag the bank.
+- **Not updating:** when Plaid hasn't fetched new data from a bank for over **12 hours** (and there's no login problem), the bank gets an amber **Not updating** chip and the header bank icon an **amber dot** (hover names the bank). Red still means "you need to act" and takes precedence.
+- **Nothing to do:** the bank catches up on its own once Plaid's connection recovers, and nothing is lost (the sync position is kept). Don't disconnect: it uses a Trial slot and doesn't help. Automatic sync keeps running for these banks.
+
 **Connecting a disconnected bank again:** a new connection gets new transaction ids from Plaid, so the first ~30 days would otherwise arrive as duplicates of transactions you already reviewed. Instead, when a new transaction looks like one kept from the disconnected bank (same amount, description and date; or a settled charge for a kept pending one: same purchase date and description, amount within 25%), the kept row is re-attached to it. Its expense stays linked, a kept pending charge settles as usual (green pill), and nothing reappears in the inbox. Ignored transactions were deleted on disconnect, so they come back to the inbox once. While a bank is disconnected, a pending expense from it stays yellow, and its hover text says it will update once the bank is connected again.
 
 ### Automatic sync

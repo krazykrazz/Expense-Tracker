@@ -17,18 +17,26 @@ const GONE_ITEM_CODES = new Set(['ITEM_NOT_FOUND', 'INVALID_ACCESS_TOKEN']);
 const LOGIN_CODES = new Set(['ITEM_LOGIN_REQUIRED', 'INVALID_CREDENTIALS', 'INVALID_MFA', 'USER_SETUP_REQUIRED', 'PENDING_DISCONNECT']);
 /** Errors only the user can fix (log in again, or the connection is gone): automatic sync skips these banks. */
 const NEEDS_USER_CODES = new Set([...LOGIN_CODES, ...GONE_ITEM_CODES]);
+/** Plaid normally fetches from a bank 1-4 times a day; longer without new data means its connection is stuck. */
+const STALE_AFTER_HOURS = 12;
 
 /**
- * A bank connection's health, from its last sync error:
+ * A bank connection's health, from its last sync error and when Plaid last fetched from the bank:
  * 'ok', 'needs_login' (Reconnect fixes it without a new Trial connection), 'gone' (removed at the bank or
- * token rejected: disconnect), or 'error' (anything else; usually temporary, retried automatically).
- * @param {{lastError: (string|null)}} item
+ * token rejected: disconnect), 'error' (anything else; usually temporary, retried automatically), or 'stale'
+ * (our syncs work, but Plaid has had no new data from the bank for STALE_AFTER_HOURS; nothing to do but wait).
+ * @param {{lastError: (string|null), bankUpdatedAt?: (string|null)}} item
+ * @param {number} [now]
  */
-function connectionStatus(item) {
-  if (!item.lastError) return 'ok';
-  if (LOGIN_CODES.has(item.lastError)) return 'needs_login';
-  if (GONE_ITEM_CODES.has(item.lastError)) return 'gone';
-  return 'error';
+function connectionStatus(item, now = Date.now()) {
+  if (item.lastError) {
+    if (LOGIN_CODES.has(item.lastError)) return 'needs_login';
+    if (GONE_ITEM_CODES.has(item.lastError)) return 'gone';
+    return 'error';
+  }
+  const updated = item.bankUpdatedAt ? Date.parse(item.bankUpdatedAt) : NaN;
+  if (!Number.isNaN(updated) && now - updated > STALE_AFTER_HOURS * 60 * 60 * 1000) return 'stale';
+  return 'ok';
 }
 
 /** SQLite CURRENT_TIMESTAMP ('YYYY-MM-DD HH:MM:SS', UTC) → epoch ms; 0 when missing. */
@@ -80,8 +88,10 @@ class PlaidService {
 
   /**
    * @returns {Promise<{enabled: boolean, environment?: string, trial?: {limit: number, used: number}|null,
-   *   needsAttention?: Array<{id: number, institutionName: string, status: string}>}>} needsAttention lists the
-   *   banks the user has to act on (log in again, or removed at the bank), for the header dot and main-screen banner
+   *   needsAttention?: Array<{id: number, institutionName: string, status: string}>,
+   *   staleData?: Array<{id: number, institutionName: string, bankUpdatedAt: string, institutionStatus: (string|null)}>}>}
+   *   needsAttention lists the banks the user has to act on (log in again, or removed at the bank), for the header
+   *   dot and main-screen banner; staleData the banks Plaid has had no new data from for hours (amber header dot)
    */
   async getStatus() {
     const config = plaidConfig.getPlaidConfig();
@@ -94,11 +104,19 @@ class PlaidService {
         : null,
       plaidRepository.findAllItems()
     ]);
-    const needsAttention = items
+    const current = items
       .filter(item => item.environment === config.environment)
-      .map(item => ({ id: item.id, institutionName: item.institutionName, status: connectionStatus(item) }))
-      .filter(item => item.status === 'needs_login' || item.status === 'gone');
-    return { enabled: true, source: config.source, environment: config.environment, trial, needsAttention };
+      .map(item => ({ item, status: connectionStatus(item) }));
+    const needsAttention = current
+      .filter(({ status }) => status === 'needs_login' || status === 'gone')
+      .map(({ item, status }) => ({ id: item.id, institutionName: item.institutionName, status }));
+    const staleData = current
+      .filter(({ status }) => status === 'stale')
+      .map(({ item }) => ({
+        id: item.id, institutionName: item.institutionName, bankUpdatedAt: item.bankUpdatedAt,
+        institutionStatus: item.institutionStatus || null
+      }));
+    return { enabled: true, source: config.source, environment: config.environment, trial, needsAttention, staleData };
   }
 
   /**
@@ -320,6 +338,7 @@ class PlaidService {
           const { settlements, ...counts } = await plaidRepository.applySyncBatch(id, batch);
           logger.info('Plaid sync completed', { plaidItemId: id, ...counts, settled: settlements.length });
           await this._refreshBalances(id, accessToken);
+          await this._refreshHealth(id, accessToken);
           if (settlements.length > 0) {
             // After the batch is committed: expense updates go through expenseService (validation, card balance, log),
             // outside any request's tab context so every tab (including one that pressed Sync now) refreshes
@@ -367,6 +386,43 @@ class PlaidService {
       }
     } catch (err) {
       logger.warn('Plaid balance refresh failed', { plaidItemId: id, errorCode: plaidErrorOf(err)?.error_code ?? err.message });
+    }
+  }
+
+  /**
+   * Record when Plaid last fetched from the bank (/item/get) and Plaid's status for the institution
+   * (/institutions/get_by_id; both free). A sync only says our side works: when Plaid itself can't get data
+   * from the bank, the sync succeeds with nothing new, so this is what reveals a stuck connection.
+   * Failures leave the previous values and never fail the sync.
+   */
+  async _refreshHealth(id, accessToken) {
+    let institutionId = null;
+    try {
+      const { data } = await this._client().itemGet({ access_token: accessToken });
+      const updates = (data.status && data.status.transactions) || {};
+      institutionId = (data.item && data.item.institution_id) || null;
+      await plaidRepository.setItemHealth(id, {
+        bankUpdatedAt: updates.last_successful_update || null,
+        bankUpdateFailedAt: updates.last_failed_update || null
+      });
+    } catch (err) {
+      logger.warn('Plaid item status check failed', { plaidItemId: id, errorCode: plaidErrorOf(err)?.error_code ?? err.message });
+      return;
+    }
+    if (!institutionId) return;
+    try {
+      const { data } = await this._client().institutionsGetById({
+        institution_id: institutionId,
+        country_codes: plaidConfig.COUNTRY_CODES,
+        options: { include_status: true }
+      });
+      const updates = data.institution && data.institution.status && data.institution.status.transactions_updates;
+      await plaidRepository.setItemHealth(id, {
+        institutionStatus: (updates && updates.status) || null,
+        institutionStatusSince: (updates && updates.last_status_change) || null
+      });
+    } catch (err) {
+      logger.warn('Plaid institution status check failed', { plaidItemId: id, errorCode: plaidErrorOf(err)?.error_code ?? err.message });
     }
   }
 

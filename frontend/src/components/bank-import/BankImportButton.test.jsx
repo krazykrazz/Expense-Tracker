@@ -153,3 +153,36 @@ describe('BankImportButton sync on open', () => {
     now.mockRestore();
   });
 });
+
+describe('BankImportButton when a bank is not updating at Plaid', () => {
+  const staleWs = { id: 1, institutionName: 'Wealthsimple', bankUpdatedAt: '2026-11-03T21:11:14Z', institutionStatus: 'DOWN' };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    syncBanksIfStale.mockResolvedValue({ started: false, banks: 0 });
+  });
+
+  it('shows an amber dot naming the bank, and still opens on the Inbox', async () => {
+    getPlaidStatus.mockResolvedValue({ enabled: true, environment: 'production', trial: null, needsAttention: [], staleData: [staleWs] });
+
+    render(<BankImportButton />);
+    const button = await screen.findByRole('button', { name: /Wealthsimple: no new data from Plaid/ });
+    expect(screen.getByTestId('bank-stale-dot')).toHaveClass('stale');
+    expect(screen.queryByTestId('bank-attention-dot')).not.toBeInTheDocument();
+
+    fireEvent.click(button);
+    expect(await screen.findByTestId('bank-import-modal')).toHaveTextContent('inbox');
+  });
+
+  it('shows only the red dot when another bank needs the user', async () => {
+    getPlaidStatus.mockResolvedValue({
+      enabled: true, environment: 'production', trial: null,
+      needsAttention: [{ id: 3, institutionName: 'CIBC', status: 'needs_login' }], staleData: [staleWs]
+    });
+
+    render(<BankImportButton />);
+
+    expect(await screen.findByTestId('bank-attention-dot')).toBeInTheDocument();
+    expect(screen.queryByTestId('bank-stale-dot')).not.toBeInTheDocument();
+  });
+});

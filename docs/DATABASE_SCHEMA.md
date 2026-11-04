@@ -460,6 +460,10 @@ One row per bank login connected through Plaid.
 | environment | TEXT NOT NULL | 'sandbox' or 'production' (CHECK) |
 | last_synced_at | TEXT | Last successful sync (UTC) |
 | last_error | TEXT | Last Plaid error code, cleared by the next successful sync |
+| bank_updated_at | TEXT | When Plaid last fetched new data from the bank (ISO 8601, from `/item/get`); over 12 hours ago (without an error) = "Not updating" |
+| bank_update_failed_at | TEXT | Plaid's last failed fetch from the bank |
+| institution_status | TEXT | Plaid's rating of the bank's transaction updates (`HEALTHY`, `DEGRADED`, `DOWN`), from `/institutions/get_by_id` |
+| institution_status_since | TEXT | When that rating last changed |
 | created_at, updated_at | TEXT NOT NULL | Timestamps |
 
 ### plaid_accounts

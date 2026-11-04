@@ -47,6 +47,7 @@ Current migrations (in run order):
 | `fixed_expenses_payment_method_id_backfill_v1` | Sets `fixed_expenses.payment_method_id` from the `payment_type` display name where it was NULL or pointed at a different payment method (left stale by edits); legacy names such as `Fixed` are untouched |
 | `plaid_transactions_pending_v1` | Adds `pending`, `pending_transaction_id` and `removed_at` to `plaid_transactions` (idempotent; tolerates columns already created by `schema.js`) |
 | `plaid_account_balances_v1` | Adds `current_balance`, `available_balance`, `credit_limit`, `balance_currency` and `balance_as_of` to `plaid_accounts`, for the credit card balance check (idempotent) |
+| `plaid_item_freshness_v1` | Adds `bank_updated_at`, `bank_update_failed_at`, `institution_status` and `institution_status_since` to `plaid_items`, for the "Not updating" check (idempotent) |
 
 Because migrations also run on brand-new production databases (immediately after `schema.js`), every migration must be idempotent against a database that already has the end-state schema.
 

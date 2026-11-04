@@ -452,6 +452,16 @@ const SystemModal = () => {
           <div className="changelog">
             <div className="changelog-entry">
               <div className="changelog-version">
+                v1.19.2
+                {isCurrentVersion('v1.19.2') && <span className="current-version-badge">Current Version</span>}
+              </div>
+              <div className="changelog-date">November 4, 2026</div>
+              <ul className="changelog-items">
+                <li>Financial and credit card views: balance check coloured like the expense list pill and folded into the card view, dark theme fixes, statement amount shown once paid, negative amounts as -$, banner keyboard fix, more balance-check causes</li>
+              </ul>
+            </div>
+            <div className="changelog-entry">
+              <div className="changelog-version">
                 v1.19.1
                 {isCurrentVersion('v1.19.1') && <span className="current-version-badge">Current Version</span>}
               </div>

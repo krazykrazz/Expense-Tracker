@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, Fragment } from 'react';
 import { usePlaidLink } from 'react-plaid-link';
 import {
   createLinkToken, connectBank, reconnectBank, getBankConnections, disconnectBank, mapBankAccount, syncBanks, getPlaidStatus
@@ -7,6 +7,7 @@ import { getPaymentMethods } from '../../services/paymentMethodApi';
 import { formatDateTime } from '../../utils/formatters';
 import { useSyncEvent } from '../../hooks/useSyncEvent';
 import AutoSyncSettings from './AutoSyncSettings';
+import BankFileImport from './BankFileImport';
 
 const MAPPABLE_TYPES = ['debit', 'credit_card'];
 
@@ -69,6 +70,8 @@ const BankConnections = ({ status, onStatusChange }) => {
   const [error, setError] = useState(null);
   const [message, setMessage] = useState(null);
   const [linkToken, setLinkToken] = useState(null);
+  // Bank account whose "Import file" panel is open
+  const [importAccountId, setImportAccountId] = useState(null);
   // Bank being repaired through Plaid update mode (null when connecting a new bank)
   const reconnectItemRef = useRef(null);
 
@@ -287,23 +290,51 @@ const BankConnections = ({ status, onStatusChange }) => {
             </div>
             <ul className="bank-account-list">
               {item.accounts.map(account => (
-                <li key={account.id} className="bank-account">
+                <Fragment key={account.id}>
+                <li className="bank-account">
                   <span>
                     {account.name}{account.mask ? ` ••${account.mask}` : ''}
                     <span className="bank-import-muted"> {account.subtype || account.type}</span>
                   </span>
-                  <select
-                    className="bank-account-mapping"
-                    value={account.paymentMethodId ?? ''}
-                    onChange={(event) => handleMap(account.id, event.target.value)}
-                    aria-label={`Payment method for ${account.name}`}
-                  >
-                    <option value="">Don&apos;t import</option>
-                    {paymentMethods.map(method => (
-                      <option key={method.id} value={method.id}>{method.display_name}</option>
-                    ))}
-                  </select>
+                  <span className="bank-account-controls">
+                    {account.paymentMethodId != null && importAccountId !== account.id && (
+                      <button
+                        type="button"
+                        className="bank-import-link"
+                        onClick={() => setImportAccountId(account.id)}
+                        disabled={busy}
+                        title="Import a CSV downloaded from the bank's website, for when Plaid isn't getting new data"
+                      >
+                        Import file
+                      </button>
+                    )}
+                    <select
+                      className="bank-account-mapping"
+                      value={account.paymentMethodId ?? ''}
+                      onChange={(event) => handleMap(account.id, event.target.value)}
+                      aria-label={`Payment method for ${account.name}`}
+                    >
+                      <option value="">Don&apos;t import</option>
+                      {paymentMethods.map(method => (
+                        <option key={method.id} value={method.id}>{method.display_name}</option>
+                      ))}
+                    </select>
+                  </span>
                 </li>
+                {importAccountId === account.id && (
+                  <li className="bank-account-import">
+                    <BankFileImport
+                      account={account}
+                      onClose={() => setImportAccountId(null)}
+                      onImported={(text) => {
+                        setImportAccountId(null);
+                        setMessage(text);
+                        load();
+                      }}
+                    />
+                  </li>
+                )}
+                </Fragment>
               ))}
             </ul>
           </section>

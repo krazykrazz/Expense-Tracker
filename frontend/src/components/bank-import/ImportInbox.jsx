@@ -234,6 +234,9 @@ const InboxRow = ({ txn, filter, expanded, onExpand, onAction, busy, error }) =>
           {filter === 'new' && txn.pending && (
             <span className="inbox-badge pending" title="Not settled yet. Add it now; the expense updates when it settles.">Pending</span>
           )}
+          {txn.source === 'file' && (
+            <span className="inbox-badge" title="Imported from a file downloaded from the bank. Plaid takes it over when it catches up.">From file</span>
+          )}
           {filter === 'new' && !txn.canAdd && <span className="inbox-badge">{txn.isDeposit ? 'Deposit' : 'Refund / credit'}</span>}
           {filter === 'new' && closeIncome.length > 0 && (
             <span className="inbox-badge match" title="Matches expected income: confirm it to record when it landed">

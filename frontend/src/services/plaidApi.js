@@ -82,6 +82,20 @@ export const disconnectBank = (id) =>
 export const mapBankAccount = (accountId, paymentMethodId) =>
   call('mapping bank account', () => apiPut(API_ENDPOINTS.PLAID_ACCOUNT_BY_ID(accountId), { paymentMethodId }, 'update bank account'));
 
+/**
+ * Import (or with `dryRun`, preview) a CSV exported from the bank's website into a connected bank account.
+ * @param {number} accountId
+ * @param {{csv: string, fromDate?: string, dryRun?: boolean}} options
+ * @returns {Promise<{formatLabel: string, fromDate: string, defaultFromDate: string, total: number, beforeFrom: number,
+ *   alreadyFromBank: number, unchanged: number, updated: number, added: number, pendingAdded: number, settled: number}>}
+ */
+export const importBankFile = (accountId, { csv, fromDate, dryRun = false }) =>
+  call('importing bank file', () => apiPost(
+    API_ENDPOINTS.PLAID_ACCOUNT_IMPORT_FILE(accountId),
+    { csv, fromDate: fromDate || undefined, dryRun },
+    dryRun ? 'preview bank file' : 'import bank file'
+  ));
+
 /** @returns {Promise<{results: Array, totals: {added: number, updated: number, removed: number}}>} */
 export const syncBanks = () =>
   call('syncing banks', () => apiPost(API_ENDPOINTS.PLAID_SYNC, {}, 'sync banks'));

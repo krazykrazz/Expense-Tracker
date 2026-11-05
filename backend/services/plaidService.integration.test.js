@@ -195,6 +195,50 @@ describe('plaidService', () => {
     });
   });
 
+  describe('when Plaid catches up on transactions imported from a bank file', () => {
+    const CREDIT_CARD = 4;
+    const plaidInboxService = require('./plaidInboxService');
+    const plaidFileImportService = require('./plaidFileImportService');
+    const CARD_HEADER = 'transaction_date,transaction_type,status,merchant,amount,currency,notes,category';
+
+    test('takes over the file rows, keeping their review and expense link; settles a pending one', async () => {
+      const item = await connect('Card Bank');
+      await run("UPDATE plaid_accounts SET type = 'credit' WHERE plaid_item_id = ?", [item.id]);
+      await plaidService.updateAccountMapping(item.accounts[0].id, CREDIT_CARD);
+      await plaidFileImportService.importFile(item.accounts[0].id, {
+        csv: [
+          CARD_HEADER,
+          '2026-11-04,Purchase,Pending,Corner Cafe,-10.40,CAD,,',
+          '2026-11-03,Purchase,Completed,Grocer,-44.57,CAD,,'
+        ].join('\n'),
+        fromDate: '2026-11-01'
+      });
+      const rows = await all("SELECT id, name FROM plaid_transactions WHERE transaction_id LIKE 'file:%' ORDER BY id");
+      const cafe = rows.find(r => r.name === 'Corner Cafe');
+      await plaidInboxService.addAsExpense(cafe.id, { type: 'Dining Out' });
+
+      // Plaid sends both, settled, a day later than the file's dates, under its own ids and names
+      client.transactionsSync.mockResolvedValueOnce(page({ added: [
+        txn('ws-cafe', { amount: 10.4, date: '2026-11-05', authorized_date: null, name: 'Corner Cafe - Purchase', merchant_name: null }),
+        txn('ws-grocer', { amount: 44.57, date: '2026-11-04', authorized_date: null, name: 'Grocer - Purchase', merchant_name: null }),
+        txn('ws-new', { amount: 7, date: '2026-11-05', name: 'Something new' })
+      ] }));
+
+      const result = await plaidService.syncItem(item.id);
+
+      expect(result).toMatchObject({ added: 1, fromFile: 2 });
+      const after = await all('SELECT transaction_id AS tid, status, pending, expense_id AS expenseId FROM plaid_transactions ORDER BY transaction_id');
+      expect(after).toEqual([
+        { tid: 'ws-cafe', status: 'added', pending: 0, expenseId: expect.any(Number) },
+        { tid: 'ws-grocer', status: 'new', pending: 0, expenseId: null },
+        { tid: 'ws-new', status: 'new', pending: 0, expenseId: null }
+      ]);
+      expect(activityLogService.logEvent).toHaveBeenCalledWith(
+        'plaid_transaction_updated', 'plaid_transaction', cafe.id, expect.stringContaining('settled'), expect.objectContaining({ action: 'settled' })
+      );
+    });
+  });
+
   describe('connecting a bank again after disconnecting', () => {
     const CREDIT_CARD = 4;
     const plaidInboxService = require('./plaidInboxService');

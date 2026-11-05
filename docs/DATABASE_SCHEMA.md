@@ -491,7 +491,7 @@ Posted bank transactions staged for review in the Import Inbox.
 | Field | Type | Description |
 |-------|------|-------------|
 | id | INTEGER PRIMARY KEY | Unique identifier |
-| transaction_id | TEXT NOT NULL UNIQUE | Plaid transaction id (makes re-syncs idempotent) |
+| transaction_id | TEXT NOT NULL UNIQUE | Plaid transaction id (makes re-syncs idempotent). Rows imported from a bank CSV use `file:<hash>` (stable across re-imports) until a matching Plaid transaction takes them over |
 | plaid_account_id | INTEGER | Foreign key to plaid_accounts (ON DELETE SET NULL, so added/matched links survive a disconnect) |
 | amount | REAL NOT NULL | Plaid amount: positive = money out, negative = refund/credit |
 | iso_currency_code | TEXT | Currency code |

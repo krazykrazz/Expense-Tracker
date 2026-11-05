@@ -17,6 +17,7 @@ vi.mock('../../services/plaidApi', () => ({
   getBankConnections: vi.fn(),
   disconnectBank: vi.fn(),
   mapBankAccount: vi.fn(),
+  importBankFile: vi.fn(),
   syncBanks: vi.fn(),
   getPlaidStatus: vi.fn(),
   getAutoSyncSettings: vi.fn(),
@@ -174,6 +175,25 @@ describe('BankConnections', () => {
     expect(screen.getByText(/catches up on its own and nothing is lost/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Reconnect' })).not.toBeInTheDocument();
     expect(confirm).not.toHaveBeenCalled();
+  });
+
+  it('offers Import file only for accounts that import into a payment method, and opens the import panel', async () => {
+    plaidApi.getBankConnections.mockResolvedValue({ items: [{
+      ...item,
+      accounts: [
+        { id: 7, name: 'Chequing', mask: '1234', type: 'depository', subtype: 'checking', paymentMethodId: 2 },
+        { id: 8, name: 'Savings', mask: '9999', type: 'depository', subtype: 'savings', paymentMethodId: null }
+      ]
+    }] });
+
+    render(<BankConnections status={sandbox} onStatusChange={vi.fn()} />);
+
+    const buttons = await screen.findAllByRole('button', { name: 'Import file' });
+    expect(buttons).toHaveLength(1);
+    fireEvent.click(buttons[0]);
+    expect(screen.getByTestId('bank-file-import')).toHaveTextContent('Import a file into Chequing ••1234');
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByTestId('bank-file-import')).not.toBeInTheDocument();
   });
 
   it('shows the update time without a status line when Plaid reports the bank healthy', async () => {

@@ -2,6 +2,7 @@ const { asyncHandler } = require('../middleware/errorHandler');
 const plaidService = require('../services/plaidService');
 const plaidInboxService = require('../services/plaidInboxService');
 const plaidCardBalanceService = require('../services/plaidCardBalanceService');
+const plaidFileImportService = require('../services/plaidFileImportService');
 const plaidSettingsService = require('../services/plaidSettingsService');
 const plaidSyncSchedulerService = require('../services/plaidSyncSchedulerService');
 const { runWithTabId } = require('../utils/requestContext');
@@ -68,6 +69,15 @@ const getCardBalances = asyncHandler(async (req, res) => {
  */
 const useBankCreditLimit = asyncHandler(async (req, res) => {
   res.json(await plaidCardBalanceService.applyBankCreditLimit(idParam(req)));
+});
+
+/**
+ * POST /api/plaid/accounts/:id/import-file
+ * Body: { csv, fromDate?, dryRun? } — a CSV exported from the bank's website (fallback when Plaid can't fetch).
+ */
+const importBankFile = asyncHandler(async (req, res) => {
+  const { csv, fromDate, dryRun } = req.body || {};
+  res.json(await plaidFileImportService.importFile(idParam(req), { csv, fromDate, dryRun: dryRun === true }));
 });
 
 /**
@@ -199,6 +209,7 @@ const unignore = asyncHandler(async (req, res) => {
 module.exports = {
   getCardBalances,
   useBankCreditLimit,
+  importBankFile,
   getStatus,
   getSettings,
   saveSettings,

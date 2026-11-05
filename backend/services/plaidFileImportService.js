@@ -44,14 +44,16 @@ class PlaidFileImportService {
     if (file.accountType !== account.type) {
       throw fail(`This is a ${file.label} file, but ${account.name} is a ${TYPE_LABELS[account.type] || account.type} account.`, 400);
     }
-    if (file.accountNumber && account.mask && !file.accountNumber.endsWith(account.mask)) {
-      throw fail(`This file is for account ••${file.accountNumber.slice(-4)}, not ${account.name} ••${account.mask}.`, 400);
+    // A card file can list more than one card on the account (a second cardholder); one must be this account's
+    if (file.accountNumbers.length > 0 && account.mask && !file.accountNumbers.some(number => number.endsWith(account.mask))) {
+      const numbers = file.accountNumbers.map(number => `••${number.slice(-4)}`).join(', ');
+      throw fail(`This file is for ${numbers}, not ${account.name} ••${account.mask}.`, 400);
     }
 
     const defaultFromDate = (await plaidRepository.findFirstPlaidDate(account.id)) || shiftDate(getTodayString(), -DEFAULT_DAYS_BACK);
     const from = fromDate || defaultFromDate;
     const rows = file.rows.filter(row => row.date >= from);
-    const { settlements, ...counts } = await plaidRepository.applyFileImport(account.id, rows, { fromDate: from, dryRun });
+    const { settlements, ...counts } = await plaidRepository.applyFileImport(account.id, rows, { fromDate: from, dateKind: file.dateKind, dryRun });
 
     const result = {
       format: file.format,
@@ -62,7 +64,6 @@ class PlaidFileImportService {
       total: file.rows.length,
       beforeFrom: file.rows.length - rows.length,
       ...counts,
-      settled: settlements.filter(s => s.settled).length,
       dryRun: Boolean(dryRun)
     };
     if (dryRun || counts.added + counts.updated === 0) return result;

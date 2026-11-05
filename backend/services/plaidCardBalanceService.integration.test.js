@@ -192,6 +192,43 @@ describe('plaidCardBalanceService', () => {
     await expect(plaidCardBalanceService.applyBankCreditLimit(CREDIT_CARD)).rejects.toMatchObject({ statusCode: 400 });
   });
 
+  test('bank rows from a file count like Plaid\'s: unreviewed or ignored ones explain a difference, added ones don\'t', async () => {
+    const plaidFileImportService = require('./plaidFileImportService');
+    const plaidInboxService = require('./plaidInboxService');
+    const header = 'transaction_date,transaction_type,status,merchant,amount,currency,notes,category';
+    await plaidFileImportService.importFile(cardAccountId, {
+      csv: [header, '2026-11-02,Purchase,Completed,Grocer,-50.00,CAD,,', '2026-11-03,Refund,Completed,Book Store,15.50,CAD,,'].join('\n'),
+      fromDate: '2026-11-01'
+    });
+    await setBank({ current: 34.5, available: 965.5, limit: 1000 });
+
+    let card = await cardCheck();
+    expect(card).toMatchObject({ status: 'differs', tracker: 0, difference: 34.5, unexplained: 0 });
+    expect(card.causes.map(c => [c.type, c.name, c.inboxStatus])).toEqual([['bank_only', 'Grocer', 'new'], ['bank_only', 'Book Store', 'new']]);
+
+    const grocer = await get("SELECT id FROM plaid_transactions WHERE name = 'Grocer'");
+    const refund = await get("SELECT id FROM plaid_transactions WHERE name = 'Book Store'");
+    await plaidInboxService.addAsExpense(grocer.id, { type: 'Groceries' });
+    await plaidInboxService.ignore(refund.id);
+
+    card = await cardCheck();
+    expect(card).toMatchObject({ tracker: 50, difference: -15.5, unexplained: 0 });
+    expect(card.causes.map(c => [c.type, c.name, c.inboxStatus])).toEqual([['bank_only', 'Book Store', 'ignored']]);
+  });
+
+  test('a pending charge a file showed settled is no longer "settling" on a bank that leaves pending out', async () => {
+    const plaidFileImportService = require('./plaidFileImportService');
+    const dinner = await addExpense('2026-11-02', 60, 'Dinner');
+    await stage('t-dinner', { amount: 60, date: '2026-11-02', status: 'added', pending: 1, expenseId: dinner, name: 'DINNER PLACE' });
+    await setBank({ current: 0, limit: 1000 });
+    expect((await cardCheck()).causes.map(c => c.type)).toEqual(['settling']);
+
+    await plaidFileImportService.importFile(cardAccountId, { csv: '2026-11-03,DINNER PLACE,60.00,,5223********4242', fromDate: '2026-11-01' });
+    await setBank({ current: 60, limit: 1000 });
+
+    expect(await cardCheck()).toMatchObject({ status: 'match', causes: [] });
+  });
+
   test('names a pending charge the bank cancelled while the tracker still has its expense', async () => {
     const dinner = await addExpense('2026-11-01', 40, 'Dinner');
     await run(

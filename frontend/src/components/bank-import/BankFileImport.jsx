@@ -75,8 +75,9 @@ const BankFileImport = ({ account, onImported, onClose }) => {
       </div>
       <p className="bank-import-muted">
         For when Plaid isn&apos;t getting new data from the bank. Download your recent activity as a CSV from the bank&apos;s
-        website (Wealthsimple: Activity → Export) and choose it here. Transactions Plaid already sent are skipped, and Plaid
-        takes over the imported ones when it catches up, so nothing is counted twice.
+        website (Wealthsimple: Activity → Export; CIBC: Download transactions → CSV) and choose it here. Transactions Plaid
+        already sent are matched rather than added again, and Plaid takes over the imported ones when it catches up, so
+        nothing is counted twice. Whichever source has more detail (settled amount, dates, merchant) is kept.
       </p>
       <label className="bank-file-import-picker">
         <span>CSV file</span>
@@ -103,7 +104,7 @@ const BankFileImport = ({ account, onImported, onClose }) => {
             {preview.beforeFrom > 0 && <li>{plural(preview.beforeFrom, 'row')} before then: skipped{preview.fromDate === preview.defaultFromDate ? ' (already in the tracker from before the bank was connected)' : ''}</li>}
             {preview.alreadyFromBank > 0 && <li>{preview.alreadyFromBank} already received from the bank: skipped</li>}
             {preview.unchanged > 0 && <li>{preview.unchanged} imported before, unchanged</li>}
-            {preview.updated > 0 && <li>{preview.updated} imported before, to update{preview.settled > 0 ? ` (${preview.settled} now settled)` : ''}</li>}
+            {preview.updated > 0 && <li>{preview.updated} already here, to update with the file&apos;s details{preview.settled > 0 ? ` (${preview.settled} now settled)` : ''}</li>}
             <li><strong>{plural(preview.added, 'new transaction')}</strong>{preview.pendingAdded > 0 ? ` (${preview.pendingAdded} pending)` : ''}</li>
           </ul>
           <div className="bank-connection-actions">

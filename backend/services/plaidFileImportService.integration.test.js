@@ -44,9 +44,9 @@ const get = (sql, params = []) => new Promise((resolve, reject) => {
 
 const stagePlaid = (transactionId, accountId, amount, date, extra = {}) =>
   run(
-    `INSERT INTO plaid_transactions (transaction_id, plaid_account_id, amount, date, name, status, expense_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [transactionId, accountId, amount, date, extra.name || 'BANK ROW', extra.status || 'matched', extra.expenseId ?? null]
+    `INSERT INTO plaid_transactions (transaction_id, plaid_account_id, amount, date, authorized_date, name, merchant_name, status, expense_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [transactionId, accountId, amount, date, extra.authorizedDate ?? date, extra.name || 'BANK ROW', extra.merchantName ?? 'Bank Merchant', extra.status || 'matched', extra.expenseId ?? null]
   );
 const fileRows = () => all("SELECT transaction_id AS tid, amount, date, name, pending, status, expense_id AS expenseId FROM plaid_transactions WHERE transaction_id LIKE 'file:%' ORDER BY date, id");
 
@@ -155,7 +155,7 @@ describe('plaidFileImportService', () => {
   test.each([
     ['the account is not mapped to a payment method', () => unmappedAccountId, cardCsv('2026-11-04,Purchase,Completed,X,-1.00,CAD,,'), 400, /Choose a payment method for Savings/],
     ['the account number does not match', () => chequingAccountId,
-      [CHEQUING_HEADER, '2026-11-04,09:10:39,87654321,Chequing,Withdrawal,E Transfer,Completed,X,,-1.00,CAD,'].join('\n'), 400, 'This file is for account ••4321, not Chequing ••5678.'],
+      [CHEQUING_HEADER, '2026-11-04,09:10:39,87654321,Chequing,Withdrawal,E Transfer,Completed,X,,-1.00,CAD,'].join('\n'), 400, 'This file is for ••4321, not Chequing ••5678.'],
     ['the from date is invalid', () => cardAccountId, cardCsv('2026-11-04,Purchase,Completed,X,-1.00,CAD,,'), 400, 'From date must be YYYY-MM-DD'],
     ['the account does not exist', () => 99999, cardCsv('2026-11-04,Purchase,Completed,X,-1.00,CAD,,'), 404, 'Bank account not found']
   ])('refuses when %s', async (_, accountId, csv, statusCode, message) => {

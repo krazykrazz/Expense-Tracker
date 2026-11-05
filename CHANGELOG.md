@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.21.0] - 2026-11-05
+
+### Bank file import: Wealthsimple and CIBC CSV exports go into the Bank Import inbox and merge with Plaid in either order, keeping the best information
+
 ## [1.20.0] - 2026-11-04
 
 ### Bank data freshness: flags a bank that Plaid has had no new data from for over 12 hours (amber dot, Not updating), and shows when Plaid last updated each bank and how Plaid rates it

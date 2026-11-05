@@ -1215,6 +1215,13 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v1.21.0</div>
+                <div className="changelog-date">November 5, 2026</div>
+                <ul className="changelog-items">
+                  <li>Bank file import: Wealthsimple and CIBC CSV exports go into the Bank Import inbox and merge with Plaid in either order, keeping the best information</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v1.20.0</div>
                 <div className="changelog-date">November 4, 2026</div>
                 <ul className="changelog-items">

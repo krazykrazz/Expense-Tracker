@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.21.0',
+    date: 'November 5, 2026',
+    added: [],
+    changed: ['Bank file import: Wealthsimple and CIBC CSV exports go into the Bank Import inbox and merge with Plaid in either order, keeping the best information'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.20.0',
     date: 'November 4, 2026',
     added: [],

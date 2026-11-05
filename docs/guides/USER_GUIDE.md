@@ -216,6 +216,8 @@ Don't use **Disconnect** for this. If a bank was disconnected anyway, connecting
 
 Sometimes Plaid itself can't get new data from a bank for a while. When that lasts over 12 hours, the bank icon gets an **amber dot**, and on **Connections** the bank shows **Not updating** with when Plaid last got data from it. There's nothing to do: it catches up on its own and nothing is lost. Don't disconnect.
 
+To get the missing transactions sooner, download your recent activity from the bank's website as a CSV (Wealthsimple: Activity → Export; CIBC: Download transactions → CSV), then on **Connections** click **Import file** next to the account and choose it. The preview shows what's new; transactions already received from the bank are matched rather than added again, and when Plaid catches up it takes over the imported ones, so nothing is counted twice. Whichever source has more detail is kept (for example, a CIBC file can settle a charge Plaid still shows as pending).
+
 ## Income & Fixed Expenses
 
 ### Managing Income

@@ -23,6 +23,7 @@ router.post('/items', plaidController.connectItem);
 router.post('/items/:id/reconnected', plaidController.reconnectedItem);
 router.delete('/items/:id', plaidController.disconnectItem);
 router.put('/accounts/:id', plaidController.updateAccount);
+router.post('/accounts/:id/import-file', plaidController.importBankFile);
 router.post('/sync', plaidController.sync);
 router.get('/card-balances', plaidController.getCardBalances);
 router.post('/card-balances/:id/use-bank-limit', plaidController.useBankCreditLimit);

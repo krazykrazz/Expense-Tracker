@@ -1,9 +1,17 @@
 const dbHelper = require('../utils/dbHelper');
+const { FILE_ID_PREFIX, SAME_TXN_DAYS, planFileImport, mergePlaidIntoFileRow, sameTransaction } = require('../utils/bankFileImport');
 
 const PUBLIC_ITEM_COLUMNS = `id, item_id AS itemId, institution_name AS institutionName, environment, last_synced_at AS lastSyncedAt,
   last_error AS lastError, bank_updated_at AS bankUpdatedAt, bank_update_failed_at AS bankUpdateFailedAt,
   institution_status AS institutionStatus, institution_status_since AS institutionStatusSince, created_at AS createdAt`;
 const ACCOUNT_COLUMNS = 'id, plaid_item_id AS plaidItemId, account_id AS accountId, name, mask, type, subtype, payment_method_id AS paymentMethodId';
+/** A staged row as the file-import merge sees it (utils/bankFileImport), and its columns by those names. */
+const STAGED_COLUMNS = `id, transaction_id AS transactionId, date, authorized_date AS authorizedDate, amount, pending, name,
+  merchant_name AS merchantName, status, expense_id AS expenseId, removed_at AS removedAt`;
+const STAGED_COLUMN_NAMES = {
+  transactionId: 'transaction_id', date: 'date', authorizedDate: 'authorized_date', amount: 'amount', pending: 'pending',
+  name: 'name', merchantName: 'merchant_name', removedAt: 'removed_at'
+};
 const TXN_COLUMNS = `pt.id, pt.transaction_id AS transactionId, pt.plaid_account_id AS plaidAccountId, pt.amount,
   pt.iso_currency_code AS isoCurrencyCode, pt.date, pt.authorized_date AS authorizedDate, pt.name,
   pt.merchant_name AS merchantName, pt.status, pt.expense_id AS expenseId, pt.pending,
@@ -141,12 +149,25 @@ class PlaidRepository {
       const accountRows = await tx.all('SELECT id, account_id FROM plaid_accounts WHERE plaid_item_id = ?', [plaidItemId]);
       const accountIdMap = new Map(accountRows.map(row => [row.account_id, row.id]));
 
-      const counts = { added: 0, updated: 0, removed: 0, reattached: 0 };
+      const counts = { added: 0, updated: 0, removed: 0, reattached: 0, fromFile: 0 };
       const settlements = [];
       // Rows kept from a disconnected bank (added/matched) already claimed by a transaction in this batch
       const claimedOrphans = new Set();
-      const SET_FIELDS = `plaid_account_id = ?, amount = ?, iso_currency_code = ?, date = ?, authorized_date = ?,
-        name = ?, merchant_name = ?, pending = ?, pending_transaction_id = ?`;
+      // Keep a purchase date and merchant name another source supplied when Plaid sends none
+      const SET_FIELDS = `plaid_account_id = ?, amount = ?, iso_currency_code = ?, date = ?, authorized_date = COALESCE(?, authorized_date),
+        name = ?, merchant_name = COALESCE(?, merchant_name), pending = ?, pending_transaction_id = ?`;
+      let reportsPending = null;
+      const bankReportsPending = async () => {
+        if (reportsPending === null) {
+          reportsPending = upserts.some(t => t.pending || t.pending_transaction_id) || Boolean(await tx.get(
+            `SELECT 1 AS yes FROM plaid_transactions pt JOIN plaid_accounts pa ON pa.id = pt.plaid_account_id
+             WHERE pa.plaid_item_id = ? AND pt.transaction_id NOT LIKE '${FILE_ID_PREFIX}%'
+               AND (pt.pending = 1 OR pt.pending_transaction_id IS NOT NULL) LIMIT 1`,
+            [plaidItemId]
+          ));
+        }
+        return reportsPending;
+      };
 
       for (const txn of upserts) {
         const pending = txn.pending ? 1 : 0;
@@ -160,8 +181,9 @@ class PlaidRepository {
         );
 
         if (!existing && !pending && txn.pending_transaction_id) {
+          // Its pending version, still pending, or already shown settled by a bank file (same row, Plaid's id kept)
           const pendingRow = await tx.get(
-            'SELECT id, status, amount, expense_id AS expenseId FROM plaid_transactions WHERE transaction_id = ? AND pending = 1',
+            'SELECT id, status, amount, pending, expense_id AS expenseId FROM plaid_transactions WHERE transaction_id = ?',
             [txn.pending_transaction_id]
           );
           if (pendingRow) {
@@ -170,7 +192,7 @@ class PlaidRepository {
               [txn.transaction_id, ...values, pendingRow.id]
             );
             counts.updated++;
-            if (pendingRow.expenseId) {
+            if (pendingRow.expenseId && pendingRow.pending) {
               settlements.push({
                 plaidTransactionId: pendingRow.id, expenseId: pendingRow.expenseId, settled: true,
                 previousAmount: pendingRow.amount, amount: txn.amount, postedDate: txn.date
@@ -181,6 +203,24 @@ class PlaidRepository {
         }
 
         if (!existing) {
+          // Brought in from a bank file while Plaid couldn't fetch: Plaid's version takes over that row, keeping
+          // its review state, expense link and whatever the file knew better (see utils/bankFileImport).
+          const fromFile = await this._findFileRow(tx, txn, accountIdMap.get(txn.account_id), claimedOrphans);
+          if (fromFile) {
+            claimedOrphans.add(fromFile.id);
+            const { fields, settlement } = mergePlaidIntoFileRow(fromFile, txn, await bankReportsPending());
+            await tx.run(
+              `UPDATE plaid_transactions SET transaction_id = ?, plaid_account_id = ?, amount = ?, iso_currency_code = ?, date = ?,
+                 authorized_date = ?, name = ?, merchant_name = ?, pending = ?, pending_transaction_id = ?, removed_at = NULL
+               WHERE id = ?`,
+              [fields.transactionId, accountIdMap.get(txn.account_id), fields.amount, fields.isoCurrencyCode, fields.date,
+                fields.authorizedDate, fields.name, fields.merchantName, fields.pending, fields.pendingTransactionId, fromFile.id]
+            );
+            counts.fromFile++;
+            counts.updated++;
+            if (settlement) settlements.push(settlement);
+            continue;
+          }
           // Same bank connected again: Plaid re-sends recent history under new ids. Re-attach rows kept from the
           // old connection instead of staging duplicates the user would have to recognise and ignore.
           const orphan = await this._findReconnectOrphan(tx, txn, claimedOrphans);
@@ -208,6 +248,20 @@ class PlaidRepository {
             [...values, txn.transaction_id]
           );
           counts.added++;
+        } else if (!existing.pending && pending) {
+          // A file already showed it settled; a pending charge never goes back to pending
+          continue;
+        } else if (existing.pending && !pending) {
+          // Settled under its own id: a charge kept pending because a bank file said so (Wealthsimple) and
+          // Plaid now sends a change. Reviewed or not, it follows the bank.
+          await tx.run(`UPDATE plaid_transactions SET ${SET_FIELDS}, removed_at = NULL WHERE id = ?`, [...values, existing.id]);
+          counts.updated++;
+          if (existing.expenseId) {
+            settlements.push({
+              plaidTransactionId: existing.id, expenseId: existing.expenseId, settled: true,
+              previousAmount: existing.amount, amount: txn.amount, postedDate: txn.date
+            });
+          }
         } else if (existing.status === 'new' || (existing.pending && pending)) {
           await tx.run(`UPDATE plaid_transactions SET ${SET_FIELDS} WHERE id = ?`, [...values, existing.id]);
           counts.updated++;
@@ -242,6 +296,30 @@ class PlaidRepository {
     });
   }
 
+  /**
+   * A row imported from a bank file on the same account that an incoming Plaid transaction is the same as
+   * (utils/bankFileImport sameTransaction: same amount within SAME_TXN_DAYS, or a pending charge that settled
+   * for a different amount), exact amounts and closest dates first.
+   * @param {Set<number>} claimed rows already taken over in this batch
+   */
+  async _findFileRow(tx, txn, plaidAccountId, claimed) {
+    if (!plaidAccountId) return null;
+    const rows = await tx.all(
+      `SELECT ${STAGED_COLUMNS} FROM plaid_transactions
+       WHERE plaid_account_id = ? AND transaction_id LIKE '${FILE_ID_PREFIX}%' AND ABS(julianday(date) - julianday(?)) <= ?`,
+      [plaidAccountId, txn.date, SAME_TXN_DAYS]
+    );
+    const incoming = { date: txn.date, amount: txn.amount, pending: Boolean(txn.pending), name: txn.name, merchantName: txn.merchant_name };
+    let best = null;
+    for (const row of rows) {
+      if (claimed.has(row.id)) continue;
+      const match = sameTransaction(incoming, row);
+      if (match && (!best || (match.exact && !best.match.exact) || (match.exact === best.match.exact && match.gap < best.match.gap))) {
+        best = { row, match };
+      }
+    }
+    return best ? best.row : null;
+  }
   /**
    * A reviewed row (added/matched) whose bank was disconnected (`plaid_account_id IS NULL`) that an incoming
    * transaction from a newly connected bank is the same as:
@@ -640,6 +718,74 @@ class PlaidRepository {
     });
   }
 
+  // ─── Bank file import ───
+
+  /** A bank account with what an import needs: its type and mask, mapping, and its bank's environment. */
+  async findAccountForImport(id) {
+    return dbHelper.queryOne(
+      `SELECT pa.id, pa.name, pa.mask, pa.type, pa.payment_method_id AS paymentMethodId,
+              pi.id AS plaidItemId, pi.institution_name AS institutionName, pi.environment
+       FROM plaid_accounts pa JOIN plaid_items pi ON pi.id = pa.plaid_item_id
+       WHERE pa.id = ?`,
+      [id]
+    );
+  }
+
+  /** Earliest date Plaid itself sent for the account (rows from files excluded), or null. */
+  async findFirstPlaidDate(plaidAccountId) {
+    const row = await dbHelper.queryOne(
+      `SELECT MIN(date) AS firstDate FROM plaid_transactions WHERE plaid_account_id = ? AND transaction_id NOT LIKE '${FILE_ID_PREFIX}%'`,
+      [plaidAccountId]
+    );
+    return row?.firstDate ?? null;
+  }
+
+  /**
+   * Merge parsed file rows into the account's staged rows atomically (see planFileImport): new rows are staged
+   * for review; rows already there, from Plaid or an earlier file, keep their review state and expense link and
+   * take whatever the file knows better (a pending charge shown settled, a purchase date, a merchant name).
+   * With `dryRun` nothing is written.
+   * @param {number} plaidAccountId
+   * @param {Array<object>} fileRows rows from parseBankFile, already limited to the import's date range
+   * @param {{fromDate: string, dateKind: string, dryRun?: boolean}} options
+   * @returns {Promise<{added: number, pendingAdded: number, updated: number, settled: number, unchanged: number,
+   *   alreadyFromBank: number, settlements: Array}>}
+   */
+  async applyFileImport(plaidAccountId, fileRows, { fromDate, dateKind, dryRun = false }) {
+    return dbHelper.runInTransaction(async (tx) => {
+      const existing = await tx.all(
+        `SELECT ${STAGED_COLUMNS} FROM plaid_transactions
+         WHERE plaid_account_id = ? AND date >= date(?, '-${SAME_TXN_DAYS + 2} days')
+         ORDER BY date, id`,
+        [plaidAccountId, fromDate]
+      );
+      const plan = planFileImport(fileRows, existing, dateKind);
+      const result = {
+        added: plan.inserts.length,
+        pendingAdded: plan.inserts.filter(row => row.pending).length,
+        updated: plan.updates.length,
+        settled: plan.updates.filter(u => u.existing.pending && u.changes.pending === 0).length,
+        unchanged: plan.unchanged,
+        alreadyFromBank: plan.alreadyFromBank,
+        settlements: plan.updates.map(u => u.settlement).filter(Boolean)
+      };
+      if (dryRun) return result;
+
+      for (const file of plan.inserts) {
+        await tx.run(
+          `INSERT INTO plaid_transactions
+             (transaction_id, plaid_account_id, amount, iso_currency_code, date, authorized_date, name, merchant_name, pending)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [file.key, plaidAccountId, file.amount, file.currency, file.date, file.authorizedDate, file.name, file.merchantName, file.pending ? 1 : 0]
+        );
+      }
+      for (const { existing: row, changes } of plan.updates) {
+        const columns = Object.keys(changes).map(name => `${STAGED_COLUMN_NAMES[name]} = ?`);
+        await tx.run(`UPDATE plaid_transactions SET ${columns.join(', ')} WHERE id = ?`, [...Object.values(changes), row.id]);
+      }
+      return result;
+    });
+  }
   async deleteTransaction(id) {
     const { changes } = await dbHelper.execute('DELETE FROM plaid_transactions WHERE id = ?', [id]);
     return changes > 0;
@@ -656,7 +802,7 @@ class PlaidRepository {
       `SELECT pa.id, pa.name, pa.mask, pa.payment_method_id AS paymentMethodId,
               pa.current_balance AS currentBalance, pa.available_balance AS availableBalance,
               pa.credit_limit AS creditLimit, pa.balance_currency AS currency, pa.balance_as_of AS balanceAsOf,
-              pi.institution_name AS institutionName, pi.last_error AS lastError,
+              pi.institution_name AS institutionName, pi.last_error AS lastError, pi.bank_updated_at AS bankUpdatedAt,
               pm.display_name AS paymentMethodName, pm.credit_limit AS trackerCreditLimit
        FROM plaid_accounts pa
        JOIN plaid_items pi ON pi.id = pa.plaid_item_id

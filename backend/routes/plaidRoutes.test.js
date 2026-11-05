@@ -10,11 +10,13 @@ jest.mock('../services/plaidInboxService');
 jest.mock('../services/plaidSettingsService');
 jest.mock('../services/plaidSyncSchedulerService');
 jest.mock('../services/plaidCardBalanceService');
+jest.mock('../services/plaidFileImportService');
 jest.mock('../config/plaid', () => ({ isEnabled: jest.fn() }));
 
 const plaidService = require('../services/plaidService');
 const plaidInboxService = require('../services/plaidInboxService');
 const plaidCardBalanceService = require('../services/plaidCardBalanceService');
+const plaidFileImportService = require('../services/plaidFileImportService');
 const plaidSettingsService = require('../services/plaidSettingsService');
 const plaidSyncSchedulerService = require('../services/plaidSyncSchedulerService');
 const { isEnabled } = require('../config/plaid');
@@ -231,6 +233,15 @@ describe('plaid routes', () => {
     expect(list.body).toEqual({ cards: [{ paymentMethodId: 4, status: 'match' }] });
     expect(limit.body).toEqual({ id: 4, credit_limit: 12000 });
     expect(plaidCardBalanceService.applyBankCreditLimit).toHaveBeenCalledWith(4);
+  });
+
+  test('POST /accounts/:id/import-file passes the CSV, from date and dry-run flag', async () => {
+    plaidFileImportService.importFile.mockResolvedValue({ added: 4, dryRun: true });
+
+    const res = await request(app).post('/api/plaid/accounts/7/import-file').send({ csv: 'a,b', fromDate: '2026-10-03', dryRun: true });
+
+    expect(res.body).toEqual({ added: 4, dryRun: true });
+    expect(plaidFileImportService.importFile).toHaveBeenCalledWith(7, { csv: 'a,b', fromDate: '2026-10-03', dryRun: true });
   });
 
   test('card balances are behind the 503 gate', async () => {

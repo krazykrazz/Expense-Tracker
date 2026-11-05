@@ -195,6 +195,140 @@ describe('plaidService', () => {
     });
   });
 
+  describe('bank files and Plaid together (either order)', () => {
+    const CREDIT_CARD = 4;
+    const plaidInboxService = require('./plaidInboxService');
+    const plaidFileImportService = require('./plaidFileImportService');
+    const WS_HEADER = 'transaction_date,transaction_type,status,merchant,amount,currency,notes,category';
+    const wsFile = (...lines) => [WS_HEADER, ...lines].join('\n');
+    const cardPage = (options) => page({ accounts: [account('acc-1', { type: 'credit' })], ...options });
+    const rows = () => all(`SELECT transaction_id AS tid, status, pending, amount, date, authorized_date AS auth, name,
+      merchant_name AS merchant, expense_id AS expenseId FROM plaid_transactions ORDER BY date, id`);
+
+    async function cardBank(name) {
+      const item = await connect(name);
+      await run("UPDATE plaid_accounts SET type = 'credit' WHERE plaid_item_id = ?", [item.id]);
+      await plaidService.updateAccountMapping(item.accounts[0].id, CREDIT_CARD);
+      return { item, accountId: item.accounts[0].id };
+    }
+
+    test('file first: Plaid takes the rows over, keeping their review, expense link, purchase date and merchant', async () => {
+      const { item, accountId } = await cardBank('Card Bank');
+      await plaidFileImportService.importFile(accountId, {
+        csv: wsFile('2026-11-03,Purchase,Completed,Corner Cafe,-10.40,CAD,,', '2026-11-03,Purchase,Completed,Grocer,-44.57,CAD,,'),
+        fromDate: '2026-11-01'
+      });
+      const cafe = (await rows()).find(r => r.name === 'Corner Cafe');
+      await plaidInboxService.addAsExpense((await get('SELECT id FROM plaid_transactions WHERE name = ?', ['Corner Cafe'])).id, { type: 'Dining Out' });
+
+      // Plaid (Wealthsimple style) sends them a day later, posted date only, its own names
+      client.transactionsSync.mockResolvedValueOnce(cardPage({ added: [
+        txn('ws-cafe', { amount: 10.4, date: '2026-11-04', authorized_date: null, name: 'Corner Cafe - Purchase', merchant_name: null }),
+        txn('ws-grocer', { amount: 44.57, date: '2026-11-04', authorized_date: null, name: 'Grocer - Purchase', merchant_name: null }),
+        txn('ws-new', { amount: 7, date: '2026-11-05', authorized_date: null, name: 'Something new', merchant_name: null })
+      ] }));
+
+      const result = await plaidService.syncItem(item.id);
+
+      expect(result).toMatchObject({ added: 1, fromFile: 2 });
+      expect(await rows()).toEqual([
+        { tid: 'ws-cafe', status: 'added', pending: 0, amount: 10.4, date: '2026-11-04', auth: '2026-11-03', name: 'Corner Cafe - Purchase', merchant: 'Corner Cafe', expenseId: expect.any(Number) },
+        { tid: 'ws-grocer', status: 'new', pending: 0, amount: 44.57, date: '2026-11-04', auth: '2026-11-03', name: 'Grocer - Purchase', merchant: 'Grocer', expenseId: null },
+        { tid: 'ws-new', status: 'new', pending: 0, amount: 7, date: '2026-11-05', auth: null, name: 'Something new', merchant: null, expenseId: null }
+      ]);
+      expect(cafe).toBeDefined();
+    });
+
+    test('file first, pending at a bank that never sends pending through Plaid: stays pending until it settles', async () => {
+      const { item, accountId } = await cardBank('No Pending Bank');
+      await plaidFileImportService.importFile(accountId, { csv: wsFile('2026-11-04,Purchase,Pending,Ridge Rock Brewing,-40.00,CAD,,'), fromDate: '2026-11-01' });
+      const rowId = (await get("SELECT id FROM plaid_transactions WHERE name = 'Ridge Rock Brewing'")).id;
+      const { expense } = await plaidInboxService.addAsExpense(rowId, { type: 'Dining Out' });
+
+      // Plaid says "settled" right away (as Wealthsimple does): not evidence, the file said pending
+      client.transactionsSync.mockResolvedValueOnce(cardPage({ added: [txn('ws-rr', { amount: 40, date: '2026-11-04', authorized_date: null, name: 'Ridge Rock Brewing - Purchase' })] }));
+      await plaidService.syncItem(item.id);
+      expect(await get('SELECT transaction_id AS tid, pending FROM plaid_transactions WHERE id = ?', [rowId])).toEqual({ tid: 'ws-rr', pending: 1 });
+
+      // It completes with the tip: Plaid sends the change
+      client.transactionsSync.mockResolvedValueOnce(cardPage({ modified: [txn('ws-rr', { amount: 46, date: '2026-11-05', authorized_date: null, name: 'Ridge Rock Brewing - Purchase' })] }));
+      await plaidService.syncItem(item.id);
+
+      expect(await get('SELECT pending, amount FROM plaid_transactions WHERE id = ?', [rowId])).toEqual({ pending: 0, amount: 46 });
+      expect((await get('SELECT amount FROM expenses WHERE id = ?', [expense.id])).amount).toBe(46);
+    });
+
+    test('Plaid first: a file shows a pending charge settled; Plaid\'s posted version later replaces it without a duplicate', async () => {
+      const { item, accountId } = await cardBank('Pending Bank');
+      client.transactionsSync.mockResolvedValueOnce(cardPage({ added: [
+        txn('cibc-p', { amount: 28.24, date: '2026-11-03', authorized_date: '2026-11-03', name: 'SHOPPERS DRUG MART #13 STITTSVILLE, ON', merchant_name: 'Shoppers Drug Mart', pending: true })
+      ] }));
+      await plaidService.syncItem(item.id);
+      const rowId = (await get("SELECT id FROM plaid_transactions WHERE transaction_id = 'cibc-p'")).id;
+      const { expense } = await plaidInboxService.addAsExpense(rowId, { type: 'Groceries' });
+
+      const imported = await plaidFileImportService.importFile(accountId, {
+        csv: '2026-11-04,"SHOPPERS DRUG MART #13 STITTSVILLE, ON",28.24,,5223********1234', fromDate: '2026-11-01'
+      });
+
+      expect(imported).toMatchObject({ format: 'cibc_credit_card', added: 0, updated: 1, settled: 1 });
+      expect(await get('SELECT transaction_id AS tid, pending, date, authorized_date AS auth FROM plaid_transactions WHERE id = ?', [rowId]))
+        .toEqual({ tid: 'cibc-p', pending: 0, date: '2026-11-04', auth: '2026-11-03' });
+      expect((await get('SELECT posted_date AS posted FROM expenses WHERE id = ?', [expense.id])).posted).toBe('2026-11-04');
+
+      // Plaid catches up: posted version naming the pending one, and the pending id removed
+      activityLogService.logEvent.mockClear();
+      client.transactionsSync.mockResolvedValueOnce(cardPage({
+        added: [txn('cibc-posted', { amount: 28.24, date: '2026-11-04', authorized_date: '2026-11-03', name: 'SHOPPERS DRUG MART #13 STITTSVILLE, ON', merchant_name: 'Shoppers Drug Mart', pending_transaction_id: 'cibc-p' })],
+        removed: [{ transaction_id: 'cibc-p' }]
+      }));
+      await plaidService.syncItem(item.id);
+
+      expect(await rows()).toEqual([expect.objectContaining({ tid: 'cibc-posted', status: 'added', pending: 0, expenseId: expense.id })]);
+      // Already settled by the file: not settled a second time
+      expect(activityLogService.logEvent).not.toHaveBeenCalledWith('plaid_transaction_updated', expect.anything(), expect.anything(), expect.anything(), expect.objectContaining({ action: 'settled' }));
+    });
+
+    test('Plaid first: a file never turns a settled charge back to pending, and a stale pending update from Plaid is ignored', async () => {
+      const { item, accountId } = await cardBank('Pending Bank');
+      client.transactionsSync.mockResolvedValueOnce(cardPage({ added: [txn('p1', { amount: 12, date: '2026-11-03', name: 'CAFE', pending: true })] }));
+      await plaidService.syncItem(item.id);
+      await plaidFileImportService.importFile(accountId, { csv: '2026-11-04,CAFE,12.00,,5223********1234', fromDate: '2026-11-01' });
+
+      client.transactionsSync.mockResolvedValueOnce(cardPage({ modified: [txn('p1', { amount: 12, date: '2026-11-03', name: 'CAFE', pending: true })] }));
+      await plaidService.syncItem(item.id);
+
+      expect(await rows()).toEqual([expect.objectContaining({ tid: 'p1', pending: 0, date: '2026-11-04' })]);
+    });
+
+    test('ignore works whichever source a transaction came from, and holds when the other source sends it', async () => {
+      const { item, accountId } = await cardBank('Card Bank');
+      // Ignored as a file row, then Plaid sends it
+      await plaidFileImportService.importFile(accountId, { csv: wsFile('2026-11-02,Refund,Completed,Book Store,15.50,CAD,,'), fromDate: '2026-11-01' });
+      const fromFile = await get("SELECT id FROM plaid_transactions WHERE name = 'Book Store'");
+      await plaidInboxService.ignore(fromFile.id);
+      // Ignored as a Plaid row, then a file brings it
+      client.transactionsSync.mockResolvedValueOnce(cardPage({ added: [
+        txn('plaid-refund', { amount: -15.5, date: '2026-11-02', authorized_date: null, name: 'Book Store - Refund' }),
+        txn('plaid-fee', { amount: 3.5, date: '2026-11-03', authorized_date: null, name: 'Annual fee' })
+      ] }));
+      await plaidService.syncItem(item.id);
+      const fee = await get("SELECT id FROM plaid_transactions WHERE transaction_id = 'plaid-fee'");
+      await plaidInboxService.ignore(fee.id);
+
+      const imported = await plaidFileImportService.importFile(accountId, {
+        csv: wsFile('2026-11-03,Fee,Completed,Annual fee,-3.50,CAD,,', '2026-11-02,Refund,Completed,Book Store,15.50,CAD,,'), fromDate: '2026-11-01'
+      });
+
+      expect(imported).toMatchObject({ added: 0 });
+      expect((await rows()).map(r => [r.tid, r.status])).toEqual([['plaid-refund', 'ignored'], ['plaid-fee', 'ignored']]);
+      expect((await plaidInboxService.listInbox('new')).transactions).toEqual([]);
+      expect((await plaidInboxService.listInbox('ignored')).transactions.map(t => t.source)).toEqual(['plaid', 'plaid']);
+      // Undo ignore still works on a row that came from a file
+      await plaidInboxService.unignore(fromFile.id);
+      expect((await plaidInboxService.listInbox('new')).transactions.map(t => t.transactionId)).toEqual(['plaid-refund']);
+    });
+  });
   describe('connecting a bank again after disconnecting', () => {
     const CREDIT_CARD = 4;
     const plaidInboxService = require('./plaidInboxService');

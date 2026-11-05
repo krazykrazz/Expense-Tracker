@@ -14,6 +14,7 @@ const {
   isDeposit, isIncomeCandidate, findIncomeCandidates
 } = require('../utils/plaidMatching');
 const { INCOME_CATEGORIES } = require('../utils/constants');
+const { isFileRow } = require('../utils/bankFileImport');
 
 const INBOX_STATUSES = ['new', 'ignored'];
 /** A dropped pending charge may reappear as a posted row up to this many days later, within this share of its amount. */
@@ -67,6 +68,8 @@ class PlaidInboxService {
       return {
         id: row.id,
         transactionId: row.transactionId,
+        // 'file': imported from a bank CSV while Plaid couldn't fetch (Plaid takes the row over when it catches up)
+        source: isFileRow(row.transactionId) ? 'file' : 'plaid',
         date: transactionDate(row),
         postedDate: row.date,
         place,

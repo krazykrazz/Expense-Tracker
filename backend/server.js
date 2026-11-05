@@ -146,6 +146,8 @@ app.use(cors(corsOptions));
 app.use(cookieParser());
 
 // Body parsers
+// Bank file import posts a whole CSV export as JSON; allow more than the 100 kB default on that route only
+app.use(/^\/api\/plaid\/accounts\/\d+\/import-file$/, bodyParser.json({ limit: '2mb' }));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 

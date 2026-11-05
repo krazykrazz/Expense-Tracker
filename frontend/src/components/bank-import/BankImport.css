@@ -790,3 +790,54 @@
   background: rgba(245, 158, 11, 0.16);
   color: #fbbf24;
 }
+
+/* Bank file import (Connections → account → Import file) */
+.bank-account-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-3, 12px);
+}
+
+.bank-account-import {
+  list-style: none;
+  padding-bottom: var(--spacing-2, 8px);
+}
+
+.bank-file-import {
+  padding: var(--spacing-3, 12px);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md, 8px);
+  background: var(--bg-subtle);
+  font-size: 0.9em;
+}
+
+.bank-file-import-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-2, 8px);
+}
+
+.bank-file-import p {
+  margin: var(--spacing-2, 8px) 0;
+}
+
+.bank-file-import-picker,
+.bank-file-import-from {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-2, 8px);
+}
+
+.bank-file-import-preview {
+  margin-top: var(--spacing-3, 12px);
+  padding-top: var(--spacing-2, 8px);
+  border-top: 1px solid var(--border-muted);
+}
+
+.bank-file-import-preview ul {
+  margin: var(--spacing-2, 8px) 0;
+  padding-left: 1.2em;
+  list-style: disc;
+}

@@ -6,6 +6,7 @@ const billingCycleRepository = require('../repositories/billingCycleRepository')
 const { calculateEffectiveBalance } = require('../utils/effectiveBalanceUtil');
 const paymentMethodService = require('./paymentMethodService');
 const { getTodayString } = require('../utils/dateUtils');
+const { isBankDataStale } = require('../utils/plaidFreshness');
 
 /** Bank and tracker items on either side within this many days, same amount, are the same transaction. */
 const PAIR_DAYS = 5;
@@ -131,7 +132,7 @@ class PlaidCardBalanceService {
       paymentMethodId,
       name: first.paymentMethodName,
       accounts: accounts.map(a => ({ institutionName: a.institutionName, name: a.name, mask: a.mask ?? null })),
-      bankError: accounts.some(a => a.lastError) ? 'This bank is not syncing; its balance may be out of date.' : null,
+      bankError: this._bankWarning(accounts),
       status,
       bank,
       tracker,
@@ -160,6 +161,16 @@ class PlaidCardBalanceService {
     const cycle = Array.isArray(latest) && latest.length > 0 ? latest[0] : null;
     if (!cycle || !cycle.cycle_end_date) return null;
     return calculateEffectiveBalance(cycle).balanceType === 'actual' ? cycle.cycle_end_date : null;
+  }
+
+  /** Why the bank's balance may be out of date: our sync failing, or Plaid not getting new data from the bank. */
+  _bankWarning(accounts) {
+    if (accounts.some(a => a.lastError)) return 'This bank is not syncing; its balance may be out of date.';
+    const stale = accounts.find(a => isBankDataStale(a.bankUpdatedAt));
+    if (stale) {
+      return `Plaid hasn't had new data from this bank since ${stale.bankUpdatedAt.slice(0, 10)}; its balance may be out of date.`;
+    }
+    return null;
   }
 
   /**

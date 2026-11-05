@@ -17,7 +17,8 @@ Phase 1 (the PoC) is archived at [`specs/archive/plaid-integration/spec.md`](../
 | 1.17.0 | #438 | Pending transactions: add the day you spend, settle in place, cancelled-charge review |
 | 1.18.0 | #440 | Reconnect expired logins (update mode), connection alerts, re-attach on reconnect (most of 2.2) |
 | 1.19.0–1.19.2 | #442, #444, #446 | Credit card balance check (4.2, pulled forward) with the balance capture part of 2.1; balances refreshed via `/accounts/get`; card view and dark theme cleanup; more balance-check causes |
-| next | — | Data freshness: "Not updating" status from Plaid's `/item/get` and institution status (new 2.6) |
+| 1.20.0 | #448 | Data freshness: "Not updating" status from Plaid's `/item/get` and institution status (2.6) |
+| next | — | Bank file import fallback (2.7): Wealthsimple card/chequing and CIBC card CSV exports into the Inbox, merged with Plaid in either order |
 
 **Next:** 3.2 card payments (Record payment from the Inbox), the other half of card reconciliation. Then the rest of Phase 2 (capture the other Plaid fields, inbox badge, refactors), Phase 3 and the rest of Phase 4.
 
@@ -274,6 +275,23 @@ Planned now, because Phase 3 adds five more inbox actions and three more link ta
 - **Status:** `connectionStatus` returns `stale` when there is no `last_error` and `bank_updated_at` is over 12 hours old (`STALE_AFTER_HOURS`). Plaid's institution rating is shown but never used to flag: it showed CIBC DOWN for weeks while CIBC worked.
 - **UI:** `/status` adds `staleData`; amber header dot (red `needsAttention` wins); Connections shows a "Not updating" chip, "Bank data updated by Plaid: <time>" for every bank, and Plaid's rating when it's down or degraded. Stale banks keep syncing automatically.
 - **Not here:** the Dashboard's Institution Status page isn't available on the Trial plan, which is why this uses the API.
+
+### 2.7 Bank file import (fallback)
+
+> **Status: built.** Added during the Nov 2026 Wealthsimple outage at Plaid (classic connection, 0% success) and CIBC's daily login prompts: both banks are Classic (credential-based) at Plaid, with no OAuth option in Canada yet, so outages will recur.
+
+- **Formats** (`utils/bankFileImport.js`, detected from content):
+  - Wealthsimple credit card (`transaction_date, transaction_type, status, merchant, amount, …`) and Wealthsimple chequing (`…, transaction_time, account_number, …, payee, amount`). `dateKind: purchase`. `status = Pending` → `pending = 1` (better than Plaid for Wealthsimple).
+  - CIBC credit card: headerless `date, description, debit, credit, masked card`. Debit → +, credit → −. `dateKind: posted`, never pending. Can list several cards (second cardholder); one must end with the account mask.
+  - Amounts are converted to Plaid's sign.
+- **Identity:** `transaction_id = file:<sha256>` of format, account, date, amount cents, the row's identifying fields and its occurrence among identical rows; status excluded, so pending → completed updates in place.
+- **Same transaction** (`sameTransaction`): exact amount with dates within ±3 days; or, if either is pending, the same sign, amount within 25% and similar names (first meaningful word). `pairRows` pairs one-to-one, globally: exact amounts first, then the smallest date gap, then the smallest amount difference.
+- **Merge rules** (both directions, `mergeFileIntoRow` / `mergePlaidIntoFileRow`): Plaid's id wins. Pending → settled is one-way; settled evidence is a file's settled row, or Plaid's settled flag only for items that report pending at all (`bankReportsPending`; Wealthsimple never does, so a file's pending row stays pending after takeover until Plaid sends a `modified` or a newer file shows it Completed). Amount: the settled version's. `authorized_date`: Plaid's, else a purchase-dated file's. `date` (posted): Plaid's, or a posted-dated file's when the file settled the row. `merchant_name`: Plaid's, else the file's. Review status and expense link never change. A row settled by a file keeps Plaid's pending id, so Plaid's posted version (with `pending_transaction_id`) still replaces it in place.
+- **File import** (`planFileImport`, one DB transaction in `applyFileImport`): same key → unchanged / update; else paired existing row (Plaid or older file row) → merged (counted `updated` if anything changed, else `alreadyFromBank` / `unchanged`); else insert. A settle on a row linked to an expense produces a settlement (`applySettlements`: amount, card posted date).
+- **Takeover:** `applySyncBatch` → `_findFileRow`: a new Plaid transaction that is the same transaction as an unclaimed file row on the account takes it over via `mergePlaidIntoFileRow`. Counted as `fromFile` (and `updated`). Plaid pending for an already settled row is ignored (one-way).
+- **Default start date:** the first date Plaid sent for the account (older history is already in the tracker), else 30 days back. Verified on production data: WS card 51/51 and chequing 39/39 rows already from Plaid paired exactly (dates 0-1 day apart); the leftovers were exactly the transactions missing since the outage. CIBC: the file settled Shoppers (pending at Plaid) keeping Plaid's purchase date.
+- **API/UI:** `POST /accounts/:id/import-file { csv, fromDate?, dryRun? }` (JSON, 2 MB limit on that route only); Connections → Import file (mapped accounts) with a preview; Inbox "From file" tag; `plaid_file_imported` event. Card balance check counts file rows like Plaid's and warns when the bank's balance is stale (`utils/plaidFreshness.js`, shared with `connectionStatus`).
+- **Not handled:** removing rows that disappear from a later export.
 
 ### Phase 2 exit criteria
 - [ ] 2.1 capture and backfill in production; PFC and balances visible in the DB for new rows.

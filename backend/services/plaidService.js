@@ -7,6 +7,7 @@ const activityLogService = require('./activityLogService');
 const plaidInboxService = require('./plaidInboxService');
 const { runWithTabId } = require('../utils/requestContext');
 const { encrypt, decrypt } = require('../utils/tokenCrypto');
+const { isBankDataStale } = require('../utils/plaidFreshness');
 const logger = require('../config/logger');
 
 const PRODUCTION_ITEMS_KEY = 'plaid_production_items_created';
@@ -17,8 +18,6 @@ const GONE_ITEM_CODES = new Set(['ITEM_NOT_FOUND', 'INVALID_ACCESS_TOKEN']);
 const LOGIN_CODES = new Set(['ITEM_LOGIN_REQUIRED', 'INVALID_CREDENTIALS', 'INVALID_MFA', 'USER_SETUP_REQUIRED', 'PENDING_DISCONNECT']);
 /** Errors only the user can fix (log in again, or the connection is gone): automatic sync skips these banks. */
 const NEEDS_USER_CODES = new Set([...LOGIN_CODES, ...GONE_ITEM_CODES]);
-/** Plaid normally fetches from a bank 1-4 times a day; longer without new data means its connection is stuck. */
-const STALE_AFTER_HOURS = 12;
 
 /**
  * A bank connection's health, from its last sync error and when Plaid last fetched from the bank:
@@ -34,9 +33,7 @@ function connectionStatus(item, now = Date.now()) {
     if (GONE_ITEM_CODES.has(item.lastError)) return 'gone';
     return 'error';
   }
-  const updated = item.bankUpdatedAt ? Date.parse(item.bankUpdatedAt) : NaN;
-  if (!Number.isNaN(updated) && now - updated > STALE_AFTER_HOURS * 60 * 60 * 1000) return 'stale';
-  return 'ok';
+  return isBankDataStale(item.bankUpdatedAt, now) ? 'stale' : 'ok';
 }
 
 /** SQLite CURRENT_TIMESTAMP ('YYYY-MM-DD HH:MM:SS', UTC) → epoch ms; 0 when missing. */

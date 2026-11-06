@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.21.2] - 2026-11-06
+
+### Dark mode now covers settings, the place name tool, budgets, tax, annual summary and the other finance screens
+
 ## [1.21.1] - 2026-11-06
 
 ### Bank Import suggests known places for bank transactions, and the card balance check explains transactions only in a bank file

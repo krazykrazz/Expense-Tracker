@@ -184,6 +184,19 @@ describe('plaidService', () => {
       );
     });
 
+    test('logging in again to a working bank (stale data) syncs and is logged as a login, not a reconnect', async () => {
+      const item = await connect();
+      client.transactionsSync.mockResolvedValueOnce(page({ added: [txn('t-new')] }));
+
+      const result = await plaidService.markReconnected(item.id);
+
+      expect(result.sync).toMatchObject({ added: 1 });
+      expect(activityLogService.logEvent).toHaveBeenCalledWith(
+        'plaid_item_updated', 'plaid_item', item.id, 'Logged in to bank again: Test Bank',
+        { institutionName: 'Test Bank', previousError: null }
+      );
+    });
+
     test('reconnected refuses an unknown bank or one from the other environment', async () => {
       const item = await connect();
       await run("UPDATE plaid_items SET environment = 'production', last_error = 'ITEM_LOGIN_REQUIRED' WHERE id = ?", [item.id]);

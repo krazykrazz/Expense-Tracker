@@ -172,9 +172,29 @@ describe('BankConnections', () => {
     const freshness = screen.getByTestId('bank-freshness');
     expect(freshness).toHaveTextContent('Bank data updated by Plaid:');
     expect(freshness).toHaveTextContent('Plaid reports Test Bank updates down since');
-    expect(screen.getByText(/catches up on its own and nothing is lost/)).toBeInTheDocument();
+    expect(screen.getByText(/only send new data when you log in/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Reconnect' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Log in again' })).toBeInTheDocument();
     expect(confirm).not.toHaveBeenCalled();
+  });
+
+  it('logs in again to a stale bank through update mode and reports what it brought', async () => {
+    const { usePlaidLink } = await import('react-plaid-link');
+    const stale = { ...item, status: 'stale', bankUpdatedAt: '2026-11-03T21:11:14Z' };
+    plaidApi.getBankConnections.mockResolvedValue({ items: [stale] });
+    plaidApi.createLinkToken.mockResolvedValue({ linkToken: 'link-update-3' });
+    plaidApi.reconnectBank.mockResolvedValue({ item: { ...stale, status: 'ok' }, sync: { added: 2, updated: 1 } });
+    plaidApi.getPlaidStatus.mockResolvedValue(production);
+
+    render(<BankConnections status={production} onStatusChange={vi.fn()} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Log in again' }));
+    await waitFor(() => expect(plaidApi.createLinkToken).toHaveBeenCalledWith(1));
+
+    await act(() => usePlaidLink.mock.calls.at(-1)[0].onSuccess('public-ignored', {}));
+
+    expect(plaidApi.reconnectBank).toHaveBeenCalledWith(1);
+    expect(plaidApi.connectBank).not.toHaveBeenCalled();
+    expect(await screen.findByRole('status')).toHaveTextContent('Logged in to Test Bank: 3 new or updated transactions');
   });
 
   it('offers Import file only for accounts that import into a payment method, and opens the import panel', async () => {

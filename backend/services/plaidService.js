@@ -174,7 +174,7 @@ class PlaidService {
       'plaid_item_updated',
       'plaid_item',
       item.id,
-      `Reconnected bank: ${item.institutionName}`,
+      item.lastError ? `Reconnected bank: ${item.institutionName}` : `Logged in to bank again: ${item.institutionName}`,
       { institutionName: item.institutionName, previousError: item.lastError }
     );
     let sync = null;

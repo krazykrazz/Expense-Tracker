@@ -212,8 +212,8 @@
 
 .paymentMismatchNote {
   padding: var(--spacing-3) var(--spacing-4);
-  background: var(--bg-warning, #fff8e1);
-  border: 1px solid var(--border-warning, #ffe082);
+  background: light-dark(#fff8e1, hsl(46 55% 17%));
+  border: 1px solid light-dark(#ffe082, hsl(45 45% 32%));
   border-radius: var(--radius-md);
   font-size: var(--text-base);
   color: var(--text-primary);

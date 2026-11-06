@@ -180,12 +180,12 @@
 
 .trends-view-prediction-confidence.confidence-high {
   background-color: var(--color-positive-light);
-  color: var(--color-positive-dark);
+  color: light-dark(var(--color-positive-dark), #4ade80);
 }
 
 .trends-view-prediction-confidence.confidence-medium {
   background-color: var(--color-warning-light);
-  color: var(--color-warning-dark);
+  color: light-dark(var(--color-warning-dark), #fbbf24);
 }
 
 .trends-view-prediction-confidence.confidence-low {

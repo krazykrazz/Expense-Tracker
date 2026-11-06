@@ -47,7 +47,7 @@
   padding: 2px 8px;
   border-radius: var(--radius-full, 999px);
   background: var(--color-warning-light);
-  color: #92400e;
+  color: light-dark(#92400e, hsl(23 80% 78%));
 }
 
 .bank-import-close {
@@ -163,7 +163,7 @@
 
 .bank-import-error {
   background: var(--color-negative-light);
-  color: #991b1b;
+  color: light-dark(#991b1b, hsl(0 70% 78%));
 }
 
 .bank-import-message {
@@ -248,13 +248,13 @@
 
 .bank-connection-status.needs_login,
 .bank-connection-status.gone {
-  background: #fee2e2;
-  color: #991b1b;
+  background: light-dark(#fee2e2, hsl(0 55% 17%));
+  color: light-dark(#991b1b, hsl(0 70% 78%));
 }
 
 .bank-connection-status.error {
   background: var(--color-warning-light, #fef3c7);
-  color: #92400e;
+  color: light-dark(#92400e, hsl(23 80% 78%));
 }
 
 :root[data-theme='dark'] .bank-connection-status.needs_login,
@@ -356,7 +356,7 @@
 }
 
 .inbox-row-amount.credit {
-  color: var(--color-positive-dark, #15803d);
+  color: light-dark(var(--color-positive-dark, #15803d), #4ade80);
 }
 
 .inbox-row-actions {
@@ -382,18 +382,18 @@
 
 .inbox-badge.warning {
   background: var(--color-warning-light);
-  color: #92400e;
+  color: light-dark(#92400e, hsl(23 80% 78%));
 }
 
 .inbox-badge.pending {
-  background: #fef9c3;
-  color: #854d0e;
+  background: light-dark(#fef9c3, hsl(55 55% 17%));
+  color: light-dark(#854d0e, hsl(32 80% 78%));
   box-shadow: inset 0 0 0 1px rgba(234, 179, 8, 0.5);
 }
 
 .inbox-badge.cancelled {
-  background: #ffedd5;
-  color: #9a3412;
+  background: light-dark(#ffedd5, hsl(34 55% 17%));
+  color: light-dark(#9a3412, hsl(15 79% 78%));
   box-shadow: inset 0 0 0 1px rgba(234, 88, 12, 0.45);
 }
 
@@ -491,13 +491,13 @@
   border-radius: var(--radius-full, 999px);
   vertical-align: middle;
   cursor: default;
-  color: var(--color-positive-dark, #15803d);
+  color: light-dark(var(--color-positive-dark, #15803d), #4ade80);
   background: var(--color-positive-light, #dcfce7);
   border: 1px solid rgba(34, 197, 94, 0.25);
 }
 
 .bank-confirmed-indicator.differs {
-  color: #92400e;
+  color: light-dark(#92400e, hsl(23 80% 78%));
   background: var(--color-warning-light);
   border-color: rgba(245, 158, 11, 0.4);
 }
@@ -533,15 +533,15 @@
 .fixed-expense-payment.bank-pill-confirmed,
 .financial-cc-amount.bank-pill-confirmed,
 .cc-bank-line.bank-pill-confirmed {
-  color: var(--color-positive-dark, #16a34a);
+  color: light-dark(var(--color-positive-dark, #16a34a), #4ade80);
   background-color: var(--color-positive-light, #dcfce7);
   box-shadow: inset 0 0 0 1px rgba(34, 197, 94, 0.45);
   cursor: help;
 }
 
 .method-pill.bank-pill-pending {
-  color: #854d0e;
-  background-color: #fef9c3;
+  color: light-dark(#854d0e, hsl(32 80% 78%));
+  background-color: light-dark(#fef9c3, hsl(55 55% 17%));
   box-shadow: inset 0 0 0 1px rgba(234, 179, 8, 0.6);
   cursor: help;
 }
@@ -551,8 +551,8 @@
 .fixed-expense-payment.bank-pill-differs,
 .financial-cc-amount.bank-pill-differs,
 .cc-bank-line.bank-pill-differs {
-  color: #9a3412;
-  background-color: #ffedd5;
+  color: light-dark(#9a3412, hsl(15 79% 78%));
+  background-color: light-dark(#ffedd5, hsl(34 55% 17%));
   box-shadow: inset 0 0 0 1px rgba(234, 88, 12, 0.55);
   cursor: help;
 }
@@ -626,7 +626,7 @@
 
 .plaid-settings-status.enabled {
   background: var(--color-positive-light, #dcfce7);
-  color: var(--color-positive-dark, #15803d);
+  color: light-dark(var(--color-positive-dark, #15803d), #4ade80);
 }
 
 :root[data-theme='dark'] .plaid-settings-status.enabled {
@@ -783,7 +783,7 @@
 
 .bank-connection-status.stale {
   background: var(--color-warning-light, #fef3c7);
-  color: #92400e;
+  color: light-dark(#92400e, hsl(23 80% 78%));
 }
 
 :root[data-theme='dark'] .bank-connection-status.stale {

@@ -41,12 +41,12 @@
 }
 
 .confirm-button--danger {
-  background-color: var(--color-danger, #e53e3e);
+  background-color: #e53e3e;
   color: white;
 }
 
 .confirm-button--danger:hover {
-  background-color: var(--color-danger-hover, #c53030);
+  background-color: #c53030;
 }
 
 .confirm-button--warning {
@@ -55,7 +55,7 @@
 }
 
 .confirm-button--warning:hover {
-  background-color: var(--color-warning-hover, #c05621);
+  background-color: #c05621;
 }
 
 .confirm-button--info {

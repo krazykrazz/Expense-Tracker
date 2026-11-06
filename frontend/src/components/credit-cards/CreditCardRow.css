@@ -17,12 +17,12 @@
 
 .credit-card-row.due-warning {
   border-color: #f44336;
-  background-color: #fff5f5;
+  background-color: var(--bg-subtle);
   box-shadow: 0 0 0 2px rgba(244, 67, 54, 0.15);
 }
 
 .credit-card-row.due-warning:hover {
-  background-color: #ffebee;
+  background-color: light-dark(#ffebee, hsl(351 55% 17%));
 }
 
 .credit-card-row-main {
@@ -52,8 +52,8 @@
   align-items: center;
   gap: 4px;
   padding: 2px 8px;
-  background-color: #fff3e0;
-  color: #e65100;
+  background-color: light-dark(#fff3e0, hsl(37 55% 17%));
+  color: light-dark(#e65100, hsl(21 80% 78%));
   font-size: 0.75rem;
   font-weight: 600;
   border-radius: 4px;
@@ -70,13 +70,13 @@
 }
 
 .credit-card-due-badge.due-soon {
-  background-color: #fff8e1;
-  color: #f57f17;
+  background-color: light-dark(#fff8e1, hsl(46 55% 17%));
+  color: light-dark(#f57f17, hsl(28 80% 78%));
 }
 
 .credit-card-due-badge.overdue {
-  background-color: #ffebee;
-  color: #c62828;
+  background-color: light-dark(#ffebee, hsl(351 55% 17%));
+  color: light-dark(#c62828, hsl(0 66% 78%));
 }
 
 .credit-card-row-balances {
@@ -92,7 +92,7 @@
 }
 
 .credit-card-row-balance .balance-label {
-  color: #999;
+  color: var(--text-tertiary);
   font-weight: 400;
   font-size: 0.85rem;
 }

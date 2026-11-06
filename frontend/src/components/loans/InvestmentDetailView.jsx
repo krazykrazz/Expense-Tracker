@@ -560,7 +560,7 @@ const InvestmentDetailView = ({ investment, isOpen, onClose, onUpdate }) => {
                               y1={y}
                               x2={chartWidth - padding.right}
                               y2={y}
-                              stroke="#e0e0e0"
+                              style={{ stroke: 'var(--border-default)' }}
                               strokeWidth="1"
                             />
                             <text
@@ -621,7 +621,7 @@ const InvestmentDetailView = ({ investment, isOpen, onClose, onUpdate }) => {
                               y={chartHeight - padding.bottom + 20}
                               textAnchor="middle"
                               fontSize="11"
-                              fill="#666"
+                              style={{ fill: 'var(--text-tertiary)' }}
                             >
                               {new Date(point.entry.year, point.entry.month - 1).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })}
                             </text>

@@ -73,7 +73,7 @@
 /* Error Display */
 .cc-detail-error {
   background-color: var(--color-negative-light);
-  color: var(--color-negative-dark);
+  color: light-dark(var(--color-negative-dark), #f87171);
   padding: var(--spacing-3) var(--spacing-4);
   display: flex;
   justify-content: space-between;
@@ -83,7 +83,7 @@
 .cc-detail-error button {
   background: none;
   border: none;
-  color: var(--color-negative-dark);
+  color: light-dark(var(--color-negative-dark), #f87171);
   cursor: pointer;
   font-size: var(--text-lg);
 }
@@ -91,7 +91,7 @@
 /* Partial Failure Warning */
 .cc-detail-warning {
   background-color: var(--color-warning-light, #fff3cd);
-  color: var(--color-warning-dark, #856404);
+  color: light-dark(var(--color-warning-dark, #856404), #fbbf24);
   padding: var(--spacing-3) var(--spacing-4);
   display: flex;
   justify-content: space-between;
@@ -101,7 +101,7 @@
 .cc-detail-warning button {
   background: none;
   border: none;
-  color: var(--color-warning-dark, #856404);
+  color: light-dark(var(--color-warning-dark, #856404), #fbbf24);
   cursor: pointer;
   font-size: var(--text-lg);
 }
@@ -148,7 +148,7 @@
 }
 
 .statement-balance-card {
-  border-left: 3px solid var(--color-secondary, #6c757d);
+  border-left: 3px solid #6c757d;
   background-color: var(--bg-subtle);
 }
 

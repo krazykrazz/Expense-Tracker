@@ -355,19 +355,19 @@
 .view-btn:hover:not(:disabled) {
   background-color: var(--color-primary-light);
   border-color: var(--color-primary);
-  color: var(--color-primary-hover);
+  color: light-dark(var(--color-primary-hover), #7dd3fc);
 }
 
 .replace-btn:hover:not(:disabled) {
   background-color: var(--color-warning-light);
   border-color: var(--color-warning);
-  color: var(--color-warning-dark);
+  color: light-dark(var(--color-warning-dark), #fbbf24);
 }
 
 .delete-btn:hover:not(:disabled) {
   background-color: var(--color-negative-light);
   border-color: var(--color-negative);
-  color: var(--color-negative-dark);
+  color: light-dark(var(--color-negative-dark), #f87171);
 }
 
 /* Delete Confirmation */
@@ -399,21 +399,21 @@
   justify-content: space-between;
   padding: var(--spacing-2) var(--spacing-3);
   background-color: var(--color-negative-light);
-  border: 1px solid #fecaca;
+  border: 1px solid light-dark(#fecaca, hsl(0 45% 32%));
   border-radius: var(--radius-md);
   margin-top: var(--spacing-2);
 }
 
 .error-text {
   font-size: var(--text-xs);
-  color: var(--color-negative-dark);
+  color: light-dark(var(--color-negative-dark), #f87171);
   flex: 1;
 }
 
 .error-close {
   background: none;
   border: none;
-  color: var(--color-negative-dark);
+  color: light-dark(var(--color-negative-dark), #f87171);
   cursor: pointer;
   padding: 0;
   margin-left: var(--spacing-2);

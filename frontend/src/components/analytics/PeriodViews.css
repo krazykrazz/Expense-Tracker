@@ -195,12 +195,12 @@
 
 .period-stat-value.positive,
 .pl-amount.positive {
-  color: #15803d;
+  color: light-dark(#15803d, hsl(142 72% 78%));
 }
 
 .period-stat-value.negative,
 .pl-amount.negative {
-  color: var(--color-negative-dark);
+  color: light-dark(var(--color-negative-dark), #f87171);
 }
 
 :root[data-theme='dark'] .period-stat-value.positive,

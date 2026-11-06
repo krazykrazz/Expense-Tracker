@@ -15,5 +15,5 @@
 }
 
 .trend-down {
-  color: #27ae60;
+  color: light-dark(#27ae60, hsl(145 63% 78%));
 }

@@ -126,7 +126,7 @@
 .analytics-hub-button:hover,
 .financial-overview-button:hover {
   background: var(--color-primary-light);
-  color: var(--color-primary-active);
+  color: light-dark(var(--color-primary-active), #7dd3fc);
   border-color: var(--color-primary);
   transform: translateY(-1px);
   box-shadow: var(--shadow-sm);

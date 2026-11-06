@@ -202,7 +202,7 @@
 
 .reset-btn:hover:not(:disabled) {
   background: var(--bg-muted);
-  color: var(--color-primary-hover);
+  color: light-dark(var(--color-primary-hover), #7dd3fc);
   transform: none;
   box-shadow: none;
 }
@@ -219,14 +219,14 @@
 }
 
 .print-btn {
-  background: var(--text-tertiary);
+  background: var(--color-neutral);
   color: var(--text-inverse);
-  border-color: var(--text-tertiary);
+  border-color: var(--color-neutral);
 }
 
 .print-btn:hover:not(:disabled) {
-  background: var(--text-secondary);
-  border-color: var(--text-secondary);
+  background: light-dark(var(--text-secondary), var(--border-strong));
+  border-color: light-dark(var(--text-secondary), var(--border-strong));
 }
 
 /* Close Button - Requirement 5.5 */

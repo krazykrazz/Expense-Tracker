@@ -129,7 +129,7 @@
 /* Messages */
 .investment-detail-error {
   background-color: var(--color-negative-light);
-  color: var(--color-negative-dark);
+  color: light-dark(var(--color-negative-dark), #f87171);
   padding: var(--spacing-3) var(--spacing-6);
   border-left: 4px solid var(--color-negative);
   margin: 0;
@@ -137,7 +137,7 @@
 
 .investment-detail-success {
   background-color: var(--color-positive-light);
-  color: var(--color-positive-dark);
+  color: light-dark(var(--color-positive-dark), #4ade80);
   padding: var(--spacing-3) var(--spacing-6);
   border-left: 4px solid var(--color-positive);
   margin: 0;
@@ -629,7 +629,7 @@ button:disabled {
 }
 
 .investment-cancel-button {
-  background-color: var(--text-tertiary);
+  background-color: var(--color-neutral);
   color: var(--text-inverse);
   border: none;
   padding: var(--spacing-2) var(--spacing-5);
@@ -642,7 +642,7 @@ button:disabled {
 }
 
 .investment-cancel-button:hover:not(:disabled) {
-  background-color: var(--text-secondary);
+  background-color: light-dark(var(--text-secondary), var(--border-strong));
   transform: translateY(-1px);
 }
 

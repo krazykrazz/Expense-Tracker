@@ -100,7 +100,7 @@
 /* Error Display */
 .income-modal-error {
   background-color: var(--color-negative-light, #fee2e2);
-  color: var(--color-negative-dark, #dc2626);
+  color: light-dark(var(--color-negative-dark, #dc2626), #f87171);
   padding: var(--spacing-3, 12px);
   border-radius: var(--radius-md, 8px);
   margin-bottom: var(--spacing-4, 16px);
@@ -186,18 +186,18 @@
 
 .income-source-name {
   font-weight: 500;
-  color: #333;
+  color: var(--text-primary);
   font-size: 1rem;
 }
 
 .income-source-category {
-  color: #666;
+  color: var(--text-secondary);
   font-size: 0.95rem;
 }
 
 .income-source-amount {
   font-weight: 600;
-  color: #2e7d32;
+  color: light-dark(#2e7d32, hsl(123 46% 78%));
   font-size: 1.05rem;
   text-align: right;
 }
@@ -220,11 +220,11 @@
 }
 
 .income-edit-button:hover {
-  background-color: #e3f2fd;
+  background-color: light-dark(#e3f2fd, hsl(205 55% 17%));
 }
 
 .income-delete-button:hover {
-  background-color: #ffebee;
+  background-color: light-dark(#ffebee, hsl(351 55% 17%));
 }
 
 .income-edit-button:disabled,
@@ -250,7 +250,7 @@
 .income-edit-amount,
 .income-edit-category {
   padding: 10px;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border-strong);
   border-radius: 4px;
   font-size: 0.95rem;
   width: 100%;
@@ -259,11 +259,11 @@
 /* Validation Error Styling */
 .input-error {
   border-color: #d32f2f !important;
-  background-color: #ffebee;
+  background-color: light-dark(#ffebee, hsl(351 55% 17%));
 }
 
 .validation-error {
-  color: #d32f2f;
+  color: light-dark(#d32f2f, hsl(0 65% 78%));
   font-size: 0.75rem;
   margin-top: 4px;
   display: block;
@@ -307,7 +307,7 @@
 .income-add-section {
   margin-bottom: 20px;
   padding-top: 15px;
-  border-top: 1px solid #e0e0e0;
+  border-top: 1px solid var(--border-default);
 }
 
 .income-copy-previous-button {
@@ -362,7 +362,7 @@
   gap: 12px;
   align-items: start;
   padding: 15px;
-  background-color: #f9f9f9;
+  background-color: var(--bg-subtle);
   border-radius: 4px;
 }
 
@@ -370,7 +370,7 @@
 .income-add-amount,
 .income-add-category {
   padding: 10px;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border-strong);
   border-radius: 4px;
   font-size: 0.95rem;
   width: 100%;
@@ -417,20 +417,20 @@
   justify-content: space-between;
   align-items: center;
   padding: 15px;
-  background-color: #e8f5e9;
+  background-color: var(--bg-muted);
   border-radius: 4px;
   border: 2px solid #4caf50;
 }
 
 .income-total-label {
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
   font-size: 1.1rem;
 }
 
 .income-total-amount {
   font-weight: 700;
-  color: #2e7d32;
+  color: light-dark(#2e7d32, hsl(123 46% 78%));
   font-size: 1.3rem;
 }
 
@@ -438,7 +438,7 @@
 .income-category-breakdown {
   margin: 0 0 20px 0;
   padding: 15px;
-  background-color: #f8f9fa;
+  background-color: var(--bg-subtle);
   border-radius: 8px;
 }
 
@@ -446,7 +446,7 @@
   margin: 0 0 12px 0;
   font-size: 14px;
   font-weight: 600;
-  color: #495057;
+  color: var(--text-secondary);
 }
 
 .category-breakdown-grid {
@@ -460,7 +460,7 @@
   align-items: center;
   gap: 8px;
   padding: 8px;
-  background-color: white;
+  background-color: var(--bg-card);
   border-radius: 6px;
   font-size: 13px;
 }
@@ -472,35 +472,35 @@
 .category-name {
   flex: 1;
   font-weight: 500;
-  color: #495057;
+  color: var(--text-secondary);
 }
 
 .category-amount {
   font-weight: 600;
-  color: #28a745;
+  color: light-dark(#28a745, hsl(134 61% 78%));
 }
 
 /* Category selector in forms */
 .income-add-category,
 .income-edit-category {
   padding: 10px 12px;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border-strong);
   border-radius: 4px;
   font-size: 0.95rem;
-  background-color: white;
+  background-color: var(--bg-card);
   cursor: pointer;
 }
 
 .income-add-category:focus,
 .income-edit-category:focus {
   outline: none;
-  border-color: #80bdff;
+  border-color: light-dark(#80bdff, hsl(211 45% 32%));
   box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
 }
 
 .income-add-category:disabled,
 .income-edit-category:disabled {
-  background-color: #e9ecef;
+  background-color: var(--bg-muted);
   cursor: not-allowed;
 }
 

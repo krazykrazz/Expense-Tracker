@@ -49,6 +49,6 @@
 }
 
 .user-menu-item.logout-item {
-  color: var(--color-danger, #e74c3c);
+  color: #e74c3c;
   font-weight: 500;
 }

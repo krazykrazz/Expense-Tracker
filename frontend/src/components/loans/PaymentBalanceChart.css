@@ -56,7 +56,7 @@
 }
 
 .chart-summary-value.positive {
-  color: var(--color-positive-dark);
+  color: light-dark(var(--color-positive-dark), #4ade80);
 }
 
 /* Legend */
@@ -198,7 +198,7 @@
 }
 
 .tooltip-value.positive {
-  color: var(--color-positive-dark);
+  color: light-dark(var(--color-positive-dark), #4ade80);
 }
 
 .tooltip-notes {

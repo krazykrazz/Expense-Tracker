@@ -50,7 +50,7 @@
 
 .login-error {
   background: var(--color-negative-light);
-  color: var(--color-negative-dark);
+  color: light-dark(var(--color-negative-dark), #f87171);
   padding: var(--spacing-3) var(--spacing-4);
   border-radius: var(--radius-md);
   font-size: var(--text-sm);

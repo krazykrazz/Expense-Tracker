@@ -9,7 +9,7 @@ applyTo: "frontend/src/**"
 - Single page, modal-based (no router). `App.jsx` renders the header, `MonthSelector`, the expense list (left) and filters + `SummaryPanel` (right). Feature views (Annual Summary, Income Tax, Budgets, Analytics Hub, Financial Overview) are modals, mostly `React.lazy` + `ErrorBoundary`.
 - Components are grouped by domain under `components/<domain>/` with an `index.js` barrel: `expenses`, `financial`, `credit-cards`, `loans`, `tax`, `analytics`, `notifications`, `system`, `shared`.
 - Provider order: `ErrorBoundary` → `AuthProvider` → `AuthGate` → `FilterProvider` → `ExpenseProvider` → `ModalProvider` → `SharedDataProvider`.
-- Styling: global styles in `styles/`, per-component CSS, CSS Modules adopted incrementally. Dark mode via `:root[data-theme='dark']`.
+- Styling: global styles in `styles/`, per-component CSS, CSS Modules adopted incrementally. Dark mode via `:root[data-theme='dark']`: use the theme tokens in `styles/variables.css` (`--bg-*`, `--text-*`, `--border-*`, `--color-*-light` tints) instead of hard-coded colours. For a one-off colour, use `light-dark(<light>, <dark>)` (the root sets `color-scheme`). Never use a `--text-*` variable as a background (it inverts in dark mode), and don't add a `var(--x, #fallback)` for a variable that isn't defined.
 
 ## API Calls
 

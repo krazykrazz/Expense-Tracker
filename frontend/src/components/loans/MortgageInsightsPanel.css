@@ -8,7 +8,7 @@
  */
 
 .mortgage-insights-panel {
-  background: var(--card-bg, #ffffff);
+  background: var(--bg-card);
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   margin-top: 20px;
@@ -55,7 +55,7 @@
   align-items: center;
   gap: 12px;
   padding: 16px 20px;
-  background: #fff5f5;
+  background: var(--bg-subtle);
   border-left: 4px solid #dc3545;
   margin: 16px;
   border-radius: 8px;
@@ -68,7 +68,7 @@
 .insights-panel-error p {
   margin: 0;
   flex: 1;
-  color: #dc3545;
+  color: light-dark(#dc3545, hsl(354 70% 78%));
 }
 
 .retry-button {
@@ -91,10 +91,10 @@
   display: flex;
   gap: 12px;
   padding: 20px;
-  background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+  background: linear-gradient(135deg, light-dark(#e3f2fd, hsl(205 55% 17%)) 0%, var(--bg-muted) 100%);
   margin: 16px;
   border-radius: 10px;
-  border: 1px solid #e1bee7;
+  border: 1px solid light-dark(#e1bee7, hsl(291 45% 32%));
 }
 
 .insights-insufficient-data .info-icon {
@@ -108,14 +108,14 @@
 
 .insights-insufficient-data strong {
   display: block;
-  color: #5e35b1;
+  color: light-dark(#5e35b1, hsl(260 54% 78%));
   margin-bottom: 6px;
   font-size: 1rem;
 }
 
 .insights-insufficient-data p {
   margin: 0;
-  color: #666;
+  color: var(--text-secondary);
   font-size: 0.9rem;
   line-height: 1.5;
 }
@@ -130,8 +130,8 @@
   margin-bottom: 8px;
   border-radius: 10px;
   overflow: hidden;
-  background: var(--card-bg, #ffffff);
-  border: 1px solid #e9ecef;
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
   transition: box-shadow 0.2s;
 }
 
@@ -150,7 +150,7 @@
   align-items: center;
   gap: 10px;
   padding: 14px 16px;
-  background: #f8f9fa;
+  background: var(--bg-subtle);
   border: none;
   cursor: pointer;
   text-align: left;
@@ -158,7 +158,7 @@
 }
 
 .section-toggle:hover {
-  background: #e9ecef;
+  background: var(--bg-muted);
 }
 
 .section-icon {
@@ -169,7 +169,7 @@
   flex: 1;
   font-size: 1rem;
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .section-badge {
@@ -183,7 +183,7 @@
 
 .toggle-icon {
   font-size: 0.75rem;
-  color: #666;
+  color: var(--text-secondary);
   transition: transform 0.2s;
 }
 
@@ -213,26 +213,26 @@
   padding: 12px 20px;
   text-align: center;
   font-size: 0.8rem;
-  color: #888;
-  border-top: 1px solid #e9ecef;
-  background: #fafafa;
+  color: var(--text-tertiary);
+  border-top: 1px solid var(--border-default);
+  background: var(--bg-subtle);
 }
 
 /* Visual Indicators - Requirement 6.3 */
 .positive-indicator {
-  color: #28a745;
+  color: light-dark(#28a745, hsl(134 61% 78%));
 }
 
 .negative-indicator {
-  color: #dc3545;
+  color: light-dark(#dc3545, hsl(354 70% 78%));
 }
 
 .neutral-indicator {
-  color: #6c757d;
+  color: var(--text-tertiary);
 }
 
 .warning-indicator {
-  color: #ffc107;
+  color: light-dark(#ffc107, hsl(45 80% 78%));
 }
 
 /* Loading State - Requirement 6.4 */
@@ -242,7 +242,7 @@
 
 .skeleton-line {
   height: 16px;
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background: linear-gradient(90deg, var(--bg-muted) 25%, var(--bg-muted) 50%, var(--bg-muted) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
   border-radius: 4px;
@@ -279,7 +279,7 @@
 
   .skeleton-line {
     animation: none;
-    background: #e0e0e0;
+    background: var(--bg-muted);
   }
 
   .toggle-icon {
@@ -330,7 +330,7 @@
 /* Dark Mode Support */
 :root[data-theme='dark'] {
   .mortgage-insights-panel {
-    background: var(--card-bg-dark, #1e1e1e);
+    background: #1e1e1e;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   }
 

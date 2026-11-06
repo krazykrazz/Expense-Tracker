@@ -2,8 +2,8 @@
 /* Requirements: 2.1, 6.1 - Modern card and badge styling */
 
 .data-reminder-banner {
-  background-color: #FFF4E6;
-  border: 1px solid #FFB84D;
+  background-color: light-dark(#FFF4E6, hsl(34 55% 17%));
+  border: 1px solid light-dark(#FFB84D, hsl(36 45% 32%));
   border-radius: var(--radius-lg, 12px);
   padding: var(--spacing-3, 12px) var(--spacing-4, 16px);
   display: flex;
@@ -17,7 +17,7 @@
 }
 
 .data-reminder-banner:hover {
-  background-color: #FFE8CC;
+  background-color: light-dark(#FFE8CC, hsl(33 55% 17%));
   border-color: #FF9F1C;
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
@@ -53,7 +53,7 @@
 
 /* Scoped so the brown text doesn't leak into other banners that share .reminder-message */
 .data-reminder-banner .reminder-message {
-  color: #8B4513;
+  color: light-dark(#8B4513, hsl(25 76% 78%));
 }
 
 :root[data-theme='dark'] .data-reminder-banner {
@@ -73,7 +73,7 @@
 .reminder-dismiss-btn {
   background: none;
   border: none;
-  color: #8B4513;
+  color: light-dark(#8B4513, hsl(25 76% 78%));
   font-size: var(--text-2xl, 20px);
   line-height: 1;
   cursor: pointer;
@@ -90,7 +90,7 @@
 
 .reminder-dismiss-btn:hover {
   background-color: rgba(139, 69, 19, 0.1);
-  color: #5C2E0A;
+  color: light-dark(#5C2E0A, hsl(26 80% 78%));
 }
 
 .reminder-dismiss-btn:active {

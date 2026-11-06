@@ -9,10 +9,10 @@
 }
 
 .security-settings .settings-section {
-  background: #f8f9ff;
+  background: var(--bg-subtle);
   padding: var(--spacing-5, 20px);
   border-radius: var(--radius-lg, 12px);
-  border: 1px solid #e0e4ff;
+  border: 1px solid light-dark(#e0e4ff, hsl(232 45% 32%));
   box-shadow: var(--shadow-sm);
 }
 
@@ -68,7 +68,7 @@
   background: var(--bg-card, white);
   padding: var(--spacing-5, 20px);
   border-radius: var(--radius-lg, 12px);
-  border: 1px solid #e0e4ff;
+  border: 1px solid light-dark(#e0e4ff, hsl(232 45% 32%));
   margin-top: var(--spacing-4, 16px);
   box-shadow: var(--shadow-sm);
   animation: slideIn 0.2s ease-out;
@@ -83,7 +83,7 @@
 }
 
 .security-warning {
-  color: var(--color-negative-dark, #d32f2f);
+  color: light-dark(var(--color-negative-dark, #d32f2f), #f87171);
   font-size: var(--text-sm, 13px);
   margin: 0 0 var(--spacing-4, 16px) 0;
   font-family: var(--font-sans);

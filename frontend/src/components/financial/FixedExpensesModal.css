@@ -136,7 +136,7 @@
 /* Error Display */
 .fixed-expenses-modal-error {
   background-color: var(--color-negative-light, #fee2e2);
-  color: var(--color-negative-dark, #dc2626);
+  color: light-dark(var(--color-negative-dark, #dc2626), #f87171);
   padding: var(--spacing-3, 12px);
   border-radius: var(--radius-md, 8px);
   margin: var(--spacing-4, 16px) var(--spacing-6, 24px);
@@ -231,17 +231,17 @@
 
 .fixed-expense-name {
   font-weight: 500;
-  color: #333;
+  color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .fixed-expense-category {
-  color: #666;
+  color: light-dark(#666, var(--text-primary));
   font-size: 0.9em;
   padding: 4px 8px;
-  background-color: #e3f2fd;
+  background-color: light-dark(#e3f2fd, hsl(205 55% 17%));
   border-radius: 4px;
   text-align: center;
   overflow: hidden;
@@ -250,10 +250,10 @@
 }
 
 .fixed-expense-payment {
-  color: #666;
+  color: light-dark(#666, var(--text-primary));
   font-size: 0.9em;
   padding: 4px 8px;
-  background-color: #fff3e0;
+  background-color: light-dark(#fff3e0, hsl(37 55% 17%));
   border-radius: 4px;
   text-align: center;
   overflow: hidden;
@@ -267,7 +267,7 @@
 
 /* Inactive payment method warning indicator (Requirements 5.4) */
 .fixed-expense-payment.inactive-payment-method {
-  background-color: #fff8e1;
+  background-color: light-dark(#fff8e1, hsl(46 55% 17%));
   border: 1px dashed #ff9800;
 }
 
@@ -278,16 +278,16 @@
 
 .fixed-expense-amount {
   font-weight: 600;
-  color: #d32f2f;
+  color: light-dark(#d32f2f, hsl(0 65% 78%));
   text-align: right;
   white-space: nowrap;
 }
 
 .fixed-expense-due-day {
-  color: #666;
+  color: var(--text-secondary);
   font-size: 0.9em;
   padding: 4px 8px;
-  background-color: #e8f5e9;
+  background-color: var(--bg-muted);
   border-radius: 4px;
   text-align: center;
   white-space: nowrap;
@@ -295,14 +295,14 @@
 
 .fixed-expense-due-day.no-due-day {
   background-color: transparent;
-  color: #999;
+  color: var(--text-tertiary);
 }
 
 .fixed-expense-linked-loan {
-  color: #666;
+  color: light-dark(#666, var(--text-primary));
   font-size: 0.9em;
   padding: 4px 8px;
-  background-color: #e3f2fd;
+  background-color: light-dark(#e3f2fd, hsl(205 55% 17%));
   border-radius: 4px;
   text-align: center;
   overflow: hidden;
@@ -316,11 +316,11 @@
 
 .fixed-expense-linked-loan.no-loan {
   background-color: transparent;
-  color: #999;
+  color: var(--text-tertiary);
 }
 
 .fixed-expense-linked-loan.loan-paid-off {
-  background-color: #fff8e1;
+  background-color: light-dark(#fff8e1, hsl(46 55% 17%));
   border: 1px dashed #ff9800;
 }
 
@@ -346,11 +346,11 @@
 }
 
 .fixed-expense-edit-button:hover {
-  background-color: #e3f2fd;
+  background-color: light-dark(#e3f2fd, hsl(205 55% 17%));
 }
 
 .fixed-expense-delete-button:hover {
-  background-color: #ffebee;
+  background-color: light-dark(#ffebee, hsl(351 55% 17%));
 }
 
 .fixed-expense-edit-button:disabled,
@@ -380,7 +380,7 @@
 .fixed-expense-edit-due-day,
 .fixed-expense-edit-loan {
   padding: 8px;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border-strong);
   border-radius: 4px;
   font-size: 0.95rem;
   transition: border-color 0.2s, box-shadow 0.2s;
@@ -400,11 +400,11 @@
 /* Validation Error Styling */
 .input-error {
   border-color: #d32f2f !important;
-  background-color: #ffebee;
+  background-color: light-dark(#ffebee, hsl(351 55% 17%));
 }
 
 .validation-error {
-  color: #d32f2f;
+  color: light-dark(#d32f2f, hsl(0 65% 78%));
   font-size: 0.75rem;
   margin-top: 4px;
   display: block;
@@ -448,7 +448,7 @@
 .fixed-expenses-add-section {
   margin-bottom: 20px;
   padding-top: 15px;
-  border-top: 1px solid #e0e0e0;
+  border-top: 1px solid var(--border-default);
 }
 
 .fixed-expenses-add-toggle-button {
@@ -489,7 +489,7 @@
 .fixed-expense-add-due-day,
 .fixed-expense-add-loan {
   padding: 10px;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border-strong);
   border-radius: 4px;
   font-size: 0.95rem;
   transition: border-color 0.2s, box-shadow 0.2s;
@@ -512,7 +512,7 @@ select.fixed-expense-add-loan,
 select.fixed-expense-edit-category,
 select.fixed-expense-edit-payment,
 select.fixed-expense-edit-loan {
-  background-color: white;
+  background-color: var(--bg-card);
   cursor: pointer;
   appearance: none;
   background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
@@ -572,20 +572,20 @@ select.fixed-expense-edit-loan:hover {
   justify-content: space-between;
   align-items: center;
   padding: 15px;
-  background-color: #ffebee;
+  background-color: light-dark(#ffebee, hsl(351 55% 17%));
   border-radius: 4px;
   border: 2px solid #d32f2f;
 }
 
 .fixed-expenses-total-label {
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
   font-size: 1.1rem;
 }
 
 .fixed-expenses-total-amount {
   font-weight: 700;
-  color: #d32f2f;
+  color: light-dark(#d32f2f, hsl(0 65% 78%));
   font-size: 1.3rem;
 }
 

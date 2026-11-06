@@ -105,7 +105,7 @@
 /* Error Display */
 .total-debt-modal-error {
   background-color: var(--color-negative-light);
-  color: var(--color-negative-dark);
+  color: light-dark(var(--color-negative-dark), #f87171);
   padding: var(--spacing-3) var(--spacing-4);
   margin: var(--spacing-4) var(--spacing-5);
   border-radius: var(--radius-md);

@@ -14,7 +14,7 @@
 }
 
 .payment-method-form-container {
-  background: white;
+  background: var(--bg-card);
   border-radius: 8px;
   width: 90%;
   max-width: 500px;
@@ -29,13 +29,13 @@
   justify-content: space-between;
   align-items: center;
   padding: 16px 20px;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid var(--border-default);
 }
 
 .payment-method-form-header h2 {
   margin: 0;
   font-size: 1.25rem;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .payment-method-form-close {
@@ -43,19 +43,19 @@
   border: none;
   font-size: 1.5rem;
   cursor: pointer;
-  color: #666;
+  color: var(--text-secondary);
   padding: 4px 8px;
   border-radius: 4px;
   transition: background-color 0.2s;
 }
 
 .payment-method-form-close:hover {
-  background-color: #f0f0f0;
+  background-color: var(--bg-muted);
 }
 
 .payment-method-form-error {
-  background-color: #ffebee;
-  color: #c62828;
+  background-color: light-dark(#ffebee, hsl(351 55% 17%));
+  color: light-dark(#c62828, hsl(0 66% 78%));
   padding: 12px 20px;
   font-size: 0.9rem;
 }
@@ -79,13 +79,13 @@
 .form-group label {
   font-size: 0.9rem;
   font-weight: 500;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .form-group input,
 .form-group select {
   padding: 10px 12px;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--border-default);
   border-radius: 6px;
   font-size: 0.95rem;
   transition: border-color 0.2s, box-shadow 0.2s;
@@ -100,7 +100,7 @@
 
 .form-group input:disabled,
 .form-group select:disabled {
-  background-color: #f5f5f5;
+  background-color: var(--bg-subtle);
   cursor: not-allowed;
 }
 
@@ -120,7 +120,7 @@
 }
 
 .form-hint {
-  color: #888;
+  color: var(--text-tertiary);
   font-size: 0.8rem;
 }
 
@@ -141,7 +141,7 @@
   gap: 8px;
   padding-top: 16px;
   margin-top: 8px;
-  border-top: 1px solid #e0e0e0;
+  border-top: 1px solid var(--border-default);
 }
 
 .form-deactivate-btn {
@@ -171,7 +171,7 @@
   gap: 12px;
   margin-top: 8px;
   padding-top: 16px;
-  border-top: 1px solid #e0e0e0;
+  border-top: 1px solid var(--border-default);
 }
 
 .form-submit-btn {
@@ -197,9 +197,9 @@
 }
 
 .form-cancel-btn {
-  background-color: #f5f5f5;
-  color: #333;
-  border: 1px solid #e0e0e0;
+  background-color: var(--bg-subtle);
+  color: var(--text-primary);
+  border: 1px solid var(--border-default);
   padding: 12px 20px;
   border-radius: 6px;
   cursor: pointer;
@@ -208,7 +208,7 @@
 }
 
 .form-cancel-btn:hover:not(:disabled) {
-  background-color: #eeeeee;
+  background-color: var(--bg-muted);
 }
 
 .form-cancel-btn:disabled {

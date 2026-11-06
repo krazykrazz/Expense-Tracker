@@ -10,7 +10,7 @@
   /* Green/teal color scheme - distinct from other reminder types */
   background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
   border: 1px solid #28a745;
-  color: #155724;
+  color: light-dark(#155724, hsl(134 61% 78%));
 }
 
 .insurance-claim-reminder-banner:hover {
@@ -78,7 +78,7 @@
   font-size: 0.75rem;
   font-weight: 600;
   background-color: rgba(40, 167, 69, 0.2);
-  color: #155724;
+  color: light-dark(#155724, hsl(134 61% 78%));
 }
 
 /* Person names */
@@ -107,17 +107,17 @@
 
 .insurance-claim-reminder-banner .reminder-urgency-badge.pending {
   background-color: rgba(40, 167, 69, 0.2);
-  color: #155724;
+  color: light-dark(#155724, hsl(134 61% 78%));
 }
 
 .insurance-claim-reminder-banner .reminder-urgency-badge.extended {
   background-color: rgba(255, 193, 7, 0.3);
-  color: #856404;
+  color: light-dark(#856404, hsl(45 80% 78%));
 }
 
 .insurance-claim-reminder-banner .reminder-urgency-badge.long-pending {
   background-color: rgba(220, 53, 69, 0.2);
-  color: #721c24;
+  color: light-dark(#721c24, hsl(354 61% 78%));
 }
 
 /* Claims breakdown for multiple claims */
@@ -162,7 +162,7 @@
   transition: background-color 0.2s ease;
   line-height: 1;
   flex-shrink: 0;
-  color: #155724;
+  color: light-dark(#155724, hsl(134 61% 78%));
 }
 
 .insurance-claim-reminder-banner .reminder-dismiss-btn:hover {

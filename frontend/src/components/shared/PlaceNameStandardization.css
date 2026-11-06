@@ -146,7 +146,7 @@
 
 .cancel-button:hover:not(:disabled),
 .back-button:hover:not(:disabled) {
-  background-color: #e8e8e8;
+  background-color: var(--bg-muted);
 }
 
 .apply-button {
@@ -187,11 +187,11 @@
 
 .preview-summary {
   padding: var(--spacing-lg, 15px);
-  background-color: #e3f2fd;
+  background-color: light-dark(#e3f2fd, hsl(205 55% 17%));
   border-radius: var(--radius-md, 6px);
   text-align: center;
   margin-bottom: var(--spacing-xl, 20px);
-  color: #1976D2;
+  color: light-dark(#1976D2, hsl(210 79% 78%));
 }
 
 .preview-list {
@@ -239,7 +239,7 @@
 
 .canonical-name {
   padding: var(--spacing-sm, 8px) var(--spacing-md, 12px);
-  background-color: #e8f5e9;
+  background-color: var(--bg-muted);
   border-radius: var(--radius-sm, 4px);
   color: var(--text-primary, #333);
   font-weight: 500;
@@ -282,26 +282,26 @@
 }
 
 .standardization-message.success {
-  background-color: #e8f5e9;
-  color: #2e7d32;
+  background-color: var(--bg-muted);
+  color: light-dark(#2e7d32, hsl(123 46% 78%));
   border: 1px solid var(--color-positive, #4CAF50);
 }
 
 .standardization-message.error {
-  background-color: #ffebee;
-  color: #c62828;
+  background-color: light-dark(#ffebee, hsl(351 55% 17%));
+  color: light-dark(#c62828, hsl(0 66% 78%));
   border: 1px solid var(--color-negative, #f44336);
 }
 
 .standardization-message.warning {
-  background-color: #fff3e0;
-  color: #e65100;
+  background-color: light-dark(#fff3e0, hsl(37 55% 17%));
+  color: light-dark(#e65100, hsl(21 80% 78%));
   border: 1px solid #ff9800;
 }
 
 .standardization-message.info {
-  background-color: #e3f2fd;
-  color: #1565c0;
+  background-color: light-dark(#e3f2fd, hsl(205 55% 17%));
+  color: light-dark(#1565c0, hsl(212 80% 78%));
   border: 1px solid #2196F3;
 }
 

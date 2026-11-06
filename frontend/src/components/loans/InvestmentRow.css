@@ -15,11 +15,11 @@
 
 .investment-row.needs-update {
   border-left: 3px solid #ff9800;
-  background-color: #fff8f0;
+  background-color: var(--bg-subtle);
 }
 
 .investment-row.needs-update:hover {
-  background-color: #fff3e0;
+  background-color: light-dark(#fff3e0, hsl(37 55% 17%));
 }
 
 .investment-row-main {
@@ -39,7 +39,7 @@
 .investment-row-name {
   font-size: 14px;
   font-weight: 600;
-  color: #334155;
+  color: var(--text-primary);
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -49,8 +49,8 @@
 .investment-row-type-badge {
   display: inline-block;
   padding: 2px 8px;
-  background-color: #e3f2fd;
-  color: #1976d2;
+  background-color: light-dark(#e3f2fd, hsl(205 55% 17%));
+  color: light-dark(#1976d2, hsl(210 79% 78%));
   font-size: 0.75rem;
   font-weight: 600;
   border-radius: 4px;
@@ -78,14 +78,14 @@
 
 .investment-row-details {
   font-size: 12px;
-  color: #64748b;
+  color: var(--text-secondary);
 }
 
 .investment-row-current-value {
   display: inline-block;
   font-weight: 600;
   font-size: 12px;
-  color: #166534;
+  color: light-dark(#166534, hsl(143 64% 78%));
   background-color: rgba(22, 163, 74, 0.08);
   border-radius: 4px;
   padding: 1px 6px;

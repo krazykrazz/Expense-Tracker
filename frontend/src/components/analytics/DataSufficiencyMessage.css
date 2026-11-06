@@ -85,7 +85,7 @@
   justify-content: center;
   gap: var(--spacing-2);
   font-size: var(--text-sm);
-  color: var(--color-warning-dark);
+  color: light-dark(var(--color-warning-dark), #fbbf24);
   font-weight: var(--font-medium);
 }
 
@@ -102,7 +102,7 @@
   background-color: var(--color-primary-light);
   border-radius: var(--radius-md);
   font-size: var(--text-sm);
-  color: var(--color-primary-hover);
+  color: light-dark(var(--color-primary-hover), #7dd3fc);
   text-align: left;
 }
 
@@ -263,7 +263,7 @@
   margin: 0;
   font-size: var(--text-base);
   font-weight: var(--font-medium);
-  color: var(--color-primary-hover);
+  color: light-dark(var(--color-primary-hover), #7dd3fc);
 }
 
 /* Responsive Design */

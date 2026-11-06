@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.21.4] - 2026-11-06
+
+### Log in again for banks that only update after a login, plus fixes from the bank import audit
+
 ## [1.21.3] - 2026-11-06
 
 ### Wealthsimple pending charges settle automatically once the card balance shows they posted

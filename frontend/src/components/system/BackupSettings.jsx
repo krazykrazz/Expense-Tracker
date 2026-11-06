@@ -1215,6 +1215,13 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v1.21.2</div>
+                <div className="changelog-date">November 6, 2026</div>
+                <ul className="changelog-items">
+                  <li>Dark mode now covers settings, the place name tool, budgets, tax, annual summary and the other finance screens</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v1.21.1</div>
                 <div className="changelog-date">November 6, 2026</div>
                 <ul className="changelog-items">

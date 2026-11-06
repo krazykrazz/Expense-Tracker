@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.21.2',
+    date: 'November 6, 2026',
+    added: [],
+    changed: ['Dark mode now covers settings, the place name tool, budgets, tax, annual summary and the other finance screens'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.21.1',
     date: 'November 6, 2026',
     added: [],

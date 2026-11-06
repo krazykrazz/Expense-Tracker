@@ -109,7 +109,7 @@ pre {
 /* Selection styling */
 ::selection {
   background-color: var(--color-primary-light);
-  color: var(--color-primary-active);
+  color: light-dark(var(--color-primary-active), #7dd3fc);
 }
 
 /* ============================================

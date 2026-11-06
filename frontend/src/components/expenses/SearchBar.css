@@ -93,15 +93,15 @@
 .filter-dropdown.active-filter {
   border-color: var(--color-primary, #0ea5e9);
   border-width: 2px;
-  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  background: linear-gradient(135deg, var(--bg-subtle) 0%, light-dark(#e0f2fe, hsl(204 55% 17%)) 100%);
   font-weight: var(--font-semibold, 600);
-  color: #0c4a6e;
+  color: light-dark(#0c4a6e, hsl(202 80% 78%));
   padding: calc(var(--spacing-3, 12px) - 1px) calc(var(--spacing-4, 16px) - 1px);
   box-shadow: var(--shadow-sm);
 }
 
 .filter-dropdown.active-filter:hover {
-  background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+  background: linear-gradient(135deg, light-dark(#e0f2fe, hsl(204 55% 17%)) 0%, light-dark(#bae6fd, hsl(201 55% 17%)) 100%);
   border-color: var(--color-primary-hover, #0284c7);
 }
 

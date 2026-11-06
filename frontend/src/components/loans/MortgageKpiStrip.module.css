@@ -51,7 +51,7 @@
   padding: 2px var(--spacing-2);
   border-radius: var(--radius-full);
   background: var(--color-primary-light);
-  color: var(--color-primary-active);
+  color: light-dark(var(--color-primary-active), #7dd3fc);
   margin-top: var(--spacing-1);
   align-self: flex-start;
 }
@@ -68,7 +68,7 @@
 }
 
 .warning {
-  color: var(--color-warning-dark);
+  color: light-dark(var(--color-warning-dark), #fbbf24);
 }
 
 /* ── Responsive: 2-column at 768px ─────────────────────────────────────────── */

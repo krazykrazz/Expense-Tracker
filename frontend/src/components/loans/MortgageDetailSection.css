@@ -116,7 +116,7 @@
 }
 
 .mortgage-value.approaching {
-  color: var(--color-warning-dark, #856404);
+  color: light-dark(var(--color-warning-dark, #856404), #fbbf24);
 }
 
 .mortgage-value.rate-type-fixed {

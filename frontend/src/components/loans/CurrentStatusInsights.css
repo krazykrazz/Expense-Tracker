@@ -119,12 +119,12 @@
 
 .rate-type-badge.variable {
   background-color: var(--color-positive-light);
-  color: var(--color-positive-dark, #155724);
+  color: light-dark(var(--color-positive-dark, #155724), #4ade80);
 }
 
 .rate-type-badge.fixed {
   background-color: var(--color-primary-light, #e3f2fd);
-  color: var(--color-primary-dark, #1565c0);
+  color: light-dark(#1565c0, hsl(212 80% 78%));
 }
 
 .rate-hint {
@@ -140,7 +140,7 @@
   border-radius: var(--radius-md);
   padding: var(--spacing-1) var(--spacing-3);
   font-size: var(--text-sm);
-  color: var(--color-positive-dark, #155724);
+  color: light-dark(var(--color-positive-dark, #155724), #4ade80);
   cursor: pointer;
   transition: all var(--transition-fast);
 }
@@ -257,7 +257,7 @@
 }
 
 .rate-update-hint {
-  color: var(--color-positive-dark, #155724);
+  color: light-dark(var(--color-positive-dark, #155724), #4ade80);
   font-style: italic;
 }
 
@@ -442,7 +442,7 @@
 }
 
 .payment-save-button:hover:not(:disabled) {
-  background-color: var(--color-primary-dark, #1565c0);
+  background-color: #1565c0;
 }
 
 .payment-save-button:disabled {
@@ -530,7 +530,7 @@
 
 .payment-extra-indicator.positive {
   background-color: var(--color-positive-light);
-  color: var(--color-positive-dark, #155724);
+  color: light-dark(var(--color-positive-dark, #155724), #4ade80);
 }
 
 .payment-extra-indicator.negative {
@@ -592,7 +592,7 @@
 }
 
 .next-payment-date.soon {
-  color: var(--color-warning-dark);
+  color: light-dark(var(--color-warning-dark), #fbbf24);
 }
 
 .next-payment-date.today {
@@ -606,7 +606,7 @@
   padding: var(--spacing-1) var(--spacing-2);
   border-radius: var(--radius-full);
   background-color: var(--color-warning-light);
-  color: var(--color-warning-dark);
+  color: light-dark(var(--color-warning-dark), #fbbf24);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }

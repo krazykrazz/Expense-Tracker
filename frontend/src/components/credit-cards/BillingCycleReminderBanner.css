@@ -7,9 +7,9 @@
   margin-bottom: 12px;
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
-  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+  background: linear-gradient(135deg, light-dark(#e3f2fd, hsl(205 55% 17%)) 0%, light-dark(#bbdefb, hsl(207 55% 17%)) 100%);
   border: 1px solid #2196f3;
-  color: #0d47a1;
+  color: light-dark(#0d47a1, hsl(216 80% 78%));
 }
 
 .billing-cycle-reminder-banner:hover {
@@ -103,7 +103,7 @@
   transition: background-color 0.2s ease;
   line-height: 1;
   flex-shrink: 0;
-  color: #0d47a1;
+  color: light-dark(#0d47a1, hsl(216 80% 78%));
 }
 
 .billing-cycle-reminder-banner .reminder-dismiss-btn:hover {

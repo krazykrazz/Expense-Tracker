@@ -33,7 +33,7 @@
 .advanced-filters-toggle.expanded {
   background-color: var(--color-primary-light);
   border-color: var(--color-primary);
-  color: var(--color-primary-hover);
+  color: light-dark(var(--color-primary-hover), #7dd3fc);
 }
 
 /* Label */

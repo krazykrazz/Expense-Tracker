@@ -42,21 +42,21 @@
 /* In Progress - Yellow/Orange */
 .insurance-status-indicator.status-in-progress {
   background: var(--color-warning-light);
-  color: var(--color-warning-dark);
+  color: light-dark(var(--color-warning-dark), #fbbf24);
   border: 1px solid rgba(245, 158, 11, 0.25);
 }
 
 /* Paid - Green */
 .insurance-status-indicator.status-paid {
   background: var(--color-positive-light);
-  color: var(--color-positive-dark);
+  color: light-dark(var(--color-positive-dark), #4ade80);
   border: 1px solid rgba(34, 197, 94, 0.25);
 }
 
 /* Denied - Red */
 .insurance-status-indicator.status-denied {
   background: var(--color-negative-light);
-  color: var(--color-negative-dark);
+  color: light-dark(var(--color-negative-dark), #f87171);
   border: 1px solid rgba(239, 68, 68, 0.25);
 }
 
@@ -72,7 +72,7 @@
 }
 
 .insurance-status-indicator.clickable.status-not-claimed:hover {
-  background: #e2e8f0;
+  background: var(--bg-muted);
   border-color: var(--border-strong);
 }
 
@@ -139,27 +139,27 @@
 /* High Contrast Mode Support */
 @media (prefers-contrast: high) {
   .insurance-status-indicator.status-not-claimed {
-    background: #e9ecef;
+    background: var(--bg-muted);
     border-color: #6c757d;
-    color: #495057;
+    color: var(--text-secondary);
   }
 
   .insurance-status-indicator.status-in-progress {
-    background: #fff3cd;
+    background: light-dark(#fff3cd, hsl(46 55% 17%));
     border-color: #ffc107;
-    color: #856404;
+    color: light-dark(#856404, hsl(45 80% 78%));
   }
 
   .insurance-status-indicator.status-paid {
-    background: #d4edda;
+    background: light-dark(#d4edda, hsl(134 41% 17%));
     border-color: #28a745;
-    color: #155724;
+    color: light-dark(#155724, hsl(134 61% 78%));
   }
 
   .insurance-status-indicator.status-denied {
-    background: #f8d7da;
+    background: light-dark(#f8d7da, hsl(355 55% 17%));
     border-color: #dc3545;
-    color: #721c24;
+    color: light-dark(#721c24, hsl(354 61% 78%));
   }
 
   .insurance-status-indicator.clickable:focus {

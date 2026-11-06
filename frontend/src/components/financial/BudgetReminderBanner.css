@@ -13,23 +13,23 @@
 
 /* Warning style (80-89%) - Yellow/Amber */
 .budget-reminder-banner.warning {
-  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  background: linear-gradient(135deg, light-dark(#fef3c7, hsl(48 55% 17%)) 0%, #fde68a 100%);
   border: 1px solid #f59e0b;
   color: #92400e;
 }
 
 /* Danger style (90-99%) - Orange */
 .budget-reminder-banner.danger {
-  background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%);
+  background: linear-gradient(135deg, light-dark(#fed7aa, hsl(32 55% 17%)) 0%, #fdba74 100%);
   border: 1px solid #ea580c;
   color: #9a3412;
 }
 
 /* Critical style (100%+) - Red/Orange */
 .budget-reminder-banner.critical {
-  background: linear-gradient(135deg, #fecaca 0%, #fca5a5 100%);
+  background: linear-gradient(135deg, light-dark(#fecaca, hsl(0 55% 17%)) 0%, light-dark(#fca5a5, hsl(0 55% 17%)) 100%);
   border: 1px solid #dc2626;
-  color: #991b1b;
+  color: light-dark(#991b1b, hsl(0 70% 78%));
   animation: pulse-budget 2s ease-in-out infinite;
 }
 
@@ -122,17 +122,17 @@
 
 .budget-reminder-banner .progress-badge.warning {
   background-color: rgba(245, 158, 11, 0.2);
-  color: #92400e;
+  color: light-dark(#92400e, hsl(23 80% 78%));
 }
 
 .budget-reminder-banner .progress-badge.danger {
   background-color: rgba(234, 88, 12, 0.2);
-  color: #9a3412;
+  color: light-dark(#9a3412, hsl(15 79% 78%));
 }
 
 .budget-reminder-banner .progress-badge.critical {
   background-color: rgba(220, 38, 38, 0.2);
-  color: #991b1b;
+  color: light-dark(#991b1b, hsl(0 70% 78%));
 }
 
 /* Severity badges */
@@ -154,17 +154,17 @@
 
 .budget-reminder-banner .reminder-severity-badge.warning {
   background-color: rgba(245, 158, 11, 0.2);
-  color: #92400e;
+  color: light-dark(#92400e, hsl(23 80% 78%));
 }
 
 .budget-reminder-banner .reminder-severity-badge.danger {
   background-color: rgba(234, 88, 12, 0.2);
-  color: #9a3412;
+  color: light-dark(#9a3412, hsl(15 79% 78%));
 }
 
 .budget-reminder-banner .reminder-severity-badge.critical {
   background-color: rgba(220, 38, 38, 0.2);
-  color: #991b1b;
+  color: light-dark(#991b1b, hsl(0 70% 78%));
 }
 
 /* Alerts breakdown for multiple alerts */
@@ -249,7 +249,7 @@
 }
 
 .budget-reminder-banner.warning .reminder-dismiss-btn {
-  color: #92400e;
+  color: light-dark(#92400e, hsl(23 80% 78%));
 }
 
 .budget-reminder-banner.warning .reminder-dismiss-btn:hover {
@@ -257,7 +257,7 @@
 }
 
 .budget-reminder-banner.danger .reminder-dismiss-btn {
-  color: #9a3412;
+  color: light-dark(#9a3412, hsl(15 79% 78%));
 }
 
 .budget-reminder-banner.danger .reminder-dismiss-btn:hover {
@@ -265,7 +265,7 @@
 }
 
 .budget-reminder-banner.critical .reminder-dismiss-btn {
-  color: #991b1b;
+  color: light-dark(#991b1b, hsl(0 70% 78%));
 }
 
 .budget-reminder-banner.critical .reminder-dismiss-btn:hover {

@@ -7,13 +7,13 @@
   border: 1px solid var(--color-primary);
   border-radius: var(--radius-full);
   font-size: var(--text-sm);
-  color: var(--color-primary-hover);
+  color: light-dark(var(--color-primary-hover), #7dd3fc);
   max-width: 200px;
   transition: var(--transition-colors);
 }
 
 .filter-chip:hover {
-  background-color: #cce7f7;
+  background-color: light-dark(#cce7f7, hsl(202 55% 17%));
 }
 
 .filter-chip-text {
@@ -33,7 +33,7 @@
   border: none;
   border-radius: var(--radius-full);
   background-color: transparent;
-  color: var(--color-primary-hover);
+  color: light-dark(var(--color-primary-hover), #7dd3fc);
   font-size: 14px;
   font-weight: var(--font-bold);
   line-height: 1;

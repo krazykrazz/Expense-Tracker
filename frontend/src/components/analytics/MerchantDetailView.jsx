@@ -218,7 +218,7 @@ const MerchantDetailView = ({ merchantName, period, includeFixedExpenses, isOpen
                                   y1={y}
                                   x2={chartWidth - padding.right}
                                   y2={y}
-                                  stroke="#e0e0e0"
+                                  style={{ stroke: 'var(--border-default)' }}
                                   strokeWidth="1"
                                 />
                                 <text
@@ -282,7 +282,7 @@ const MerchantDetailView = ({ merchantName, period, includeFixedExpenses, isOpen
                                   y={chartHeight - padding.bottom + 20}
                                   textAnchor="middle"
                                   fontSize="11"
-                                  fill="#666"
+                                  style={{ fill: 'var(--text-tertiary)' }}
                                 >
                                   {point.entry.monthName.split(' ')[0]}
                                 </text>

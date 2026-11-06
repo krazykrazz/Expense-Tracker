@@ -13,7 +13,7 @@
 }
 
 .person-allocation-modal {
-  background: white;
+  background: var(--bg-card);
   border-radius: 8px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
   width: 90%;
@@ -30,22 +30,22 @@
   justify-content: space-between;
   align-items: center;
   padding: 20px;
-  border-bottom: 1px solid #e5e7eb;
-  background-color: #f9fafb;
+  border-bottom: 1px solid var(--border-default);
+  background-color: var(--bg-subtle);
 }
 
 .modal-header h3 {
   margin: 0;
   font-size: 1.25rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--text-primary);
 }
 
 .close-button {
   background: none;
   border: none;
   font-size: 24px;
-  color: #6b7280;
+  color: var(--text-secondary);
   cursor: pointer;
   padding: 0;
   width: 32px;
@@ -58,8 +58,8 @@
 }
 
 .close-button:hover {
-  background-color: #f3f4f6;
-  color: #374151;
+  background-color: var(--bg-subtle);
+  color: var(--text-primary);
 }
 
 /* Modal Body */
@@ -70,7 +70,7 @@
 }
 
 .expense-info {
-  background-color: #f0f9ff;
+  background-color: var(--bg-subtle);
   border: 1px solid #0ea5e9;
   border-radius: 6px;
   padding: 16px;
@@ -87,15 +87,15 @@
 }
 
 .remaining-zero {
-  color: #059669;
+  color: light-dark(#059669, hsl(161 80% 78%));
 }
 
 .remaining-positive {
-  color: #d97706;
+  color: light-dark(#d97706, hsl(32 80% 78%));
 }
 
 .remaining-negative {
-  color: #dc2626;
+  color: light-dark(#dc2626, hsl(0 72% 78%));
 }
 
 /* Allocation Controls */
@@ -132,14 +132,14 @@
   align-items: center;
   justify-content: space-between;
   padding: 12px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-default);
   border-radius: 6px;
-  background-color: #fafafa;
+  background-color: var(--bg-subtle);
 }
 
 .person-label {
   font-weight: 500;
-  color: #374151;
+  color: var(--text-primary);
   flex: 1;
   margin-right: 16px;
 }
@@ -153,7 +153,7 @@
 .currency-symbol {
   position: absolute;
   left: 12px;
-  color: #6b7280;
+  color: var(--text-secondary);
   font-weight: 500;
   z-index: 1;
 }
@@ -165,14 +165,14 @@
   padding: var(--spacing-2) var(--spacing-3) var(--spacing-2) var(--spacing-6);
   font-size: 14px;
   text-align: right;
-  background-color: white;
+  background-color: var(--bg-card);
 }
 
 /* Error Message */
 .error-message {
-  background-color: #fef2f2;
-  border: 1px solid #fecaca;
-  color: #dc2626;
+  background-color: var(--bg-subtle);
+  border: 1px solid light-dark(#fecaca, hsl(0 45% 32%));
+  color: light-dark(#dc2626, hsl(0 72% 78%));
   padding: 12px;
   border-radius: 6px;
   font-size: 14px;
@@ -185,8 +185,8 @@
   justify-content: flex-end;
   gap: 12px;
   padding: 20px;
-  border-top: 1px solid #e5e7eb;
-  background-color: #f9fafb;
+  border-top: 1px solid var(--border-default);
+  background-color: var(--bg-subtle);
 }
 
 /* Base button styles provided by .btn-cancel in App.css */
@@ -272,36 +272,36 @@
 
 .expense-info-item .info-label {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--text-secondary);
 }
 
 .expense-info-item .info-value {
   font-weight: 600;
-  color: #111827;
+  color: var(--text-primary);
 }
 
 .expense-info-item.remaining-zero {
-  background-color: #d1fae5;
+  background-color: light-dark(#d1fae5, hsl(149 55% 17%));
 }
 
 .expense-info-item.remaining-zero .info-value {
-  color: #059669;
+  color: light-dark(#059669, hsl(161 80% 78%));
 }
 
 .expense-info-item.remaining-positive {
-  background-color: #fef3c7;
+  background-color: light-dark(#fef3c7, hsl(48 55% 17%));
 }
 
 .expense-info-item.remaining-positive .info-value {
-  color: #d97706;
+  color: light-dark(#d97706, hsl(32 80% 78%));
 }
 
 .expense-info-item.remaining-negative {
-  background-color: #fee2e2;
+  background-color: light-dark(#fee2e2, hsl(0 55% 17%));
 }
 
 .expense-info-item.remaining-negative .info-value {
-  color: #dc2626;
+  color: light-dark(#dc2626, hsl(0 72% 78%));
 }
 
 /* Allocation header for insurance mode */
@@ -310,11 +310,11 @@
   grid-template-columns: 1fr 120px 120px;
   gap: 12px;
   padding: 8px 12px;
-  background-color: #f3f4f6;
+  background-color: var(--bg-subtle);
   border-radius: 6px;
   font-size: 12px;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -345,7 +345,7 @@
 }
 
 .allocation-row.insurance-row .amount-input-wrapper.original-amount .amount-input {
-  background-color: #f0f9ff;
+  background-color: var(--bg-subtle);
   border-color: #0ea5e9;
 }
 
@@ -353,10 +353,10 @@
 .insurance-allocation-note {
   margin-top: 16px;
   padding: 12px;
-  background-color: #f0f9ff;
+  background-color: var(--bg-subtle);
   border: 1px solid #0ea5e9;
   border-radius: 6px;
-  color: #0369a1;
+  color: light-dark(#0369a1, hsl(201 80% 78%));
 }
 
 .insurance-allocation-note small {
@@ -387,7 +387,7 @@
   
   .allocation-row.insurance-row .person-label {
     font-weight: 600;
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom: 1px solid var(--border-default);
     padding-bottom: 8px;
     margin-bottom: 4px;
   }
@@ -400,7 +400,7 @@
   .allocation-row.insurance-row .amount-input-wrapper::before {
     content: 'Out-of-Pocket:';
     font-size: 13px;
-    color: #6b7280;
+    color: var(--text-secondary);
   }
   
   .allocation-row.insurance-row .amount-input-wrapper.original-amount::before {

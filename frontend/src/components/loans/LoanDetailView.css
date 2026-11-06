@@ -115,7 +115,7 @@
 /* Messages */
 .loan-detail-error {
   background-color: var(--color-negative-light);
-  color: var(--color-negative-dark);
+  color: light-dark(var(--color-negative-dark), #f87171);
   padding: var(--spacing-3) var(--spacing-6);
   border-left: 4px solid var(--color-negative);
   margin: 0;
@@ -123,7 +123,7 @@
 
 .loan-detail-success {
   background-color: var(--color-positive-light);
-  color: var(--color-positive-dark);
+  color: light-dark(var(--color-positive-dark), #4ade80);
   padding: var(--spacing-3) var(--spacing-6);
   border-left: 4px solid var(--color-positive);
   margin: 0;
@@ -379,12 +379,12 @@
 }
 
 .loan-paid-off-button {
-  background-color: var(--text-tertiary);
+  background-color: var(--color-neutral);
   color: var(--text-inverse);
 }
 
 .loan-paid-off-button:hover:not(:disabled) {
-  background-color: var(--text-secondary);
+  background-color: light-dark(var(--text-secondary), var(--border-strong));
   transform: translateY(-1px);
 }
 
@@ -433,12 +433,12 @@
 }
 
 .loan-cancel-button {
-  background-color: var(--text-tertiary);
+  background-color: var(--color-neutral);
   color: var(--text-inverse);
 }
 
 .loan-cancel-button:hover:not(:disabled) {
-  background-color: var(--text-secondary);
+  background-color: light-dark(var(--text-secondary), var(--border-strong));
   transform: translateY(-1px);
 }
 
@@ -492,7 +492,7 @@
 }
 
 .loan-add-balance-button:disabled {
-  background-color: var(--text-tertiary);
+  background-color: var(--color-neutral);
   cursor: not-allowed;
   opacity: 0.6;
 }
@@ -628,12 +628,12 @@
 }
 
 .balance-form-cancel-button {
-  background-color: var(--text-tertiary);
+  background-color: var(--color-neutral);
   color: var(--text-inverse);
 }
 
 .balance-form-cancel-button:hover:not(:disabled) {
-  background-color: var(--text-secondary);
+  background-color: light-dark(var(--text-secondary), var(--border-strong));
   transform: translateY(-1px);
 }
 
@@ -781,14 +781,14 @@
 }
 
 .balance-cancel-button {
-  background-color: var(--text-tertiary);
-  border-color: var(--text-tertiary);
+  background-color: var(--color-neutral);
+  border-color: var(--color-neutral);
   color: var(--text-inverse);
 }
 
 .balance-cancel-button:hover:not(:disabled) {
-  background-color: var(--text-secondary);
-  border-color: var(--text-secondary);
+  background-color: light-dark(var(--text-secondary), var(--border-strong));
+  border-color: light-dark(var(--text-secondary), var(--border-strong));
   transform: translateY(-1px);
 }
 
@@ -815,7 +815,7 @@ button:disabled {
 
 /* Months Left Styling */
 .loan-months-left {
-  color: var(--color-positive-dark);
+  color: light-dark(var(--color-positive-dark), #4ade80);
   font-weight: var(--font-semibold);
 }
 
@@ -999,7 +999,7 @@ button:disabled {
 }
 
 .loan-log-payment-button:disabled {
-  background-color: var(--text-tertiary);
+  background-color: var(--color-neutral);
   cursor: not-allowed;
   opacity: 0.6;
 }
@@ -1039,7 +1039,7 @@ button:disabled {
 }
 
 .payment-summary-value.interest-accrued {
-  color: #dc3545;
+  color: light-dark(#dc3545, hsl(354 70% 78%));
 }
 
 .payment-summary-value.muted {

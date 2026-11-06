@@ -30,7 +30,7 @@
   justify-content: space-between;
   align-items: center;
   padding: var(--spacing-5, 20px);
-  border-bottom: 2px solid #e0e4ff;
+  border-bottom: 2px solid light-dark(#e0e4ff, hsl(232 45% 32%));
   position: sticky;
   top: 0;
   background: var(--bg-card, white);
@@ -77,7 +77,7 @@
   display: flex;
   gap: var(--spacing-2, 8px);
   padding: 0 var(--spacing-5, 20px);
-  border-bottom: 2px solid #e0e4ff;
+  border-bottom: 2px solid light-dark(#e0e4ff, hsl(232 45% 32%));
   position: sticky;
   top: 73px;
   background: var(--bg-card, white);
@@ -133,11 +133,11 @@
 
 /* Settings Section */
 .settings-section {
-  background: #f8f9ff;
+  background: var(--bg-subtle);
   padding: var(--spacing-5, 20px);
   border-radius: var(--radius-lg, 12px);
   margin: var(--spacing-5, 20px);
-  border: 1px solid #e0e4ff;
+  border: 1px solid light-dark(#e0e4ff, hsl(232 45% 32%));
   box-shadow: var(--shadow-sm);
 }
 
@@ -170,7 +170,7 @@
   background: var(--bg-card, white);
   padding: var(--spacing-4, 16px);
   border-radius: var(--radius-lg, 12px);
-  border: 1px solid #e0e4ff;
+  border: 1px solid light-dark(#e0e4ff, hsl(232 45% 32%));
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -244,7 +244,7 @@
   background: var(--bg-card, white);
   padding: var(--spacing-4, 16px);
   border-radius: var(--radius-md, 8px);
-  border: 1px solid #e0e4ff;
+  border: 1px solid light-dark(#e0e4ff, hsl(232 45% 32%));
 }
 
 .version-item {
@@ -270,7 +270,7 @@
   background: var(--bg-card, white);
   padding: var(--spacing-4, 16px);
   border-radius: var(--radius-md, 8px);
-  border: 1px solid #e0e4ff;
+  border: 1px solid light-dark(#e0e4ff, hsl(232 45% 32%));
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: var(--spacing-3, 12px);
@@ -301,7 +301,7 @@
   background: var(--bg-card, white);
   padding: var(--spacing-4, 16px);
   border-radius: var(--radius-lg, 12px);
-  border: 1px solid #e0e4ff;
+  border: 1px solid light-dark(#e0e4ff, hsl(232 45% 32%));
   margin-bottom: var(--spacing-4, 16px);
   box-shadow: var(--shadow-sm);
   transition: var(--transition-card);
@@ -348,7 +348,7 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-3, 12px);
-  background: linear-gradient(135deg, #e0f7fa, #e8f5e9);
+  background: linear-gradient(135deg, light-dark(#e0f7fa, hsl(187 55% 17%)), var(--bg-muted));
   border: 1px solid #4db6ac;
   border-radius: var(--radius-lg, 12px);
   padding: var(--spacing-4, 16px) var(--spacing-5, 20px);
@@ -500,7 +500,7 @@
 }
 
 .warning-text {
-  color: var(--color-negative-dark, #d32f2f) !important;
+  color: light-dark(var(--color-negative-dark, #d32f2f), #f87171) !important;
   font-weight: var(--font-medium, 500);
 }
 
@@ -566,20 +566,20 @@
 
 .system-modal .message.success {
   background-color: var(--color-positive-light, #d4edda);
-  color: #155724;
-  border: 1px solid #c3e6cb;
+  color: light-dark(#155724, hsl(134 61% 78%));
+  border: 1px solid light-dark(#c3e6cb, hsl(134 41% 32%));
 }
 
 .system-modal .message.error {
   background-color: var(--color-negative-light, #ffebee);
-  color: #c62828;
-  border: 1px solid #f5c6cb;
+  color: light-dark(#c62828, hsl(0 66% 78%));
+  border: 1px solid light-dark(#f5c6cb, hsl(354 45% 32%));
 }
 
 .system-modal .message.info {
   background-color: var(--color-primary-light, #e3f2fd);
-  color: #1565c0;
-  border: 1px solid #bbdefb;
+  color: light-dark(#1565c0, hsl(212 80% 78%));
+  border: 1px solid light-dark(#bbdefb, hsl(207 45% 32%));
 }
 
 /* Retention Configuration */
@@ -587,7 +587,7 @@
   background: var(--bg-card, white);
   padding: var(--spacing-4, 16px);
   border-radius: var(--radius-md, 8px);
-  border: 1px solid #e0e4ff;
+  border: 1px solid light-dark(#e0e4ff, hsl(232 45% 32%));
   display: flex;
   flex-direction: column;
   gap: var(--spacing-3, 12px);
@@ -711,7 +711,7 @@
   background: var(--bg-card, white);
   padding: var(--spacing-3, 12px);
   border-radius: var(--radius-md, 8px);
-  border: 1px solid #e0e4ff;
+  border: 1px solid light-dark(#e0e4ff, hsl(232 45% 32%));
   margin-top: var(--spacing-3, 12px);
 }
 

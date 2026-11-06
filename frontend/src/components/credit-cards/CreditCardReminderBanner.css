@@ -21,16 +21,16 @@
 
 /* Due soon - warning style (yellow/orange) */
 .credit-card-reminder-banner.due-soon {
-  background: linear-gradient(135deg, #fff3cd 0%, #ffeeba 100%);
+  background: linear-gradient(135deg, light-dark(#fff3cd, hsl(46 55% 17%)) 0%, light-dark(#ffeeba, hsl(45 55% 17%)) 100%);
   border: 1px solid #ffc107;
-  color: #856404;
+  color: light-dark(#856404, hsl(45 80% 78%));
 }
 
 /* Overdue - urgent style (red) */
 .credit-card-reminder-banner.overdue {
-  background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+  background: linear-gradient(135deg, light-dark(#f8d7da, hsl(355 55% 17%)) 0%, light-dark(#f5c6cb, hsl(354 55% 17%)) 100%);
   border: 1px solid #dc3545;
-  color: #721c24;
+  color: light-dark(#721c24, hsl(354 61% 78%));
   animation: pulse-urgent 2s ease-in-out infinite;
 }
 
@@ -117,27 +117,27 @@
 
 .credit-card-reminder-banner .reminder-urgency-badge.overdue {
   background-color: rgba(220, 53, 69, 0.2);
-  color: #721c24;
+  color: light-dark(#721c24, hsl(354 61% 78%));
 }
 
 .credit-card-reminder-banner .reminder-urgency-badge.due-today {
   background-color: rgba(255, 193, 7, 0.3);
-  color: #856404;
+  color: light-dark(#856404, hsl(45 80% 78%));
 }
 
 .credit-card-reminder-banner .reminder-urgency-badge.due-soon {
   background-color: rgba(255, 193, 7, 0.2);
-  color: #856404;
+  color: light-dark(#856404, hsl(45 80% 78%));
 }
 
 .credit-card-reminder-banner .reminder-urgency-badge.upcoming {
   background-color: rgba(23, 162, 184, 0.2);
-  color: #0c5460;
+  color: light-dark(#0c5460, hsl(189 78% 78%));
 }
 
 .credit-card-reminder-banner .reminder-urgency-badge.paid {
   background-color: rgba(40, 167, 69, 0.2);
-  color: #155724;
+  color: light-dark(#155724, hsl(134 61% 78%));
 }
 
 /* Balance source indicator */
@@ -153,12 +153,12 @@
 
 .credit-card-reminder-banner .reminder-balance-source.actual {
   background-color: rgba(40, 167, 69, 0.15);
-  color: #155724;
+  color: light-dark(#155724, hsl(134 61% 78%));
 }
 
 .credit-card-reminder-banner .reminder-balance-source.required {
   background-color: rgba(255, 193, 7, 0.15);
-  color: #856404;
+  color: light-dark(#856404, hsl(45 80% 78%));
 }
 
 /* Cards breakdown for multiple cards */
@@ -217,7 +217,7 @@
 }
 
 .credit-card-reminder-banner.due-soon .reminder-dismiss-btn {
-  color: #856404;
+  color: light-dark(#856404, hsl(45 80% 78%));
 }
 
 .credit-card-reminder-banner.due-soon .reminder-dismiss-btn:hover {
@@ -225,7 +225,7 @@
 }
 
 .credit-card-reminder-banner.overdue .reminder-dismiss-btn {
-  color: #721c24;
+  color: light-dark(#721c24, hsl(354 61% 78%));
 }
 
 .credit-card-reminder-banner.overdue .reminder-dismiss-btn:hover {

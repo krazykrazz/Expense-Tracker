@@ -287,12 +287,12 @@
 
 .loading-message {
   background-color: var(--color-primary-light);
-  color: var(--color-primary-active);
+  color: light-dark(var(--color-primary-active), #7dd3fc);
 }
 
 .error-message {
   background-color: var(--color-negative-light);
-  color: var(--color-negative-dark);
+  color: light-dark(var(--color-negative-dark), #f87171);
 }
 
 .summary-skeleton {
@@ -484,12 +484,12 @@
 }
 
 .balance-badge.positive {
-  color: var(--color-positive-dark);
+  color: light-dark(var(--color-positive-dark), #4ade80);
   background: color-mix(in srgb, var(--color-positive) 14%, transparent);
 }
 
 .balance-badge.negative {
-  color: var(--color-negative-dark);
+  color: light-dark(var(--color-negative-dark), #f87171);
   background: color-mix(in srgb, var(--color-negative) 14%, transparent);
 }
 
@@ -631,7 +631,7 @@
   background: none;
   box-shadow: none;
   transform: none;
-  color: var(--color-primary-hover);
+  color: light-dark(var(--color-primary-hover), #7dd3fc);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
@@ -644,7 +644,7 @@
 .summary-panel .card-action-btn:active {
   background: none;
   box-shadow: none;
-  color: var(--color-primary-active);
+  color: light-dark(var(--color-primary-active), #7dd3fc);
 }
 
 /* Responsive Design */

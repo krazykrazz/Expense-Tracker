@@ -54,7 +54,7 @@
 }
 
 .loan-payment-history-summary .summary-value.positive {
-  color: var(--color-positive-dark);
+  color: light-dark(var(--color-positive-dark), #4ade80);
 }
 
 /* Loading State */
@@ -152,7 +152,7 @@
 
 .loan-payment-history-table .payment-amount {
   font-weight: var(--font-medium);
-  color: var(--color-positive-dark);
+  color: light-dark(var(--color-positive-dark), #4ade80);
   font-feature-settings: var(--font-feature-tabular);
 }
 

@@ -10,13 +10,13 @@
   font-size: 0.875rem;
   letter-spacing: 0.5px;
   background: linear-gradient(90deg, #f59e0b, #d97706);
-  color: #1f2937;
+  color: var(--text-primary);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .environment-banner.staging {
   background: linear-gradient(90deg, #f59e0b, #d97706);
-  color: #1f2937;
+  color: var(--text-primary);
 }
 
 .environment-banner.development {

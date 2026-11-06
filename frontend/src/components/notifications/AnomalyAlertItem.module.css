@@ -16,7 +16,7 @@
   padding: var(--spacing-3, 12px) var(--spacing-4, 16px);
   border-radius: var(--radius-md, 8px);
   margin-bottom: var(--element-gap-lg, 12px);
-  background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+  background: linear-gradient(135deg, light-dark(#fff7ed, hsl(33 55% 17%)) 0%, light-dark(#ffedd5, hsl(34 55% 17%)) 100%);
   border: 1px solid var(--color-warning, #f59e0b);
   color: var(--text-primary, #0f172a);
   transition: var(--transition-card);
@@ -122,17 +122,17 @@
 
 .typeAmount {
   background-color: rgba(239, 68, 68, 0.15);
-  color: var(--color-negative-dark, #dc2626);
+  color: light-dark(var(--color-negative-dark, #dc2626), #f87171);
 }
 
 .typeNewMerchant {
   background-color: rgba(14, 165, 233, 0.15);
-  color: var(--color-primary-hover, #0284c7);
+  color: light-dark(var(--color-primary-hover, #0284c7), #7dd3fc);
 }
 
 .typeDailyTotal {
   background-color: rgba(245, 158, 11, 0.2);
-  color: var(--color-warning-dark, #d97706);
+  color: light-dark(var(--color-warning-dark, #d97706), #fbbf24);
 }
 
 .typeDefault {
@@ -149,7 +149,7 @@
   font-size: var(--text-lg, 16px);
   font-family: var(--font-tabular);
   font-feature-settings: var(--font-feature-tabular);
-  color: var(--color-warning-dark, #d97706);
+  color: light-dark(var(--color-warning-dark, #d97706), #fbbf24);
 }
 
 /* ============================================

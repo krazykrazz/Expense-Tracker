@@ -9,7 +9,7 @@
   justify-content: space-between;
   padding: 10px 16px;
   background: linear-gradient(135deg, #1e40af 0%, #1d4ed8 50%, #2563eb 100%);
-  border-bottom: 2px solid #60a5fa;
+  border-bottom: 2px solid light-dark(#60a5fa, hsl(213 45% 32%));
   color: #ffffff;
   font-size: 0.9rem;
   box-shadow: 0 2px 12px rgba(30, 64, 175, 0.4);
@@ -39,8 +39,8 @@
 }
 
 .update-banner-refresh-btn {
-  background-color: #ffffff;
-  color: #1e40af;
+  background-color: var(--bg-card);
+  color: light-dark(#1e40af, hsl(226 71% 78%));
   border: none;
   padding: 6px 14px;
   border-radius: 4px;
@@ -51,11 +51,11 @@
 }
 
 .update-banner-refresh-btn:hover {
-  background-color: #e0e7ff;
+  background-color: light-dark(#e0e7ff, hsl(226 55% 17%));
 }
 
 .update-banner-refresh-btn:focus-visible {
-  outline: 2px solid #ffffff;
+  outline: 2px solid var(--border-default);
   outline-offset: 2px;
 }
 
@@ -76,7 +76,7 @@
 }
 
 .update-banner-dismiss-btn:focus-visible {
-  outline: 2px solid #ffffff;
+  outline: 2px solid var(--border-default);
   outline-offset: 2px;
 }
 

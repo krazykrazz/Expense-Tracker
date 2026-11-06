@@ -9,7 +9,7 @@
   transition: all var(--transition-fast);
   vertical-align: middle;
   background: var(--color-positive-light);
-  color: var(--color-positive-dark);
+  color: light-dark(var(--color-positive-dark), #4ade80);
   border: 1px solid rgba(34, 197, 94, 0.25);
   cursor: default;
 }
@@ -64,9 +64,9 @@
 /* High Contrast Mode Support */
 @media (prefers-contrast: high) {
   .reimbursement-indicator {
-    background: #d4edda;
+    background: light-dark(#d4edda, hsl(134 41% 17%));
     border-color: #28a745;
-    color: #155724;
+    color: light-dark(#155724, hsl(134 61% 78%));
   }
 }
 

@@ -13,16 +13,16 @@
 
 /* Due soon - info style (blue/teal) - distinct from credit card yellow */
 .loan-payment-reminder-banner.due-soon {
-  background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+  background: linear-gradient(135deg, light-dark(#d1ecf1, hsl(189 53% 17%)) 0%, light-dark(#bee5eb, hsl(188 53% 17%)) 100%);
   border: 1px solid #17a2b8;
-  color: #0c5460;
+  color: light-dark(#0c5460, hsl(189 78% 78%));
 }
 
 /* Overdue - urgent style (purple/magenta) - distinct from credit card red */
 .loan-payment-reminder-banner.overdue {
-  background: linear-gradient(135deg, #e2d5f0 0%, #d4c4e8 100%);
+  background: linear-gradient(135deg, light-dark(#e2d5f0, hsl(269 47% 17%)) 0%, light-dark(#d4c4e8, hsl(267 44% 17%)) 100%);
   border: 1px solid #6f42c1;
-  color: #4a2c7a;
+  color: light-dark(#4a2c7a, hsl(263 47% 78%));
   animation: pulse-loan-urgent 2s ease-in-out infinite;
 }
 
@@ -98,12 +98,12 @@
 
 .loan-payment-reminder-banner.due-soon .loan-type-badge {
   background-color: rgba(23, 162, 184, 0.2);
-  color: #0c5460;
+  color: light-dark(#0c5460, hsl(189 78% 78%));
 }
 
 .loan-payment-reminder-banner.overdue .loan-type-badge {
   background-color: rgba(111, 66, 193, 0.2);
-  color: #4a2c7a;
+  color: light-dark(#4a2c7a, hsl(263 47% 78%));
 }
 
 /* Urgency badges */
@@ -125,17 +125,17 @@
 
 .loan-payment-reminder-banner .reminder-urgency-badge.overdue {
   background-color: rgba(111, 66, 193, 0.2);
-  color: #4a2c7a;
+  color: light-dark(#4a2c7a, hsl(263 47% 78%));
 }
 
 .loan-payment-reminder-banner .reminder-urgency-badge.due-today {
   background-color: rgba(23, 162, 184, 0.3);
-  color: #0c5460;
+  color: light-dark(#0c5460, hsl(189 78% 78%));
 }
 
 .loan-payment-reminder-banner .reminder-urgency-badge.due-soon {
   background-color: rgba(23, 162, 184, 0.2);
-  color: #0c5460;
+  color: light-dark(#0c5460, hsl(189 78% 78%));
 }
 
 /* Loans breakdown for multiple loans */
@@ -176,7 +176,7 @@
 }
 
 .loan-payment-reminder-banner.due-soon .reminder-dismiss-btn {
-  color: #0c5460;
+  color: light-dark(#0c5460, hsl(189 78% 78%));
 }
 
 .loan-payment-reminder-banner.due-soon .reminder-dismiss-btn:hover {
@@ -184,7 +184,7 @@
 }
 
 .loan-payment-reminder-banner.overdue .reminder-dismiss-btn {
-  color: #4a2c7a;
+  color: light-dark(#4a2c7a, hsl(263 47% 78%));
 }
 
 .loan-payment-reminder-banner.overdue .reminder-dismiss-btn:hover {

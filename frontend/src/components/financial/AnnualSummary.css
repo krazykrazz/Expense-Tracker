@@ -108,7 +108,7 @@
 
 .annual-summary .income-card {
   background: var(--color-positive-light, #f0fdf4);
-  border: 1px solid #86efac;
+  border: 1px solid light-dark(#86efac, hsl(142 45% 32%));
 }
 
 .annual-summary .net-income-card {
@@ -147,11 +147,11 @@
 }
 
 .annual-summary .income-card h3 {
-  color: #166534;
+  color: light-dark(#166534, hsl(143 64% 78%));
 }
 
 .annual-summary .income-card .sub-text {
-  color: var(--color-positive-dark, #16a34a);
+  color: light-dark(var(--color-positive-dark, #16a34a), #4ade80);
   font-weight: var(--font-medium, 500);
 }
 
@@ -204,16 +204,16 @@
 }
 
 .category-item {
-  background: #f8f9ff;
+  background: var(--bg-subtle);
   padding: var(--spacing-4, 16px);
   border-radius: var(--radius-md, 8px);
-  border: 1px solid #e0e4ff;
+  border: 1px solid light-dark(#e0e4ff, hsl(232 45% 32%));
   transition: var(--transition-card);
 }
 
 .category-item:hover {
   box-shadow: var(--shadow-sm);
-  border-color: #c7d2fe;
+  border-color: light-dark(#c7d2fe, hsl(228 45% 32%));
 }
 
 .category-name {
@@ -245,7 +245,7 @@
 .income-category-item {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: var(--text-inverse, white);
-  border: 1px solid #5a67d8;
+  border: 1px solid light-dark(#5a67d8, hsl(234 45% 32%));
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -293,7 +293,7 @@
 
 .tax-deductible-section {
   background: var(--color-positive-light, #f0fdf4);
-  border: 1px solid #bbf7d0;
+  border: 1px solid light-dark(#bbf7d0, hsl(141 45% 32%));
 }
 
 .tax-summary-cards {
@@ -304,19 +304,19 @@
 
 .tax-card {
   background: var(--bg-card, white);
-  border: 1px solid #86efac;
+  border: 1px solid light-dark(#86efac, hsl(142 45% 32%));
 }
 
 .tax-monthly-breakdown {
   margin-top: var(--spacing-6, 24px);
   padding-top: var(--spacing-5, 20px);
-  border-top: 1px solid #bbf7d0;
+  border-top: 1px solid light-dark(#bbf7d0, hsl(141 45% 32%));
 }
 
 .tax-monthly-breakdown h4 {
   margin-top: 0;
   margin-bottom: var(--spacing-4, 16px);
-  color: #166534;
+  color: light-dark(#166534, hsl(143 64% 78%));
   font-size: var(--text-lg, 16px);
   font-weight: var(--font-semibold, 600);
   font-family: var(--font-sans);
@@ -337,7 +337,7 @@
 /* Component-specific override for tax legend background */
 .tax-legend {
   background: var(--bg-card, white);
-  border: 1px solid #d1fae5;
+  border: 1px solid light-dark(#d1fae5, hsl(149 45% 32%));
 }
 
 @media (max-width: 768px) {
@@ -370,7 +370,7 @@
 .tax-details {
   margin-top: var(--spacing-6, 24px);
   padding-top: var(--spacing-5, 20px);
-  border-top: 1px solid #bbf7d0;
+  border-top: 1px solid light-dark(#bbf7d0, hsl(141 45% 32%));
 }
 
 .tax-category {
@@ -384,12 +384,12 @@
 .tax-category-header {
   margin-top: 0;
   margin-bottom: var(--spacing-4, 16px);
-  color: #166534;
+  color: light-dark(#166534, hsl(143 64% 78%));
   font-size: var(--text-lg, 16px);
   font-weight: var(--font-semibold, 600);
   font-family: var(--font-sans);
   padding-bottom: var(--spacing-3, 12px);
-  border-bottom: 2px solid #86efac;
+  border-bottom: 2px solid light-dark(#86efac, hsl(142 45% 32%));
 }
 
 .tax-category-header-collapsible {
@@ -399,7 +399,7 @@
   cursor: pointer;
   padding: var(--spacing-4, 16px);
   background: var(--bg-card, white);
-  border: 1px solid #86efac;
+  border: 1px solid light-dark(#86efac, hsl(142 45% 32%));
   border-radius: var(--radius-lg, 12px);
   margin-bottom: var(--spacing-4, 16px);
   transition: var(--transition-card);
@@ -407,7 +407,7 @@
 }
 
 .tax-category-header-collapsible:hover {
-  background: #f0fdf4;
+  background: var(--bg-subtle);
   box-shadow: var(--shadow-md);
 }
 
@@ -421,7 +421,7 @@
 .collapse-toggle {
   background: none;
   border: none;
-  color: #166534;
+  color: light-dark(#166534, hsl(143 64% 78%));
   font-size: var(--text-lg, 16px);
   cursor: pointer;
   padding: var(--spacing-1, 4px) var(--spacing-3, 12px);
@@ -452,20 +452,20 @@
   align-items: start;
   padding: var(--spacing-3, 12px) var(--spacing-4, 16px);
   background: var(--bg-card, white);
-  border: 1px solid #d1fae5;
+  border: 1px solid light-dark(#d1fae5, hsl(149 45% 32%));
   border-radius: var(--radius-md, 8px);
   transition: var(--transition-card);
 }
 
 .tax-expense-item:hover {
   box-shadow: var(--shadow-md);
-  border-color: #86efac;
+  border-color: light-dark(#86efac, hsl(142 45% 32%));
 }
 
 .tax-expense-date {
   font-size: var(--text-sm, 13px);
   font-weight: var(--font-semibold, 600);
-  color: #166534;
+  color: light-dark(#166534, hsl(143 64% 78%));
   white-space: nowrap;
   font-family: var(--font-sans);
 }
@@ -492,7 +492,7 @@
 .tax-expense-amount {
   font-size: var(--text-lg, 16px);
   font-weight: var(--font-bold, 700);
-  color: var(--color-positive-dark, #16a34a);
+  color: light-dark(var(--color-positive-dark, #16a34a), #4ade80);
   text-align: right;
   white-space: nowrap;
   font-family: var(--font-tabular);
@@ -546,7 +546,7 @@
   gap: var(--spacing-5, 20px);
   margin-bottom: var(--spacing-4, 16px);
   padding: var(--spacing-3, 12px);
-  background: var(--bg-secondary, #f8f9fa);
+  background: var(--bg-subtle);
   border-radius: var(--radius-md, 8px);
   border: 1px solid var(--border-muted, #e0e0e0);
 }
@@ -566,7 +566,7 @@
 .chart-area {
   position: relative;
   padding: var(--spacing-5, 20px) var(--spacing-3, 12px);
-  background: var(--bg-secondary, #f8f9fa);
+  background: var(--bg-subtle);
   border-radius: var(--radius-md, 8px);
   border: 1px solid var(--border-muted, #e0e0e0);
 }
@@ -684,8 +684,8 @@
 
 /* Top Category Card */
 .top-category-card {
-  background: linear-gradient(135deg, #f8f9ff 0%, #e0e4ff 100%);
-  border: 1px solid #c7d2fe;
+  background: linear-gradient(135deg, var(--bg-subtle) 0%, light-dark(#e0e4ff, hsl(232 55% 17%)) 100%);
+  border: 1px solid light-dark(#c7d2fe, hsl(228 45% 32%));
 }
 
 .top-category-card .big-number {
@@ -695,12 +695,12 @@
 
 /* Tax Deductible Card */
 .tax-deductible-card {
-  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-  border: 1px solid #86efac;
+  background: linear-gradient(135deg, var(--bg-subtle) 0%, light-dark(#dcfce7, hsl(141 55% 17%)) 100%);
+  border: 1px solid light-dark(#86efac, hsl(142 45% 32%));
 }
 
 .tax-deductible-card h3 {
-  color: #166534;
+  color: light-dark(#166534, hsl(143 64% 78%));
 }
 
 /* Collapsible Section Styles */
@@ -752,8 +752,8 @@
 
 /* Year-over-Year Comparison Styles */
 .yoy-section {
-  background: linear-gradient(135deg, #fafbff 0%, #f0f4ff 100%);
-  border: 1px solid #c7d2fe;
+  background: linear-gradient(135deg, var(--bg-subtle) 0%, var(--bg-subtle) 100%);
+  border: 1px solid light-dark(#c7d2fe, hsl(228 45% 32%));
 }
 
 .yoy-period-badge {
@@ -834,12 +834,12 @@
 
 .yoy-change.positive {
   background: var(--color-positive-light, #dcfce7);
-  color: var(--color-positive-dark, #166534);
+  color: light-dark(var(--color-positive-dark, #166534), #4ade80);
 }
 
 .yoy-change.negative {
   background: var(--color-negative-light, #fee2e2);
-  color: var(--color-negative-dark, #991b1b);
+  color: light-dark(var(--color-negative-dark, #991b1b), #f87171);
 }
 
 .yoy-indicator {

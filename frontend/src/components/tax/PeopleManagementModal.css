@@ -70,7 +70,7 @@
 .people-modal-error {
   background-color: var(--color-negative-light, #fee2e2);
   border: 1px solid var(--color-negative, #ef4444);
-  color: var(--color-negative-dark, #dc2626);
+  color: light-dark(var(--color-negative-dark, #dc2626), #f87171);
   padding: var(--spacing-3, 12px);
   margin-bottom: var(--spacing-5, 20px);
   border-radius: var(--radius-md, 8px);
@@ -167,7 +167,7 @@
 
 .people-form-group label {
   font-weight: var(--font-medium);
-  color: #333;
+  color: var(--text-primary);
   font-size: var(--text-md);
 }
 
@@ -242,7 +242,7 @@
 
 .people-list-section h3 {
   margin: 0 0 16px 0;
-  color: #333;
+  color: var(--text-primary);
   font-size: var(--text-2xl);
   border-bottom: 2px solid #4CAF50;
   padding-bottom: 8px;
@@ -252,7 +252,7 @@
 .people-empty-state {
   text-align: center;
   padding: 40px 20px;
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .people-empty-state p {
@@ -294,13 +294,13 @@
 .people-name {
   font-size: var(--text-xl);
   font-weight: var(--font-medium);
-  color: #333;
+  color: var(--text-primary);
   margin-bottom: 4px;
 }
 
 .people-dob {
   font-size: var(--text-base);
-  color: #666;
+  color: var(--text-secondary);
 }
 
 /* People Actions */
@@ -312,7 +312,7 @@
 .people-edit-button,
 .people-delete-button {
   background: none;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-default);
   padding: 8px 12px;
   border-radius: 4px;
   cursor: pointer;
@@ -321,12 +321,12 @@
 }
 
 .people-edit-button:hover:not(:disabled) {
-  background: #e3f2fd;
+  background: light-dark(#e3f2fd, hsl(205 55% 17%));
   border-color: #2196f3;
 }
 
 .people-delete-button:hover:not(:disabled) {
-  background: #ffebee;
+  background: light-dark(#ffebee, hsl(351 55% 17%));
   border-color: #f44336;
 }
 
@@ -338,8 +338,8 @@
 
 /* Info Section */
 .people-info-section {
-  background: #e8f5e8;
-  border: 1px solid #c8e6c9;
+  background: var(--bg-muted);
+  border: 1px solid light-dark(#c8e6c9, hsl(122 37% 32%));
   border-radius: 6px;
   padding: 16px;
   margin-top: 20px;
@@ -347,7 +347,7 @@
 
 .people-info-text {
   margin: 0;
-  color: #2e7d32;
+  color: light-dark(#2e7d32, hsl(123 46% 78%));
   font-size: var(--text-md);
   line-height: 1.4;
 }
@@ -394,10 +394,10 @@
 
 .people-delete-warning {
   background: var(--color-warning-light, #fff3cd);
-  border: 1px solid #ffeaa7;
+  border: 1px solid light-dark(#ffeaa7, hsl(46 45% 32%));
   border-radius: var(--radius-md, 8px);
   padding: var(--spacing-3, 12px);
-  color: #856404;
+  color: light-dark(#856404, hsl(45 80% 78%));
   font-size: var(--text-sm, 13px);
 }
 

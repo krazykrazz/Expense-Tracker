@@ -291,4 +291,15 @@
 
    --header-bg: rgba(2, 6, 23, 0.82);
    --header-border: rgba(148, 163, 184, 0.16);
+
+   /* Status tints: deep versions of the light tints, so text in var(--text-*) stays readable on them */
+   --color-primary-light: hsl(199 60% 17%);
+   --color-positive-light: hsl(142 45% 15%);
+   --color-negative-light: hsl(0 50% 18%);
+   --color-warning-light: hsl(38 60% 16%);
+   --color-fixed-expense-light: hsl(217 50% 19%);
+   --color-variable-expense-light: hsl(258 40% 21%);
+   --color-income-light: hsl(25 55% 17%);
+   --color-medical-light: hsl(217 50% 19%);
+   --color-donation-light: hsl(38 60% 16%);
 }

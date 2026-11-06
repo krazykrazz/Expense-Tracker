@@ -15,6 +15,7 @@ const {
 } = require('../utils/plaidMatching');
 const { INCOME_CATEGORIES } = require('../utils/constants');
 const { isFileRow } = require('../utils/bankFileImport');
+const { buildLearnedPlaces, buildPlaceIndex, suggestPlace } = require('../utils/placeSuggestion');
 
 const INBOX_STATUSES = ['new', 'ignored'];
 /** A dropped pending charge may reappear as a posted row up to this many days later, within this share of its amount. */
@@ -55,15 +56,17 @@ class PlaidInboxService {
     ]);
 
     const isNew = status === 'new';
+    const placeByRow = isNew ? await this._suggestPlaces(rows) : new Map();
+    const placeOf = (row) => placeByRow.get(row.id) || defaultPlace(row);
     const [candidatesByRow, fixedByRow, incomeByRow, suggestions] = await Promise.all([
       isNew ? this._matchCandidates(rows) : new Map(),
       isNew ? this._fixedCandidates(rows) : new Map(),
       isNew ? this._incomeCandidates(rows) : new Map(),
-      isNew ? this._suggestCategories(rows) : new Map()
+      isNew ? this._suggestCategories([...new Set(rows.flatMap(row => [placeOf(row), defaultPlace(row)]))]) : new Map()
     ]);
 
     const transactions = rows.map(row => {
-      const place = defaultPlace(row);
+      const place = placeOf(row);
       const income = incomeByRow.get(row.id);
       return {
         id: row.id,
@@ -85,7 +88,7 @@ class PlaidInboxService {
         pending: Boolean(row.pending),
         canAdd: row.amount > 0,
         isDeposit: isDeposit(row),
-        suggestedCategory: suggestions.get(place.toLowerCase()) ?? null,
+        suggestedCategory: suggestions.get(place.toLowerCase()) ?? suggestions.get(defaultPlace(row).toLowerCase()) ?? null,
         matchCandidates: candidatesByRow.get(row.id) ?? [],
         fixedCandidates: fixedByRow.get(row.id) ?? [],
         incomeCandidates: income ? income.candidates : [],
@@ -212,8 +215,29 @@ class PlaidInboxService {
     return result;
   }
 
-  async _suggestCategories(rows) {
-    const places = [...new Set(rows.map(defaultPlace).filter(Boolean))];
+  /**
+   * Place to pre-fill for each charge: the place chosen before for the same bank description, else the
+   * existing place the description starts with ("Sobeys" for "SOBEYS #4123"). Rows without one keep the bank's text.
+   */
+  async _suggestPlaces(rows) {
+    const result = new Map();
+    const charges = rows.filter(row => !isDeposit(row));
+    if (charges.length === 0) return result;
+    const [learnedRows, places] = await Promise.all([
+      plaidRepository.findLearnedPlaces(),
+      expenseRepository.getPlaceUsage()
+    ]);
+    const learned = buildLearnedPlaces(learnedRows);
+    const index = buildPlaceIndex(places);
+    for (const row of charges) {
+      const place = suggestPlace([row.merchantName, row.name], learned, index);
+      if (place) result.set(row.id, place);
+    }
+    return result;
+  }
+
+  async _suggestCategories(places) {
+    places = places.filter(Boolean);
     const byPlace = await categorySuggestionService.getSuggestedCategories(places);
     const suggestions = new Map();
     for (const [place, suggestion] of byPlace) {

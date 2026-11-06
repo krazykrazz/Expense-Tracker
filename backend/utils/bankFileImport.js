@@ -75,6 +75,8 @@ function parseCsv(text) {
 
 const clean = (value) => (value || '').replace(/\s+/g, ' ').trim();
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+/** A money column as a number; empty is NaN (not 0), so a row without an amount is rejected. */
+const amountOf = (value) => (clean(value) === '' ? NaN : Number(clean(value)));
 const MASKED_CARD_RE = /^\d{4}\*+\d{4}$/;
 
 /**
@@ -94,7 +96,7 @@ const FORMATS = [
       const merchant = clean(r.merchant);
       return {
         date: r.transaction_date,
-        amount: -Number(r.amount),
+        amount: -amountOf(r.amount),
         currency: r.currency || null,
         name: merchant || clean(r.transaction_type),
         merchantName: merchant || null,
@@ -114,7 +116,7 @@ const FORMATS = [
       const kind = clean(r.transaction_sub_type) || clean(r.transaction_type);
       return {
         date: r.transaction_date,
-        amount: -Number(r.amount),
+        amount: -amountOf(r.amount),
         currency: r.currency || null,
         name: payee ? `${payee} - ${kind}` : [clean(r.transaction_type), clean(r.transaction_sub_type)].filter(Boolean).join(' - '),
         merchantName: payee || null,
@@ -138,7 +140,8 @@ const FORMATS = [
       const card = clean(values[4]);
       return {
         date: clean(values[0]),
-        amount: debit !== '' ? Number(debit) : -Number(credit),
+        // Neither column filled is not a transaction (NaN is rejected by parseBankFile)
+        amount: debit !== '' ? amountOf(debit) : -amountOf(credit),
         currency: 'CAD',
         name: clean(values[1]),
         merchantName: null,

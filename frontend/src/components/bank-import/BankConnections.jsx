@@ -72,6 +72,8 @@ const BankConnections = ({ status, onStatusChange }) => {
   const [linkToken, setLinkToken] = useState(null);
   // Bank account whose "Import file" panel is open
   const [importAccountId, setImportAccountId] = useState(null);
+  // Account whose payment-method mapping is being saved (its select is locked so changes can't race)
+  const [mappingId, setMappingId] = useState(null);
   // Bank being repaired through Plaid update mode (null when connecting a new bank)
   const reconnectItemRef = useRef(null);
 
@@ -157,12 +159,15 @@ const BankConnections = ({ status, onStatusChange }) => {
     }
     setError(null);
     setMessage(null);
+    setBusy(true);
     try {
       reconnectItemRef.current = null;
       const { linkToken: token } = await createLinkToken();
       setLinkToken(token);
     } catch (err) {
       setError(err.message);
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -170,12 +175,15 @@ const BankConnections = ({ status, onStatusChange }) => {
   const handleReconnect = async (item) => {
     setError(null);
     setMessage(null);
+    setBusy(true);
     try {
       const { linkToken: token } = await createLinkToken(item.id);
       reconnectItemRef.current = item;
       setLinkToken(token);
     } catch (err) {
       setError(err.message);
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -196,6 +204,7 @@ const BankConnections = ({ status, onStatusChange }) => {
 
   const handleMap = async (accountId, value) => {
     setError(null);
+    setMappingId(accountId);
     try {
       const updated = await mapBankAccount(accountId, value === '' ? null : Number(value));
       setItems(prev => prev.map(item => ({
@@ -204,6 +213,8 @@ const BankConnections = ({ status, onStatusChange }) => {
       })));
     } catch (err) {
       setError(err.message);
+    } finally {
+      setMappingId(null);
     }
   };
 
@@ -312,6 +323,7 @@ const BankConnections = ({ status, onStatusChange }) => {
                       className="bank-account-mapping"
                       value={account.paymentMethodId ?? ''}
                       onChange={(event) => handleMap(account.id, event.target.value)}
+                      disabled={mappingId === account.id}
                       aria-label={`Payment method for ${account.name}`}
                     >
                       <option value="">Don&apos;t import</option>

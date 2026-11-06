@@ -85,7 +85,9 @@ describe('parseBankFile', () => {
     ['an empty file', '', 'The file is empty.'],
     ['an unknown export', 'Date,Description,Debit,Credit\n2026-11-01,X,1.00,', /Unrecognised file/],
     ['a header only', CARD_HEADER, 'The file has no transactions.'],
-    ['a bad line', card('Nov 4,Purchase,Completed,X,-1.00,CAD,,'), /Line 2 isn't a transaction/]
+    ['a bad line', card('Nov 4,Purchase,Completed,X,-1.00,CAD,,'), /Line 2 isn't a transaction/],
+    ['a line without an amount', card('2026-11-04,Purchase,Completed,X,,CAD,,'), /Line 2 isn't a transaction/],
+    ['a CIBC line with neither debit nor credit', '2026-11-04,SOMETHING,,,5223********4148', /Line 1 isn't a transaction/]
   ])('refuses %s', (_, text, message) => {
     expect(() => parseBankFile(text, 7)).toThrow(expect.objectContaining({ statusCode: 400 }));
     expect(() => parseBankFile(text, 7)).toThrow(message);

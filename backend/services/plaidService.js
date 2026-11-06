@@ -335,14 +335,15 @@ class PlaidService {
           const batch = await this._fetchAllPages(accessToken, item.syncCursor);
           const { settlements, ...counts } = await plaidRepository.applySyncBatch(id, batch);
           logger.info('Plaid sync completed', { plaidItemId: id, ...counts, settled: settlements.length });
-          await this._refreshBalances(id, accessToken);
+          const balancesFresh = await this._refreshBalances(id, accessToken);
           await this._refreshHealth(id, accessToken);
           if (settlements.length > 0) {
             // After the batch is committed: expense updates go through expenseService (validation, card balance, log),
             // outside any request's tab context so every tab (including one that pressed Sync now) refreshes
             await runWithTabId(null, () => plaidInboxService.applySettlements(settlements));
           }
-          await this._settleFromBalance(id);
+          // Only against a balance fetched just now: an old one would settle the wrong charges, irreversibly
+          if (balancesFresh) await this._settleFromBalance(id);
           return { id, institutionName: item.institutionName, ...counts, updateStatus: batch.updateStatus };
         } catch (err) {
           const code = plaidErrorOf(err)?.error_code;
@@ -392,6 +393,7 @@ class PlaidService {
    * Store every account's balances after a sync. /transactions/sync only lists accounts that had transactions
    * in the response, so a quiet sync carries no balances; /accounts/get returns Plaid's cached balances for
    * all of them (free, unlike /accounts/balance/get). A failure only leaves the previous balances in place.
+   * @returns {Promise<boolean>} whether the balances were refreshed
    */
   async _refreshBalances(id, accessToken) {
     try {
@@ -399,8 +401,10 @@ class PlaidService {
       for (const account of data.accounts || []) {
         await plaidRepository.upsertAccount(id, account);
       }
+      return true;
     } catch (err) {
       logger.warn('Plaid balance refresh failed', { plaidItemId: id, errorCode: plaidErrorOf(err)?.error_code ?? err.message });
+      return false;
     }
   }
 

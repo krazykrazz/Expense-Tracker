@@ -303,6 +303,34 @@ describe('plaidService', () => {
       );
     });
 
+    test('never settles from a balance that could not be refreshed in this sync', async () => {
+      const { item, accountId } = await cardBank('No Pending Bank');
+      await plaidFileImportService.importFile(accountId, {
+        csv: wsFile('2026-11-04,Purchase,Pending,Haircut,-45.41,CAD,,', '2026-11-04,Purchase,Pending,Grocer,-12.41,CAD,,'),
+        fromDate: '2026-11-01'
+      });
+      for (const name of ['Haircut', 'Grocer']) {
+        await plaidInboxService.addAsExpense((await get('SELECT id FROM plaid_transactions WHERE name = ?', [name])).id, { type: 'Other' });
+      }
+      // Plaid takes both over; the bank balance doesn't include them yet
+      const ws = (id, amount, name) => txn(id, { amount, date: '2026-11-04', authorized_date: null, name: `${name} - Purchase`, merchant_name: null });
+      client.transactionsSync.mockResolvedValueOnce(cardPage({ added: [ws('ws-hair', 45.41, 'Haircut'), ws('ws-groc', 12.41, 'Grocer')] }));
+      client.accountsGet.mockResolvedValueOnce({ data: { accounts: [account('acc-1', {
+        type: 'credit', balances: { current: 0, available: null, limit: null, iso_currency_code: 'CAD' }
+      })] } });
+      await plaidService.syncItem(item.id);
+      // A stored balance that would read as "the haircut posted" (with a fresh one, the haircut would settle)
+      await run('UPDATE plaid_accounts SET current_balance = 45.41 WHERE id = ?', [accountId]);
+
+      client.transactionsSync.mockResolvedValueOnce(cardPage());
+      client.accountsGet.mockRejectedValueOnce(plaidError('INTERNAL_SERVER_ERROR'));
+      await plaidService.syncItem(item.id);
+
+      expect(await all('SELECT name, pending FROM plaid_transactions ORDER BY name')).toEqual([
+        { name: 'Grocer - Purchase', pending: 1 }, { name: 'Haircut - Purchase', pending: 1 }
+      ]);
+    });
+
     test('Plaid first: a file shows a pending charge settled; Plaid\'s posted version later replaces it without a duplicate', async () => {
       const { item, accountId } = await cardBank('Pending Bank');
       client.transactionsSync.mockResolvedValueOnce(cardPage({ added: [

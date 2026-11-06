@@ -194,6 +194,17 @@ Past confirmed-true patterns on THIS repo:
     differ" logic against how X is actually computed.
   - Status is fetched by several hooks (`usePlaidStatus` ×2, `useBankAccountLinks`,
     `useCardBalanceChecks`), each re-requesting `/api/plaid/status` on every `plaid` event.
+  - **Conditional state moves must be checked** (fixed 2026-11): `resolveTransaction` is
+    `UPDATE … WHERE status = 'new'` and returns false if a sync changed the row meanwhile.
+    `addAsExpense` ignored it (expense left with no bank row) and match/ignore reported success.
+    Any create-then-link must undo the create on false (as `addAsIncome` does) and return 409.
+  - **Irreversible decisions need fresh inputs**: `settleFromBalance` (settles Wealthsimple
+    pending charges from the card balance) ran even when `/accounts/get` had just failed, so it
+    could act on an old balance. Gate such steps on the refresh actually succeeding.
+  - `-Number('')` is `-0` and passes `Number.isFinite`: CSV money columns must treat an empty
+    cell as NaN (`amountOf` in `utils/bankFileImport.js`), or blank rows import as $0.00.
+  - `if (!err.statusCode) err.statusCode = 400` around service calls labels database errors as
+    bad input; `asInputError` in `plaidInboxService` leaves errors with a sqlite `code` as 500.
 Past confirmed-false patterns (subagent hallucinations on THIS repo):
 - "Duplicate `findById()` in `loanPaymentRepository.js`" — FALSE, there is only
   one `findById()` (line 98). The two methods at lines 47/68 are `findByLoan` and

@@ -3,6 +3,8 @@ const plaidConfig = require('../config/plaid');
 
 const ALGORITHM = 'aes-256-gcm';
 const VERSION = 'v1';
+const IV_BYTES = 12;
+const TAG_BYTES = 16;
 
 function requireKey(key, { create }) {
   const resolved = key || plaidConfig.getTokenKey({ create });
@@ -24,8 +26,8 @@ function requireKey(key, { create }) {
  * @returns {string} `v1:<iv>:<tag>:<ciphertext>` (base64 parts)
  */
 function encrypt(plaintext, key) {
-  const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv(ALGORITHM, requireKey(key, { create: true }), iv);
+  const iv = crypto.randomBytes(IV_BYTES);
+  const cipher = crypto.createCipheriv(ALGORITHM, requireKey(key, { create: true }), iv, { authTagLength: TAG_BYTES });
   const ciphertext = Buffer.concat([cipher.update(String(plaintext), 'utf8'), cipher.final()]);
   const tag = cipher.getAuthTag();
   return [VERSION, iv.toString('base64'), tag.toString('base64'), ciphertext.toString('base64')].join(':');
@@ -43,7 +45,11 @@ function decrypt(payload, key) {
     throw new Error('Unrecognized encrypted token format');
   }
   const [, iv, tag, ciphertext] = parts.map((part, i) => (i === 0 ? part : Buffer.from(part, 'base64')));
-  const decipher = crypto.createDecipheriv(ALGORITHM, requireKey(key, { create: false }), iv);
+  if (iv.length !== IV_BYTES || tag.length !== TAG_BYTES) {
+    throw new Error('Unrecognized encrypted token format');
+  }
+  // authTagLength: a truncated tag must not authenticate
+  const decipher = crypto.createDecipheriv(ALGORITHM, requireKey(key, { create: false }), iv, { authTagLength: TAG_BYTES });
   decipher.setAuthTag(tag);
   try {
     return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString('utf8');

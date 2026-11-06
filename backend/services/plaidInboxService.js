@@ -23,6 +23,14 @@ const SETTLE_WINDOW_DAYS = 10;
 const SETTLE_AMOUNT_TOLERANCE = 0.25;
 
 const fail = (message, statusCode) => Object.assign(new Error(message), { statusCode });
+/**
+ * The expense/income services throw plain Errors for invalid input: those become 400. Database errors
+ * (sqlite `code`) and programming errors stay 500, so the error handler doesn't present them as bad input.
+ */
+const asInputError = (err) => {
+  if (!err.statusCode && !err.code && !(err instanceof TypeError) && !(err instanceof ReferenceError)) err.statusCode = 400;
+  return err;
+};
 const round2 = (n) => Math.round(n * 100) / 100;
 const defaultPlace = (txn) => (txn.merchantName || txn.name || '').trim();
 /** The bank description used to learn income names: same choice as the default place. */
@@ -316,13 +324,13 @@ class PlaidInboxService {
           payment_method_id: txn.paymentMethodId
         }, 0, tabId);
       } catch (err) {
-        if (!err.statusCode) err.statusCode = 400;
-        throw err;
+        throw asInputError(err);
       }
 
-      const linked = await plaidRepository.resolveTransaction(id, 'added', created.id);
-      if (!linked) {
-        logger.warn('Bank transaction changed state while adding an expense', { plaidTransactionId: id, expenseId: created.id });
+      if (!(await plaidRepository.resolveTransaction(id, 'added', created.id))) {
+        // A sync changed or removed the row meanwhile: undo, so no expense exists without its bank row
+        await expenseService.deleteExpense(created.id, tabId);
+        throw fail('This bank transaction changed while it was being added. Refresh the Inbox and try again.', 409);
       }
       await this._logReview(txn, 'add', `Added bank transaction ${describeTxn(txn)} as an expense`, { expenseId: created.id });
       return { transaction: await plaidRepository.findTransactionById(id), expense: created };
@@ -345,7 +353,9 @@ class PlaidInboxService {
       }
 
       try {
-        await plaidRepository.resolveTransaction(id, 'matched', expense.id);
+        if (!(await plaidRepository.resolveTransaction(id, 'matched', expense.id))) {
+          throw fail('This bank transaction changed meanwhile. Refresh the Inbox and try again.', 409);
+        }
       } catch (err) {
         if (err.message && err.message.includes('UNIQUE constraint failed')) {
           throw fail('That expense is already linked to another bank transaction', 409);
@@ -400,7 +410,7 @@ class PlaidInboxService {
           // Keep link and amount consistent: undo the link if the amount could not be updated
           await plaidRepository.unlinkFixedExpense(id);
           logger.warn('Updating fixed expense amount from bank transaction failed', { fixedExpenseId: fixed.id, error: err.message });
-          throw fail(`Could not update the fixed expense amount: ${err.message}`, err.statusCode || 400);
+          throw fail(`Could not update the fixed expense amount: ${err.message}`, asInputError(err).statusCode || 500);
         }
       }
 
@@ -457,7 +467,7 @@ class PlaidInboxService {
         } catch (err) {
           await plaidRepository.unlinkIncomeSource(id);
           logger.warn('Updating income amount from bank deposit failed', { incomeSourceId: source.id, error: err.message });
-          throw fail(`Could not update the income amount: ${err.message}`, err.statusCode || 400);
+          throw fail(`Could not update the income amount: ${err.message}`, asInputError(err).statusCode || 500);
         }
       }
 
@@ -497,8 +507,7 @@ class PlaidInboxService {
           category
         }, tabId);
       } catch (err) {
-        if (!err.statusCode) err.statusCode = 400;
-        throw err;
+        throw asInputError(err);
       }
 
       if (!(await plaidRepository.linkIncomeSource(id, created.id, txn.date, null, 'added'))) {
@@ -523,8 +532,10 @@ class PlaidInboxService {
    */
   async applySettlements(settlements) {
     for (const s of settlements) {
+      let txn = null;
       try {
-        const [expense, txn] = await Promise.all([
+        let expense;
+        [expense, txn] = await Promise.all([
           expenseRepository.findById(s.expenseId),
           plaidRepository.findTransactionById(s.plaidTransactionId)
         ]);
@@ -556,6 +567,15 @@ class PlaidInboxService {
         );
       } catch (err) {
         logger.warn('Updating an expense from a settled bank transaction failed', { expenseId: s.expenseId, error: err.message });
+        // The bank row is already settled, so nothing retries this: tell the user what to fix by hand
+        if (txn) {
+          await this._logReview(
+            txn,
+            'settle_failed',
+            `Pending charge ${describeTxn(txn)} ${s.settled ? 'settled' : 'changed'}, but its expense could not be updated (${err.message}). Check its amount${s.settled && s.postedDate ? ` and posted date (${s.postedDate})` : ''}.`,
+            { expenseId: s.expenseId, amount: s.amount, postedDate: s.postedDate ?? null }
+          ).catch(() => {});
+        }
       }
     }
   }
@@ -608,7 +628,9 @@ class PlaidInboxService {
   async ignore(id) {
     return this._exclusive(id, async () => {
       const txn = await this._requireNew(id);
-      await plaidRepository.resolveTransaction(id, 'ignored');
+      if (!(await plaidRepository.resolveTransaction(id, 'ignored'))) {
+        throw fail('This bank transaction changed meanwhile. Refresh the Inbox and try again.', 409);
+      }
       await this._logReview(txn, 'ignore', `Ignored bank transaction ${describeTxn(txn)}`);
       return { transaction: await plaidRepository.findTransactionById(id) };
     });

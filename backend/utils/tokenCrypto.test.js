@@ -31,6 +31,15 @@ describe('tokenCrypto', () => {
     expect(() => decrypt(encrypt('secret-token', key), crypto.randomBytes(32))).toThrow(/could not be decrypted/);
   });
 
+  test('rejects a truncated authentication tag or a wrong-size IV', () => {
+    const [version, iv, tag, ciphertext] = encrypt('secret-token', key).split(':');
+    const shortTag = Buffer.from(tag, 'base64').subarray(0, 4).toString('base64');
+    const shortIv = Buffer.from(iv, 'base64').subarray(0, 8).toString('base64');
+
+    expect(() => decrypt([version, iv, shortTag, ciphertext].join(':'), key)).toThrow(/Unrecognized/);
+    expect(() => decrypt([version, shortIv, tag, ciphertext].join(':'), key)).toThrow(/Unrecognized/);
+  });
+
   test.each([['garbage'], ['v2:a:b:c'], [null]])('rejects unrecognized payload %p', (payload) => {
     expect(() => decrypt(payload, key)).toThrow(/Unrecognized/);
   });

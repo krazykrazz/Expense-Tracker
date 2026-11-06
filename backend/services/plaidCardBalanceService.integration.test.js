@@ -192,7 +192,7 @@ describe('plaidCardBalanceService', () => {
     await expect(plaidCardBalanceService.applyBankCreditLimit(CREDIT_CARD)).rejects.toMatchObject({ statusCode: 400 });
   });
 
-  test('bank rows from a file count like Plaid\'s: unreviewed or ignored ones explain a difference, added ones don\'t', async () => {
+  test('bank file rows are not in the bank\'s balance until Plaid sends them: added ones are a cause, unreviewed or ignored ones are not', async () => {
     const plaidFileImportService = require('./plaidFileImportService');
     const plaidInboxService = require('./plaidInboxService');
     const header = 'transaction_date,transaction_type,status,merchant,amount,currency,notes,category';
@@ -200,20 +200,33 @@ describe('plaidCardBalanceService', () => {
       csv: [header, '2026-11-02,Purchase,Completed,Grocer,-50.00,CAD,,', '2026-11-03,Refund,Completed,Book Store,15.50,CAD,,'].join('\n'),
       fromDate: '2026-11-01'
     });
-    await setBank({ current: 34.5, available: 965.5, limit: 1000 });
+    // Plaid's balance is from before both
+    await setBank({ current: 0, limit: 1000 });
 
-    let card = await cardCheck();
-    expect(card).toMatchObject({ status: 'differs', tracker: 0, difference: 34.5, unexplained: 0 });
-    expect(card.causes.map(c => [c.type, c.name, c.inboxStatus])).toEqual([['bank_only', 'Grocer', 'new'], ['bank_only', 'Book Store', 'new']]);
+    expect(await cardCheck()).toMatchObject({ status: 'match', causes: [] });
 
     const grocer = await get("SELECT id FROM plaid_transactions WHERE name = 'Grocer'");
     const refund = await get("SELECT id FROM plaid_transactions WHERE name = 'Book Store'");
     await plaidInboxService.addAsExpense(grocer.id, { type: 'Groceries' });
     await plaidInboxService.ignore(refund.id);
 
-    card = await cardCheck();
-    expect(card).toMatchObject({ tracker: 50, difference: -15.5, unexplained: 0 });
-    expect(card.causes.map(c => [c.type, c.name, c.inboxStatus])).toEqual([['bank_only', 'Book Store', 'ignored']]);
+    const card = await cardCheck();
+    expect(card).toMatchObject({ tracker: 50, difference: -50, unexplained: 0 });
+    expect(card.causes.map(c => [c.type, c.name, c.effect])).toEqual([['from_file', 'Grocer', -50]]);
+  });
+
+  test('an expense entered by hand that matches a file row is not in the bank\'s balance yet either', async () => {
+    const plaidFileImportService = require('./plaidFileImportService');
+    await addExpense('2026-11-02', 50, 'Grocer');
+    await plaidFileImportService.importFile(cardAccountId, {
+      csv: 'transaction_date,transaction_type,status,merchant,amount,currency,notes,category\n2026-11-02,Purchase,Completed,Grocer,-50.00,CAD,,',
+      fromDate: '2026-11-01'
+    });
+    await setBank({ current: 0, limit: 1000 });
+
+    const card = await cardCheck();
+    expect(card).toMatchObject({ difference: -50, unexplained: 0, awaitingMatch: 1 });
+    expect(card.causes.map(c => [c.type, c.kind, c.effect])).toEqual([['from_file', 'expense', -50]]);
   });
 
   test('a pending charge a file showed settled is no longer "settling" on a bank that leaves pending out', async () => {

@@ -572,6 +572,21 @@ class PlaidRepository {
    * most recent first, keyed by the lower-case description (merchant name, else name).
    * @returns {Promise<Map<string, Array<{name: string, category: string}>>>}
    */
+  /**
+   * Places chosen for bank rows already added or matched as expenses, newest first: what the user
+   * calls each bank description.
+   * @returns {Promise<Array<{name: string, merchantName: string|null, place: string}>>}
+   */
+  async findLearnedPlaces() {
+    return dbHelper.queryAll(
+      `SELECT pt.name, pt.merchant_name AS merchantName, TRIM(e.place) AS place
+       FROM plaid_transactions pt
+       JOIN expenses e ON e.id = pt.expense_id
+       WHERE pt.status IN ('added', 'matched') AND TRIM(COALESCE(e.place, '')) != ''
+       ORDER BY e.date DESC, pt.id DESC`
+    );
+  }
+
   async findLearnedIncomeNames() {
     const rows = await dbHelper.queryAll(
       `SELECT LOWER(TRIM(COALESCE(pt.merchant_name, pt.name))) AS description, s.name, s.category
@@ -827,7 +842,7 @@ class PlaidRepository {
       dbHelper.queryAll(
         `SELECT pt.id, pt.amount, COALESCE(pt.authorized_date, pt.date) AS date, pt.date AS postedDate,
                 COALESCE(pt.merchant_name, pt.name) AS name, pt.status, pt.pending, pt.expense_id AS expenseId,
-                pt.removed_at IS NOT NULL AS removed,
+                pt.removed_at IS NOT NULL AS removed, pt.transaction_id LIKE 'file:%' AS fromFile,
                 EXISTS (SELECT 1 FROM plaid_fixed_expense_links fl WHERE fl.plaid_transaction_id = pt.id) AS fixedExpense
          FROM plaid_transactions pt
          WHERE pt.plaid_account_id IN (${placeholders})
@@ -835,6 +850,7 @@ class PlaidRepository {
              (pt.removed_at IS NULL AND (pt.status IN ('new', 'ignored') OR (pt.pending = 1 AND pt.expense_id IS NOT NULL)))
              OR (pt.removed_at IS NOT NULL AND pt.pending = 1 AND pt.expense_id IS NOT NULL)
              OR (pt.removed_at IS NULL AND EXISTS (SELECT 1 FROM plaid_fixed_expense_links fl WHERE fl.plaid_transaction_id = pt.id))
+             OR (pt.removed_at IS NULL AND pt.transaction_id LIKE 'file:%' AND pt.expense_id IS NOT NULL)
            )
          ORDER BY date, pt.id`,
         plaidAccountIds

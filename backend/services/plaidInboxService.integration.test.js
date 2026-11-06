@@ -92,6 +92,25 @@ describe('plaidInboxService', () => {
       expect(transactions[0].suggestedCategory).toBe('Dining Out');
     });
 
+    test('pre-fills the place chosen before for the same bank description, else the existing place it starts with', async () => {
+      const earlier = await addExpense({ place: "Brown's Independent", type: 'Groceries', date: '2026-09-01', amount: 30 });
+      await run(
+        "INSERT INTO plaid_transactions (transaction_id, plaid_account_id, amount, date, name, merchant_name, status, expense_id) VALUES ('old', ?, 30, '2026-09-01', 'Yig Browns 405 - Purchase', 'YIG', 'added', ?)",
+        [debitAccountId, earlier]
+      );
+      await addExpense({ place: 'Sobeys', type: 'Groceries', date: '2026-08-01', amount: 12 });
+      await stage('learned', { name: 'Yig Browns 406 - Purchase', merchantName: null });
+      await stage('closest', { name: 'SOBEYS #4123', merchantName: null, amount: 40 });
+      await stage('unknown', { name: 'SQ *CORNER STORE', merchantName: null, amount: 9 });
+
+      const { transactions } = await plaidInboxService.listInbox('new');
+      const byId = Object.fromEntries(transactions.map(t => [t.transactionId, t]));
+
+      expect(byId.learned).toMatchObject({ place: "Brown's Independent", rawName: 'Yig Browns 406 - Purchase', suggestedCategory: 'Groceries' });
+      expect(byId.closest).toMatchObject({ place: 'Sobeys', rawName: 'SOBEYS #4123', suggestedCategory: 'Groceries' });
+      expect(byId.unknown).toMatchObject({ place: 'SQ *CORNER STORE', suggestedCategory: null });
+    });
+
     test('offers unlinked expenses with the same method, cents and a nearby date as match candidates', async () => {
       const close = await addExpense({ date: '2026-10-11' });
       const exact = await addExpense({ date: '2026-10-10' });

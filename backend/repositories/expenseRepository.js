@@ -491,6 +491,24 @@ class ExpenseRepository {
   }
 
   /**
+   * Each distinct place with how often and how recently it was used (for matching bank descriptions).
+   * @returns {Promise<Array<{place: string, count: number, lastUsed: string}>>}
+   */
+  async getPlaceUsage() {
+    const db = await getDatabase();
+    return new Promise((resolve, reject) => {
+      db.all(
+        `SELECT place, COUNT(*) AS count, MAX(date) AS lastUsed
+         FROM expenses
+         WHERE place IS NOT NULL AND TRIM(place) != ''
+         GROUP BY place`,
+        [],
+        (err, rows) => (err ? reject(err) : resolve(rows || []))
+      );
+    });
+  }
+
+  /**
    * Get category frequency for a specific place
    * @param {string} place - The place name (case-insensitive match)
    * @returns {Promise<Array<{category: string, count: number, last_used: string}>>}

@@ -180,7 +180,7 @@ Banks then sync on their own: every 30 minutes from 06:00 to 23:00, and whenever
 
 Click the bank icon → **Inbox**. Each row is one bank transaction:
 
-- **Add**: creates an expense, with the place, date and a suggested category filled in.
+- **Add**: creates an expense, with the place, date and a suggested category filled in. The place is the one you used before for the same bank description, or an existing place it starts with (e.g. "Sobeys" for "SOBEYS #4123").
 - **Match**: links it to an expense you already logged, a planned **fixed expense** (records when it actually landed) or expected **income** (for deposits).
 - **Add income**: records an unplanned deposit as income.
 - **Ignore**: hides it (the **Ignored** filter has **Undo ignore**).

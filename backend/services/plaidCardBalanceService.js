@@ -180,6 +180,8 @@ class PlaidCardBalanceService {
    * - `tracker_only`: entered in the tracker since the bank history starts, but not at the bank (a typo,
    *   a wrong card, a duplicate, or not posted yet);
    * - `settling`: added from a pending charge on a bank whose balance leaves pending charges out;
+   * - `from_file`: in the tracker from a bank file row Plaid hasn't sent yet, so the bank's balance from Plaid
+   *   doesn't include it (Plaid takes the row over once it catches up);
    * - `cancelled`: added from a pending charge the bank then dropped (review it in the Inbox);
    * - `fixed_expense`: a charge confirmed as a fixed expense, which the card balance doesn't include;
    * - `credit_balance`: the card is in credit at the bank, and the tracker's balance stops at $0.
@@ -196,11 +198,19 @@ class PlaidCardBalanceService {
 
     const bankItems = [];
     const settling = [];
+    const fromFile = [];
     const cancelled = [];
     const fixedCharges = [];
     for (const row of rows) {
       if (row.date > today || !afterAnchor(row.postedDate)) continue;
-      if (row.removed) {
+      if (row.fromFile) {
+        // Only in a bank file: Plaid hasn't sent it, so its balance doesn't include it yet (if Plaid had
+        // fetched it, it would have taken the row over). Unreviewed or ignored ones are in neither balance,
+        // but still pair with an entry already in the tracker.
+        if (row.fixedExpense) continue;
+        if (row.expenseId != null) fromFile.push(row);
+        else bankItems.push({ ...row, effect: row.amount });
+      } else if (row.removed) {
         // The bank dropped it, the tracker still has its expense
         cancelled.push(row);
       } else if (row.fixedExpense) {
@@ -225,22 +235,25 @@ class PlaidCardBalanceService {
     // Ignored bank rows only explain something when nothing in the tracker accounts for them, e.g. a refund
     // that was ignored because it couldn't be recorded. A card payment recorded by hand pairs with its bank row.
     const { bankOnly, trackerOnly, pairs, splits } = pairUp(bankItems, trackerItems);
+    // A file row and its tracker entry: the entry is in the tracker's balance, not yet in the bank's
+    const fileHeld = [
+      ...pairs.filter(pair => pair.bank.fromFile).map(pair => pair.tracker),
+      ...splits.filter(split => split.bank.some(bank => bank.fromFile)).map(split => split.tracker)
+    ];
 
     const bankCause = (type, row, effect, extra = {}) => ({
       type, transactionId: row.id, date: row.date, name: row.name, amount: row.amount, effect: round2(effect), ...extra
     });
+    const trackerCause = (type, item) => ({
+      type, kind: item.kind, id: item.id, date: item.date, name: item.name, amount: item.amount, effect: round2(-item.effect)
+    });
     const causes = [
-      ...bankOnly.map(row => bankCause('bank_only', row, row.amount, { pending: Boolean(row.pending), inboxStatus: row.status })),
-      ...trackerOnly.map(item => ({
-        type: 'tracker_only',
-        kind: item.kind,
-        id: item.id,
-        date: item.date,
-        name: item.name,
-        amount: item.amount,
-        effect: round2(-item.effect)
-      })),
+      ...bankOnly.filter(row => !row.fromFile)
+        .map(row => bankCause('bank_only', row, row.amount, { pending: Boolean(row.pending), inboxStatus: row.status })),
+      ...trackerOnly.map(item => trackerCause('tracker_only', item)),
       ...settling.map(row => bankCause('settling', row, -row.amount, { expenseId: row.expenseId })),
+      ...fromFile.map(row => bankCause('from_file', row, -row.amount, { expenseId: row.expenseId, pending: Boolean(row.pending) })),
+      ...fileHeld.map(item => trackerCause('from_file', item)),
       ...cancelled.map(row => bankCause('cancelled', row, -row.amount, { expenseId: row.expenseId })),
       ...fixedCharges.map(row => bankCause('fixed_expense', row, row.amount))
     ].sort((a, b) => a.date.localeCompare(b.date));

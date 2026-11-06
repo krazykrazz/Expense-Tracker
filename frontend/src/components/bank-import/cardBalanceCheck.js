@@ -46,6 +46,8 @@ export function describeCause(cause) {
         : `In the tracker, not at the bank: ${what}. A typo, the wrong card, a duplicate, or not posted yet?`;
     case 'settling':
       return `Still pending at the bank, which leaves pending charges out of its balance: ${what}`;
+    case 'from_file':
+      return `From a bank file, not in the bank's balance yet (Plaid hasn't sent it): ${what}`;
     case 'cancelled':
       return `Pending charge the bank cancelled, still an expense in the tracker: ${what}. Review it in the Inbox`;
     case 'fixed_expense':

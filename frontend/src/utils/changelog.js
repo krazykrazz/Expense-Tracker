@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.21.3',
+    date: 'November 6, 2026',
+    added: [],
+    changed: ['Wealthsimple pending charges settle automatically once the card balance shows they posted'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.21.2',
     date: 'November 6, 2026',
     added: [],

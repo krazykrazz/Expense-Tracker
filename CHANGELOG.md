@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.21.3] - 2026-11-06
+
+### Wealthsimple pending charges settle automatically once the card balance shows they posted
+
 ## [1.21.2] - 2026-11-06
 
 ### Dark mode now covers settings, the place name tool, budgets, tax, annual summary and the other finance screens

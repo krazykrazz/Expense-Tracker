@@ -5,6 +5,7 @@ const paymentMethodRepository = require('../repositories/paymentMethodRepository
 const settingsRepository = require('../repositories/settingsRepository');
 const activityLogService = require('./activityLogService');
 const plaidInboxService = require('./plaidInboxService');
+const plaidCardBalanceService = require('./plaidCardBalanceService');
 const { runWithTabId } = require('../utils/requestContext');
 const { encrypt, decrypt } = require('../utils/tokenCrypto');
 const { isBankDataStale } = require('../utils/plaidFreshness');
@@ -341,6 +342,7 @@ class PlaidService {
             // outside any request's tab context so every tab (including one that pressed Sync now) refreshes
             await runWithTabId(null, () => plaidInboxService.applySettlements(settlements));
           }
+          await this._settleFromBalance(id);
           return { id, institutionName: item.institutionName, ...counts, updateStatus: batch.updateStatus };
         } catch (err) {
           const code = plaidErrorOf(err)?.error_code;
@@ -367,6 +369,22 @@ class PlaidService {
       }
     } finally {
       this._syncing.delete(id);
+    }
+  }
+
+  /**
+   * Pending charges the fresh card balance shows have posted, on banks that don't flag pending charges
+   * through Plaid (see plaidCardBalanceService.settleFromBalance). Never fails the sync.
+   */
+  async _settleFromBalance(id) {
+    try {
+      const settlements = await plaidCardBalanceService.settleFromBalance(id);
+      if (settlements.length > 0) {
+        logger.info('Pending charges settled from the bank balance', { plaidItemId: id, settled: settlements.length });
+        await runWithTabId(null, () => plaidInboxService.applySettlements(settlements));
+      }
+    } catch (err) {
+      logger.warn('Settling pending charges from the bank balance failed', { plaidItemId: id, error: err.message });
     }
   }
 

@@ -258,6 +258,38 @@ describe('plaidService', () => {
       expect((await get('SELECT amount FROM expenses WHERE id = ?', [expense.id])).amount).toBe(46);
     });
 
+    test('file first, pending at a bank that never sends pending: settles once the bank balance includes it', async () => {
+      const { item, accountId } = await cardBank('No Pending Bank');
+      await plaidFileImportService.importFile(accountId, {
+        csv: wsFile('2026-11-04,Purchase,Pending,First Choice Haircutters,-45.41,CAD,,', '2026-11-04,Purchase,Pending,Sobeys,-12.41,CAD,,'),
+        fromDate: '2026-11-01'
+      });
+      for (const name of ['First Choice Haircutters', 'Sobeys']) {
+        await plaidInboxService.addAsExpense((await get('SELECT id FROM plaid_transactions WHERE name = ?', [name])).id, { type: 'Other' });
+      }
+      const ws = (id, amount, name) => txn(id, { amount, date: '2026-11-04', authorized_date: null, name: `${name} - Purchase`, merchant_name: null });
+      const balance = (current) => client.accountsGet.mockResolvedValueOnce({ data: { accounts: [account('acc-1', {
+        type: 'credit', balances: { current, available: null, limit: null, iso_currency_code: 'CAD' }
+      })] } });
+
+      // Plaid sends both; Wealthsimple's balance (pending left out) doesn't include either yet
+      client.transactionsSync.mockResolvedValueOnce(cardPage({ added: [ws('ws-hair', 45.41, 'First Choice Haircutters'), ws('ws-sob', 12.41, 'Sobeys')] }));
+      balance(0);
+      await plaidService.syncItem(item.id);
+      expect((await rows()).map(r => [r.tid, r.pending])).toEqual([['ws-hair', 1], ['ws-sob', 1]]);
+
+      // Nothing new from Plaid, but the balance now includes the haircut: it posted
+      client.transactionsSync.mockResolvedValueOnce(cardPage());
+      balance(45.41);
+      await plaidService.syncItem(item.id);
+
+      expect((await rows()).map(r => [r.tid, r.pending])).toEqual([['ws-hair', 0], ['ws-sob', 1]]);
+      expect(activityLogService.logEvent).toHaveBeenCalledWith(
+        'plaid_transaction_updated', 'plaid_transaction', expect.any(Number), expect.stringContaining('First Choice Haircutters'),
+        expect.objectContaining({ action: 'settled' })
+      );
+    });
+
     test('Plaid first: a file shows a pending charge settled; Plaid\'s posted version later replaces it without a duplicate', async () => {
       const { item, accountId } = await cardBank('Pending Bank');
       client.transactionsSync.mockResolvedValueOnce(cardPage({ added: [

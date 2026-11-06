@@ -79,6 +79,38 @@ function pairUp(bankItems, trackerItems) {
   return { bankOnly, trackerOnly: unusedTracker, pairs, splits };
 }
 
+/** Most pending charges considered at once (subsets are enumerated). */
+const MAX_SETTLING_ROWS = 12;
+
+/**
+ * Which charges kept pending ("settling") the bank's balance shows have posted, for a bank whose balance
+ * leaves pending charges out and that doesn't tell Plaid which charges are pending (Wealthsimple). The
+ * difference must be explained to the cent by exactly one choice of charges still pending; everything else
+ * is then in the bank's balance, i.e. posted. Anything less certain (several choices fit, or none: a tip or
+ * fee changed the total) settles nothing.
+ * @param {{difference: number, causes: Array<{type: string, effect: number}>}} card
+ * @returns {Array<object>} the settling causes that posted (empty when unsure)
+ */
+function postedFromBalance(card) {
+  const settling = card.causes.filter(cause => cause.type === 'settling');
+  if (settling.length === 0 || settling.length > MAX_SETTLING_ROWS) return [];
+  const otherEffects = card.causes.filter(cause => cause.type !== 'settling').reduce((sum, cause) => sum + cents(cause.effect), 0);
+  const target = cents(card.difference) - otherEffects;
+
+  let match = null;
+  for (let mask = 0; mask < (1 << settling.length); mask++) {
+    let sum = 0;
+    for (let i = 0; i < settling.length; i++) {
+      if (mask & (1 << i)) sum += cents(settling[i].effect);
+    }
+    if (sum !== target) continue;
+    if (match !== null) return [];
+    match = mask;
+  }
+  if (match === null) return [];
+  return settling.filter((_, i) => !(match & (1 << i)));
+}
+
 /**
  * Credit card balance check: the bank's balance (from the last sync) against the tracker's balance as of
  * today, with the likely causes of any difference. Read-only, apart from `applyBankCreditLimit`.
@@ -132,6 +164,7 @@ class PlaidCardBalanceService {
       paymentMethodId,
       name: first.paymentMethodName,
       accounts: accounts.map(a => ({ institutionName: a.institutionName, name: a.name, mask: a.mask ?? null })),
+      itemIds: [...new Set(accounts.map(a => a.plaidItemId))],
       bankError: this._bankWarning(accounts),
       status,
       bank,
@@ -285,7 +318,33 @@ class PlaidCardBalanceService {
     const existing = await paymentMethodRepository.findById(id);
     return paymentMethodService.updatePaymentMethod(id, { ...existing, credit_limit: card.limit.bank });
   }
+
+  /**
+   * After a sync of a bank that leaves pending charges out of its balance and doesn't flag them through Plaid
+   * (Wealthsimple: only a bank file says a charge is pending), settle the ones the fresh balance shows have
+   * posted (see postedFromBalance). Banks that flag pending charges settle through the sync itself.
+   * @param {number} plaidItemId
+   * @returns {Promise<Array<object>>} settlements to apply (rows already marked settled)
+   */
+  async settleFromBalance(plaidItemId) {
+    const { cards } = await this.getCardBalances();
+    const settlements = [];
+    for (const card of cards) {
+      if (!card.itemIds.includes(plaidItemId) || card.itemIds.length > 1) continue;
+      if (card.status !== 'differs' || !card.bank || card.bank.includesPending || card.bankError) continue;
+      const posted = postedFromBalance(card);
+      if (posted.length === 0) continue;
+      const settled = await plaidRepository.markSettled(posted.map(cause => cause.transactionId));
+      for (const cause of posted.filter(c => settled.includes(c.transactionId))) {
+        settlements.push({
+          plaidTransactionId: cause.transactionId, expenseId: cause.expenseId, settled: true,
+          previousAmount: cause.amount, amount: cause.amount, postedDate: null
+        });
+      }
+    }
+    return settlements;
+  }
 }
 
 module.exports = new PlaidCardBalanceService();
-module.exports._internal = { bankOwed, pairUp };
+module.exports._internal = { bankOwed, pairUp, postedFromBalance };

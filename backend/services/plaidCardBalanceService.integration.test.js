@@ -22,7 +22,7 @@ jest.mock('../config/plaid', () => ({
 const { getDatabase } = require('../database/db');
 const activityLogService = require('./activityLogService');
 const plaidCardBalanceService = require('./plaidCardBalanceService');
-const { bankOwed, pairUp } = plaidCardBalanceService._internal;
+const { bankOwed, pairUp, postedFromBalance } = plaidCardBalanceService._internal;
 
 const CREDIT_CARD = 4;
 
@@ -299,6 +299,33 @@ describe('plaidCardBalanceService', () => {
     expect(card.causes.map(c => c.name)).toEqual(['Typo after the statement']);
   });
 
+  test('settleFromBalance: pending charges the bank\'s balance (pending left out) shows posted are settled; the rest stay', async () => {
+    const haircut = await addExpense('2026-11-02', 45.41, 'Haircut');
+    const groceries = await addExpense('2026-11-02', 12.41, 'Groceries');
+    await stage('t-haircut', { amount: 45.41, date: '2026-11-02', status: 'added', pending: 1, expenseId: haircut });
+    await stage('t-groceries', { amount: 12.41, date: '2026-11-02', status: 'added', pending: 1, expenseId: groceries });
+    // Balance only (no available credit): the haircut is in it, the groceries aren't yet
+    await setBank({ current: 45.41 });
+
+    const settlements = await plaidCardBalanceService.settleFromBalance(itemId);
+
+    expect(settlements).toEqual([expect.objectContaining({ expenseId: haircut, settled: true, amount: 45.41 })]);
+    expect(await get("SELECT pending FROM plaid_transactions WHERE transaction_id = 't-haircut'")).toEqual({ pending: 0 });
+    expect(await get("SELECT pending FROM plaid_transactions WHERE transaction_id = 't-groceries'")).toEqual({ pending: 1 });
+    expect(await cardCheck()).toMatchObject({ difference: -12.41, unexplained: 0 });
+  });
+
+  test('settleFromBalance does nothing for banks whose balance includes pending charges, or when unsure', async () => {
+    const haircut = await addExpense('2026-11-02', 45.41, 'Haircut');
+    await stage('t-haircut', { amount: 45.41, date: '2026-11-02', status: 'added', pending: 1, expenseId: haircut });
+    await setBank({ current: 45.41, available: 954.59, limit: 1000 });
+    expect(await plaidCardBalanceService.settleFromBalance(itemId)).toEqual([]);
+
+    await setBank({ current: 49.37 });
+    expect(await plaidCardBalanceService.settleFromBalance(itemId)).toEqual([]);
+    expect(await get("SELECT pending FROM plaid_transactions WHERE transaction_id = 't-haircut'")).toEqual({ pending: 1 });
+  });
+
   test('balances received on sync are stored, and kept when a page omits them', async () => {
     const plaidRepository = require('../repositories/plaidRepository');
     await plaidRepository.upsertAccount(itemId, {
@@ -335,5 +362,22 @@ describe('bank balance helpers', () => {
   test('pairUp leaves entries more than 5 days apart unpaired', () => {
     const { pairs } = pairUp([{ effect: 10, date: '2026-10-01' }], [{ effect: 10, date: '2026-10-07' }]);
     expect(pairs).toEqual([]);
+  });
+
+  const settling = (id, amount) => ({ type: 'settling', transactionId: id, amount, effect: -amount });
+
+  test('postedFromBalance: the charges the balance includes, when exactly one choice explains the difference', () => {
+    const causes = [settling(1, 10.4), settling(2, 45.41), settling(3, 12.41), { type: 'tracker_only', effect: -4 }];
+    // Only #3 still left out of the bank's balance, plus a tracker entry the bank doesn't have yet
+    expect(postedFromBalance({ difference: -16.41, causes }).map(c => c.transactionId)).toEqual([1, 2]);
+    // All still pending: nothing posted
+    expect(postedFromBalance({ difference: -72.22, causes })).toEqual([]);
+  });
+
+  test('postedFromBalance settles nothing when unsure', () => {
+    // A tip or fee: no choice fits to the cent
+    expect(postedFromBalance({ difference: -64.26, causes: [settling(1, 10.4), settling(2, 45.41), settling(3, 12.41)] })).toEqual([]);
+    // Two charges of the same amount: either could be the one still pending
+    expect(postedFromBalance({ difference: -20, causes: [settling(1, 20), settling(2, 20)] })).toEqual([]);
   });
 });

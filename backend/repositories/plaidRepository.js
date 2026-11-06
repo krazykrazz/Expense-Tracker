@@ -812,9 +812,26 @@ class PlaidRepository {
    * Bank credit card accounts mapped to an active credit card payment method in the given environment,
    * with the balances received on the last sync.
    */
+  /**
+   * Mark pending rows settled (the bank's balance shows they posted). Only rows still pending change.
+   * @param {number[]} ids
+   * @returns {Promise<number[]>} the ids that were pending and are now settled
+   */
+  async markSettled(ids) {
+    if (ids.length === 0) return [];
+    return dbHelper.runInTransaction(async (tx) => {
+      const settled = [];
+      for (const id of ids) {
+        const { changes } = await tx.run('UPDATE plaid_transactions SET pending = 0 WHERE id = ? AND pending = 1', [id]);
+        if (changes > 0) settled.push(id);
+      }
+      return settled;
+    });
+  }
+
   async findMappedCardAccounts(environment) {
     return dbHelper.queryAll(
-      `SELECT pa.id, pa.name, pa.mask, pa.payment_method_id AS paymentMethodId,
+      `SELECT pa.id, pa.plaid_item_id AS plaidItemId, pa.name, pa.mask, pa.payment_method_id AS paymentMethodId,
               pa.current_balance AS currentBalance, pa.available_balance AS availableBalance,
               pa.credit_limit AS creditLimit, pa.balance_currency AS currency, pa.balance_as_of AS balanceAsOf,
               pi.institution_name AS institutionName, pi.last_error AS lastError, pi.bank_updated_at AS bankUpdatedAt,

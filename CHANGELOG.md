@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.21.1] - 2026-11-06
+
+### Bank Import suggests known places for bank transactions, and the card balance check explains transactions only in a bank file
+
 ## [1.21.0] - 2026-11-05
 
 ### Bank file import: Wealthsimple and CIBC CSV exports go into the Bank Import inbox and merge with Plaid in either order, keeping the best information

@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.21.1',
+    date: 'November 6, 2026',
+    added: [],
+    changed: ['Bank Import suggests known places for bank transactions, and the card balance check explains transactions only in a bank file'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.21.0',
     date: 'November 5, 2026',
     added: [],

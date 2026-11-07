@@ -20,12 +20,12 @@
 }
 
 .environment-banner.development {
-  background: linear-gradient(90deg, #3b82f6, #2563eb);
+  background: linear-gradient(90deg, light-dark(#196cf4, #3b82f6), #2563eb);
   color: white;
 }
 
 .environment-banner.preview {
-  background: linear-gradient(90deg, #a855f7, #9333ea);
+  background: linear-gradient(90deg, light-dark(#9e42f6, #a855f7), #9333ea);
   color: white;
 }
 

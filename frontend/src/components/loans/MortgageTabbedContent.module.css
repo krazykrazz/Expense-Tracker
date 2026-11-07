@@ -59,7 +59,7 @@
 
 /* Active tab indicator — bottom border highlight */
 .tabActive {
-  color: var(--color-primary);
+  color: var(--color-primary-text);
   border-bottom-color: var(--color-primary);
   font-weight: var(--font-semibold);
 }
@@ -164,7 +164,7 @@
   font-size: var(--text-base);
   font-weight: var(--font-medium);
   color: var(--text-inverse);
-  background: var(--color-primary);
+  background: var(--color-primary-strong);
   border: none;
   border-radius: var(--radius-md);
   cursor: pointer;
@@ -172,7 +172,7 @@
 }
 
 .actionBtn:hover {
-  background: var(--color-primary-hover);
+  background: var(--color-primary-strong-hover);
 }
 
 .actionBtn:focus-visible {
@@ -237,7 +237,7 @@
   padding: var(--spacing-1) var(--spacing-3);
   font-size: var(--caption-text);
   font-weight: var(--font-medium);
-  color: var(--color-primary);
+  color: var(--color-primary-text);
   background: transparent;
   border: 1px solid var(--color-primary);
   border-radius: var(--radius-sm);
@@ -246,7 +246,7 @@
 }
 
 .rateEditBtn:hover {
-  background: var(--color-primary);
+  background: var(--color-primary-strong);
   color: var(--text-inverse);
 }
 
@@ -282,7 +282,7 @@
   padding: var(--spacing-1) var(--spacing-2);
   font-size: var(--text-base);
   color: var(--text-inverse);
-  background: var(--color-positive);
+  background: var(--color-positive-strong);
   border: none;
   border-radius: var(--radius-sm);
   cursor: pointer;
@@ -302,7 +302,7 @@
 
 .rateError {
   font-size: var(--caption-text);
-  color: var(--color-negative);
+  color: var(--color-negative-text);
   width: 100%;
 }
 

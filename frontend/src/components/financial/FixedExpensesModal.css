@@ -136,7 +136,7 @@
 /* Error Display */
 .fixed-expenses-modal-error {
   background-color: var(--color-negative-light, #fee2e2);
-  color: light-dark(var(--color-negative-dark, #dc2626), #f87171);
+  color: light-dark(var(--color-negative-text), #f87171);
   padding: var(--spacing-3, 12px);
   border-radius: var(--radius-md, 8px);
   margin: var(--spacing-4, 16px) var(--spacing-6, 24px);
@@ -146,7 +146,7 @@
 .fixed-expenses-error-retry-button {
   margin-top: var(--spacing-2, 8px);
   padding: var(--spacing-2, 8px) var(--spacing-3, 12px);
-  background-color: var(--color-negative, #ef4444);
+  background-color: var(--color-negative-strong);
   color: white;
   border: none;
   border-radius: var(--radius-md, 8px);
@@ -156,7 +156,7 @@
 }
 
 .fixed-expenses-error-retry-button:hover {
-  background-color: var(--color-negative-dark, #dc2626);
+  background-color: var(--color-negative-strong-hover);
   transform: translateY(-1px);
 }
 
@@ -278,7 +278,7 @@
 
 .fixed-expense-amount {
   font-weight: 600;
-  color: light-dark(#d32f2f, hsl(0 65% 78%));
+  color: light-dark(#d12c2c, hsl(0 65% 78%));
   text-align: right;
   white-space: nowrap;
 }
@@ -404,7 +404,7 @@
 }
 
 .validation-error {
-  color: light-dark(#d32f2f, hsl(0 65% 78%));
+  color: light-dark(#d12c2c, hsl(0 65% 78%));
   font-size: 0.75rem;
   margin-top: 4px;
   display: block;
@@ -421,7 +421,7 @@
 }
 
 .fixed-expense-save-button {
-  background-color: #4caf50;
+  background-color: light-dark(#39843c, #4caf50);
   color: white;
 }
 
@@ -430,7 +430,7 @@
 }
 
 .fixed-expense-cancel-button {
-  background-color: #f44336;
+  background-color: light-dark(#e51b0d, #f44336);
   color: white;
 }
 
@@ -454,7 +454,7 @@
 .fixed-expenses-add-toggle-button {
   width: 100%;
   padding: 12px;
-  background-color: #2196f3;
+  background-color: light-dark(#0b76cc, #2196f3);
   color: white;
   border: none;
   border-radius: 4px;
@@ -543,7 +543,7 @@ select.fixed-expense-edit-loan:hover {
 }
 
 .fixed-expenses-add-button {
-  background-color: #4caf50;
+  background-color: light-dark(#39843c, #4caf50);
   color: white;
 }
 
@@ -585,7 +585,7 @@ select.fixed-expense-edit-loan:hover {
 
 .fixed-expenses-total-amount {
   font-weight: 700;
-  color: light-dark(#d32f2f, hsl(0 65% 78%));
+  color: light-dark(#d12c2c, hsl(0 65% 78%));
   font-size: 1.3rem;
 }
 

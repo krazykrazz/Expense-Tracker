@@ -44,13 +44,13 @@
 }
 
 .trends-view-error p {
-  color: var(--color-negative);
+  color: var(--color-negative-text);
   margin-bottom: var(--spacing-4);
 }
 
 .trends-view-retry-btn {
   padding: var(--spacing-2) var(--spacing-4);
-  background-color: var(--color-primary);
+  background-color: var(--color-primary-strong);
   color: var(--text-inverse);
   border: none;
   border-radius: var(--radius-md);
@@ -62,7 +62,7 @@
 }
 
 .trends-view-retry-btn:hover {
-  background-color: var(--color-primary-hover);
+  background-color: var(--color-primary-strong-hover);
 }
 
 /* Empty State */
@@ -180,12 +180,12 @@
 
 .trends-view-prediction-confidence.confidence-high {
   background-color: var(--color-positive-light);
-  color: light-dark(var(--color-positive-dark), #4ade80);
+  color: light-dark(var(--color-positive-text), #4ade80);
 }
 
 .trends-view-prediction-confidence.confidence-medium {
   background-color: var(--color-warning-light);
-  color: light-dark(var(--color-warning-dark), #fbbf24);
+  color: light-dark(var(--color-warning-text), #fbbf24);
 }
 
 .trends-view-prediction-confidence.confidence-low {

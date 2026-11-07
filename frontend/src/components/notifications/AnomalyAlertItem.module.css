@@ -122,17 +122,17 @@
 
 .typeAmount {
   background-color: rgba(239, 68, 68, 0.15);
-  color: light-dark(var(--color-negative-dark, #dc2626), #f87171);
+  color: light-dark(var(--color-negative-text), #f87171);
 }
 
 .typeNewMerchant {
   background-color: rgba(14, 165, 233, 0.15);
-  color: light-dark(var(--color-primary-hover, #0284c7), #7dd3fc);
+  color: light-dark(var(--color-primary-text-hover), #7dd3fc);
 }
 
 .typeDailyTotal {
   background-color: rgba(245, 158, 11, 0.2);
-  color: light-dark(var(--color-warning-dark, #d97706), #fbbf24);
+  color: light-dark(var(--color-warning-text), #fbbf24);
 }
 
 .typeDefault {
@@ -149,7 +149,7 @@
   font-size: var(--text-lg, 16px);
   font-family: var(--font-tabular);
   font-feature-settings: var(--font-feature-tabular);
-  color: light-dark(var(--color-warning-dark, #d97706), #fbbf24);
+  color: light-dark(var(--color-warning-text), #fbbf24);
 }
 
 /* ============================================
@@ -199,9 +199,9 @@
 }
 
 .markExpectedBtn {
-  background: var(--color-warning, #f59e0b);
+  background: var(--color-warning-strong);
   color: #ffffff;
-  border-color: var(--color-warning-dark, #d97706);
+  border-color: var(--color-warning-strong-hover);
 }
 
 .markExpectedBtn:hover:not(:disabled) {
@@ -256,7 +256,7 @@
    ============================================ */
 
 .gotItBtn {
-  background: var(--color-primary, #0ea5e9);
+  background: var(--color-primary-strong);
   color: #ffffff;
   border: none;
   padding: var(--spacing-1, 4px) var(--spacing-4, 16px);

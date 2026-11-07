@@ -112,23 +112,23 @@
 }
 
 .mortgage-value.overdue {
-  color: var(--color-negative);
+  color: var(--color-negative-text);
 }
 
 .mortgage-value.approaching {
-  color: light-dark(var(--color-warning-dark, #856404), #fbbf24);
+  color: light-dark(var(--color-warning-text), #fbbf24);
 }
 
 .mortgage-value.rate-type-fixed {
-  color: var(--color-primary);
+  color: var(--color-primary-text);
 }
 
 .mortgage-value.rate-type-variable {
-  color: var(--color-positive);
+  color: var(--color-positive-text);
 }
 
 .mortgage-value.property-value {
-  color: var(--color-positive);
+  color: var(--color-positive-text);
 }
 
 /* Responsive Design */

@@ -197,7 +197,7 @@
 
 .auto-log-btn-primary {
   flex: 1;
-  background: linear-gradient(135deg, #4a6fa5 0%, #5a7fb5 100%);
+  background: linear-gradient(135deg, #4a6fa5 0%, light-dark(#4e74ad, #5a7fb5) 100%);
   color: white;
 }
 

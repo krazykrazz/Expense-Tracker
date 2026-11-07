@@ -107,44 +107,44 @@
 
 /* Bar Colors - Using CSS Variables */
 .fixed-color {
-  background: var(--color-fixed-expense, #3b82f6);
+  background: light-dark(#1d4ed8, var(--color-fixed-expense));
 }
 
 .variable-color {
-  background: var(--color-variable-expense, #8b5cf6);
+  background: light-dark(#6d28d9, var(--color-variable-expense));
 }
 
 .income-color {
-  background: var(--color-income, #f97316);
+  background: light-dark(#c2410c, var(--color-income));
 }
 
 .medical-color {
-  background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%);
+  background: linear-gradient(90deg, light-dark(#1d4ed8, #3b82f6) 0%, light-dark(#1e40af, #2563eb) 100%);
 }
 
 .donation-color {
-  background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%);
+  background: linear-gradient(90deg, light-dark(#b45309, #f59e0b) 0%, light-dark(#92400e, #d97706) 100%);
 }
 
 /* Bar Gradients */
 .fixed-expense-bar {
-  background: linear-gradient(90deg, var(--color-fixed-expense, #3b82f6) 0%, #2563eb 100%) !important;
+  background: linear-gradient(90deg, light-dark(#1d4ed8, #3b82f6) 0%, light-dark(#1e40af, #2563eb) 100%) !important;
 }
 
 .variable-expense-bar {
-  background: linear-gradient(90deg, var(--color-variable-expense, #8b5cf6) 0%, #7c3aed 100%) !important;
+  background: linear-gradient(90deg, light-dark(#6d28d9, #8b5cf6) 0%, light-dark(#5b21b6, #7c3aed) 100%) !important;
 }
 
 .income-bar {
-  background: linear-gradient(90deg, var(--color-income, #f97316) 0%, #ea580c 100%) !important;
+  background: linear-gradient(90deg, light-dark(#c2410c, #f97316) 0%, light-dark(#9a3412, #ea580c) 100%) !important;
 }
 
 .tax-medical-bar {
-  background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%);
+  background: linear-gradient(90deg, light-dark(#1d4ed8, #3b82f6) 0%, light-dark(#1e40af, #2563eb) 100%);
 }
 
 .tax-donation-bar {
-  background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%);
+  background: linear-gradient(90deg, light-dark(#b45309, #f59e0b) 0%, light-dark(#92400e, #d97706) 100%);
 }
 
 /* Stacked Bar Specific */
@@ -181,11 +181,11 @@
 }
 
 .horizontal-segment.fixed-segment {
-  background: linear-gradient(90deg, var(--color-fixed-expense, #3b82f6) 0%, #2563eb 100%);
+  background: linear-gradient(90deg, light-dark(#1d4ed8, #3b82f6) 0%, light-dark(#1e40af, #2563eb) 100%);
 }
 
 .horizontal-segment.variable-segment {
-  background: linear-gradient(90deg, var(--color-variable-expense, #8b5cf6) 0%, #7c3aed 100%);
+  background: linear-gradient(90deg, light-dark(#6d28d9, #8b5cf6) 0%, light-dark(#5b21b6, #7c3aed) 100%);
 }
 
 /* Vertical Stacked Bars (for other components like TaxDeductible) */
@@ -227,11 +227,11 @@
 }
 
 .fixed-segment {
-  background-color: var(--color-fixed-expense, #3b82f6);
+  background-color: light-dark(#1d4ed8, var(--color-fixed-expense));
 }
 
 .variable-segment {
-  background-color: var(--color-variable-expense, #8b5cf6);
+  background-color: light-dark(#6d28d9, var(--color-variable-expense));
 }
 
 .segment-value {
@@ -261,7 +261,7 @@
 }
 
 .error-message {
-  color: var(--color-negative, #c62828);
+  color: var(--color-negative-text);
 }
 
 /* Responsive Design */

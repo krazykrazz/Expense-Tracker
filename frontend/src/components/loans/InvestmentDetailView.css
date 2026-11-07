@@ -75,7 +75,7 @@
 
 .investment-type-badge-header {
   display: inline-block;
-  background-color: var(--color-primary);
+  background-color: var(--color-primary-strong);
   color: var(--text-inverse);
   padding: var(--spacing-1) var(--spacing-3);
   border-radius: var(--radius-full);
@@ -86,7 +86,7 @@
 .investment-detail-back-button {
   background-color: transparent;
   border: 1px solid var(--color-primary);
-  color: var(--color-primary);
+  color: var(--color-primary-text);
   padding: var(--spacing-2) var(--spacing-4);
   border-radius: var(--radius-md);
   cursor: pointer;
@@ -96,7 +96,7 @@
 }
 
 .investment-detail-back-button:hover {
-  background-color: var(--color-primary);
+  background-color: var(--color-primary-strong);
   color: var(--text-inverse);
   transform: translateY(-1px);
 }
@@ -129,7 +129,7 @@
 /* Messages */
 .investment-detail-error {
   background-color: var(--color-negative-light);
-  color: light-dark(var(--color-negative-dark), #f87171);
+  color: light-dark(var(--color-negative-text), #f87171);
   padding: var(--spacing-3) var(--spacing-6);
   border-left: 4px solid var(--color-negative);
   margin: 0;
@@ -137,7 +137,7 @@
 
 .investment-detail-success {
   background-color: var(--color-positive-light);
-  color: light-dark(var(--color-positive-dark), #4ade80);
+  color: light-dark(var(--color-positive-text), #4ade80);
   padding: var(--spacing-3) var(--spacing-6);
   border-left: 4px solid var(--color-positive);
   margin: 0;
@@ -198,15 +198,15 @@
 }
 
 .investment-current-value {
-  color: var(--color-primary);
+  color: var(--color-primary-text);
 }
 
 .investment-gain {
-  color: var(--color-positive);
+  color: var(--color-positive-text);
 }
 
 .investment-loss {
-  color: var(--color-negative);
+  color: var(--color-negative-text);
 }
 
 /* Value History Section - Requirement 2.1 */
@@ -265,7 +265,7 @@
 .investment-value-amount {
   font-size: var(--text-lg);
   font-weight: var(--font-semibold);
-  color: var(--color-primary);
+  color: var(--color-primary-text);
   font-feature-settings: var(--font-feature-tabular);
 }
 
@@ -278,11 +278,11 @@
 }
 
 .investment-value-change.positive {
-  color: var(--color-positive);
+  color: var(--color-positive-text);
 }
 
 .investment-value-change.negative {
-  color: var(--color-negative);
+  color: var(--color-negative-text);
 }
 
 .investment-value-percentage {
@@ -291,11 +291,11 @@
 }
 
 .investment-value-percentage.positive {
-  color: var(--color-positive);
+  color: var(--color-positive-text);
 }
 
 .investment-value-percentage.negative {
-  color: var(--color-negative);
+  color: var(--color-negative-text);
 }
 
 /* Loading and Empty States */
@@ -387,7 +387,7 @@ button:disabled {
 
 .investment-value-row .investment-value-amount {
   font-weight: var(--font-semibold);
-  color: var(--color-primary);
+  color: var(--color-primary-text);
   font-feature-settings: var(--font-feature-tabular);
 }
 
@@ -396,11 +396,11 @@ button:disabled {
 }
 
 .investment-value-row .investment-value-change.positive {
-  color: var(--color-positive);
+  color: var(--color-positive-text);
 }
 
 .investment-value-row .investment-value-change.negative {
-  color: var(--color-negative);
+  color: var(--color-negative-text);
 }
 
 .investment-value-row .investment-value-change.neutral {
@@ -412,11 +412,11 @@ button:disabled {
 }
 
 .investment-value-row .investment-value-percentage.positive {
-  color: var(--color-positive);
+  color: var(--color-positive-text);
 }
 
 .investment-value-row .investment-value-percentage.negative {
-  color: var(--color-negative);
+  color: var(--color-negative-text);
 }
 
 .investment-value-row .investment-value-percentage.neutral {
@@ -514,7 +514,7 @@ button:disabled {
 
 /* Add Value Form */
 .investment-add-value-button {
-  background-color: var(--color-positive);
+  background-color: var(--color-positive-strong);
   color: var(--text-inverse);
   border: none;
   padding: var(--spacing-2) var(--spacing-4);
@@ -596,7 +596,7 @@ button:disabled {
 
 .validation-error {
   font-size: var(--text-xs);
-  color: var(--color-negative);
+  color: var(--color-negative-text);
   margin-top: var(--spacing-1);
 }
 
@@ -607,7 +607,7 @@ button:disabled {
 }
 
 .investment-save-button {
-  background-color: var(--color-primary);
+  background-color: var(--color-primary-strong);
   color: var(--text-inverse);
   border: none;
   padding: var(--spacing-2) var(--spacing-5);
@@ -673,7 +673,7 @@ button:disabled {
 }
 
 .investment-edit-details-button {
-  background-color: var(--color-primary);
+  background-color: var(--color-primary-strong);
   color: var(--text-inverse);
   border: none;
   padding: var(--spacing-3) var(--spacing-5);

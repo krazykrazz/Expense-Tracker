@@ -44,13 +44,13 @@
 }
 
 .monthly-summary-error p {
-  color: var(--color-negative);
+  color: var(--color-negative-text);
   margin-bottom: var(--spacing-4);
 }
 
 .monthly-summary-retry-btn {
   padding: var(--spacing-2) var(--spacing-4);
-  background-color: var(--color-primary);
+  background-color: var(--color-primary-strong);
   color: var(--text-inverse);
   border: none;
   border-radius: var(--radius-md);
@@ -62,7 +62,7 @@
 }
 
 .monthly-summary-retry-btn:hover {
-  background-color: var(--color-primary-hover);
+  background-color: var(--color-primary-strong-hover);
 }
 
 /* Empty State */
@@ -144,11 +144,11 @@
 }
 
 .monthly-summary-mom-value.increase {
-  color: var(--color-negative);
+  color: var(--color-negative-text);
 }
 
 .monthly-summary-mom-value.decrease {
-  color: var(--color-positive);
+  color: var(--color-positive-text);
 }
 
 /* Section Title */
@@ -262,7 +262,7 @@
 }
 
 .monthly-summary-budget-value.over-budget {
-  color: var(--color-negative);
+  color: var(--color-negative-text);
 }
 
 .monthly-summary-budget-bar-container {

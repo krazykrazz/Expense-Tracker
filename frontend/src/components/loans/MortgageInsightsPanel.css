@@ -21,7 +21,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, light-dark(#4b67e6, #667eea) 0%, #764ba2 100%);
   color: white;
 }
 
@@ -68,12 +68,12 @@
 .insights-panel-error p {
   margin: 0;
   flex: 1;
-  color: light-dark(#dc3545, hsl(354 70% 78%));
+  color: light-dark(#d32535, hsl(354 70% 78%));
 }
 
 .retry-button {
   padding: 8px 16px;
-  background: #dc3545;
+  background: light-dark(#db3141, #dc3545);
   color: white;
   border: none;
   border-radius: 6px;
@@ -173,7 +173,7 @@
 }
 
 .section-badge {
-  background: #667eea;
+  background: light-dark(#4b67e6, #667eea);
   color: white;
   font-size: 0.75rem;
   padding: 2px 8px;
@@ -220,11 +220,11 @@
 
 /* Visual Indicators - Requirement 6.3 */
 .positive-indicator {
-  color: light-dark(#28a745, hsl(134 61% 78%));
+  color: light-dark(#1e7e34, hsl(134 61% 78%));
 }
 
 .negative-indicator {
-  color: light-dark(#dc3545, hsl(354 70% 78%));
+  color: light-dark(#d32535, hsl(354 70% 78%));
 }
 
 .neutral-indicator {

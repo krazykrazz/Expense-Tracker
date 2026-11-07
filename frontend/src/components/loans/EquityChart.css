@@ -62,7 +62,7 @@
 }
 
 .equity-stat-value.positive {
-  color: var(--color-positive);
+  color: var(--color-positive-text);
 }
 
 /* Equity Progress Bar */
@@ -129,7 +129,7 @@
 }
 
 .equity-chart-error {
-  color: var(--color-negative);
+  color: var(--color-negative-text);
 }
 
 .equity-no-data p,

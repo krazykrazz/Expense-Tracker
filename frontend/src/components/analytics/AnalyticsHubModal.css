@@ -34,7 +34,7 @@
   justify-content: space-between;
   align-items: center;
   padding: var(--spacing-5);
-  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  background: linear-gradient(135deg, light-dark(#4f46e5, #6366f1) 0%, light-dark(#4338ca, #4f46e5) 100%);
   flex-shrink: 0;
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
 }
@@ -150,9 +150,9 @@
 }
 
 .analytics-hub-tab.active {
-  background-color: var(--color-primary);
+  background-color: var(--color-primary-strong);
   color: var(--text-inverse);
-  border-color: var(--color-primary);
+  border-color: var(--color-primary-strong);
 }
 
 .analytics-hub-tab-icon {
@@ -206,13 +206,13 @@
 }
 
 .analytics-hub-error p {
-  color: var(--color-negative);
+  color: var(--color-negative-text);
   margin-bottom: var(--spacing-4);
 }
 
 .analytics-hub-retry-btn {
   padding: var(--spacing-2) var(--spacing-4);
-  background-color: var(--color-primary);
+  background-color: var(--color-primary-strong);
   color: var(--text-inverse);
   border: none;
   border-radius: var(--radius-md);
@@ -224,7 +224,7 @@
 }
 
 .analytics-hub-retry-btn:hover {
-  background-color: var(--color-primary-hover);
+  background-color: var(--color-primary-strong-hover);
 }
 
 /* Merchant Analytics Wrapper (embedded mode) */

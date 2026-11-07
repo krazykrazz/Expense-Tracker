@@ -67,7 +67,7 @@
 }
 
 .balance-value.negative {
-  color: var(--color-negative);
+  color: var(--color-negative-text);
 }
 
 /* Form */
@@ -91,7 +91,7 @@
 }
 
 .cc-payment-label .required {
-  color: var(--color-negative);
+  color: var(--color-negative-text);
 }
 
 .cc-payment-label .optional {
@@ -169,14 +169,14 @@
 
 .cc-payment-error .error-text {
   font-size: var(--text-sm);
-  color: light-dark(var(--color-negative-dark), #f87171);
+  color: light-dark(var(--color-negative-text), #f87171);
   flex: 1;
 }
 
 .cc-payment-error .error-close {
   background: none;
   border: none;
-  color: light-dark(var(--color-negative-dark), #f87171);
+  color: light-dark(var(--color-negative-text), #f87171);
   cursor: pointer;
   padding: 0;
   margin-left: var(--spacing-2);

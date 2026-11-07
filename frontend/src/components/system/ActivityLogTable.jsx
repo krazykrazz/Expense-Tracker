@@ -24,19 +24,19 @@ const ActivityLogTable = ({
   onDisplayLimitChange,
   onLoadMore
 }) => {
-  // Event type color mapping
+  // Event type color mapping (badge background under white text: each at least 4.5:1)
   const getEventTypeColor = (entityType) => {
     const colorMap = {
-      expense: '#2196F3',
+      expense: '#1565C0',
       fixed_expense: '#9C27B0',
-      loan: '#FF9800',
-      investment: '#4CAF50',
-      budget: '#009688',
+      loan: '#C2410C',
+      investment: '#2E7D32',
+      budget: '#00796B',
       payment_method: '#3F51B5',
-      backup: '#607D8B',
-      version: '#607D8B'
+      backup: '#546E7A',
+      version: '#546E7A'
     };
-    return colorMap[entityType] || '#757575';
+    return colorMap[entityType] || '#616161';
   };
 
   // Extract event type from event_type field (e.g., "expense_created" -> "Created")

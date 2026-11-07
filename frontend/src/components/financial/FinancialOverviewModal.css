@@ -21,7 +21,7 @@
 
 /* ── Header ── */
 .financial-modal-header {
-  background: linear-gradient(135deg, #1a73e8 0%, #0d47a1 100%);
+  background: linear-gradient(135deg, light-dark(#1770e6, #1a73e8) 0%, #0d47a1 100%);
   color: white;
   border-radius: var(--radius-xl, 16px) var(--radius-xl, 16px) 0 0;
   position: sticky;
@@ -191,20 +191,20 @@
   flex-direction: column;
   align-items: center;
   flex: 1;
-  background: rgba(255, 255, 255, 0.1);
+  background: light-dark(rgba(0, 0, 0, 0.15), rgba(255, 255, 255, 0.1));
   border-radius: var(--radius-md, 8px);
   padding: var(--spacing-2, 8px) var(--spacing-3, 12px);
 }
 
 .financial-net-worth-item.net-worth {
-  background: rgba(255, 255, 255, 0.2);
+  background: light-dark(rgba(0, 0, 0, 0.2), rgba(255, 255, 255, 0.2));
   border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 .financial-net-worth-label {
   font-size: var(--text-xs, 11px);
   font-weight: var(--font-medium, 500);
-  color: rgba(255, 255, 255, 0.8);
+  color: light-dark(rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.8));
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin-bottom: 4px;
@@ -217,11 +217,11 @@
 }
 
 .financial-net-worth-value.positive {
-  color: #a5d6a7;
+  color: light-dark(#dcfce7, #a5d6a7);
 }
 
 .financial-net-worth-value.negative {
-  color: #ef9a9a;
+  color: light-dark(#fee2e2, #ef9a9a);
 }
 
 /* ── Credit Card Summary Grid (in scrollable body) ── */
@@ -332,14 +332,14 @@
 }
 
 .financial-cc-view-btn {
-  background: var(--color-primary, #0ea5e9);
+  background: var(--color-primary-strong);
   color: white;
-  border-color: var(--color-primary, #0ea5e9);
+  border-color: var(--color-primary-strong);
 }
 
 .financial-cc-view-btn:hover {
-  background: var(--color-primary-hover, #0284c7);
-  border-color: var(--color-primary-hover, #0284c7);
+  background: var(--color-primary-strong-hover);
+  border-color: var(--color-primary-strong-hover);
 }
 
 .financial-cc-pay-btn:hover {
@@ -403,7 +403,7 @@
 }
 
 .payment-methods-tab.active { 
-  color: light-dark(#2196f3, hsl(207 80% 78%)); 
+  color: light-dark(#1565c0, hsl(207 80% 78%)); 
   border-bottom-color: #2196f3; 
   background-color: light-dark(#e3f2fd, hsl(205 55% 17%)); 
 }
@@ -549,7 +549,7 @@
   padding: var(--spacing-1, 4px) var(--spacing-3, 12px);
   font-size: var(--text-sm, 13px);
   font-weight: var(--font-medium, 500);
-  background: var(--color-primary, #0ea5e9);
+  background: var(--color-primary-strong);
   color: white;
   border: none;
   border-radius: var(--radius-md, 8px);
@@ -570,7 +570,7 @@
   padding: var(--spacing-1, 4px) var(--spacing-3, 12px);
   font-size: var(--text-sm, 13px);
   font-weight: var(--font-medium, 500);
-  background: #059669;
+  background: light-dark(#04825b, #059669);
   color: white;
   border: none;
   border-radius: var(--radius-md, 8px);
@@ -606,7 +606,7 @@
 
 .financial-section-error {
   background-color: var(--color-negative-light, #fee2e2);
-  color: light-dark(var(--color-negative-dark, #dc2626), #f87171);
+  color: light-dark(var(--color-negative-text), #f87171);
   padding: var(--spacing-3, 12px);
   border-radius: var(--radius-md, 8px);
   margin-bottom: var(--spacing-3, 12px);
@@ -653,7 +653,7 @@
 
 .financial-modal-error {
   background-color: var(--color-negative-light, #fee2e2);
-  color: light-dark(var(--color-negative-dark, #dc2626), #f87171);
+  color: light-dark(var(--color-negative-text), #f87171);
   padding: var(--spacing-3, 12px) var(--spacing-6, 24px);
   border-bottom: 1px solid var(--color-negative, #ef4444);
 }
@@ -661,7 +661,7 @@
 .financial-error-retry-button {
   margin-top: var(--spacing-2, 8px);
   padding: var(--spacing-2, 8px) var(--spacing-3, 12px);
-  background-color: var(--color-negative, #ef4444);
+  background-color: var(--color-negative-strong);
   color: white;
   border: none;
   border-radius: var(--radius-md, 8px);
@@ -671,7 +671,7 @@
 }
 
 .financial-error-retry-button:hover {
-  background-color: var(--color-negative-dark, #dc2626);
+  background-color: var(--color-negative-strong-hover);
 }
 
 /* ── Responsive ── */
@@ -749,7 +749,7 @@
   flex: 1;
   min-width: 160px;
   padding: var(--spacing-3, 12px);
-  background-color: var(--color-primary, #0ea5e9);
+  background-color: var(--color-primary-strong);
   color: white;
   border: none;
   border-radius: var(--radius-md, 8px);
@@ -771,7 +771,7 @@
   flex: 1;
   min-width: 160px;
   padding: var(--spacing-3, 12px);
-  background-color: #059669;
+  background-color: light-dark(#04825b, #059669);
   color: white;
   border: none;
   border-radius: var(--radius-md, 8px);
@@ -883,7 +883,7 @@
 }
 
 .loans-tab:hover { background-color: var(--bg-subtle); color: var(--text-primary); }
-.loans-tab.active { color: light-dark(#2196f3, hsl(207 80% 78%)); border-bottom-color: #2196f3; background-color: light-dark(#e3f2fd, hsl(205 55% 17%)); }
+.loans-tab.active { color: light-dark(#1565c0, hsl(207 80% 78%)); border-bottom-color: #2196f3; background-color: light-dark(#e3f2fd, hsl(205 55% 17%)); }
 
 /* Loans list */
 .loans-list { display: flex; flex-direction: column; gap: 12px; }
@@ -947,7 +947,7 @@
   color: var(--text-secondary);
 }
 
-.loan-item-balance { font-weight: var(--font-semibold); color: light-dark(#d32f2f, hsl(0 65% 78%)); }
+.loan-item-balance { font-weight: var(--font-semibold); color: light-dark(#d12c2c, hsl(0 65% 78%)); }
 
 .loan-item-actions {
   display: flex;
@@ -968,11 +968,11 @@
   white-space: nowrap;
 }
 
-.loan-view-button { background-color: #2196f3; color: white; }
+.loan-view-button { background-color: light-dark(#0b76cc, #2196f3); color: white; }
 .loan-view-button:hover:not(:disabled) { background-color: #1976d2; }
-.loan-edit-button { background-color: #ff9800; color: white; }
+.loan-edit-button { background-color: light-dark(#a86400, #ff9800); color: white; }
 .loan-edit-button:hover:not(:disabled) { background-color: #f57c00; }
-.loan-delete-button { background-color: #f44336; color: white; }
+.loan-delete-button { background-color: light-dark(#e51b0d, #f44336); color: white; }
 .loan-delete-button:hover:not(:disabled) { background-color: #d32f2f; }
 .loan-view-button:disabled,
 .loan-edit-button:disabled,
@@ -984,7 +984,7 @@
   margin-left: 8px;
   padding: 2px 6px;
   background-color: light-dark(#e3f2fd, hsl(205 55% 17%));
-  color: light-dark(#1976d2, hsl(210 79% 78%));
+  color: light-dark(#176ec4, hsl(210 79% 78%));
   font-size: var(--text-xs);
   font-weight: var(--font-semibold);
   border-radius: 4px;
@@ -998,7 +998,7 @@
   margin-left: 8px;
   padding: 2px 6px;
   background-color: light-dark(#fff3e0, hsl(37 55% 17%));
-  color: light-dark(#e65100, hsl(21 80% 78%));
+  color: light-dark(#c24400, hsl(21 80% 78%));
   font-size: var(--text-xs);
   font-weight: var(--font-semibold);
   border-radius: 4px;
@@ -1011,7 +1011,7 @@
   align-items: center;
   gap: 4px;
   padding: 4px 10px;
-  background-color: #ff9800;
+  background-color: light-dark(#a86400, #ff9800);
   color: white;
   font-size: var(--text-xs);
   font-weight: var(--font-semibold);
@@ -1027,7 +1027,7 @@
 
 /* Shared form validation */
 .input-error { border-color: #d32f2f !important; background-color: light-dark(#ffebee, hsl(351 55% 17%)); }
-.validation-error { color: light-dark(#d32f2f, hsl(0 65% 78%)); font-size: var(--text-xs); margin-top: 4px; display: block; }
+.validation-error { color: light-dark(#d12c2c, hsl(0 65% 78%)); font-size: var(--text-xs); margin-top: 4px; display: block; }
 
 /* ═══════════════════════════════════════════════════════════════════════════
    INVESTMENTS TAB CONTENT
@@ -1044,7 +1044,7 @@
   flex: 1;
   min-width: 160px;
   padding: var(--spacing-3, 12px);
-  background-color: var(--color-primary, #0ea5e9);
+  background-color: var(--color-primary-strong);
   color: white;
   border: none;
   border-radius: var(--radius-md, 8px);
@@ -1178,7 +1178,7 @@
   display: inline-block;
   padding: 2px 8px;
   background-color: light-dark(#e3f2fd, hsl(205 55% 17%));
-  color: light-dark(#1976d2, hsl(210 79% 78%));
+  color: light-dark(#176ec4, hsl(210 79% 78%));
   font-size: var(--text-xs);
   font-weight: var(--font-semibold);
   border-radius: 4px;
@@ -1204,11 +1204,11 @@
   white-space: nowrap;
 }
 
-.investment-view-button { background-color: #2196f3; color: white; }
+.investment-view-button { background-color: light-dark(#0b76cc, #2196f3); color: white; }
 .investment-view-button:hover:not(:disabled) { background-color: #1976d2; }
-.investment-edit-button { background-color: #ff9800; color: white; }
+.investment-edit-button { background-color: light-dark(#a86400, #ff9800); color: white; }
 .investment-edit-button:hover:not(:disabled) { background-color: #f57c00; }
-.investment-delete-button { background-color: #f44336; color: white; }
+.investment-delete-button { background-color: light-dark(#e51b0d, #f44336); color: white; }
 .investment-delete-button:hover:not(:disabled) { background-color: #d32f2f; }
 .investment-view-button:disabled,
 .investment-edit-button:disabled,
@@ -1221,7 +1221,7 @@
 .payment-methods-add-section { margin-bottom: 20px; }
 
 .payment-methods-add-button {
-  background-color: #4caf50;
+  background-color: light-dark(#39843c, #4caf50);
   color: white;
   border: none;
   padding: 10px 20px;
@@ -1257,7 +1257,7 @@
 }
 
 .payment-methods-tab:hover { color: var(--text-primary); background-color: var(--bg-subtle); }
-.payment-methods-tab.active { color: light-dark(#2196f3, hsl(207 80% 78%)); border-bottom-color: #2196f3; }
+.payment-methods-tab.active { color: light-dark(#1565c0, hsl(207 80% 78%)); border-bottom-color: #2196f3; }
 
 /* Payment methods list */
 .payment-methods-list { display: flex; flex-direction: column; gap: 20px; }
@@ -1374,9 +1374,9 @@
 .utilization-text { font-size: var(--text-xs); color: var(--text-secondary); }
 
 .credit-due-date { font-size: var(--text-sm); color: var(--text-secondary); }
-.credit-due-date.due-soon { color: #f44336; font-weight: var(--font-medium); }
+.credit-due-date.due-soon { color: light-dark(#dc1a0c, #f44336); font-weight: var(--font-medium); }
 
-.credit-view-details { font-size: var(--text-xs); color: light-dark(#2196f3, hsl(207 80% 78%)); margin-top: 8px; font-weight: var(--font-medium); }
+.credit-view-details { font-size: var(--text-xs); color: light-dark(#1565c0, hsl(207 80% 78%)); margin-top: 8px; font-weight: var(--font-medium); }
 .payment-method-credit-info.clickable:hover .credit-view-details { text-decoration: underline; }
 
 /* Payment method actions */
@@ -1404,7 +1404,7 @@
   transition: all 0.2s;
 }
 
-.payment-method-deactivate-btn { background-color: light-dark(#fff3e0, hsl(37 55% 17%)); border-color: #ff9800; color: light-dark(#e65100, hsl(21 80% 78%)); }
+.payment-method-deactivate-btn { background-color: light-dark(#fff3e0, hsl(37 55% 17%)); border-color: #ff9800; color: light-dark(#c24400, hsl(21 80% 78%)); }
 .payment-method-deactivate-btn:hover:not(:disabled) { background-color: light-dark(#ffe0b2, hsl(36 55% 17%)); }
 .payment-method-activate-btn { background-color: var(--bg-muted); border-color: #4caf50; color: light-dark(#2e7d32, hsl(123 46% 78%)); }
 .payment-method-activate-btn:hover:not(:disabled) { background-color: light-dark(#c8e6c9, hsl(122 37% 17%)); }
@@ -1438,14 +1438,14 @@
 
 .payment-methods-confirm-dialog h3 { margin: 0 0 12px 0; color: var(--text-primary); }
 .payment-methods-confirm-dialog p { margin: 0 0 8px 0; color: var(--text-secondary); }
-.confirm-warning { color: #f44336 !important; font-size: var(--text-base); }
+.confirm-warning { color: light-dark(#dc1a0c !important, #f44336) !important; font-size: var(--text-base); }
 .confirm-info { color: var(--text-secondary) !important; font-size: var(--text-base); background-color: var(--bg-subtle); padding: 10px; border-radius: 4px; margin-top: 8px; }
 
 .confirm-actions { display: flex; gap: 12px; margin-top: 20px; justify-content: flex-end; }
 
-.confirm-delete-btn { background-color: #f44336; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: var(--font-medium); }
+.confirm-delete-btn { background-color: light-dark(#e51b0d, #f44336); color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: var(--font-medium); }
 .confirm-delete-btn:hover:not(:disabled) { background-color: #d32f2f; }
-.confirm-deactivate-btn { background-color: #ff9800; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: var(--font-medium); }
+.confirm-deactivate-btn { background-color: light-dark(#a86400, #ff9800); color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: var(--font-medium); }
 .confirm-deactivate-btn:hover:not(:disabled) { background-color: #f57c00; }
 .confirm-cancel-btn { background-color: var(--bg-subtle); color: var(--text-primary); border: 1px solid var(--border-default); padding: 8px 16px; border-radius: 4px; cursor: pointer; }
 .confirm-cancel-btn:hover:not(:disabled) { background-color: var(--bg-muted); }

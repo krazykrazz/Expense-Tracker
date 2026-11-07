@@ -90,7 +90,7 @@
 .add-invoice-btn:hover:not(:disabled) {
   border-color: var(--color-primary);
   background-color: var(--color-primary-light);
-  color: var(--color-primary);
+  color: var(--color-primary-text);
   transform: translateY(-1px);
 }
 
@@ -355,19 +355,19 @@
 .view-btn:hover:not(:disabled) {
   background-color: var(--color-primary-light);
   border-color: var(--color-primary);
-  color: light-dark(var(--color-primary-hover), #7dd3fc);
+  color: light-dark(var(--color-primary-text-hover), #7dd3fc);
 }
 
 .replace-btn:hover:not(:disabled) {
   background-color: var(--color-warning-light);
   border-color: var(--color-warning);
-  color: light-dark(var(--color-warning-dark), #fbbf24);
+  color: light-dark(var(--color-warning-text), #fbbf24);
 }
 
 .delete-btn:hover:not(:disabled) {
   background-color: var(--color-negative-light);
   border-color: var(--color-negative);
-  color: light-dark(var(--color-negative-dark), #f87171);
+  color: light-dark(var(--color-negative-text), #f87171);
 }
 
 /* Delete Confirmation */
@@ -377,9 +377,9 @@
 }
 
 .confirm-delete-btn {
-  background-color: var(--color-negative);
+  background-color: var(--color-negative-strong);
   color: var(--text-inverse);
-  border-color: var(--color-negative);
+  border-color: var(--color-negative-strong);
 }
 
 .confirm-delete-btn:hover:not(:disabled) {
@@ -406,14 +406,14 @@
 
 .error-text {
   font-size: var(--text-xs);
-  color: light-dark(var(--color-negative-dark), #f87171);
+  color: light-dark(var(--color-negative-text), #f87171);
   flex: 1;
 }
 
 .error-close {
   background: none;
   border: none;
-  color: light-dark(var(--color-negative-dark), #f87171);
+  color: light-dark(var(--color-negative-text), #f87171);
   cursor: pointer;
   padding: 0;
   margin-left: var(--spacing-2);
@@ -658,5 +658,5 @@
 .person-selection.single-person .person-name-display {
   font-size: var(--text-sm);
   font-weight: var(--font-medium);
-  color: var(--color-primary);
+  color: var(--color-primary-text);
 }

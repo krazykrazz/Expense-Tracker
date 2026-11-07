@@ -197,20 +197,20 @@
   font-size: var(--text-xs);
   border: none;
   background: transparent;
-  color: var(--color-primary);
+  color: var(--color-primary-text);
 }
 
 .reset-btn:hover:not(:disabled) {
   background: var(--bg-muted);
-  color: light-dark(var(--color-primary-hover), #7dd3fc);
+  color: light-dark(var(--color-primary-text-hover), #7dd3fc);
   transform: none;
   box-shadow: none;
 }
 
 .download-btn {
-  background: var(--color-positive);
+  background: var(--color-positive-strong);
   color: var(--text-inverse);
-  border-color: var(--color-positive);
+  border-color: var(--color-positive-strong);
 }
 
 .download-btn:hover:not(:disabled) {
@@ -231,9 +231,9 @@
 
 /* Close Button - Requirement 5.5 */
 .close-btn {
-  background: var(--color-negative);
+  background: var(--color-negative-strong);
   color: var(--text-inverse);
-  border-color: var(--color-negative);
+  border-color: var(--color-negative-strong);
   font-size: var(--text-lg);
   font-weight: var(--font-bold);
   padding: var(--spacing-2) var(--spacing-3);
@@ -301,7 +301,7 @@
 
 .error-message h4 {
   margin: 0 0 var(--spacing-2) 0;
-  color: var(--color-negative);
+  color: var(--color-negative-text);
   font-size: var(--text-xl);
 }
 
@@ -312,9 +312,9 @@
 
 .retry-btn {
   padding: var(--spacing-2) var(--spacing-4);
-  background: var(--color-primary);
+  background: var(--color-primary-strong);
   color: var(--text-inverse);
-  border: 1px solid var(--color-primary);
+  border: 1px solid var(--color-primary-strong);
   border-radius: var(--radius-md);
   cursor: pointer;
   font-size: var(--text-base);
@@ -323,8 +323,8 @@
 }
 
 .retry-btn:hover {
-  background: var(--color-primary-hover);
-  border-color: var(--color-primary-hover);
+  background: var(--color-primary-strong-hover);
+  border-color: var(--color-primary-strong-hover);
   transform: translateY(-1px);
   box-shadow: var(--shadow-sm);
 }

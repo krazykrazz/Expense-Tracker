@@ -51,7 +51,7 @@
   }
 
   .mobile-tab-bar button.active {
-    color: var(--color-primary);
+    color: var(--color-primary-text);
   }
 
   .mobile-tab-bar button .tab-icon {
@@ -63,7 +63,7 @@
     position: absolute;
     top: 6px;
     right: calc(50% - 18px);
-    background: var(--color-negative);
+    background: var(--color-negative-strong);
     color: white;
     font-size: 10px;
     font-weight: var(--font-bold);

@@ -85,7 +85,7 @@
   justify-content: center;
   gap: var(--spacing-2);
   font-size: var(--text-sm);
-  color: light-dark(var(--color-warning-dark), #fbbf24);
+  color: light-dark(var(--color-warning-text), #fbbf24);
   font-weight: var(--font-medium);
 }
 
@@ -102,7 +102,7 @@
   background-color: var(--color-primary-light);
   border-radius: var(--radius-md);
   font-size: var(--text-sm);
-  color: light-dark(var(--color-primary-hover), #7dd3fc);
+  color: light-dark(var(--color-primary-text-hover), #7dd3fc);
   text-align: left;
 }
 
@@ -168,7 +168,7 @@
 }
 
 .data-sufficiency-feature.available .data-sufficiency-feature-status {
-  background-color: var(--color-positive);
+  background-color: var(--color-positive-strong);
   color: var(--text-inverse);
 }
 
@@ -263,7 +263,7 @@
   margin: 0;
   font-size: var(--text-base);
   font-weight: var(--font-medium);
-  color: light-dark(var(--color-primary-hover), #7dd3fc);
+  color: light-dark(var(--color-primary-text-hover), #7dd3fc);
 }
 
 /* Responsive Design */

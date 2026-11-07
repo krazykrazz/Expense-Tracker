@@ -219,13 +219,13 @@ describe('ActivityLogTable - Property-Based Tests', () => {
 
         // Verify the color matches the expected entity type color
         const expectedColors = {
-          expense: 'rgb(33, 150, 243)',        // #2196F3
+          expense: 'rgb(21, 101, 192)',        // #1565C0
           fixed_expense: 'rgb(156, 39, 176)',  // #9C27B0
-          loan: 'rgb(255, 152, 0)',            // #FF9800
-          investment: 'rgb(76, 175, 80)',      // #4CAF50
-          budget: 'rgb(0, 150, 136)',          // #009688
+          loan: 'rgb(194, 65, 12)',            // #C2410C
+          investment: 'rgb(46, 125, 50)',      // #2E7D32
+          budget: 'rgb(0, 121, 107)',          // #00796B
           payment_method: 'rgb(63, 81, 181)',  // #3F51B5
-          backup: 'rgb(96, 125, 139)'          // #607D8B
+          backup: 'rgb(84, 110, 122)'          // #546E7A
         };
 
         const expectedColor = expectedColors[entityType];

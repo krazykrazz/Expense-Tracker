@@ -74,7 +74,7 @@
 /* Error Display */
 .merchant-analytics-modal-error {
   background-color: var(--color-negative-light);
-  color: light-dark(var(--color-negative-dark), #f87171);
+  color: light-dark(var(--color-negative-text), #f87171);
   padding: var(--spacing-3);
   border-radius: var(--radius-md);
   margin-bottom: var(--spacing-4);
@@ -84,7 +84,7 @@
 .merchant-analytics-error-retry-button {
   margin-top: var(--spacing-3);
   padding: var(--spacing-2) var(--spacing-3);
-  background-color: var(--color-negative);
+  background-color: var(--color-negative-strong);
   color: var(--text-inverse);
   border: none;
   border-radius: var(--radius-md);
@@ -95,7 +95,7 @@
 }
 
 .merchant-analytics-error-retry-button:hover {
-  background-color: var(--color-negative-dark);
+  background-color: var(--color-negative-strong-hover);
   transform: translateY(-1px);
 }
 
@@ -183,7 +183,7 @@
 }
 
 .merchant-analytics-fixed-indicator {
-  color: var(--color-variable-expense);
+  color: light-dark(#6d28d9, var(--color-variable-expense));
   font-weight: var(--font-medium);
 }
 
@@ -193,7 +193,7 @@
   padding: var(--spacing-3);
   background-color: var(--color-primary-light);
   border-radius: var(--radius-md);
-  color: light-dark(var(--color-primary-hover), #7dd3fc);
+  color: light-dark(var(--color-primary-text-hover), #7dd3fc);
   font-size: var(--text-sm);
   text-align: center;
 }
@@ -263,7 +263,7 @@
   display: inline-block;
   padding: 2px var(--spacing-2);
   background-color: var(--color-positive-light);
-  color: light-dark(var(--color-positive-dark), #4ade80);
+  color: light-dark(var(--color-positive-text), #4ade80);
   font-size: var(--text-xs);
   font-weight: var(--font-medium);
   border-radius: var(--radius-full);
@@ -305,7 +305,7 @@
 
 .merchant-analytics-item:hover .merchant-analytics-item-arrow {
   transform: translateX(5px);
-  color: var(--color-primary);
+  color: var(--color-primary-text);
 }
 
 /* Responsive Design */
@@ -396,17 +396,17 @@
 
 /* Special styling for top merchants */
 .merchant-analytics-item:nth-child(1) .merchant-analytics-item-rank {
-  color: light-dark(#ffd700, hsl(51 80% 78%));
+  color: light-dark(#a16207, hsl(51 80% 78%));
   font-size: var(--text-2xl);
 }
 
 .merchant-analytics-item:nth-child(2) .merchant-analytics-item-rank {
-  color: #c0c0c0;
+  color: light-dark(#5f6e82, #c0c0c0);
   font-size: var(--text-xl);
 }
 
 .merchant-analytics-item:nth-child(3) .merchant-analytics-item-rank {
-  color: light-dark(#cd7f32, hsl(30 61% 78%));
+  color: light-dark(#9c6126, hsl(30 61% 78%));
   font-size: var(--text-xl);
 }
 

@@ -64,11 +64,11 @@
 
 /* Urgency coloring for Next Payment Date */
 .urgent {
-  color: var(--color-negative);
+  color: var(--color-negative-text);
 }
 
 .warning {
-  color: light-dark(var(--color-warning-dark), #fbbf24);
+  color: light-dark(var(--color-warning-text), #fbbf24);
 }
 
 /* ── Responsive: 2-column at 768px ─────────────────────────────────────────── */

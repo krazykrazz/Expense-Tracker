@@ -105,7 +105,7 @@
 /* Error Display */
 .total-debt-modal-error {
   background-color: var(--color-negative-light);
-  color: light-dark(var(--color-negative-dark), #f87171);
+  color: light-dark(var(--color-negative-text), #f87171);
   padding: var(--spacing-3) var(--spacing-4);
   margin: var(--spacing-4) var(--spacing-5);
   border-radius: var(--radius-md);
@@ -115,7 +115,7 @@
 }
 
 .total-debt-error-retry-button {
-  background-color: var(--color-negative);
+  background-color: var(--color-negative-strong);
   color: var(--text-inverse);
   border: none;
   padding: var(--spacing-2) var(--spacing-3);
@@ -127,7 +127,7 @@
 }
 
 .total-debt-error-retry-button:hover {
-  background-color: var(--color-negative-dark);
+  background-color: var(--color-negative-strong-hover);
   transform: translateY(-1px);
 }
 
@@ -173,7 +173,7 @@
 }
 
 .total-debt-reduction {
-  color: var(--color-positive);
+  color: var(--color-positive-text);
 }
 
 /* Chart - Requirement 2.1 */
@@ -314,11 +314,11 @@
 }
 
 .total-debt-change.negative {
-  color: var(--color-positive);
+  color: var(--color-positive-text);
 }
 
 .total-debt-change.positive {
-  color: var(--color-negative);
+  color: var(--color-negative-text);
 }
 
 .total-debt-change-percent {

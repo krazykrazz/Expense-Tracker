@@ -99,7 +99,7 @@
 
 .suggested-badge {
   padding: 2px var(--spacing-sm, 8px);
-  background-color: #4CAF50;
+  background-color: light-dark(#39843c, #4CAF50);
   color: white;
   border-radius: var(--radius-sm, 4px);
   font-size: 0.75rem;

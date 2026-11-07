@@ -87,15 +87,15 @@
 }
 
 .remaining-zero {
-  color: light-dark(#059669, hsl(161 80% 78%));
+  color: light-dark(#047d58, hsl(161 80% 78%));
 }
 
 .remaining-positive {
-  color: light-dark(#d97706, hsl(32 80% 78%));
+  color: light-dark(#a75c05, hsl(32 80% 78%));
 }
 
 .remaining-negative {
-  color: light-dark(#dc2626, hsl(0 72% 78%));
+  color: light-dark(#d52222, hsl(0 72% 78%));
 }
 
 /* Allocation Controls */
@@ -105,7 +105,7 @@
 }
 
 .split-equally-button {
-  background-color: #0ea5e9;
+  background-color: light-dark(#0b7caf, #0ea5e9);
   color: white;
   border: none;
   border-radius: 6px;
@@ -117,7 +117,7 @@
 }
 
 .split-equally-button:hover {
-  background-color: #0284c7;
+  background-color: light-dark(#027ab8, #0284c7);
 }
 
 /* Allocations List */
@@ -172,7 +172,7 @@
 .error-message {
   background-color: var(--bg-subtle);
   border: 1px solid light-dark(#fecaca, hsl(0 45% 32%));
-  color: light-dark(#dc2626, hsl(0 72% 78%));
+  color: light-dark(#d52222, hsl(0 72% 78%));
   padding: 12px;
   border-radius: 6px;
   font-size: 14px;
@@ -285,7 +285,7 @@
 }
 
 .expense-info-item.remaining-zero .info-value {
-  color: light-dark(#059669, hsl(161 80% 78%));
+  color: light-dark(#047d58, hsl(161 80% 78%));
 }
 
 .expense-info-item.remaining-positive {
@@ -293,7 +293,7 @@
 }
 
 .expense-info-item.remaining-positive .info-value {
-  color: light-dark(#d97706, hsl(32 80% 78%));
+  color: light-dark(#a75c05, hsl(32 80% 78%));
 }
 
 .expense-info-item.remaining-negative {
@@ -301,7 +301,7 @@
 }
 
 .expense-info-item.remaining-negative .info-value {
-  color: light-dark(#dc2626, hsl(0 72% 78%));
+  color: light-dark(#d52222, hsl(0 72% 78%));
 }
 
 /* Allocation header for insurance mode */

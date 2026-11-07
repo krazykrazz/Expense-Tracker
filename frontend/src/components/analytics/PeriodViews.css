@@ -112,7 +112,7 @@
 }
 
 .period-error p {
-  color: var(--color-negative);
+  color: var(--color-negative-text);
 }
 
 .period-refreshing {
@@ -137,7 +137,7 @@
 
 .period-retry-btn {
   padding: var(--spacing-2) var(--spacing-4);
-  background-color: var(--color-primary);
+  background-color: var(--color-primary-strong);
   color: var(--text-inverse);
   border: none;
   border-radius: var(--radius-md);
@@ -200,7 +200,7 @@
 
 .period-stat-value.negative,
 .pl-amount.negative {
-  color: light-dark(var(--color-negative-dark), #f87171);
+  color: light-dark(var(--color-negative-text), #f87171);
 }
 
 :root[data-theme='dark'] .period-stat-value.positive,

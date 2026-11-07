@@ -211,7 +211,7 @@
   padding: var(--spacing-3, 12px) var(--spacing-4, 16px);
   font-size: var(--text-base, 14px);
   font-family: var(--font-sans);
-  background: linear-gradient(135deg, var(--color-negative, #ef4444) 0%, var(--color-negative-dark, #dc2626) 100%);
+  background: linear-gradient(135deg, var(--color-negative-strong) 0%, var(--color-negative-strong-hover) 100%);
   color: var(--text-inverse, white);
   border: none;
   border-radius: var(--radius-md, 8px);
@@ -235,7 +235,7 @@
 }
 
 .clear-filters-button:hover {
-  background: linear-gradient(135deg, var(--color-negative-dark, #dc2626) 0%, #b91c1c 100%);
+  background: linear-gradient(135deg, var(--color-negative-strong-hover) 0%, #b91c1c 100%);
   box-shadow: var(--shadow-md);
   transform: translateY(-1px);
 }

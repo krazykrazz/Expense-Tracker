@@ -1215,6 +1215,13 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v1.22.0</div>
+                <div className="changelog-date">November 7, 2026</div>
+                <ul className="changelog-items">
+                  <li>Log in again asks the bank for fresh data and opens the login only when the bank needs one; the summary hides inactive payment methods with no spending that month; bank transactions keep the Plaid category</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v1.21.4</div>
                 <div className="changelog-date">November 6, 2026</div>
                 <ul className="changelog-items">

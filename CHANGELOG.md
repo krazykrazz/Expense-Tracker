@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.22.0] - 2026-11-07
+
+### Log in again asks the bank for fresh data and opens the login only when the bank needs one; the summary hides inactive payment methods with no spending that month; bank transactions keep the Plaid category
+
 ## [1.21.4] - 2026-11-06
 
 ### Log in again for banks that only update after a login, plus fixes from the bank import audit

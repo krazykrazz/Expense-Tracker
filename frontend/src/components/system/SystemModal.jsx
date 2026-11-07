@@ -452,6 +452,16 @@ const SystemModal = () => {
           <div className="changelog">
             <div className="changelog-entry">
               <div className="changelog-version">
+                v1.22.0
+                {isCurrentVersion('v1.22.0') && <span className="current-version-badge">Current Version</span>}
+              </div>
+              <div className="changelog-date">November 7, 2026</div>
+              <ul className="changelog-items">
+                <li>Log in again asks the bank for fresh data and opens the login only when the bank needs one; the summary hides inactive payment methods with no spending that month; bank transactions keep the Plaid category</li>
+              </ul>
+            </div>
+            <div className="changelog-entry">
+              <div className="changelog-version">
                 v1.21.4
                 {isCurrentVersion('v1.21.4') && <span className="current-version-badge">Current Version</span>}
               </div>

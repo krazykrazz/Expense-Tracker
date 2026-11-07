@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.23.0',
+    date: 'November 7, 2026',
+    added: [],
+    changed: ['Record credit card payments from the Import Inbox: a payment paid from a bank account and received on the card becomes one payment, with the paying debit linked. Also fixes payment reminders not clearing after a statement is paid, the payment form defaulting to tomorrow in the evening, and bank syncs colliding with payments'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.22.0',
     date: 'November 7, 2026',
     added: [],

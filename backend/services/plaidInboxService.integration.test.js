@@ -308,13 +308,70 @@ describe('plaidInboxService', () => {
       expect(await expenseRow(expenseId)).toEqual({ date: '2026-10-31', posted_date: '2026-11-02' });
     });
 
-    test('posted the same day as the purchase clears an estimate (no posted date)', async () => {
-      const expenseId = await cardExpense({ posted_date: '2026-11-02' });
-      const id = await cardRow({ date: '2026-10-31', authorizedDate: null });
+    // A bank that reports real posting dates: a settled row posted a day after it was authorized, none on a weekend
+    const provePostingDates = () => stage('proof', { accountId: cardAccountId, amount: 5, date: '2026-10-20', authorizedDate: '2026-10-19' });
+
+    test('posted the same day as the purchase clears an estimate when the bank reports real posting dates', async () => {
+      await provePostingDates();
+      const expenseId = await cardExpense({ date: '2026-10-30', posted_date: '2026-11-02' });
+      const id = await cardRow({ date: '2026-10-30', authorizedDate: null });
 
       await plaidInboxService.matchToExpense(id, expenseId);
 
-      expect(await expenseRow(expenseId)).toEqual({ date: '2026-10-31', posted_date: null });
+      expect(await expenseRow(expenseId)).toEqual({ date: '2026-10-30', posted_date: null });
+    });
+
+    test('a same-day bank date keeps the posted date you entered when the bank sends purchase dates (weekend dates)', async () => {
+      await provePostingDates();
+      await stage('saturday', { accountId: cardAccountId, amount: 9, date: '2026-10-31', authorizedDate: null });
+      const expenseId = await cardExpense({ date: '2026-10-30', posted_date: '2026-11-02' });
+      const id = await cardRow({ date: '2026-10-30', authorizedDate: null });
+
+      const result = await plaidInboxService.matchToExpense(id, expenseId);
+
+      expect(await expenseRow(expenseId)).toEqual({ date: '2026-10-30', posted_date: '2026-11-02' });
+      expect(result.postedDateUpdated).toBe(false);
+    });
+
+    test('a same-day bank date keeps the posted date you entered when the bank never shows a later posting date', async () => {
+      const expenseId = await cardExpense({ date: '2026-10-30', posted_date: '2026-11-02' });
+      const id = await cardRow({ date: '2026-10-30', authorizedDate: null });
+
+      await plaidInboxService.matchToExpense(id, expenseId);
+
+      expect(await expenseRow(expenseId)).toEqual({ date: '2026-10-30', posted_date: '2026-11-02' });
+    });
+
+    test('a bank date later than the purchase date is used even when the bank sends purchase dates', async () => {
+      await stage('saturday', { accountId: cardAccountId, amount: 9, date: '2026-10-31', authorizedDate: null });
+      const expenseId = await cardExpense({ date: '2026-10-30', posted_date: '2026-11-04' });
+      const id = await cardRow({ date: '2026-11-02', authorizedDate: null });
+
+      await plaidInboxService.matchToExpense(id, expenseId);
+
+      expect(await expenseRow(expenseId)).toEqual({ date: '2026-10-30', posted_date: '2026-11-02' });
+    });
+
+    test('settling keeps an entered posted date when the settled date is just the purchase date from a bank that sends those', async () => {
+      await stage('saturday', { accountId: cardAccountId, amount: 9, date: '2026-10-31', authorizedDate: null });
+      const expenseId = await cardExpense({ date: '2026-10-30', posted_date: '2026-11-02' });
+      const id = await cardRow({ date: '2026-10-30', authorizedDate: null });
+
+      await plaidInboxService.applySettlements([
+        { plaidTransactionId: id, expenseId, settled: true, previousAmount: 35.54, amount: 35.54, postedDate: '2026-10-30' }
+      ]);
+
+      expect(await expenseRow(expenseId)).toEqual({ date: '2026-10-30', posted_date: '2026-11-02' });
+    });
+
+    test('rows imported from a file do not decide whether the bank reports posting dates', async () => {
+      await stage('file:abc', { accountId: cardAccountId, amount: 5, date: '2026-10-20', authorizedDate: '2026-10-19' });
+      const expenseId = await cardExpense({ date: '2026-10-30', posted_date: '2026-11-02' });
+      const id = await cardRow({ date: '2026-10-30', authorizedDate: null });
+
+      await plaidInboxService.matchToExpense(id, expenseId);
+
+      expect(await expenseRow(expenseId)).toEqual({ date: '2026-10-30', posted_date: '2026-11-02' });
     });
 
     test('a bank date before the purchase date is ignored, and an agreeing date is left as is', async () => {

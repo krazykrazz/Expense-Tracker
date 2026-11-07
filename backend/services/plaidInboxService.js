@@ -34,10 +34,14 @@ const monthIndexOf = (date) => Number(date.slice(0, 4)) * 12 + Number(date.slice
  * posted date replaces whatever the expense had (a hand-set estimate included), because statements are built
  * from it. One equal to the purchase date is stored as none (same thing, and no marker in the expense list);
  * one before it is ignored, since an expense can't post before it was made.
+ * Exception: a bank date equal to the purchase date says nothing when the bank doesn't report real posting
+ * dates (`bankDatesAreReal` false: Wealthsimple sends the purchase date, often a weekend), so a posted date
+ * already on the expense is kept rather than wiped.
  * @returns {{posted_date: (string|null)}|null} the change, or null when the expense already agrees
  */
-const postedDateChange = (expense, bankPostedDate) => {
+const postedDateChange = (expense, bankPostedDate, bankDatesAreReal = true) => {
   if (!bankPostedDate || bankPostedDate < expense.date) return null;
+  if (bankPostedDate === expense.date && !bankDatesAreReal) return null;
   const wanted = bankPostedDate === expense.date ? null : bankPostedDate;
   return wanted === (expense.posted_date || null) ? null : { posted_date: wanted };
 };
@@ -349,7 +353,7 @@ class PlaidInboxService {
       // Best effort: the match stands even when the posted date can't be updated (it is logged either way)
       let postedDate;
       if (!txn.pending && txn.paymentMethodType === 'credit_card') {
-        const change = postedDateChange(expense, txn.date);
+        const change = postedDateChange(expense, txn.date, await this._bankDatesAreReal(txn, expense));
         if (change) {
           try {
             await expenseService.updateExpense(expense.id, { ...expense, ...change });
@@ -522,6 +526,15 @@ class PlaidInboxService {
   }
 
   /**
+   * Does this transaction's bank report real posting dates? Only asked when it matters: the bank's date equals
+   * the purchase date and the expense already has a posted date to keep or replace.
+   */
+  async _bankDatesAreReal(txn, expense) {
+    if (!expense.posted_date || txn.date !== expense.date || !txn.plaidAccountId) return true;
+    return plaidRepository.bankReportsPostingDates(txn.plaidAccountId);
+  }
+
+  /**
    * Bring expenses created from (or matched to) a pending charge in line with the bank once it settled, or
    * when its pending amount changed:
    * - the amount follows the bank only if the expense still has the previous bank amount; an amount edited
@@ -551,7 +564,7 @@ class PlaidInboxService {
         // The expense's own payment method decides: after a reconnect the bank account may not be mapped yet
         const isCard = expense.payment_method_type === 'credit_card' || txn.paymentMethodType === 'credit_card';
         if (s.settled && isCard) {
-          Object.assign(changes, postedDateChange(expense, s.postedDate));
+          Object.assign(changes, postedDateChange(expense, s.postedDate, await this._bankDatesAreReal(txn, expense)));
         }
         if (Object.keys(changes).length > 0) {
           await expenseService.updateExpense(expense.id, { ...expense, ...changes });

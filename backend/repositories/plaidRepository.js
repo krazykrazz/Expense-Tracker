@@ -842,6 +842,22 @@ class PlaidRepository {
     });
   }
 
+  /**
+   * Does the bank behind this account report real posting dates? Yes when its settled transactions show a date
+   * later than the authorization date (CIBC) and none falls on a weekend (a bank never posts then: Wealthsimple
+   * sends the purchase date for most charges). Rows imported from a file are left out.
+   */
+  async bankReportsPostingDates(plaidAccountId) {
+    const row = await dbHelper.queryOne(
+      `SELECT COALESCE(SUM(authorized_date IS NOT NULL AND date > authorized_date), 0) AS later,
+              COALESCE(SUM(CAST(strftime('%w', date) AS INTEGER) IN (0, 6)), 0) AS weekend
+       FROM plaid_transactions
+       WHERE plaid_account_id = ? AND pending = 0 AND transaction_id NOT LIKE 'file:%'`,
+      [plaidAccountId]
+    );
+    return row.later > 0 && row.weekend === 0;
+  }
+
   async findMappedCardAccounts(environment) {
     return dbHelper.queryAll(
       `SELECT pa.id, pa.plaid_item_id AS plaidItemId, pa.name, pa.mask, pa.payment_method_id AS paymentMethodId,

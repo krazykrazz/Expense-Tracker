@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { importBankFile } from '../../services/plaidApi';
 import './BankImport.css';
 
@@ -20,20 +20,32 @@ const BankFileImport = ({ account, onImported, onClose }) => {
   const [preview, setPreview] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+  // Only the latest preview may update the panel, and nothing after it closed
+  const requestRef = useRef(0);
+  const mountedRef = useRef(true);
+  useEffect(() => () => { mountedRef.current = false; }, []);
 
   const runPreview = async (text, from) => {
+    const request = ++requestRef.current;
     setBusy(true);
     setError(null);
     try {
       const result = await importBankFile(account.id, { csv: text, fromDate: from, dryRun: true });
+      if (!mountedRef.current || request !== requestRef.current) return;
       setPreview(result);
       setFromDate(result.fromDate);
     } catch (err) {
+      if (!mountedRef.current || request !== requestRef.current) return;
       setPreview(null);
       setError(err.message);
     } finally {
-      setBusy(false);
+      if (mountedRef.current && request === requestRef.current) setBusy(false);
     }
+  };
+
+  /** Preview again once a different start date has been entered (not on every keystroke). */
+  const commitFromDate = () => {
+    if (fromDate && preview && fromDate !== preview.fromDate) runPreview(csv, fromDate);
   };
 
   const handleFile = async (event) => {
@@ -46,12 +58,18 @@ const BankFileImport = ({ account, onImported, onClose }) => {
       return;
     }
     const text = await file.text();
+    if (!mountedRef.current) return;
     setCsv(text);
     setFileName(file.name);
     await runPreview(text, undefined);
   };
 
   const handleImport = async () => {
+    // A start date typed but not previewed yet: show what it would import first
+    if (preview && fromDate !== preview.fromDate) {
+      await runPreview(csv, fromDate);
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -60,6 +78,7 @@ const BankFileImport = ({ account, onImported, onClose }) => {
       if (result.updated > 0) parts.push(`${result.updated} updated${result.settled > 0 ? ` (${result.settled} settled)` : ''}`);
       onImported(`Imported ${fileName}: ${parts.join(', ')}.`);
     } catch (err) {
+      if (!mountedRef.current) return;
       setError(err.message);
       setBusy(false);
     }
@@ -92,14 +111,13 @@ const BankFileImport = ({ account, onImported, onClose }) => {
             <input
               type="date"
               value={fromDate}
-              onChange={(event) => {
-                setFromDate(event.target.value);
-                if (event.target.value) runPreview(csv, event.target.value);
-              }}
-              disabled={busy}
+              onChange={(event) => setFromDate(event.target.value)}
+              onBlur={commitFromDate}
+              onKeyDown={(event) => { if (event.key === 'Enter') commitFromDate(); }}
               aria-label="Import from date"
             />
           </label>
+          {fromDate !== preview.fromDate && <div className="bank-import-muted">Press Enter or leave the field to update the preview.</div>}
           <ul>
             {preview.beforeFrom > 0 && <li>{plural(preview.beforeFrom, 'row')} before then: skipped{preview.fromDate === preview.defaultFromDate ? ' (already in the tracker from before the bank was connected)' : ''}</li>}
             {preview.alreadyFromBank > 0 && <li>{preview.alreadyFromBank} already received from the bank: skipped</li>}

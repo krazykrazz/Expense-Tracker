@@ -50,6 +50,8 @@ beforeAll(async () => {
 
 afterAll(() => cleanupIsolatedTestDb(db));
 
+afterEach(() => jest.restoreAllMocks());
+
 beforeEach(async () => {
   activityLogService.logEvent.mockClear();
   await run('DELETE FROM plaid_fixed_expense_links');
@@ -203,6 +205,27 @@ describe('plaidInboxService', () => {
       const id = await stage('t1', { accountId: unmappedAccountId });
       await expect(plaidInboxService.addAsExpense(id, { type: 'Other' })).rejects.toMatchObject({ statusCode: 400 });
     });
+
+    test('undoes the expense when a sync changed the bank row meanwhile', async () => {
+      const plaidRepository = require('../repositories/plaidRepository');
+      const id = await stage('t1');
+      jest.spyOn(plaidRepository, 'resolveTransaction').mockResolvedValueOnce(false);
+
+      await expect(plaidInboxService.addAsExpense(id, { type: 'Dining Out' })).rejects.toMatchObject({ statusCode: 409 });
+
+      expect((await get('SELECT COUNT(*) AS n FROM expenses')).n).toBe(0);
+      expect(activityLogService.logEvent).not.toHaveBeenCalledWith('plaid_transaction_updated', expect.anything(), expect.anything(), expect.anything(), expect.objectContaining({ action: 'add' }));
+    });
+
+    test('a database error is a server error, not bad input', async () => {
+      const id = await stage('t1');
+      jest.spyOn(expenseService, 'createExpense').mockRejectedValueOnce(Object.assign(new Error('SQLITE_BUSY: database is locked'), { code: 'SQLITE_BUSY' }));
+
+      const err = await plaidInboxService.addAsExpense(id, { type: 'Dining Out' }).catch(e => e);
+
+      expect(err.statusCode).toBeUndefined();
+      expect((await get('SELECT status FROM plaid_transactions WHERE id = ?', [id])).status).toBe('new');
+    });
   });
 
   describe('matchToExpense', () => {
@@ -242,6 +265,17 @@ describe('plaidInboxService', () => {
   });
 
   describe('ignore / unignore', () => {
+    test('match and ignore fail with 409 instead of claiming success when a sync changed the row meanwhile', async () => {
+      const plaidRepository = require('../repositories/plaidRepository');
+      const expenseId = await addExpense();
+      const id = await stage('t1');
+      jest.spyOn(plaidRepository, 'resolveTransaction').mockResolvedValueOnce(false).mockResolvedValueOnce(false);
+
+      await expect(plaidInboxService.matchToExpense(id, expenseId)).rejects.toMatchObject({ statusCode: 409 });
+      await expect(plaidInboxService.ignore(id)).rejects.toMatchObject({ statusCode: 409 });
+      expect(activityLogService.logEvent).not.toHaveBeenCalled();
+    });
+
     test('round-trips between the inbox and the ignored list', async () => {
       const id = await stage('t1');
 
@@ -516,6 +550,22 @@ describe('plaidInboxService', () => {
 
       const { expense } = await plaidInboxService.addAsExpense(charge, { type: 'Housing' });
       expect(expense).toMatchObject({ amount: 1500, date: '2026-10-11', posted_date: null });
+    });
+
+    test('a settled charge whose expense cannot be updated is reported in the activity log', async () => {
+      const id = await stage('p-fail', { accountId: cardAccountId, amount: 40, date: '2026-10-12', authorizedDate: '2026-10-10' });
+      const { expense } = await plaidInboxService.addAsExpense(id, { type: 'Other' });
+      jest.spyOn(expenseService, 'updateExpense').mockRejectedValueOnce(new Error('Expense date is locked'));
+
+      await plaidInboxService.applySettlements([
+        { plaidTransactionId: id, expenseId: expense.id, settled: true, previousAmount: 40, amount: 46, postedDate: '2026-10-12' }
+      ]);
+
+      expect(activityLogService.logEvent).toHaveBeenCalledWith(
+        'plaid_transaction_updated', 'plaid_transaction', id,
+        expect.stringMatching(/settled, but its expense could not be updated \(Expense date is locked\)\. Check its amount and posted date \(2026-10-12\)/),
+        expect.objectContaining({ action: 'settle_failed', expenseId: expense.id })
+      );
     });
   });
 

@@ -22,7 +22,7 @@ const STATUS_HELP = {
   needs_login: 'The bank needs you to log in again. Reconnect keeps this connection: no new Trial slot, nothing re-imported. Automatic sync is paused until then.',
   gone: 'The bank or Plaid no longer recognises this connection. Disconnect it, then connect the bank again.',
   error: 'Usually temporary at the bank; automatic sync keeps retrying.',
-  stale: 'The app syncs fine, but Plaid hasn\'t received new data from this bank for over 12 hours. That\'s between Plaid and the bank: it catches up on its own and nothing is lost. Don\'t disconnect.'
+  stale: 'The app syncs fine, but Plaid hasn\'t received new data from this bank for over 12 hours. Some banks (CIBC) only send new data when you log in: use Log in again (same connection, no new Trial slot), or import a file. Don\'t disconnect.'
 };
 
 /** Plaid's view of the bank, shown only when it isn't healthy (its status data isn't always reliable). */
@@ -72,6 +72,8 @@ const BankConnections = ({ status, onStatusChange }) => {
   const [linkToken, setLinkToken] = useState(null);
   // Bank account whose "Import file" panel is open
   const [importAccountId, setImportAccountId] = useState(null);
+  // Account whose payment-method mapping is being saved (its select is locked so changes can't race)
+  const [mappingId, setMappingId] = useState(null);
   // Bank being repaired through Plaid update mode (null when connecting a new bank)
   const reconnectItemRef = useRef(null);
 
@@ -118,9 +120,15 @@ const BankConnections = ({ status, onStatusChange }) => {
       if (reconnecting) {
         // Update mode: same connection, nothing to exchange
         const { item, sync } = await reconnectBank(reconnecting.id);
-        setMessage(sync && sync.error
-          ? `Reconnected ${item.institutionName}, but the first sync failed: ${sync.error}`
-          : `Reconnected ${item.institutionName}. Transactions are syncing again.`);
+        const verb = reconnecting.status === 'needs_login' ? 'Reconnected' : 'Logged in to';
+        if (sync && sync.error) {
+          setMessage(`${verb} ${item.institutionName}, but the first sync failed: ${sync.error}`);
+        } else if (reconnecting.status === 'needs_login') {
+          setMessage(`Reconnected ${item.institutionName}. Transactions are syncing again.`);
+        } else {
+          const got = sync ? (sync.added || 0) + (sync.updated || 0) : 0;
+          setMessage(`Logged in to ${item.institutionName}: ${got > 0 ? `${got} new or updated transaction${got === 1 ? '' : 's'}` : 'nothing new yet. Plaid may take a few minutes to fetch; Sync now later, or import a file'}.`);
+        }
       } else {
         const item = await connectBank(publicToken, metadata?.institution?.name);
         setMessage(`Connected ${item.institutionName}. Choose a payment method for each account, then Sync now.`);
@@ -157,12 +165,15 @@ const BankConnections = ({ status, onStatusChange }) => {
     }
     setError(null);
     setMessage(null);
+    setBusy(true);
     try {
       reconnectItemRef.current = null;
       const { linkToken: token } = await createLinkToken();
       setLinkToken(token);
     } catch (err) {
       setError(err.message);
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -170,12 +181,15 @@ const BankConnections = ({ status, onStatusChange }) => {
   const handleReconnect = async (item) => {
     setError(null);
     setMessage(null);
+    setBusy(true);
     try {
       const { linkToken: token } = await createLinkToken(item.id);
       reconnectItemRef.current = item;
       setLinkToken(token);
     } catch (err) {
       setError(err.message);
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -196,6 +210,7 @@ const BankConnections = ({ status, onStatusChange }) => {
 
   const handleMap = async (accountId, value) => {
     setError(null);
+    setMappingId(accountId);
     try {
       const updated = await mapBankAccount(accountId, value === '' ? null : Number(value));
       setItems(prev => prev.map(item => ({
@@ -204,6 +219,8 @@ const BankConnections = ({ status, onStatusChange }) => {
       })));
     } catch (err) {
       setError(err.message);
+    } finally {
+      setMappingId(null);
     }
   };
 
@@ -283,6 +300,16 @@ const BankConnections = ({ status, onStatusChange }) => {
                     Reconnect
                   </button>
                 )}
+                {item.status === 'stale' && (
+                  <button
+                    className="bank-import-primary"
+                    onClick={() => handleReconnect(item)}
+                    disabled={busy || Boolean(linkToken)}
+                    title="Log in to the bank again on this connection (no new Trial slot). For banks such as CIBC, Plaid only gets new data when you log in."
+                  >
+                    Log in again
+                  </button>
+                )}
                 <button className="bank-import-link-danger" onClick={() => handleDisconnect(item)} disabled={busy}>
                   Disconnect
                 </button>
@@ -312,6 +339,7 @@ const BankConnections = ({ status, onStatusChange }) => {
                       className="bank-account-mapping"
                       value={account.paymentMethodId ?? ''}
                       onChange={(event) => handleMap(account.id, event.target.value)}
+                      disabled={mappingId === account.id}
                       aria-label={`Payment method for ${account.name}`}
                     >
                       <option value="">Don&apos;t import</option>

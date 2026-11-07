@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.21.4',
+    date: 'November 6, 2026',
+    added: [],
+    changed: ['Log in again for banks that only update after a login, plus fixes from the bank import audit'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.21.3',
     date: 'November 6, 2026',
     added: [],

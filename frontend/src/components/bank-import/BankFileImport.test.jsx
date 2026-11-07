@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import BankFileImport from './BankFileImport';
 import { importBankFile } from '../../services/plaidApi';
 
@@ -42,16 +42,42 @@ describe('BankFileImport', () => {
     expect(importBankFile).toHaveBeenLastCalledWith(7, { csv: 'header\nrow', fromDate: '2026-10-03', dryRun: false });
   });
 
-  it('previews again when the start date changes', async () => {
+  it('previews again once a new start date is entered, not on every keystroke', async () => {
     importBankFile.mockResolvedValueOnce(preview).mockResolvedValueOnce({ ...preview, fromDate: '2026-11-01', beforeFrom: 160, alreadyFromBank: 2, added: 4 });
     render(<BankFileImport account={account} onImported={vi.fn()} onClose={vi.fn()} />);
     chooseFile(csvFile());
     await screen.findByTestId('bank-file-import-preview');
+    const dateInput = screen.getByLabelText('Import from date');
 
-    fireEvent.change(screen.getByLabelText('Import from date'), { target: { value: '2026-11-01' } });
+    fireEvent.change(dateInput, { target: { value: '2026-11-01' } });
+    expect(importBankFile).toHaveBeenCalledTimes(1);
+    expect(dateInput).not.toBeDisabled();
+    fireEvent.blur(dateInput);
 
     await waitFor(() => expect(importBankFile).toHaveBeenLastCalledWith(7, expect.objectContaining({ fromDate: '2026-11-01', dryRun: true })));
     expect(await screen.findByText(/160 rows before then: skipped$/)).toBeInTheDocument();
+  });
+
+  it('ignores a slower, older preview that arrives after a newer one', async () => {
+    let resolveOld;
+    importBankFile
+      .mockResolvedValueOnce(preview)
+      .mockImplementationOnce(() => new Promise(resolve => { resolveOld = resolve; }))
+      .mockResolvedValueOnce({ ...preview, fromDate: '2026-11-01', beforeFrom: 160 });
+    render(<BankFileImport account={account} onImported={vi.fn()} onClose={vi.fn()} />);
+    chooseFile(csvFile());
+    await screen.findByTestId('bank-file-import-preview');
+    const dateInput = screen.getByLabelText('Import from date');
+
+    fireEvent.change(dateInput, { target: { value: '2026-10-20' } });
+    fireEvent.keyDown(dateInput, { key: 'Enter' });
+    fireEvent.change(dateInput, { target: { value: '2026-11-01' } });
+    fireEvent.keyDown(dateInput, { key: 'Enter' });
+    expect(await screen.findByText(/160 rows before then: skipped$/)).toBeInTheDocument();
+
+    await act(async () => resolveOld({ ...preview, fromDate: '2026-10-20', beforeFrom: 99 }));
+    expect(screen.getByText(/160 rows before then: skipped$/)).toBeInTheDocument();
+    expect(dateInput).toHaveValue('2026-11-01');
   });
 
   it('says when there is nothing new, and shows what the server refused', async () => {

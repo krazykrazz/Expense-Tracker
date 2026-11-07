@@ -1,8 +1,10 @@
 # Budget Plan Integration: planned savings across the tracker
 
+> **Status: complete.** Shipped in v1.13.0 (commit 100d501); archived 2026-11-07.
+
 ## Summary
 
-Follow-up to `specs/budget-plan/`. Planned savings (budget allocations) only appeared on the Plan tab and the main-screen Balance card. This spec puts them next to actual savings wherever the app reports results, and warns when the plan does not fit the income. Allocations stay **plan only**: they are never counted as spending, Cash Flow "Saved" or Balance.
+Follow-up to [budget-plan](../budget-plan/spec.md). Planned savings (budget allocations) only appeared on the Plan tab and the main-screen Balance card. This spec puts them next to actual savings wherever the app reports results, and warns when the plan does not fit the income. Allocations stay **plan only**: they are never counted as spending, Cash Flow "Saved" or Balance.
 
 ## Requirements
 
@@ -38,4 +40,4 @@ Follow-up to `specs/budget-plan/`. Planned savings (budget allocations) only app
 - [x] Frontend: Cash Flow, Annual Summary card, History table + CSV, copy hooks, over-planned banner, `openBudgets` tab
 - [x] Frontend tests: PeriodAnalyticsPanel, AnnualSummary, BudgetsModal, SummaryPanel, Income/FixedExpenses modals, ModalContext, `budgetApi`
 - [x] Docs: API_DOCUMENTATION, ANALYTICS_HUB, ENHANCED_ANNUAL_SUMMARY, BUDGET_MANAGEMENT_GUIDE, USER_GUIDE
-- [ ] Full-suite validation: `.\scripts\run-test-summary.ps1`; then move this spec to `specs/archive/`
+- [x] Full-suite validation: `.\scripts\run-test-summary.ps1` (validated on main 2026-11-07: 3925 passed; 2 PBT suites timed out under parallel load (activityLogService.cleanup, schema) and passed when re-run alone); spec moved to `specs/archive/`

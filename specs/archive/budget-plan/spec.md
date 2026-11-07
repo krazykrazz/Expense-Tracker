@@ -1,5 +1,7 @@
 # Budget Plan: savings/investment allocations and remaining money
 
+> **Status: complete.** Shipped in v1.13.0 (commit 429cad8); archived 2026-11-07. Follow-up: [budget-plan-integration](../budget-plan-integration/spec.md). Contribution tracking (did the planned saving happen?) is planned in [plaid-bank-sync 3.3](../../plaid-bank-sync/spec.md).
+
 ## Summary
 
 Budgets are per-category spending caps. This feature adds a **monthly plan**: income − fixed expenses − category budgets − savings/investment allocations = **Unassigned**, so the user can budget RRSP/TFSA/emergency savings and see what that leaves.
@@ -68,5 +70,5 @@ Glossary: *Remaining / Over budget* = category limits − spent (Manage). *Unass
 - [x] Allocation repository/service, plan service, controller/routes, aggregation field + tests
 - [x] Frontend API layer, `useCarryForward`, Manage-tab fix, Plan tab, Balance line, delete dead panel + tests
 - [x] Docs: DATABASE_SCHEMA, API_DOCUMENTATION, ACTIVITY_LOG, BUDGET_MANAGEMENT_GUIDE, USER_GUIDE, README
-- [ ] Changelog entries are added by the Release workflow (versions are not bumped on feature branches)
-- [ ] Full-suite validation: `.\scripts\run-test-summary.ps1`; then move this spec to `specs/archive/`
+- [x] Changelog entries are added by the Release workflow (versions are not bumped on feature branches): shipped in **v1.13.0**
+- [x] Full-suite validation: `.\scripts\run-test-summary.ps1` (validated on main 2026-11-07: 3925 passed; 2 PBT suites timed out under parallel load (activityLogService.cleanup, schema) and passed when re-run alone); spec moved to `specs/archive/`

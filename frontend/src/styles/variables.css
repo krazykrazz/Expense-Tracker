@@ -7,6 +7,11 @@
  */
 
 :root {
+  /* light-dark() follows this. It must be declared in CSS (not only set from JS): the production build's
+     CSS minifier (Lightning CSS) rewrites light-dark() for older browsers and only defines the variables
+     that rewrite depends on where it sees a color-scheme declaration. */
+  color-scheme: light;
+
   /* ============================================
      SPACING SCALE
      Modern 4px base with expanded range
@@ -287,6 +292,7 @@
 }
 
 :root[data-theme='dark'] {
+   color-scheme: dark;
    --bg-page: #020617;
    --bg-card: #0f172a;
    --bg-card-hover: #16233a;

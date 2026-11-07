@@ -243,6 +243,12 @@ A notification row ends up with about **215px on desktop and 165px on tablet**.
   label collapse to zero width and overlap them; that was the banner-overlap bug.
 
 **Checking a view for real (UI and dark theme):**
+- **CSS changes must also be checked on a production build** (`vite build` then `vite preview`). The
+  production minifier (Lightning CSS) rewrites `light-dark()` into `var(--lightningcss-light, a)
+  var(--lightningcss-dark, b)` and only defines those variables where CSS declares `color-scheme`. The
+  app set `color-scheme` from JS only, so in 1.21.2–1.24.3 every `light-dark()` declaration was invalid in
+  production (headers lost their gradients and white text vanished) while the dev server looked fine.
+  Fixed by declaring `color-scheme` in `variables.css`. Check: built CSS has `--lightningcss-light:` defined.
 - Run the dev servers on a throwaway COPY of production data: `VACUUM INTO` inside the
   container, `docker cp` it under the session folder, point `CONFIG_DIR` at it. In the copy,
   delete the `plaid_client_id`/`plaid_secret_enc`/`plaid_environment` settings (the secret

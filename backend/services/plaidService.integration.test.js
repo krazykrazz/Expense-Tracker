@@ -850,7 +850,7 @@ describe('plaidService', () => {
       expect(await expenseOf(expenseId)).toEqual({ amount: 48, date: '2026-10-10', posted_date: '2026-10-12' });
       expect(activityLogService.logEvent).toHaveBeenCalledWith(
         'plaid_transaction_updated', 'plaid_transaction', rowId,
-        expect.stringMatching(/settled: \$40\.00 → \$48\.00, expense updated$/),
+        expect.stringMatching(/settled: \$40\.00 → \$48\.00, expense updated; posted date 2026-10-12$/),
         expect.objectContaining({ action: 'settled', amountUpdated: true })
       );
     });

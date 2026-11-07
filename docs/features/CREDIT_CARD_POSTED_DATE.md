@@ -62,6 +62,21 @@ When a credit card payment method is selected:
 - Pending transactions (NULL posted_date with future date) are excluded
 - Current balance accurately matches credit card statement
 
+### Expense List
+
+The posted date takes no space in a row. Hover the payment method pill to read it ("Posted Nov 2, 2026", and "(from the bank)" when the expense is linked to a settled bank transaction).
+
+The one case that decides which bill an expense is on gets a small marker next to the pill: an expense that **posts on a later statement than it was made in**, such as a purchase on the last day of the cycle that posts two days later (**→ Nov 2**). Hovering it says which statement it falls on. This needs the card's **billing cycle day** (the day the statement closes); a card without one never shows the marker. A cycle runs from the day after the close day of one month to the close day of the next (a close day of 31 means the last day of shorter months), the same as the billing cycles.
+
+### Bank Import
+
+When an expense is linked to a settled credit card transaction in Bank Import, its posted date **follows the bank**, because statements are built from it:
+- **Add** from the inbox stores the bank's posting date when it is later than the purchase date.
+- **Match** to an expense you entered sets the posted date to the bank's, replacing an estimate (including the one the form suggests).
+- A **pending charge that settles** takes the bank's date the same way.
+- The **purchase date is never changed**. A bank date equal to the purchase date is stored as none (it is the same thing), and one before it is ignored.
+- A posted date you edit by hand **after** that stays as you set it: the bank is only consulted when the expense is linked (Add, Match) or its pending charge settles.
+
 ## Database Schema
 
 ### expenses Table

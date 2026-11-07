@@ -30,6 +30,19 @@ const incomeDescription = defaultPlace;
 const monthIndexOf = (date) => Number(date.slice(0, 4)) * 12 + Number(date.slice(5, 7)) - 1;
 
 /**
+ * The posted date a settled card transaction gives its expense. The purchase date is never changed. The bank's
+ * posted date replaces whatever the expense had (a hand-set estimate included), because statements are built
+ * from it. One equal to the purchase date is stored as none (same thing, and no marker in the expense list);
+ * one before it is ignored, since an expense can't post before it was made.
+ * @returns {{posted_date: (string|null)}|null} the change, or null when the expense already agrees
+ */
+const postedDateChange = (expense, bankPostedDate) => {
+  if (!bankPostedDate || bankPostedDate < expense.date) return null;
+  const wanted = bankPostedDate === expense.date ? null : bankPostedDate;
+  return wanted === (expense.posted_date || null) ? null : { posted_date: wanted };
+};
+
+/**
  * Import Inbox: review staged bank transactions and add them as expenses, match them to
  * existing expenses or fixed expenses, or ignore them. Nothing becomes an expense without an explicit action.
  */
@@ -305,7 +318,9 @@ class PlaidInboxService {
   }
 
   /**
-   * Link a staged transaction to an expense entered by hand. Nothing is created or changed on the expense.
+   * Link a staged transaction to an expense entered by hand. Nothing is created and the expense keeps its
+   * purchase date, amount and category; a settled card transaction brings its posted date to the expense
+   * (replacing an estimate), since statements are built from it. A pending one does that when it settles.
    */
   async matchToExpense(id, expenseId) {
     return this._exclusive(id, async () => {
@@ -329,8 +344,27 @@ class PlaidInboxService {
         }
         throw err;
       }
-      await this._logReview(txn, 'match', `Matched bank transaction ${describeTxn(txn)} to an existing expense`, { expenseId: expense.id });
-      return { transaction: await plaidRepository.findTransactionById(id) };
+
+      // Best effort: the match stands even when the posted date can't be updated (it is logged either way)
+      let postedDate;
+      if (!txn.pending && txn.paymentMethodType === 'credit_card') {
+        const change = postedDateChange(expense, txn.date);
+        if (change) {
+          try {
+            await expenseService.updateExpense(expense.id, { ...expense, ...change });
+            postedDate = change.posted_date ?? expense.date;
+          } catch (err) {
+            logger.warn('Updating the posted date of a matched expense failed', { expenseId: expense.id, error: err.message });
+          }
+        }
+      }
+      await this._logReview(
+        txn,
+        'match',
+        `Matched bank transaction ${describeTxn(txn)} to an existing expense${postedDate ? `; posted date ${postedDate}` : ''}`,
+        { expenseId: expense.id, ...(postedDate ? { postedDateUpdated: true } : {}) }
+      );
+      return { transaction: await plaidRepository.findTransactionById(id), postedDateUpdated: Boolean(postedDate) };
     });
   }
 
@@ -492,7 +526,7 @@ class PlaidInboxService {
    * - the amount follows the bank only if the expense still has the previous bank amount; an amount edited
    *   by hand, or a reimbursed / insurance-tracked expense, is kept (its payment method pill shows the
    *   difference);
-   * - on settlement, credit card expenses get the bank's posting date.
+   * - on settlement, credit card expenses take the bank's posting date (see postedDateChange).
    * Runs after the sync batch is committed. Never throws: a failed update leaves the expense as it was.
    * @param {Array<{plaidTransactionId: number, expenseId: number, settled: boolean, previousAmount: number,
    *   amount: number, postedDate: (string|null)}>} settlements
@@ -515,8 +549,8 @@ class PlaidInboxService {
         }
         // The expense's own payment method decides: after a reconnect the bank account may not be mapped yet
         const isCard = expense.payment_method_type === 'credit_card' || txn.paymentMethodType === 'credit_card';
-        if (s.settled && s.postedDate && isCard && !expense.posted_date && s.postedDate > expense.date) {
-          changes.posted_date = s.postedDate;
+        if (s.settled && isCard) {
+          Object.assign(changes, postedDateChange(expense, s.postedDate));
         }
         if (Object.keys(changes).length > 0) {
           await expenseService.updateExpense(expense.id, { ...expense, ...changes });
@@ -526,11 +560,14 @@ class PlaidInboxService {
         if (amountChanged) {
           outcome = `: ${money(s.previousAmount)} → ${money(s.amount)}, ${changes.amount ? 'expense updated' : 'expense amount kept (edited by hand)'}`;
         }
+        if ('posted_date' in changes) {
+          outcome += `${outcome ? '; ' : ': '}posted date ${changes.posted_date ?? 'same as the purchase date'}`;
+        }
         await this._logReview(
           txn,
           s.settled ? 'settled' : 'pending_changed',
           s.settled ? `Pending charge ${describeTxn(txn)} settled${outcome}` : `Pending charge ${describeTxn(txn)} changed${outcome}`,
-          { expenseId: expense.id, previousAmount: s.previousAmount, amountUpdated: Boolean(changes.amount) }
+          { expenseId: expense.id, previousAmount: s.previousAmount, amountUpdated: Boolean(changes.amount), postedDateUpdated: 'posted_date' in changes }
         );
       } catch (err) {
         logger.warn('Updating an expense from a settled bank transaction failed', { expenseId: s.expenseId, error: err.message });

@@ -138,6 +138,9 @@ const MatchPicker = ({ txn, onMatch, onMatchFixed, onMatchIncome, onCancel, busy
     {txn.matchCandidates.length > 0 && (
       <>
         <div className="bank-import-muted">Expenses: same payment method and amount, within 3 days</div>
+        {txn.paymentMethodType === 'credit_card' && !txn.pending && (
+          <div className="bank-import-muted">Matching sets the expense&apos;s posted date to the bank&apos;s ({formatDate(txn.postedDate)}); its purchase date stays.</div>
+        )}
         <ul>
           {txn.matchCandidates.map(candidate => {
             const reimbursed = candidate.originalCost != null && candidate.originalCost !== candidate.amount;

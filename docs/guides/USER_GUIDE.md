@@ -46,7 +46,7 @@ After deploying the application via Docker, access it at http://localhost:2424 i
 1. Click **"+ Add Expense"** in the expense list header (or the floating **Add Expense** button)
 2. Enter the place name first - the system will suggest a category based on your history
 3. The form remembers your last used payment method
-4. For credit card expenses, optionally enter a **Posted Date** (under **Advanced Options**) if different from the transaction date
+4. For credit card expenses, optionally enter a **Posted Date** (under **Advanced Options**) if different from the transaction date. If the card is connected to Bank Import, the bank's posted date replaces it when the expense is linked to the settled transaction. In the list, hover the card's pill to see it; a small **→ Nov 2** next to the pill means the expense posts on the *next* statement (it needs the card's billing cycle day)
 
 ### Editing and Deleting
 

@@ -33,15 +33,15 @@ const get = (sql, params = []) => new Promise((resolve, reject) => {
   db.get(sql, params, (err, row) => (err ? reject(err) : resolve(row)));
 });
 
-const stage = (transactionId, { accountId = debitAccountId, amount = 25.5, date = '2026-10-12', authorizedDate = '2026-10-10', name = 'SQ *COFFEE SHOP', merchantName = 'Coffee Shop' } = {}) =>
+const stage = (transactionId, { accountId = debitAccountId, amount = 25.5, date = '2026-10-12', authorizedDate = '2026-10-10', name = 'SQ *COFFEE SHOP', merchantName = 'Coffee Shop', pending = 0 } = {}) =>
   run(
-    `INSERT INTO plaid_transactions (transaction_id, plaid_account_id, amount, iso_currency_code, date, authorized_date, name, merchant_name)
-     VALUES (?, ?, ?, 'CAD', ?, ?, ?, ?)`,
-    [transactionId, accountId, amount, date, authorizedDate, name, merchantName]
+    `INSERT INTO plaid_transactions (transaction_id, plaid_account_id, amount, iso_currency_code, date, authorized_date, name, merchant_name, pending)
+     VALUES (?, ?, ?, 'CAD', ?, ?, ?, ?, ?)`,
+    [transactionId, accountId, amount, date, authorizedDate, name, merchantName, pending]
   );
 
-const addExpense = ({ date = '2026-10-10', amount = 25.5, place = 'Coffee', type = 'Dining Out', paymentMethodId = DEBIT, method = 'Debit' } = {}) =>
-  run('INSERT INTO expenses (date, place, amount, type, week, method, payment_method_id) VALUES (?, ?, ?, ?, 2, ?, ?)', [date, place, amount, type, method, paymentMethodId]);
+const addExpense = ({ date = '2026-10-10', amount = 25.5, place = 'Coffee', type = 'Dining Out', paymentMethodId = DEBIT, method = 'Debit', posted_date = null } = {}) =>
+  run('INSERT INTO expenses (date, posted_date, place, amount, type, week, method, payment_method_id) VALUES (?, ?, ?, ?, ?, 2, ?, ?)', [date, posted_date, place, amount, type, method, paymentMethodId]);
 
 beforeAll(async () => {
   db = await createIsolatedTestDb();
@@ -261,6 +261,91 @@ describe('plaidInboxService', () => {
 
       await expect(plaidInboxService.matchToExpense(id, cardExpense)).rejects.toMatchObject({ statusCode: 400 });
       await expect(plaidInboxService.matchToExpense(id, 99999)).rejects.toMatchObject({ statusCode: 404 });
+    });
+  });
+
+  describe('posted date follows the bank for credit cards', () => {
+    const cardExpense = (extra = {}) => addExpense({ paymentMethodId: CREDIT_CARD, method: 'Credit Card', date: '2026-10-31', amount: 35.54, ...extra });
+    const cardRow = (extra = {}) => stage('card-row', { accountId: cardAccountId, amount: 35.54, date: '2026-11-02', authorizedDate: '2026-10-31', ...extra });
+    const expenseRow = (id) => get('SELECT date, posted_date FROM expenses WHERE id = ?', [id]);
+
+    test('matching sets the bank posted date and leaves the purchase date alone', async () => {
+      const expenseId = await cardExpense();
+      const id = await cardRow();
+
+      const result = await plaidInboxService.matchToExpense(id, expenseId);
+
+      expect(await expenseRow(expenseId)).toEqual({ date: '2026-10-31', posted_date: '2026-11-02' });
+      expect(result.postedDateUpdated).toBe(true);
+      expect(activityLogService.logEvent).toHaveBeenCalledWith(
+        'plaid_transaction_updated', 'plaid_transaction', id,
+        expect.stringMatching(/to an existing expense; posted date 2026-11-02$/),
+        expect.objectContaining({ action: 'match', expenseId, postedDateUpdated: true })
+      );
+      expect(activityLogService.logEvent).toHaveBeenCalledWith(
+        'expense_updated', 'expense', expenseId, expect.stringContaining('posted date: none → 2026-11-02'), expect.any(Object)
+      );
+    });
+
+    test('an estimate the user or the form set is replaced by the bank date', async () => {
+      const expenseId = await cardExpense({ posted_date: '2026-11-04' });
+      const id = await cardRow();
+
+      await plaidInboxService.matchToExpense(id, expenseId);
+
+      expect(await expenseRow(expenseId)).toEqual({ date: '2026-10-31', posted_date: '2026-11-02' });
+    });
+
+    test('posted the same day as the purchase clears an estimate (no posted date)', async () => {
+      const expenseId = await cardExpense({ posted_date: '2026-11-02' });
+      const id = await cardRow({ date: '2026-10-31', authorizedDate: null });
+
+      await plaidInboxService.matchToExpense(id, expenseId);
+
+      expect(await expenseRow(expenseId)).toEqual({ date: '2026-10-31', posted_date: null });
+    });
+
+    test('a bank date before the purchase date is ignored, and an agreeing date is left as is', async () => {
+      const early = await cardExpense({ date: '2026-11-05', posted_date: '2026-11-06' });
+      const earlyRow = await cardRow({ date: '2026-11-02', authorizedDate: null });
+      await plaidInboxService.matchToExpense(earlyRow, early);
+      expect(await expenseRow(early)).toEqual({ date: '2026-11-05', posted_date: '2026-11-06' });
+
+      const agreeing = await cardExpense({ posted_date: '2026-11-02' });
+      const agreeingRow = await stage('agree', { accountId: cardAccountId, amount: 35.54, date: '2026-11-02', authorizedDate: '2026-10-31' });
+      activityLogService.logEvent.mockClear();
+      const result = await plaidInboxService.matchToExpense(agreeingRow, agreeing);
+
+      expect(result.postedDateUpdated).toBe(false);
+      expect(activityLogService.logEvent).not.toHaveBeenCalledWith('expense_updated', expect.anything(), expect.anything(), expect.anything(), expect.anything());
+    });
+
+    test('a pending charge leaves the posted date until it settles; debit accounts have none', async () => {
+      const pendingExpense = await cardExpense();
+      const pendingRow = await cardRow({ pending: 1 });
+      await plaidInboxService.matchToExpense(pendingRow, pendingExpense);
+      expect((await expenseRow(pendingExpense)).posted_date).toBeNull();
+
+      const debitExpense = await addExpense({ date: '2026-10-31' });
+      const debitRow = await stage('debit-row', { amount: 25.5, date: '2026-11-02', authorizedDate: '2026-10-31' });
+      await plaidInboxService.matchToExpense(debitRow, debitExpense);
+      expect((await expenseRow(debitExpense)).posted_date).toBeNull();
+    });
+
+    test('a pending charge that settles takes the bank date even over an estimate', async () => {
+      const expenseId = await cardExpense({ posted_date: '2026-11-04' });
+      const id = await cardRow();
+
+      await plaidInboxService.applySettlements([
+        { plaidTransactionId: id, expenseId, settled: true, previousAmount: 35.54, amount: 35.54, postedDate: '2026-11-02' }
+      ]);
+
+      expect(await expenseRow(expenseId)).toEqual({ date: '2026-10-31', posted_date: '2026-11-02' });
+      expect(activityLogService.logEvent).toHaveBeenCalledWith(
+        'plaid_transaction_updated', 'plaid_transaction', id,
+        expect.stringMatching(/settled: posted date 2026-11-02$/),
+        expect.objectContaining({ action: 'settled', postedDateUpdated: true })
+      );
     });
   });
 

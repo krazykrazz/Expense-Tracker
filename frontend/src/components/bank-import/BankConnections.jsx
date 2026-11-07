@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, Fragment } from 'react';
 import { usePlaidLink } from 'react-plaid-link';
 import {
-  createLinkToken, connectBank, reconnectBank, getBankConnections, disconnectBank, mapBankAccount, syncBanks, getPlaidStatus
+  createLinkToken, connectBank, reconnectBank, refreshBank, getBankConnections, disconnectBank, mapBankAccount, syncBanks, getPlaidStatus
 } from '../../services/plaidApi';
 import { getPaymentMethods } from '../../services/paymentMethodApi';
 import { formatDateTime } from '../../utils/formatters';
@@ -120,14 +120,14 @@ const BankConnections = ({ status, onStatusChange }) => {
       if (reconnecting) {
         // Update mode: same connection, nothing to exchange
         const { item, sync } = await reconnectBank(reconnecting.id);
-        const verb = reconnecting.status === 'needs_login' ? 'Reconnected' : 'Logged in to';
+        const verb = reconnecting.loginAgain ? 'Logged in to' : 'Reconnected';
         if (sync && sync.error) {
           setMessage(`${verb} ${item.institutionName}, but the first sync failed: ${sync.error}`);
-        } else if (reconnecting.status === 'needs_login') {
+        } else if (!reconnecting.loginAgain) {
           setMessage(`Reconnected ${item.institutionName}. Transactions are syncing again.`);
         } else {
           const got = sync ? (sync.added || 0) + (sync.updated || 0) : 0;
-          setMessage(`Logged in to ${item.institutionName}: ${got > 0 ? `${got} new or updated transaction${got === 1 ? '' : 's'}` : 'nothing new yet. Plaid may take a few minutes to fetch; Sync now later, or import a file'}.`);
+          setMessage(`Logged in to ${item.institutionName}: ${got > 0 ? `${got} new or updated transaction${got === 1 ? '' : 's'}` : 'nothing new at the bank'}.`);
         }
       } else {
         const item = await connectBank(publicToken, metadata?.institution?.name);
@@ -170,6 +170,31 @@ const BankConnections = ({ status, onStatusChange }) => {
       reconnectItemRef.current = null;
       const { linkToken: token } = await createLinkToken();
       setLinkToken(token);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /**
+   * A bank whose data is stale: ask Plaid to fetch now. Banks such as CIBC only let Plaid fetch during a login,
+   * and only when the connection is marked as needing one; the refresh request marks it, then the login opens.
+   */
+  const handleLoginAgain = async (item) => {
+    setError(null);
+    setMessage(null);
+    setBusy(true);
+    try {
+      const { status: refreshStatusResult } = await refreshBank(item.id);
+      if (refreshStatusResult === 'needs_login') {
+        const { linkToken: token } = await createLinkToken(item.id);
+        reconnectItemRef.current = { ...item, loginAgain: true };
+        setLinkToken(token);
+      } else {
+        setMessage(`Asked Plaid to fetch from ${item.institutionName}. New transactions arrive with the next sync, usually within a few minutes.`);
+      }
+      await load();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -303,9 +328,9 @@ const BankConnections = ({ status, onStatusChange }) => {
                 {item.status === 'stale' && (
                   <button
                     className="bank-import-primary"
-                    onClick={() => handleReconnect(item)}
+                    onClick={() => handleLoginAgain(item)}
                     disabled={busy || Boolean(linkToken)}
-                    title="Log in to the bank again on this connection (no new Trial slot). For banks such as CIBC, Plaid only gets new data when you log in."
+                    title="Ask Plaid to fetch new transactions now. If the bank needs a login for that (CIBC does), the login opens: same connection, no new Trial slot."
                   >
                     Log in again
                   </button>

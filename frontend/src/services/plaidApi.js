@@ -52,6 +52,13 @@ export const createLinkToken = (itemId) =>
 export const reconnectBank = (id) =>
   call('reconnecting bank', () => apiPost(API_ENDPOINTS.PLAID_ITEM_RECONNECTED(id), {}, 'reconnect bank'));
 
+/**
+ * Ask Plaid to fetch from the bank now.
+ * @returns {Promise<{status: 'refreshing'|'needs_login', item: object}>} needs_login: open Link update mode
+ */
+export const refreshBank = (id) =>
+  call('refreshing bank', () => apiPost(API_ENDPOINTS.PLAID_ITEM_REFRESH(id), {}, 'refresh bank'));
+
 /** Window event asking the header Bank Import button to open its modal, e.g. `{ detail: { tab: 'connections' } }`. */
 export const OPEN_BANK_IMPORT_EVENT = 'open-bank-import';
 export const openBankImport = (tab = 'inbox') => window.dispatchEvent(new CustomEvent(OPEN_BANK_IMPORT_EVENT, { detail: { tab } }));

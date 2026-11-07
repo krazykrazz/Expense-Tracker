@@ -14,6 +14,7 @@ vi.mock('../../services/plaidApi', () => ({
   createLinkToken: vi.fn(),
   connectBank: vi.fn(),
   reconnectBank: vi.fn(),
+  refreshBank: vi.fn(),
   getBankConnections: vi.fn(),
   disconnectBank: vi.fn(),
   mapBankAccount: vi.fn(),
@@ -178,10 +179,11 @@ describe('BankConnections', () => {
     expect(confirm).not.toHaveBeenCalled();
   });
 
-  it('logs in again to a stale bank through update mode and reports what it brought', async () => {
+  it('Log in again: asks Plaid to fetch, and opens the login when the bank needs one (CIBC)', async () => {
     const { usePlaidLink } = await import('react-plaid-link');
     const stale = { ...item, status: 'stale', bankUpdatedAt: '2026-11-03T21:11:14Z' };
     plaidApi.getBankConnections.mockResolvedValue({ items: [stale] });
+    plaidApi.refreshBank.mockResolvedValue({ status: 'needs_login', item: { ...stale, status: 'needs_login' } });
     plaidApi.createLinkToken.mockResolvedValue({ linkToken: 'link-update-3' });
     plaidApi.reconnectBank.mockResolvedValue({ item: { ...stale, status: 'ok' }, sync: { added: 2, updated: 1 } });
     plaidApi.getPlaidStatus.mockResolvedValue(production);
@@ -189,12 +191,25 @@ describe('BankConnections', () => {
     render(<BankConnections status={production} onStatusChange={vi.fn()} />);
     fireEvent.click(await screen.findByRole('button', { name: 'Log in again' }));
     await waitFor(() => expect(plaidApi.createLinkToken).toHaveBeenCalledWith(1));
+    expect(plaidApi.refreshBank).toHaveBeenCalledWith(1);
 
     await act(() => usePlaidLink.mock.calls.at(-1)[0].onSuccess('public-ignored', {}));
 
     expect(plaidApi.reconnectBank).toHaveBeenCalledWith(1);
     expect(plaidApi.connectBank).not.toHaveBeenCalled();
     expect(await screen.findByRole('status')).toHaveTextContent('Logged in to Test Bank: 3 new or updated transactions');
+  });
+
+  it('Log in again: no login needed when Plaid can fetch on its own', async () => {
+    const stale = { ...item, status: 'stale', bankUpdatedAt: '2026-11-03T21:11:14Z' };
+    plaidApi.getBankConnections.mockResolvedValue({ items: [stale] });
+    plaidApi.refreshBank.mockResolvedValue({ status: 'refreshing', item: stale });
+
+    render(<BankConnections status={production} onStatusChange={vi.fn()} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Log in again' }));
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Asked Plaid to fetch from Test Bank');
+    expect(plaidApi.createLinkToken).not.toHaveBeenCalled();
   });
 
   it('offers Import file only for accounts that import into a payment method, and opens the import panel', async () => {

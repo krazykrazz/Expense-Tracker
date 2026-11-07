@@ -1215,6 +1215,13 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v1.24.2</div>
+                <div className="changelog-date">November 7, 2026</div>
+                <ul className="changelog-items">
+                  <li>Posted date now follows Plaid after a bank file import, plus Plaid spot check fixes</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v1.24.1</div>
                 <div className="changelog-date">November 7, 2026</div>
                 <ul className="changelog-items">

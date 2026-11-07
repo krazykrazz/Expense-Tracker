@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.24.2] - 2026-11-07
+
+### Posted date now follows Plaid after a bank file import, plus Plaid spot check fixes
+
 ## [1.24.1] - 2026-11-07
 
 ### Keep an entered posted date when the bank only sends the purchase date (Wealthsimple)

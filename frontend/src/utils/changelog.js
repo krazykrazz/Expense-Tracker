@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.24.4',
+    date: 'November 7, 2026',
+    added: [],
+    changed: ['Fix header and accent colours missing in production builds'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.24.3',
     date: 'November 7, 2026',
     added: [],

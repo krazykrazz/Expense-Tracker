@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.24.4] - 2026-11-07
+
+### Fix header and accent colours missing in production builds
+
 ## [1.24.3] - 2026-11-07
 
 ### Light mode readability: text and buttons meet WCAG AA contrast across the app

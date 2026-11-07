@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.24.3] - 2026-11-07
+
+### Light mode readability: text and buttons meet WCAG AA contrast across the app
+
 ## [1.24.2] - 2026-11-07
 
 ### Posted date now follows Plaid after a bank file import, plus Plaid spot check fixes

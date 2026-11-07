@@ -1,3 +1,14 @@
+/**
+ * Integration tests: expenseRepository.getSummary → real SQLite (isolated database).
+ * Inactive payment methods only appear in the month summary when they have spending in the period.
+ */
+const { createIsolatedTestDb, cleanupIsolatedTestDb } = require('../test/dbIsolation');
+
+jest.mock('../database/db', () => ({
+  ...jest.requireActual('../database/db'),
+  getDatabase: jest.fn()
+}));
+
 const { getDatabase } = require('../database/db');
 const expenseRepository = require('./expenseRepository');
 
@@ -14,7 +25,8 @@ describe('expenseRepository.getSummary - inactive payment methods', () => {
   });
 
   beforeAll(async () => {
-    db = await getDatabase();
+    db = await createIsolatedTestDb();
+    getDatabase.mockResolvedValue(db);
     methodId = await run(
       "INSERT INTO payment_methods (type, display_name, full_name, is_active) VALUES ('cheque', ?, ?, 0)",
       [NAME, NAME]
@@ -26,9 +38,7 @@ describe('expenseRepository.getSummary - inactive payment methods', () => {
     await run('UPDATE payment_methods SET is_active = 0 WHERE id = ?', [methodId]);
   });
 
-  afterAll(async () => {
-    await run('DELETE FROM payment_methods WHERE id = ?', [methodId]);
-  });
+  afterAll(() => cleanupIsolatedTestDb(db));
 
   test('inactive method with no spend is excluded from methodTotals', async () => {
     const summary = await expenseRepository.getSummary(2091, 1);

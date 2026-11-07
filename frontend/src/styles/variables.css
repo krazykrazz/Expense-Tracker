@@ -231,10 +231,31 @@
      ============================================ */
   --text-primary: #0f172a;
   --text-secondary: #475569;
-  --text-tertiary: #64748b;
-  --text-muted: #94a3b8;
+  /* Tertiary/muted are real text (hints, dates, counts): both meet WCAG AA (4.5:1), even on --bg-muted */
+  --text-tertiary: #566479;
+  --text-muted: #5f6e82;
   --text-light: #cbd5e1;
   --text-inverse: #ffffff;
+
+  /* ============================================
+     COLORS - Readable variants of the status colours
+     The bright --color-* values are for fills (bars, dots, borders). Text in a status colour uses
+     *-text; a coloured background under white text uses *-strong. Both meet WCAG AA in light mode;
+     dark mode maps them back to the bright values.
+     ============================================ */
+  --color-primary-text: #0369a1;
+  --color-primary-text-hover: #075985;
+  --color-positive-text: #15803d;
+  --color-negative-text: #b91c1c;
+  --color-warning-text: #b45309;
+  --color-primary-strong: #0369a1;
+  --color-primary-strong-hover: #075985;
+  --color-positive-strong: #15803d;
+  --color-positive-strong-hover: #166534;
+  --color-negative-strong: #b91c1c;
+  --color-negative-strong-hover: #991b1b;
+  --color-warning-strong: #b45309;
+  --color-warning-strong-hover: #92400e;
 
   /* ============================================
      INTERACTIVE STATES
@@ -291,6 +312,21 @@
 
    --header-bg: rgba(2, 6, 23, 0.82);
    --header-border: rgba(148, 163, 184, 0.16);
+
+   /* Readable status variants: dark mode keeps the bright colours it was designed with */
+   --color-primary-text: var(--color-primary);
+   --color-primary-text-hover: var(--color-primary-hover);
+   --color-positive-text: var(--color-positive);
+   --color-negative-text: var(--color-negative);
+   --color-warning-text: var(--color-warning);
+   --color-primary-strong: var(--color-primary);
+   --color-primary-strong-hover: var(--color-primary-hover);
+   --color-positive-strong: var(--color-positive);
+   --color-positive-strong-hover: var(--color-positive-dark);
+   --color-negative-strong: var(--color-negative);
+   --color-negative-strong-hover: var(--color-negative-dark);
+   --color-warning-strong: var(--color-warning);
+   --color-warning-strong-hover: var(--color-warning-dark);
 
    /* Status tints: deep versions of the light tints, so text in var(--text-*) stays readable on them */
    --color-primary-light: hsl(199 60% 17%);

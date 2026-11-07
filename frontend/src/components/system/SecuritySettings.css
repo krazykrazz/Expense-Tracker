@@ -83,7 +83,7 @@
 }
 
 .security-warning {
-  color: light-dark(var(--color-negative-dark, #d32f2f), #f87171);
+  color: light-dark(var(--color-negative-text), #f87171);
   font-size: var(--text-sm, 13px);
   margin: 0 0 var(--spacing-4, 16px) 0;
   font-family: var(--font-sans);
@@ -136,7 +136,7 @@
 /* Disable button (red variant) */
 .security-disable-button {
   padding: var(--spacing-3, 12px) var(--spacing-5, 20px);
-  background: var(--color-negative-dark, #d32f2f);
+  background: var(--color-negative-strong-hover);
   color: var(--text-inverse, white);
   border: none;
   border-radius: var(--radius-md, 8px);

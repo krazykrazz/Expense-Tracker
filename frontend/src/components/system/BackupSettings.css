@@ -39,12 +39,12 @@
 }
 
 .tab-button:hover {
-  color: var(--color-primary, #0ea5e9);
+  color: var(--color-primary-text);
   background: rgba(14, 165, 233, 0.05);
 }
 
 .tab-button.active {
-  color: var(--color-primary, #0ea5e9);
+  color: var(--color-primary-text);
   border-bottom-color: var(--color-primary, #0ea5e9);
 }
 
@@ -181,7 +181,7 @@
 
 .save-button {
   padding: var(--spacing-3, 12px) var(--spacing-5, 20px);
-  background: var(--color-primary, #0ea5e9);
+  background: var(--color-primary-strong);
   color: var(--text-inverse, white);
   border: none;
   border-radius: var(--radius-md, 8px);
@@ -194,7 +194,7 @@
 }
 
 .save-button:hover {
-  background: var(--color-primary-hover, #0284c7);
+  background: var(--color-primary-strong-hover);
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
 }
@@ -227,23 +227,23 @@
 }
 
 .backup-button {
-  background: var(--color-positive, #4caf50);
+  background: var(--color-positive-strong);
   color: var(--text-inverse, white);
 }
 
 .backup-button:hover {
-  background: var(--color-positive-dark, #45a049);
+  background: var(--color-positive-strong-hover);
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
 }
 
 .download-button {
-  background: var(--color-fixed-expense, #2196f3);
+  background: light-dark(#1d4ed8, var(--color-fixed-expense));
   color: var(--text-inverse, white);
 }
 
 .download-button:hover {
-  background: var(--color-fixed-expense-dark, #1976d2);
+  background: light-dark(#1e40af, var(--color-fixed-expense-dark));
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
 }
@@ -375,7 +375,7 @@
 }
 
 .warning-text {
-  color: light-dark(var(--color-negative-dark, #d32f2f), #f87171) !important;
+  color: light-dark(var(--color-negative-text), #f87171) !important;
   font-weight: var(--font-medium, 500);
 }
 
@@ -384,7 +384,7 @@
   align-items: center;
   justify-content: center;
   padding: var(--spacing-3, 12px) var(--spacing-5, 20px);
-  background: var(--color-fixed-expense, #2196f3);
+  background: light-dark(#1d4ed8, var(--color-fixed-expense));
   color: var(--text-inverse, white);
   border: none;
   border-radius: var(--radius-md, 8px);
@@ -398,7 +398,7 @@
 }
 
 .file-upload-button:hover {
-  background: var(--color-fixed-expense-dark, #1976d2);
+  background: light-dark(#1e40af, var(--color-fixed-expense-dark));
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
 }
@@ -413,11 +413,11 @@
 }
 
 .file-upload-button.restore-button {
-  background: var(--color-warning, #ff9800);
+  background: var(--color-warning-strong);
 }
 
 .file-upload-button.restore-button:hover {
-  background: var(--color-warning-dark, #f57c00);
+  background: var(--color-warning-strong-hover);
 }
 
 @media (max-width: 768px) {
@@ -502,7 +502,7 @@
 .changelog-version {
   font-size: var(--text-lg, 16px);
   font-weight: var(--font-semibold, 600);
-  color: var(--color-primary, #0ea5e9);
+  color: var(--color-primary-text);
   margin-bottom: var(--spacing-1, 4px);
   font-family: var(--font-sans);
 }
@@ -578,7 +578,7 @@
 
 .misc-tool-button {
   padding: var(--spacing-3, 12px) var(--spacing-5, 20px);
-  background: var(--color-primary, #0ea5e9);
+  background: var(--color-primary-strong);
   color: var(--text-inverse, white);
   border: none;
   border-radius: var(--radius-md, 8px);
@@ -639,7 +639,7 @@
 
 .people-add-button {
   padding: var(--spacing-3, 12px) var(--spacing-5, 20px);
-  background: var(--color-positive, #4caf50);
+  background: var(--color-positive-strong);
   color: var(--text-inverse, white);
   border: none;
   border-radius: var(--radius-md, 8px);
@@ -729,7 +729,7 @@
 
 .validation-error {
   font-size: var(--text-xs, 12px);
-  color: light-dark(var(--color-negative-dark, #d32f2f), #f87171);
+  color: light-dark(var(--color-negative-text), #f87171);
 }
 
 .people-form-actions {
@@ -740,7 +740,7 @@
 
 .people-save-button {
   padding: var(--spacing-3, 12px) var(--spacing-5, 20px);
-  background: var(--color-primary, #0ea5e9);
+  background: var(--color-primary-strong);
   color: var(--text-inverse, white);
   border: none;
   border-radius: var(--radius-md, 8px);
@@ -916,7 +916,7 @@
 .people-info-note p {
   margin: 0;
   font-size: var(--text-sm, 13px);
-  color: light-dark(#e65100, hsl(21 80% 78%));
+  color: light-dark(#c24400, hsl(21 80% 78%));
   line-height: var(--leading-normal, 1.5);
   font-family: var(--font-sans);
 }
@@ -990,7 +990,7 @@
 }
 
 .people-delete-warning {
-  color: light-dark(var(--color-negative-dark, #d32f2f), #f87171) !important;
+  color: light-dark(var(--color-negative-text), #f87171) !important;
   font-weight: var(--font-medium, 500);
   margin-top: var(--spacing-4, 16px) !important;
 }
@@ -1003,7 +1003,7 @@
 
 .people-delete-confirm-button {
   padding: var(--spacing-3, 12px) var(--spacing-5, 20px);
-  background: var(--color-negative-dark, #d32f2f);
+  background: var(--color-negative-strong-hover);
   color: var(--text-inverse, white);
   border: none;
   border-radius: var(--radius-md, 8px);
@@ -1164,7 +1164,7 @@
 }
 
 .restore-info strong {
-  color: var(--color-primary, #0ea5e9);
+  color: var(--color-primary-text);
 }
 
 /* Activity Log Styles */
@@ -1295,7 +1295,7 @@
 
 .activity-load-more-button {
   padding: var(--spacing-2, 8px) var(--spacing-5, 20px);
-  background: var(--color-primary, #0ea5e9);
+  background: var(--color-primary-strong);
   color: white;
   border: none;
   border-radius: var(--radius-md, 8px);
@@ -1351,7 +1351,7 @@
 }
 
 .activity-retention-info strong {
-  color: var(--color-primary, #0ea5e9);
+  color: var(--color-primary-text);
 }
 
 @media (max-width: 768px) {
@@ -1409,7 +1409,7 @@
 }
 
 .retention-impact-info strong {
-  color: var(--color-primary, #0ea5e9);
+  color: var(--color-primary-text);
   font-weight: var(--font-semibold, 600);
 }
 
@@ -1502,13 +1502,13 @@
 
 .event-type-income {
   background: var(--color-positive-light, #e8f5e9);
-  color: light-dark(var(--color-positive-dark, #2e7d32), #4ade80);
+  color: light-dark(var(--color-positive-text), #4ade80);
   border: 1px solid var(--color-positive, #4caf50);
 }
 
 .event-type-fixed_expense {
   background: light-dark(#fff3e0, hsl(37 55% 17%));
-  color: light-dark(#e65100, hsl(21 80% 78%));
+  color: light-dark(#c24400, hsl(21 80% 78%));
   border: 1px solid #ff9800;
 }
 
@@ -1526,7 +1526,7 @@
 
 .event-type-budget {
   background: light-dark(#fff9c4, hsl(54 55% 17%));
-  color: light-dark(#f57f17, hsl(28 80% 78%));
+  color: light-dark(#ae5507, hsl(28 80% 78%));
   border: 1px solid #fbc02d;
 }
 

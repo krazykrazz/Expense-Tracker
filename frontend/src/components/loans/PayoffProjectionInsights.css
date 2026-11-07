@@ -74,14 +74,14 @@
 
 .underpayment-warning .warning-content strong {
   display: block;
-  color: light-dark(var(--color-negative-dark), #f87171);
+  color: light-dark(var(--color-negative-text), #f87171);
   font-size: var(--text-base);
   margin-bottom: var(--spacing-1);
 }
 
 .underpayment-warning .warning-content p {
   margin: 0;
-  color: light-dark(var(--color-negative-dark), #f87171);
+  color: light-dark(var(--color-negative-text), #f87171);
   font-size: var(--text-sm);
   line-height: var(--leading-relaxed);
 }
@@ -148,7 +148,7 @@
 }
 
 .projections-table th.scenario-column.current .scenario-amount {
-  color: var(--color-primary);
+  color: var(--color-primary-text);
 }
 
 .projections-table tbody tr {
@@ -185,16 +185,16 @@
 }
 
 .projections-table td.metric-value.underpayment {
-  color: var(--color-negative);
+  color: var(--color-negative-text);
 }
 
 .projections-table .underpayment-text {
   font-style: italic;
-  color: var(--color-negative);
+  color: var(--color-negative-text);
 }
 
 .projections-table .interest-amount {
-  color: var(--color-negative);
+  color: var(--color-negative-text);
 }
 
 .projections-table .total-paid {
@@ -223,7 +223,7 @@
 .savings-header .savings-title {
   font-size: var(--text-lg);
   font-weight: var(--font-bold);
-  color: light-dark(var(--color-positive-dark), #4ade80);
+  color: light-dark(var(--color-positive-text), #4ade80);
 }
 
 .savings-details {
@@ -256,13 +256,13 @@
 }
 
 .savings-item .savings-value.positive {
-  color: light-dark(var(--color-positive-dark), #4ade80);
+  color: light-dark(var(--color-positive-text), #4ade80);
 }
 
 .savings-message {
   margin: 0;
   font-size: var(--text-sm);
-  color: light-dark(var(--color-positive-dark), #4ade80);
+  color: light-dark(var(--color-positive-text), #4ade80);
   line-height: var(--leading-relaxed);
   text-align: center;
 }

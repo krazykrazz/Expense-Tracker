@@ -55,7 +55,7 @@
 }
 
 .cc-statement-label .required {
-  color: var(--color-negative);
+  color: var(--color-negative-text);
 }
 
 .cc-statement-input {
@@ -303,14 +303,14 @@
 
 .cc-statement-error .error-text {
   font-size: var(--text-sm);
-  color: light-dark(var(--color-negative-dark), #f87171);
+  color: light-dark(var(--color-negative-text), #f87171);
   flex: 1;
 }
 
 .cc-statement-error .error-close {
   background: none;
   border: none;
-  color: light-dark(var(--color-negative-dark), #f87171);
+  color: light-dark(var(--color-negative-text), #f87171);
   cursor: pointer;
   padding: 0;
   margin-left: var(--spacing-2);
@@ -334,7 +334,7 @@
 .cc-statement-submit-btn {
   flex: 1;
   padding: var(--spacing-3) var(--spacing-4);
-  background-color: var(--color-primary);
+  background-color: var(--color-primary-strong);
   color: var(--text-inverse);
   border: none;
   border-radius: var(--radius-md);

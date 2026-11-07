@@ -117,12 +117,12 @@
 }
 
 .tab-button:hover {
-  color: var(--color-primary, #0ea5e9);
+  color: var(--color-primary-text);
   background: rgba(14, 165, 233, 0.05);
 }
 
 .tab-button.active {
-  color: var(--color-primary, #0ea5e9);
+  color: var(--color-primary-text);
   border-bottom-color: var(--color-primary, #0ea5e9);
 }
 
@@ -247,7 +247,7 @@
 
 .validation-error {
   font-size: var(--text-xs, 12px);
-  color: light-dark(var(--color-negative-dark, #d32f2f), #f87171);
+  color: light-dark(var(--color-negative-text), #f87171);
 }
 
 /* Backup Configuration Styles */
@@ -269,7 +269,7 @@
 
 .save-button {
   padding: var(--spacing-3, 12px) var(--spacing-5, 20px);
-  background: var(--color-primary, #0ea5e9);
+  background: var(--color-primary-strong);
   color: var(--text-inverse, white);
   border: none;
   border-radius: var(--radius-md, 8px);
@@ -282,7 +282,7 @@
 }
 
 .save-button:hover {
-  background: var(--color-primary-hover, #0284c7);
+  background: var(--color-primary-strong-hover);
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
 }
@@ -311,7 +311,7 @@
 
 .people-add-button {
   padding: var(--spacing-3, 12px) var(--spacing-5, 20px);
-  background: var(--color-positive, #4caf50);
+  background: var(--color-positive-strong);
   color: var(--text-inverse, white);
   border: none;
   border-radius: var(--radius-md, 8px);
@@ -403,7 +403,7 @@
 
 .people-save-button {
   padding: var(--spacing-3, 12px) var(--spacing-5, 20px);
-  background: var(--color-primary, #0ea5e9);
+  background: var(--color-primary-strong);
   color: var(--text-inverse, white);
   border: none;
   border-radius: var(--radius-md, 8px);
@@ -579,7 +579,7 @@
 .people-info-note p {
   margin: 0;
   font-size: var(--text-sm, 13px);
-  color: light-dark(#e65100, hsl(21 80% 78%));
+  color: light-dark(#c24400, hsl(21 80% 78%));
   line-height: var(--leading-normal, 1.5);
   font-family: var(--font-sans);
 }
@@ -653,7 +653,7 @@
 }
 
 .people-delete-warning {
-  color: light-dark(var(--color-negative-dark, #d32f2f), #f87171) !important;
+  color: light-dark(var(--color-negative-text), #f87171) !important;
   font-weight: var(--font-medium, 500);
   margin-top: var(--spacing-4, 16px) !important;
 }
@@ -666,7 +666,7 @@
 
 .people-delete-confirm-button {
   padding: var(--spacing-3, 12px) var(--spacing-5, 20px);
-  background: var(--color-negative-dark, #d32f2f);
+  background: var(--color-negative-strong-hover);
   color: var(--text-inverse, white);
   border: none;
   border-radius: var(--radius-md, 8px);

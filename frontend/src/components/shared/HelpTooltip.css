@@ -21,13 +21,13 @@
 }
 
 .help-tooltip-icon:hover {
-  color: #3b82f6;
+  color: light-dark(#0b63f3, #3b82f6);
   transform: scale(1.15);
   background-color: rgba(59, 130, 246, 0.08);
 }
 
 .help-tooltip-icon:focus {
-  color: #3b82f6;
+  color: light-dark(#0b63f3, #3b82f6);
   outline: 2px solid #3b82f6;
   outline-offset: 2px;
   border-radius: 50%;

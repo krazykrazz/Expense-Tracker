@@ -41,19 +41,19 @@
 
 .alert-indicator.alert-warning {
   background-color: light-dark(#fef3c7, hsl(48 55% 17%));
-  color: light-dark(#f59e0b, hsl(38 80% 78%));
+  color: light-dark(#996206, hsl(38 80% 78%));
   border: 1px solid #fbbf24;
 }
 
 .alert-indicator.alert-danger {
   background-color: light-dark(#fee2e2, hsl(0 55% 17%));
-  color: #ef4444;
+  color: light-dark(#de1313, #ef4444);
   border: 1px solid light-dark(#f87171, hsl(0 45% 32%));
 }
 
 .alert-indicator.alert-critical {
   background-color: light-dark(#fecaca, hsl(0 55% 17%));
-  color: light-dark(#dc2626, hsl(0 72% 78%));
+  color: light-dark(#d52222, hsl(0 72% 78%));
   border: 1px solid light-dark(#ef4444, hsl(0 45% 32%));
   animation: pulse-critical 1s ease-in-out infinite;
 }
@@ -115,12 +115,12 @@
 }
 
 .remaining-amount {
-  color: var(--color-positive);
+  color: var(--color-positive-text);
   font-weight: 500;
 }
 
 .overage-amount {
-  color: var(--color-negative);
+  color: var(--color-negative-text);
   font-weight: 600;
 }
 

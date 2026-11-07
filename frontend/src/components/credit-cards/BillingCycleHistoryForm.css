@@ -93,7 +93,7 @@
 }
 
 .billing-cycle-label .required {
-  color: var(--color-negative);
+  color: var(--color-negative-text);
 }
 
 .billing-cycle-label .optional {
@@ -192,7 +192,7 @@
 }
 
 .discrepancy-preview .preview-value.higher {
-  color: var(--color-warning);
+  color: var(--color-warning-text);
 }
 
 .discrepancy-preview .preview-value.lower {
@@ -200,7 +200,7 @@
 }
 
 .discrepancy-preview .preview-value.match {
-  color: var(--color-positive);
+  color: var(--color-positive-text);
 }
 
 .discrepancy-preview .preview-description {
@@ -233,14 +233,14 @@
 
 .billing-cycle-error .error-text {
   font-size: var(--text-sm);
-  color: light-dark(var(--color-negative-dark), #f87171);
+  color: light-dark(var(--color-negative-text), #f87171);
   flex: 1;
 }
 
 .billing-cycle-error .error-close {
   background: none;
   border: none;
-  color: light-dark(var(--color-negative-dark), #f87171);
+  color: light-dark(var(--color-negative-text), #f87171);
   cursor: pointer;
   padding: 0;
   margin-left: var(--spacing-2);
@@ -264,7 +264,7 @@
 .billing-cycle-submit-btn {
   flex: 1;
   padding: var(--spacing-3) var(--spacing-4);
-  background-color: var(--color-primary);
+  background-color: var(--color-primary-strong);
   color: var(--text-inverse);
   border: none;
   border-radius: var(--radius-md);
@@ -384,7 +384,7 @@
 }
 
 .discrepancy-value.higher {
-  color: var(--color-warning);
+  color: var(--color-warning-text);
 }
 
 .discrepancy-value.lower {
@@ -394,7 +394,7 @@
 .discrepancy-match {
   font-size: var(--text-lg);
   font-weight: var(--font-semibold);
-  color: var(--color-positive);
+  color: var(--color-positive-text);
 }
 
 .discrepancy-description {
@@ -409,7 +409,7 @@
 
 .billing-cycle-done-btn {
   padding: var(--spacing-3) var(--spacing-6);
-  background-color: var(--color-primary);
+  background-color: var(--color-primary-strong);
   color: var(--text-inverse);
   border: none;
   border-radius: var(--radius-md);
@@ -421,7 +421,7 @@
 }
 
 .billing-cycle-done-btn:hover {
-  background-color: var(--color-primary-hover);
+  background-color: var(--color-primary-strong-hover);
   transform: translateY(-1px);
 }
 
@@ -570,7 +570,7 @@
 
 .billing-cycle-file-selected .file-remove-btn:hover:not(:disabled) {
   background-color: var(--color-negative-light);
-  color: var(--color-negative);
+  color: var(--color-negative-text);
 }
 
 .billing-cycle-file-selected .file-remove-btn:disabled {
@@ -591,20 +591,20 @@
 }
 
 .billing-cycle-file-existing .file-icon.existing {
-  color: light-dark(var(--color-positive-dark), #4ade80);
+  color: light-dark(var(--color-positive-text), #4ade80);
 }
 
 .billing-cycle-file-existing .file-name {
   flex: 1;
   font-size: var(--text-sm);
-  color: light-dark(var(--color-positive-dark), #4ade80);
+  color: light-dark(var(--color-positive-text), #4ade80);
   font-weight: var(--font-medium);
 }
 
 .billing-cycle-file-existing .file-view-btn {
   padding: var(--spacing-1) var(--spacing-2);
   font-size: var(--text-xs);
-  color: var(--color-primary);
+  color: var(--color-primary-text);
   text-decoration: none;
   border-radius: var(--radius-sm);
   transition: var(--transition-fast);

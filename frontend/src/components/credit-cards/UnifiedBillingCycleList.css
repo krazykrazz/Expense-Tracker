@@ -20,7 +20,7 @@
 .unified-billing-cycle-list-error {
   padding: var(--spacing-4);
   text-align: center;
-  color: var(--color-negative);
+  color: var(--color-negative-text);
   background-color: var(--color-negative-light);
   border-radius: var(--radius-md);
   margin: var(--spacing-2);
@@ -123,7 +123,7 @@
   font-size: var(--text-sm);
   border-radius: var(--radius-full);
   transition: var(--transition-fast);
-  color: light-dark(var(--color-positive-dark), #4ade80);
+  color: light-dark(var(--color-positive-text), #4ade80);
   display: inline-flex;
   align-items: center;
   gap: var(--spacing-1);
@@ -169,7 +169,7 @@
 
 .unified-balance-type.actual {
   background-color: rgba(34, 197, 94, 0.15);
-  color: var(--color-positive);
+  color: var(--color-positive-text);
   border: 1px solid rgba(34, 197, 94, 0.3);
 }
 
@@ -204,7 +204,7 @@
 
 .unified-cycle-discrepancy.discrepancy-higher {
   background-color: rgba(245, 158, 11, 0.15);
-  color: var(--color-warning);
+  color: var(--color-warning-text);
 }
 
 .unified-cycle-discrepancy.discrepancy-lower {
@@ -214,7 +214,7 @@
 
 .unified-cycle-discrepancy.discrepancy-match {
   background-color: rgba(34, 197, 94, 0.15);
-  color: var(--color-positive);
+  color: var(--color-positive-text);
 }
 
 .discrepancy-icon {
@@ -297,7 +297,7 @@
 }
 
 .unified-billing-cycle-confirm-dialog .confirm-warning {
-  color: var(--color-negative);
+  color: var(--color-negative-text);
   font-size: var(--text-xs);
 }
 
@@ -310,7 +310,7 @@
 .unified-billing-cycle-confirm-dialog .confirm-delete-btn {
   flex: 1;
   padding: var(--spacing-2) var(--spacing-4);
-  background-color: var(--color-negative);
+  background-color: var(--color-negative-strong);
   color: var(--text-inverse);
   border: none;
   border-radius: var(--radius-md);
@@ -321,7 +321,7 @@
 }
 
 .unified-billing-cycle-confirm-dialog .confirm-delete-btn:hover {
-  background-color: var(--color-negative-dark);
+  background-color: var(--color-negative-strong-hover);
 }
 
 .unified-billing-cycle-confirm-dialog .confirm-cancel-btn {

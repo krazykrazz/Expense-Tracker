@@ -45,13 +45,13 @@
 /* State Variants */
 .invoice-indicator.has-invoice {
   background: var(--color-positive-light);
-  color: light-dark(var(--color-positive-dark), #4ade80);
+  color: light-dark(var(--color-positive-text), #4ade80);
   border: 1px solid rgba(34, 197, 94, 0.25);
 }
 
 .invoice-indicator.no-invoice {
   background: var(--color-warning-light);
-  color: light-dark(var(--color-warning-dark), #fbbf24);
+  color: light-dark(var(--color-warning-text), #fbbf24);
   border: 1px solid rgba(245, 158, 11, 0.25);
 }
 
@@ -108,11 +108,11 @@
 }
 
 .invoice-indicator.has-invoice .invoice-icon {
-  color: light-dark(var(--color-positive-dark), #4ade80);
+  color: light-dark(var(--color-positive-text), #4ade80);
 }
 
 .invoice-indicator.no-invoice .invoice-icon {
-  color: light-dark(var(--color-warning-dark), #fbbf24);
+  color: light-dark(var(--color-warning-text), #fbbf24);
   opacity: 0.8;
 }
 
@@ -129,7 +129,7 @@
   line-height: 16px;
   text-align: center;
   color: var(--text-inverse);
-  background-color: var(--color-primary);
+  background-color: var(--color-primary-strong);
   border-radius: var(--radius-full);
   box-shadow: var(--shadow-sm);
 }
@@ -201,7 +201,7 @@
 }
 
 .invoice-indicator.has-invoice .invoice-metadata {
-  color: light-dark(var(--color-positive-dark), #4ade80);
+  color: light-dark(var(--color-positive-text), #4ade80);
   opacity: 0.8;
 }
 
@@ -232,11 +232,11 @@
 }
 
 .invoice-indicator.list-item.has-invoice {
-  color: light-dark(var(--color-positive-dark), #4ade80);
+  color: light-dark(var(--color-positive-text), #4ade80);
 }
 
 .invoice-indicator.list-item.no-invoice {
-  color: light-dark(var(--color-warning-dark), #fbbf24);
+  color: light-dark(var(--color-warning-text), #fbbf24);
 }
 
 .invoice-indicator.list-item:hover {

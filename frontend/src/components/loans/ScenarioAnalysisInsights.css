@@ -81,7 +81,7 @@
   padding: var(--spacing-2) var(--spacing-4);
   font-size: var(--text-sm);
   font-weight: var(--font-medium);
-  color: var(--color-primary);
+  color: var(--color-primary-text);
   background-color: var(--bg-primary);
   border: 2px solid var(--color-primary);
   border-radius: var(--radius-md);
@@ -95,7 +95,7 @@
 }
 
 .preset-button.selected {
-  background-color: var(--color-primary);
+  background-color: var(--color-primary-strong);
   color: white;
 }
 
@@ -168,8 +168,8 @@
   font-size: var(--text-sm);
   font-weight: var(--font-medium);
   color: white;
-  background-color: var(--color-primary);
-  border: 1px solid var(--color-primary);
+  background-color: var(--color-primary-strong);
+  border: 1px solid var(--color-primary-strong);
   border-radius: 0 var(--radius-md) var(--radius-md) 0;
   cursor: pointer;
   transition: background-color var(--transition-fast);
@@ -189,7 +189,7 @@
   margin-top: var(--spacing-2);
   padding: var(--spacing-2) var(--spacing-3);
   font-size: var(--text-sm);
-  color: light-dark(var(--color-negative-dark), #f87171);
+  color: light-dark(var(--color-negative-text), #f87171);
   background-color: var(--color-negative-light);
   border-radius: var(--radius-sm);
 }
@@ -316,11 +316,11 @@
 }
 
 .savings-card.time-saved .savings-value {
-  color: var(--color-primary);
+  color: var(--color-primary-text);
 }
 
 .savings-card.interest-saved .savings-value {
-  color: light-dark(var(--color-positive-dark), #4ade80);
+  color: light-dark(var(--color-positive-text), #4ade80);
 }
 
 .savings-card .savings-label {
@@ -400,15 +400,15 @@
 }
 
 .scenario-comparison-table td.metric-value.highlight {
-  color: light-dark(var(--color-positive-dark), #4ade80);
+  color: light-dark(var(--color-positive-text), #4ade80);
 }
 
 .scenario-comparison-table td.metric-value.interest {
-  color: var(--color-negative);
+  color: var(--color-negative-text);
 }
 
 .scenario-comparison-table td.metric-value.scenario.interest.highlight {
-  color: light-dark(var(--color-positive-dark), #4ade80);
+  color: light-dark(var(--color-positive-text), #4ade80);
 }
 
 /* Motivational Message */
@@ -427,7 +427,7 @@
 }
 
 .scenario-motivation strong {
-  color: light-dark(var(--color-positive-dark), #4ade80);
+  color: light-dark(var(--color-positive-text), #4ade80);
 }
 
 /* Loading State */

@@ -136,7 +136,7 @@
 
 /* Person badge - Requirement 6.1 */
 .invoice-item-person {
-  color: var(--color-primary);
+  color: var(--color-primary-text);
   font-weight: var(--font-medium);
 }
 
@@ -238,9 +238,9 @@
 }
 
 .invoice-item-btn.confirm-btn {
-  background-color: var(--color-negative);
+  background-color: var(--color-negative-strong);
   color: var(--text-inverse);
-  border-color: var(--color-negative);
+  border-color: var(--color-negative-strong);
 }
 
 .invoice-item-btn.confirm-btn:hover:not(:disabled) {
@@ -267,14 +267,14 @@
 
 .invoice-list-error .error-text {
   font-size: var(--text-xs);
-  color: light-dark(var(--color-negative-dark), #f87171);
+  color: light-dark(var(--color-negative-text), #f87171);
   flex: 1;
 }
 
 .invoice-list-error .error-close {
   background: none;
   border: none;
-  color: light-dark(var(--color-negative-dark), #f87171);
+  color: light-dark(var(--color-negative-text), #f87171);
   cursor: pointer;
   padding: 0;
   margin-left: var(--spacing-2);
@@ -395,5 +395,5 @@
 .invoice-item-person-link.single-person .invoice-person-name {
   font-size: 11px;
   font-weight: var(--font-medium);
-  color: var(--color-primary);
+  color: var(--color-primary-text);
 }

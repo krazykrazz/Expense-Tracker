@@ -33,7 +33,7 @@
 .advanced-filters-toggle.expanded {
   background-color: var(--color-primary-light);
   border-color: var(--color-primary);
-  color: light-dark(var(--color-primary-hover), #7dd3fc);
+  color: light-dark(var(--color-primary-text-hover), #7dd3fc);
 }
 
 /* Label */
@@ -49,7 +49,7 @@
   min-width: 18px;
   height: 18px;
   padding: 0 var(--spacing-1);
-  background-color: var(--color-primary);
+  background-color: var(--color-primary-strong);
   border-radius: var(--radius-full);
   font-size: var(--text-xs);
   font-weight: var(--font-bold);

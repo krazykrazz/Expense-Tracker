@@ -82,14 +82,14 @@
 
 .migration-error .error-text {
   font-size: var(--text-sm);
-  color: light-dark(var(--color-negative-dark), #f87171);
+  color: light-dark(var(--color-negative-text), #f87171);
   flex: 1;
 }
 
 .migration-error .error-close {
   background: none;
   border: none;
-  color: light-dark(var(--color-negative-dark), #f87171);
+  color: light-dark(var(--color-negative-text), #f87171);
   cursor: pointer;
   padding: 0;
   margin-left: var(--spacing-2);
@@ -211,7 +211,7 @@
 }
 
 .preview-stat.warning .stat-value {
-  color: var(--color-warning);
+  color: var(--color-warning-text);
 }
 
 /* Preview Sections */
@@ -227,7 +227,7 @@
 }
 
 .migration-preview-section.skipped h5 {
-  color: var(--color-warning);
+  color: var(--color-warning-text);
 }
 
 /* Preview Entries List */
@@ -267,12 +267,12 @@
 .preview-entry .entry-amount {
   font-size: var(--text-sm);
   font-weight: var(--font-semibold);
-  color: var(--color-positive);
+  color: var(--color-positive-text);
 }
 
 .preview-entry .entry-reason {
   font-size: var(--text-sm);
-  color: var(--color-warning);
+  color: var(--color-warning-text);
 }
 
 .preview-entry-detail {
@@ -288,7 +288,7 @@
 
 .increase-badge {
   background-color: var(--color-warning-light, rgba(245, 158, 11, 0.1));
-  color: var(--color-warning);
+  color: var(--color-warning-text);
   padding: 2px 6px;
   border-radius: var(--radius-sm);
   font-weight: var(--font-medium);
@@ -305,7 +305,7 @@
 }
 
 .migration-result-icon.success {
-  color: var(--color-positive);
+  color: var(--color-positive-text);
 }
 
 .migration-result-message {
@@ -355,15 +355,15 @@
 }
 
 .summary-value.success {
-  color: var(--color-positive);
+  color: var(--color-positive-text);
 }
 
 .summary-value.warning {
-  color: var(--color-warning);
+  color: var(--color-warning-text);
 }
 
 .summary-value.error {
-  color: var(--color-negative);
+  color: var(--color-negative-text);
 }
 
 /* Migration Details Section */
@@ -412,12 +412,12 @@
 .migration-entry .entry-amount {
   font-size: var(--text-sm);
   font-weight: var(--font-semibold);
-  color: var(--color-positive);
+  color: var(--color-positive-text);
 }
 
 .migration-entry .entry-reason {
   font-size: var(--text-sm);
-  color: var(--color-warning);
+  color: var(--color-warning-text);
 }
 
 /* Confirmation Dialog */
@@ -456,7 +456,7 @@
 
 .confirm-migrate-btn {
   padding: var(--spacing-2) var(--spacing-4);
-  background-color: var(--color-warning);
+  background-color: var(--color-warning-strong);
   color: white;
   border: none;
   border-radius: var(--radius-md);
@@ -506,7 +506,7 @@
 .migration-start-btn {
   flex: 1;
   padding: var(--spacing-3) var(--spacing-4);
-  background-color: var(--color-primary);
+  background-color: var(--color-primary-strong);
   color: var(--text-inverse);
   border: none;
   border-radius: var(--radius-md);
@@ -550,7 +550,7 @@
 
 .migration-done-btn {
   padding: var(--spacing-3) var(--spacing-4);
-  background-color: var(--color-positive);
+  background-color: var(--color-positive-strong);
   color: white;
   border: none;
   border-radius: var(--radius-md);
@@ -562,7 +562,7 @@
 }
 
 .migration-done-btn:hover {
-  background-color: #059669;
+  background-color: light-dark(#04825b, #059669);
 }
 
 /* Mobile Responsive */

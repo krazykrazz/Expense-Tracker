@@ -61,7 +61,7 @@
 
 .amortization-view-toggle button.active {
   background-color: var(--bg-card);
-  color: var(--color-primary);
+  color: var(--color-primary-text);
   box-shadow: var(--shadow-sm);
 }
 
@@ -99,11 +99,11 @@
 }
 
 .amortization-stat-value.principal {
-  color: var(--color-positive);
+  color: var(--color-positive-text);
 }
 
 .amortization-stat-value.interest {
-  color: var(--color-negative);
+  color: var(--color-negative-text);
 }
 
 /* Legend */
@@ -160,7 +160,7 @@
 }
 
 .amortization-error {
-  color: var(--color-negative);
+  color: var(--color-negative-text);
 }
 
 .amortization-no-data p {

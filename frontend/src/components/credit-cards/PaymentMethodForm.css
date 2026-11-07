@@ -115,7 +115,7 @@
 }
 
 .validation-error {
-  color: #f44336;
+  color: light-dark(#dc1a0c, #f44336);
   font-size: 0.8rem;
 }
 
@@ -145,7 +145,7 @@
 }
 
 .form-deactivate-btn {
-  background-color: var(--color-warning);
+  background-color: var(--color-warning-strong);
   color: white;
   border: none;
   padding: var(--spacing-3) var(--spacing-5);
@@ -176,7 +176,7 @@
 
 .form-submit-btn {
   flex: 1;
-  background-color: #4caf50;
+  background-color: light-dark(#39843c, #4caf50);
   color: white;
   border: none;
   padding: 12px 20px;

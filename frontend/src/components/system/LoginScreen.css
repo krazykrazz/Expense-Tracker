@@ -50,7 +50,7 @@
 
 .login-error {
   background: var(--color-negative-light);
-  color: light-dark(var(--color-negative-dark), #f87171);
+  color: light-dark(var(--color-negative-text), #f87171);
   padding: var(--spacing-3) var(--spacing-4);
   border-radius: var(--radius-md);
   font-size: var(--text-sm);
@@ -84,7 +84,7 @@
 .login-button {
   width: 100%;
   padding: var(--spacing-3) var(--spacing-4);
-  background: var(--color-primary);
+  background: var(--color-primary-strong);
   color: var(--text-inverse);
   border: none;
   border-radius: var(--radius-md);

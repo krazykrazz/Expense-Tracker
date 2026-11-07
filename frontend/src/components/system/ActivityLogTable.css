@@ -191,7 +191,7 @@
 
 .activity-load-more-button {
   padding: var(--spacing-2, 8px) var(--spacing-5, 20px);
-  background: var(--color-primary, #0ea5e9);
+  background: var(--color-primary-strong);
   color: white;
   border: none;
   border-radius: var(--radius-md, 8px);
@@ -249,7 +249,7 @@
 }
 
 .activity-retention-info strong {
-  color: var(--color-primary, #0ea5e9);
+  color: var(--color-primary-text);
 }
 
 /* Responsive Design */

@@ -67,11 +67,11 @@
 }
 
 .amount-value.under-budget {
-  color: var(--color-positive);
+  color: var(--color-positive-text);
 }
 
 .amount-value.over-budget {
-  color: var(--color-negative);
+  color: var(--color-negative-text);
 }
 
 /* Responsive design */

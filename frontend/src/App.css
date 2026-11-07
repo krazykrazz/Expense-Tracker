@@ -446,7 +446,7 @@
 
 /* Primary Action Button */
 .btn-primary {
-  background-color: var(--color-primary);
+  background-color: var(--color-primary-strong);
   color: var(--text-inverse);
   border: none;
   border-radius: var(--radius-md);
@@ -670,7 +670,7 @@
 }
 
 .docker-tag {
-  color: var(--color-primary);
+  color: var(--color-primary-text);
   font-weight: var(--font-semibold);
   margin-left: var(--spacing-1);
 }
@@ -699,13 +699,13 @@
 
 .view-mode-badge.monthly {
   background-color: color-mix(in srgb, var(--color-positive) 12%, transparent);
-  color: light-dark(var(--color-positive-dark), #4ade80);
+  color: light-dark(var(--color-positive-text), #4ade80);
   border: 1px solid color-mix(in srgb, var(--color-positive) 35%, transparent);
 }
 
 .view-mode-badge.global {
   background-color: color-mix(in srgb, var(--color-warning) 14%, transparent);
-  color: light-dark(var(--color-warning-dark), #fbbf24);
+  color: light-dark(var(--color-warning-text), #fbbf24);
   border: 1px solid color-mix(in srgb, var(--color-warning) 40%, transparent);
 }
 
@@ -781,7 +781,7 @@
   font-size: 13px;
   font-weight: 600;
   color: white;
-  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  background: linear-gradient(135deg, light-dark(#04825b, #059669) 0%, #047857 100%);
   border: none;
   border-radius: 8px;
   cursor: pointer;

@@ -10,6 +10,7 @@ applyTo: "frontend/src/**"
 - Components are grouped by domain under `components/<domain>/` with an `index.js` barrel: `expenses`, `financial`, `credit-cards`, `loans`, `tax`, `analytics`, `notifications`, `system`, `shared`.
 - Provider order: `ErrorBoundary` → `AuthProvider` → `AuthGate` → `FilterProvider` → `ExpenseProvider` → `ModalProvider` → `SharedDataProvider`.
 - Styling: global styles in `styles/`, per-component CSS, CSS Modules adopted incrementally. Dark mode via `:root[data-theme='dark']`: use the theme tokens in `styles/variables.css` (`--bg-*`, `--text-*`, `--border-*`, `--color-*-light` tints) instead of hard-coded colours. For a one-off colour, use `light-dark(<light>, <dark>)` (the root sets `color-scheme`). Never use a `--text-*` variable as a background (it inverts in dark mode), and don't add a `var(--x, #fallback)` for a variable that isn't defined.
+- Contrast (WCAG AA, 4.5:1) in both themes: the bright `--color-primary/positive/negative/warning` values are for fills (bars, dots, borders). Text in a status colour uses `--color-*-text`; a coloured background under white text uses `--color-*-strong` / `--color-*-strong-hover`. One-off colours: pick a light-mode shade that reaches 4.5:1 on its background (the 700 shades usually do).
 
 ## API Calls
 

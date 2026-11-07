@@ -132,13 +132,13 @@ describe('ActivityLogTable - Unit Tests', () => {
       const badges = container.querySelectorAll('.activity-event-badge');
       
       // Expense badge should be blue
-      expect(badges[0].style.backgroundColor).toBe('rgb(33, 150, 243)');
+      expect(badges[0].style.backgroundColor).toBe('rgb(21, 101, 192)');
       
       // Loan badge should be orange
-      expect(badges[1].style.backgroundColor).toBe('rgb(255, 152, 0)');
+      expect(badges[1].style.backgroundColor).toBe('rgb(194, 65, 12)');
       
       // Backup badge should be gray
-      expect(badges[2].style.backgroundColor).toBe('rgb(96, 125, 139)');
+      expect(badges[2].style.backgroundColor).toBe('rgb(84, 110, 122)');
     });
   });
 
@@ -565,8 +565,8 @@ describe('ActivityLogTable - Version Upgrade Event Rendering', () => {
     const { container } = render(<ActivityLogTable {...defaultProps} events={events} />);
 
     const badge = container.querySelector('.activity-event-badge');
-    // version entity type should use #607D8B (same as backup)
-    expect(badge.style.backgroundColor).toBe('rgb(96, 125, 139)');
+    // version entity type should use #546E7A (same as backup)
+    expect(badge.style.backgroundColor).toBe('rgb(84, 110, 122)');
   });
 
   it('should show "Upgraded" as the event type badge label', () => {

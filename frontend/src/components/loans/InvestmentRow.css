@@ -50,7 +50,7 @@
   display: inline-block;
   padding: 2px 8px;
   background-color: light-dark(#e3f2fd, hsl(205 55% 17%));
-  color: light-dark(#1976d2, hsl(210 79% 78%));
+  color: light-dark(#176ec4, hsl(210 79% 78%));
   font-size: 0.75rem;
   font-weight: 600;
   border-radius: 4px;
@@ -62,7 +62,7 @@
   align-items: center;
   gap: 4px;
   padding: 4px 10px;
-  background-color: #ff9800;
+  background-color: light-dark(#a86400, #ff9800);
   color: white;
   font-size: 0.75rem;
   font-weight: 600;

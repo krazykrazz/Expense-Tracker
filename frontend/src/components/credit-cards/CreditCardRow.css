@@ -53,7 +53,7 @@
   gap: 4px;
   padding: 2px 8px;
   background-color: light-dark(#fff3e0, hsl(37 55% 17%));
-  color: light-dark(#e65100, hsl(21 80% 78%));
+  color: light-dark(#c24400, hsl(21 80% 78%));
   font-size: 0.75rem;
   font-weight: 600;
   border-radius: 4px;
@@ -71,7 +71,7 @@
 
 .credit-card-due-badge.due-soon {
   background-color: light-dark(#fff8e1, hsl(46 55% 17%));
-  color: light-dark(#f57f17, hsl(28 80% 78%));
+  color: light-dark(#ae5507, hsl(28 80% 78%));
 }
 
 .credit-card-due-badge.overdue {

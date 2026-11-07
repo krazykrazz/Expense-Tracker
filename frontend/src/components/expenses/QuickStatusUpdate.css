@@ -126,7 +126,7 @@
 .quick-status-error {
   padding: var(--spacing-2) var(--spacing-4);
   background: var(--color-negative-light);
-  color: light-dark(var(--color-negative-dark), #f87171);
+  color: light-dark(var(--color-negative-text), #f87171);
   font-size: var(--text-xs);
   border-top: 1px solid rgba(239, 68, 68, 0.2);
 }

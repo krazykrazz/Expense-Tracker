@@ -81,7 +81,7 @@
 .big-number {
   font-size: var(--text-3xl, 24px);
   font-weight: var(--font-bold, 700);
-  color: var(--color-primary, #0ea5e9);
+  color: var(--color-primary-text);
   margin-bottom: var(--spacing-1, 4px);
   font-family: var(--font-tabular);
   font-feature-settings: var(--font-feature-tabular);
@@ -89,11 +89,11 @@
 }
 
 .big-number.positive {
-  color: var(--color-positive, #22c55e);
+  color: var(--color-positive-text);
 }
 
 .big-number.negative {
-  color: var(--color-negative, #ef4444);
+  color: var(--color-negative-text);
 }
 
 .big-number.neutral {
@@ -137,12 +137,12 @@
 }
 
 .annual-summary .assets-label {
-  color: var(--color-fixed-expense, #3b82f6);
+  color: light-dark(#1d4ed8, var(--color-fixed-expense));
   font-weight: var(--font-medium, 500);
 }
 
 .annual-summary .liabilities-label {
-  color: var(--color-negative, #ef4444);
+  color: var(--color-negative-text);
   font-weight: var(--font-medium, 500);
 }
 
@@ -151,7 +151,7 @@
 }
 
 .annual-summary .income-card .sub-text {
-  color: light-dark(var(--color-positive-dark, #16a34a), #4ade80);
+  color: light-dark(var(--color-positive-text), #4ade80);
   font-weight: var(--font-medium, 500);
 }
 
@@ -167,12 +167,12 @@
 }
 
 .fixed-label {
-  color: var(--color-fixed-expense, #3b82f6);
+  color: light-dark(#1d4ed8, var(--color-fixed-expense));
   font-weight: var(--font-medium, 500);
 }
 
 .variable-label {
-  color: var(--color-variable-expense, #8b5cf6);
+  color: light-dark(#6d28d9, var(--color-variable-expense));
   font-weight: var(--font-medium, 500);
 }
 
@@ -227,7 +227,7 @@
 .category-amount {
   font-size: var(--text-xl, 18px);
   font-weight: var(--font-bold, 700);
-  color: var(--color-primary, #0ea5e9);
+  color: var(--color-primary-text);
   margin-bottom: var(--spacing-1, 4px);
   font-family: var(--font-tabular);
   font-feature-settings: var(--font-feature-tabular);
@@ -243,7 +243,7 @@
 
 /* Income category items */
 .income-category-item {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, light-dark(#4b67e6, #667eea) 0%, #764ba2 100%);
   color: var(--text-inverse, white);
   border: 1px solid light-dark(#5a67d8, hsl(234 45% 32%));
   display: flex;
@@ -492,7 +492,7 @@
 .tax-expense-amount {
   font-size: var(--text-lg, 16px);
   font-weight: var(--font-bold, 700);
-  color: light-dark(var(--color-positive-dark, #16a34a), #4ade80);
+  color: light-dark(var(--color-positive-text), #4ade80);
   text-align: right;
   white-space: nowrap;
   font-family: var(--font-tabular);
@@ -649,11 +649,11 @@
 }
 
 .chart-value.positive {
-  color: var(--color-positive, #22c55e);
+  color: var(--color-positive-text);
 }
 
 .chart-value.negative {
-  color: var(--color-negative, #ef4444);
+  color: var(--color-negative-text);
 }
 
 @media (max-width: 768px) {
@@ -690,7 +690,7 @@
 
 .top-category-card .big-number {
   font-size: var(--text-xl, 18px);
-  color: var(--color-primary, #0ea5e9);
+  color: var(--color-primary-text);
 }
 
 /* Tax Deductible Card */
@@ -737,7 +737,7 @@
 }
 
 .section-header-collapsible:hover .collapse-toggle {
-  color: var(--color-primary, #0ea5e9);
+  color: var(--color-primary-text);
   background-color: var(--color-primary-light, #e0f2fe);
 }
 
@@ -761,7 +761,7 @@
   margin-left: var(--spacing-2, 8px);
   padding: var(--spacing-1, 4px) var(--spacing-2, 8px);
   background: var(--color-primary-light, #e0f2fe);
-  color: var(--color-primary, #0ea5e9);
+  color: var(--color-primary-text);
   font-size: var(--text-xs, 11px);
   font-weight: var(--font-semibold, 600);
   border-radius: var(--radius-full, 9999px);
@@ -834,12 +834,12 @@
 
 .yoy-change.positive {
   background: var(--color-positive-light, #dcfce7);
-  color: light-dark(var(--color-positive-dark, #166534), #4ade80);
+  color: light-dark(var(--color-positive-text), #4ade80);
 }
 
 .yoy-change.negative {
   background: var(--color-negative-light, #fee2e2);
-  color: light-dark(var(--color-negative-dark, #991b1b), #f87171);
+  color: light-dark(var(--color-negative-text), #f87171);
 }
 
 .yoy-indicator {

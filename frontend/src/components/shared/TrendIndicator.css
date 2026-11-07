@@ -11,9 +11,9 @@
 }
 
 .trend-up {
-  color: #e74c3c;
+  color: light-dark(#d12b1a, #e74c3c);
 }
 
 .trend-down {
-  color: light-dark(#27ae60, hsl(145 63% 78%));
+  color: light-dark(#1c7c44, hsl(145 63% 78%));
 }

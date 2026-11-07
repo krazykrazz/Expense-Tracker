@@ -41,7 +41,7 @@
 }
 
 .confirm-button--danger {
-  background-color: #e53e3e;
+  background-color: light-dark(#e22828, #e53e3e);
   color: white;
 }
 
@@ -50,19 +50,19 @@
 }
 
 .confirm-button--warning {
-  background-color: var(--color-warning, #dd6b20);
+  background-color: var(--color-warning-strong);
   color: white;
 }
 
 .confirm-button--warning:hover {
-  background-color: #c05621;
+  background-color: light-dark(#bc5420, #c05621);
 }
 
 .confirm-button--info {
-  background-color: var(--color-primary);
+  background-color: var(--color-primary-strong);
   color: white;
 }
 
 .confirm-button--info:hover {
-  background-color: var(--color-primary-hover, #2563eb);
+  background-color: var(--color-primary-strong-hover);
 }

@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.24.3',
+    date: 'November 7, 2026',
+    added: [],
+    changed: ['Light mode readability: text and buttons meet WCAG AA contrast across the app'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.24.2',
     date: 'November 7, 2026',
     added: [],

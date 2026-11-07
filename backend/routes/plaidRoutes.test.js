@@ -223,6 +223,16 @@ describe('plaid routes', () => {
     expect(plaidService.markReconnected).toHaveBeenCalledWith(2);
   });
 
+  test('POST /items/:id/refresh', async () => {
+    plaidService.requestRefresh.mockResolvedValue({ status: 'needs_login', item: { id: 2, status: 'needs_login' } });
+
+    const res = await request(app).post('/api/plaid/items/2/refresh');
+
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('needs_login');
+    expect(plaidService.requestRefresh).toHaveBeenCalledWith(2);
+  });
+
   test('GET /card-balances and POST /card-balances/:id/use-bank-limit', async () => {
     plaidCardBalanceService.getCardBalances.mockResolvedValue({ cards: [{ paymentMethodId: 4, status: 'match' }] });
     plaidCardBalanceService.applyBankCreditLimit.mockResolvedValue({ id: 4, credit_limit: 12000 });

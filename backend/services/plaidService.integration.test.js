@@ -73,6 +73,7 @@ beforeEach(async () => {
     linkTokenCreate: jest.fn(),
     itemPublicTokenExchange: jest.fn(),
     accountsGet: jest.fn(),
+    transactionsRefresh: jest.fn(),
     transactionsSync: jest.fn(),
     itemRemove: jest.fn().mockResolvedValue({ data: {} }),
     itemGet: jest.fn().mockResolvedValue({
@@ -205,6 +206,35 @@ describe('plaidService', () => {
       await expect(plaidService.markReconnected(item.id)).rejects.toMatchObject({ statusCode: 409 });
       expect((await plaidService.getItem(item.id)).lastError).toBe('ITEM_LOGIN_REQUIRED');
       expect(activityLogService.logEvent).not.toHaveBeenCalledWith('plaid_item_updated', expect.anything(), expect.anything(), expect.anything(), expect.anything());
+    });
+
+    test('requestRefresh asks Plaid to fetch from the bank now', async () => {
+      const item = await connect();
+      client.transactionsRefresh.mockResolvedValueOnce({ data: { request_id: 'r1' } });
+
+      const result = await plaidService.requestRefresh(item.id);
+
+      expect(client.transactionsRefresh).toHaveBeenCalledWith({ access_token: 'access-Test Bank' });
+      expect(result).toMatchObject({ status: 'refreshing', item: { id: item.id, status: 'ok' } });
+    });
+
+    test('requestRefresh on a bank that only fetches during a login marks it as needing one (no log entry)', async () => {
+      const item = await connect();
+      client.transactionsRefresh.mockRejectedValueOnce(plaidError('ITEM_LOGIN_REQUIRED'));
+
+      const result = await plaidService.requestRefresh(item.id);
+
+      expect(result).toMatchObject({ status: 'needs_login', item: { id: item.id, status: 'needs_login' } });
+      expect(activityLogService.logEvent).not.toHaveBeenCalledWith('plaid_sync_failed', expect.anything(), expect.anything(), expect.anything(), expect.anything());
+    });
+
+    test('requestRefresh reports other Plaid errors and leaves the bank as it was', async () => {
+      const item = await connect();
+      client.transactionsRefresh.mockRejectedValueOnce(plaidError('INSTITUTION_DOWN'));
+
+      await expect(plaidService.requestRefresh(item.id)).rejects.toMatchObject({ statusCode: 502, message: expect.stringContaining('refresh failed') });
+      expect((await plaidService.getItem(item.id)).lastError).toBeNull();
+      await expect(plaidService.requestRefresh(99999)).rejects.toMatchObject({ statusCode: 404 });
     });
   });
 

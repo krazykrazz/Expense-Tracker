@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.23.0] - 2026-11-07
+
+### Record credit card payments from the Import Inbox: a payment paid from a bank account and received on the card becomes one payment, with the paying debit linked. Also fixes payment reminders not clearing after a statement is paid, the payment form defaulting to tomorrow in the evening, and bank syncs colliding with payments
+
 ## [1.22.0] - 2026-11-07
 
 ### Log in again asks the bank for fresh data and opens the login only when the bank needs one; the summary hides inactive payment methods with no spending that month; bank transactions keep the Plaid category

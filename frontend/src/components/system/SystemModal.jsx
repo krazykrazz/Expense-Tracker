@@ -452,6 +452,16 @@ const SystemModal = () => {
           <div className="changelog">
             <div className="changelog-entry">
               <div className="changelog-version">
+                v1.23.0
+                {isCurrentVersion('v1.23.0') && <span className="current-version-badge">Current Version</span>}
+              </div>
+              <div className="changelog-date">November 7, 2026</div>
+              <ul className="changelog-items">
+                <li>Record credit card payments from the Import Inbox: a payment paid from a bank account and received on the card becomes one payment, with the paying debit linked. Also fixes payment reminders not clearing after a statement is paid, the payment form defaulting to tomorrow in the evening, and bank syncs colliding with payments</li>
+              </ul>
+            </div>
+            <div className="changelog-entry">
+              <div className="changelog-version">
                 v1.22.0
                 {isCurrentVersion('v1.22.0') && <span className="current-version-badge">Current Version</span>}
               </div>

@@ -8,6 +8,7 @@ import BillingCycleHistoryForm from './BillingCycleHistoryForm';
 import UnifiedBillingCycleList from './UnifiedBillingCycleList';
 import HelpTooltip from '../shared/HelpTooltip';
 import { CardBankBalanceLine, CardBankBalanceCauses, CardBankLimitAction } from '../bank-import/CardBankBalance';
+import CardCycleChecks from '../bank-import/CardCycleChecks';
 import CardPaymentBankBadge from '../bank-import/CardPaymentBankBadge';
 import { useCardBalanceChecks } from '../../hooks/useCardBalanceChecks';
 import './CreditCardDetailView.css';
@@ -680,6 +681,7 @@ const CreditCardDetailView = ({
                         formatDate={formatDate}
                         loading={loading}
                       />
+                      {bankCheck && <CardCycleChecks paymentMethodId={paymentMethodId} refreshKey={paymentMethod} />}
                     </div>
                   ) : (
                     <div className="cc-empty-state">

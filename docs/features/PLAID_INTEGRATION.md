@@ -242,6 +242,17 @@ Each sync also stores the balance the bank reports for every account. For credit
 - **How causes are found:** bank rows and tracker entries for the same amount within 5 days cancel out (a payment entered by hand pairs with the bank's payment; a payment recorded from the inbox is already linked to its bank credit and isn't a cause at all, see [Credit card payments](#credit-card-payments)). One tracker entry also cancels out two bank charges that add up to it, e.g. an Amazon order shipped and charged in two parts. When the card's latest statement balance was entered from the real statement, only activity posted after that statement is considered: the statement already accounts for everything before it.
 - The check refreshes after every sync, payment and expense change. A bank that isn't syncing is flagged, since its balance may be out of date.
 
+#### Statement check (Billing Cycles tab)
+
+The balance check says whether the card agrees with the bank **today**. The **Compared with the bank** section under a bank-linked card's **Billing Cycles** tab does the same for each of the last (up to) three **closed statements**: what the bank posted in that cycle against what the tracker counts in it, and every entry that explains a difference. That is where the posted-date rule matters: the tracker counts an expense on its posted date, so a charge the bank posted on the 14th but the tracker has on the 18th is on this statement at the bank and next month's in the tracker.
+
+- **Only fully covered cycles** are listed: the bank's history starts about 30 days before connecting, so a cycle that begins before the first transaction the bank sent can't be checked and is left out. Nothing shows for a card without a billing cycle day, for pending charges, or for a card that isn't linked to a bank.
+- Each statement shows **Bank $ · Tracker $ · matches / differs by $**. A statement that differs opens to its causes; a matching one stays folded.
+- Causes, each with its amount: *At the bank, not in the tracker* (a charge or credit still in the Inbox or ignored; **Open Inbox** goes there), *In the tracker, not at the bank*, *On another statement* (the same transaction counted in a different cycle by the bank and the tracker: the one to fix by editing the posted date or matching), *Amount differs* (linked, but the amounts aren't the same), *Still pending* or *Cancelled by the bank* (tracker entries whose bank charge isn't posted), and *Fixed expense* (a charge confirmed as a fixed expense, which the card balance doesn't include). The amounts add up to the difference.
+- Entries that are the same money on both sides but not matched yet (same amount within 5 days, as in the balance check) cancel out; the Inbox ones are counted as waiting for **Match**.
+- It reloads after every sync and credit card change. Nothing is changed automatically.
+- Only what the bank says is compared. Plaid has no statement data for Canadian banks (Statements is US only), so a statement balance, due date or minimum payment still comes from you.
+
 ## How it works
 
 - **Tokens:** Plaid access tokens are encrypted with AES-256-GCM using the Plaid encryption key (`secrets/plaid.key`, or `PLAID_TOKEN_KEY`) and stored in `plaid_items.access_token_enc`. The key is never written to the database, and the `secrets/` folder is not backed up, so backups never contain a usable token. Tokens are never logged, returned to the browser, or written to the activity log.

@@ -10,7 +10,7 @@ import QuickStatusUpdate from './QuickStatusUpdate';
 import ReimbursementIndicator from './ReimbursementIndicator';
 import { bankLinkState, bankLinkTitle, bankPillProps } from '../bank-import/bankConfirmation';
 import '../bank-import/BankImport.css';
-import PostedTurnoverMarker, { postedDateTitle } from './PostedTurnoverMarker';
+import PostedTurnoverMarker, { PendingTurnoverMarker, postedDateTitle } from './PostedTurnoverMarker';
 import ExpenseForm from './ExpenseForm';
 import FilterChip from './FilterChip';
 import Icon from '../shared/Icon';
@@ -1179,6 +1179,7 @@ const ExpenseList = memo(({
                     )}
                   </span>
                   <PostedTurnoverMarker expense={expense} billingCycleDay={billingCycleDay} />
+                  <PendingTurnoverMarker date={expense.date} pending={Boolean(expense.bankLink?.pending)} billingCycleDay={billingCycleDay} />
                 </td>
                 <td>
                   <div className="action-buttons">

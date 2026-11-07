@@ -1,5 +1,30 @@
 import { describe, it, expect } from 'vitest';
-import { statementCloseDate, laterStatement } from './statementCycle';
+import { statementCloseDate, laterStatement, mayPostOnLaterStatement } from './statementCycle';
+
+describe('mayPostOnLaterStatement', () => {
+  it.each([
+    ['2026-10-15', '2026-10-15'],
+    ['2026-10-14', '2026-10-15'],
+    ['2026-10-13', '2026-10-15']
+  ])('a pending charge made %s may miss the statement closing %s', (date, statement) => {
+    expect(mayPostOnLaterStatement(date, true, 15)).toEqual({ statement });
+  });
+
+  it('is nothing early in the cycle or the day after the close', () => {
+    expect(mayPostOnLaterStatement('2026-10-12', true, 15)).toBeNull();
+    expect(mayPostOnLaterStatement('2026-10-16', true, 15)).toBeNull();
+  });
+
+  it('is nothing once the bank has posted it, or without a close day', () => {
+    expect(mayPostOnLaterStatement('2026-10-15', false, 15)).toBeNull();
+    expect(mayPostOnLaterStatement('2026-10-15', true, null)).toBeNull();
+  });
+
+  it('works across month and year ends and short months', () => {
+    expect(mayPostOnLaterStatement('2026-12-30', true, 1)).toEqual({ statement: '2027-01-01' });
+    expect(mayPostOnLaterStatement('2026-02-27', true, 31)).toEqual({ statement: '2026-02-28' });
+  });
+});
 
 describe('statementCloseDate', () => {
   it.each([

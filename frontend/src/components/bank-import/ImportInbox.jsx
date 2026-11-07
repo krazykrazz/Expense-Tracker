@@ -10,6 +10,7 @@ import { useSyncEvent } from '../../hooks/useSyncEvent';
 import {
   CardPaymentBadge, CardPaymentButtons, CardPaymentHint, CardPaymentPanel, isCardPaymentRow
 } from './CardPaymentActions';
+import { PendingTurnoverMarker } from '../expenses/PostedTurnoverMarker';
 
 const CARD_PAYMENT_MODES = ['card-payment', 'link-payment', 'record-to-card'];
 
@@ -247,6 +248,9 @@ const InboxRow = ({ txn, filter, expanded, onExpand, onAction, busy, error, unco
         <div className="inbox-row-badges">
           {filter === 'new' && txn.pending && (
             <span className="inbox-badge pending" title="Not settled yet. Add it now; the expense updates when it settles.">Pending</span>
+          )}
+          {filter === 'new' && txn.paymentMethodType === 'credit_card' && (
+            <PendingTurnoverMarker date={txn.date} pending={txn.pending} billingCycleDay={txn.billingCycleDay} />
           )}
           {txn.source === 'file' && (
             <span className="inbox-badge" title="Imported from a file downloaded from the bank. Plaid takes it over when it catches up.">From file</span>

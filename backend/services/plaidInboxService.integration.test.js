@@ -85,6 +85,18 @@ describe('plaidInboxService', () => {
       expect(hiddenUnmapped).toBe(1);
     });
 
+    test('carries the card statement close day, for the pending charge turnover warning', async () => {
+      await run('UPDATE payment_methods SET billing_cycle_day = 15 WHERE id = ?', [CREDIT_CARD]);
+      await stage('card-charge', { accountId: cardAccountId, pending: 1 });
+      await stage('debit-charge');
+
+      const { transactions } = await plaidInboxService.listInbox('new');
+      const byId = Object.fromEntries(transactions.map(t => [t.transactionId, t]));
+
+      expect(byId['card-charge']).toMatchObject({ paymentMethodType: 'credit_card', billingCycleDay: 15, pending: true });
+      expect(byId['debit-charge'].billingCycleDay).toBeNull();
+    });
+
     test('suggests a category from the place history', async () => {
       await addExpense({ place: 'Coffee Shop', type: 'Dining Out', date: '2025-01-01', amount: 4 });
       await stage('t1');

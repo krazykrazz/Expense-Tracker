@@ -86,6 +86,20 @@ describe('posted date in the expense list', () => {
     const handPill = within(rowOf('By hand')).getByText(/CIBC MC/).closest('.method-pill');
     expect(handPill.getAttribute('title')).toBe('Posted Oct 12, 2026');
   });
+  it('marks a pending charge made just before the statement closes, until the bank posts it', async () => {
+    const pendingLink = { status: 'matched', name: 'Cafe', rawName: 'CAFE', date: '2026-10-14', amount: 9, pending: true };
+    renderList([
+      expense({ id: 1, place: 'Cafe', date: '2026-10-14', bankLink: pendingLink }),
+      expense({ id: 2, place: 'Settled', date: '2026-10-14', bankLink: { ...pendingLink, pending: false } }),
+      expense({ id: 3, place: 'Early', date: '2026-10-05', bankLink: pendingLink })
+    ]);
+
+    const marker = await screen.findByTestId('pending-turnover');
+    expect(marker).toHaveTextContent('→ next?');
+    expect(marker.getAttribute('title')).toBe('Still pending, made Oct 14, 2026: if it posts after Oct 15, 2026 it will be on the next statement');
+    expect(screen.getAllByTestId('pending-turnover')).toHaveLength(1);
+    expect(marker.closest('tr')).toBe(rowOf('Cafe'));
+  });
 });
 
 describe('PostedTurnoverMarker and postedDateTitle', () => {

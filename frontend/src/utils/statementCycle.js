@@ -28,6 +28,29 @@ export function statementCloseDate(dateStr, billingCycleDay) {
   return `${closeYear}-${pad(closeMonth)}-${pad(closeDay(closeYear, closeMonth))}`;
 }
 
+/** A pending charge made this many days before the statement closes (or on the close day) may post after it. */
+const TURNOVER_DAYS = 2;
+
+const dayNumber = (dateStr) => {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  return Date.UTC(year, month - 1, day) / 86400000;
+};
+
+/**
+ * A charge still pending a day or two before the statement closes may post after it and land on the next bill
+ * (banks post one to three days after the purchase). A guess: the posted date decides.
+ * @param {string} date purchase date, YYYY-MM-DD
+ * @param {boolean} pending the bank has not posted it yet
+ * @param {number|null} billingCycleDay
+ * @returns {{statement: string}|null} the close date it might miss, or null when it can't turn over
+ */
+export function mayPostOnLaterStatement(date, pending, billingCycleDay) {
+  if (!pending) return null;
+  const statement = statementCloseDate(date, billingCycleDay);
+  if (!statement) return null;
+  return dayNumber(statement) - dayNumber(date) <= TURNOVER_DAYS ? { statement } : null;
+}
+
 /**
  * When an expense posts on a later statement than the one it was made in (made on the last day of the cycle,
  * posted two days later: not on this month's bill).

@@ -91,6 +91,7 @@ class PlaidInboxService {
         paymentMethodId: row.paymentMethodId,
         paymentMethodName: row.paymentMethodName,
         paymentMethodType: row.paymentMethodType,
+        billingCycleDay: row.billingCycleDay ?? null,
         status: row.status,
         pending: Boolean(row.pending),
         canAdd: row.amount > 0,

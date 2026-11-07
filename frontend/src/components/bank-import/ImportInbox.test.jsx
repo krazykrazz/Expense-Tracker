@@ -120,6 +120,27 @@ describe('ImportInbox', () => {
     expect(notes[2]).not.toContain('posted date');
   });
 
+  it('flags a pending card charge made just before the statement closes', async () => {
+    const card = (overrides) => txn({ paymentMethodType: 'credit_card', paymentMethodName: 'CIBC MC', billingCycleDay: 15, ...overrides });
+    plaidApi.getInbox.mockResolvedValue({
+      transactions: [
+        card({ id: 1, date: '2026-10-14', pending: true }),
+        card({ id: 2, date: '2026-10-14', pending: false }),
+        card({ id: 3, date: '2026-10-05', pending: true }),
+        txn({ id: 4, date: '2026-10-14', pending: true, paymentMethodType: 'debit', billingCycleDay: null })
+      ],
+      hiddenUnmapped: 0
+    });
+
+    renderInbox();
+    const rows = await screen.findAllByTestId('inbox-row');
+
+    expect(within(rows[0]).getByTestId('pending-turnover')).toHaveTextContent('→ next?');
+    expect(within(rows[1]).queryByTestId('pending-turnover')).not.toBeInTheDocument();
+    expect(within(rows[2]).queryByTestId('pending-turnover')).not.toBeInTheDocument();
+    expect(within(rows[3]).queryByTestId('pending-turnover')).not.toBeInTheDocument();
+  });
+
   describe('fixed expenses', () => {
     const fixed = (overrides = {}) => ({
       id: 9, year: 2026, month: 10, name: 'Mortgage', category: 'Housing', amount: 1500, dueDay: 1,

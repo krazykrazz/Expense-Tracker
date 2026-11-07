@@ -68,6 +68,8 @@ The posted date takes no space in a row. Hover the payment method pill to read i
 
 The one case that decides which bill an expense is on gets a small marker next to the pill: an expense that **posts on a later statement than it was made in**, such as a purchase on the last day of the cycle that posts two days later (**→ Nov 2**). Hovering it says which statement it falls on. This needs the card's **billing cycle day** (the day the statement closes); a card without one never shows the marker. A cycle runs from the day after the close day of one month to the close day of the next (a close day of 31 means the last day of shorter months), the same as the billing cycles.
 
+A charge still **pending** at the bank, made on the close day or in the two days before it, shows **→ next?** instead: banks post a day or two after the purchase, so it may land on the next statement. It is a guess and goes away when the bank posts it (then the **→ Nov 2** marker takes over if it did land later). The same badge appears next to **Pending** in the Bank Import inbox, so you can see it before adding the charge.
+
 ### Bank Import
 
 When an expense is linked to a settled credit card transaction in Bank Import, its posted date **follows the bank**, because statements are built from it:

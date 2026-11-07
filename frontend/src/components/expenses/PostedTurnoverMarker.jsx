@@ -1,5 +1,5 @@
 import { formatDate } from '../../utils/formatters';
-import { laterStatement } from '../../utils/statementCycle';
+import { laterStatement, mayPostOnLaterStatement } from '../../utils/statementCycle';
 import './PostedTurnoverMarker.css';
 
 const shortDate = (dateStr) => {
@@ -28,6 +28,23 @@ const PostedTurnoverMarker = ({ expense, billingCycleDay }) => {
   return (
     <span className="posted-turnover" title={text} role="note" aria-label={text} data-testid="posted-turnover">
       <span aria-hidden="true">→ {shortDate(expense.posted_date)}</span>
+    </span>
+  );
+};
+
+/**
+ * Marker for a pending credit card charge made just before the statement closes: it may post after the close
+ * and land on the next bill. Disappears once the bank posts it (then PostedTurnoverMarker takes over if it did).
+ * @param {{date: string, pending: boolean, billingCycleDay: (number|null)}} props
+ */
+export const PendingTurnoverMarker = ({ date, pending, billingCycleDay }) => {
+  const risk = mayPostOnLaterStatement(date, pending, billingCycleDay);
+  if (!risk) return null;
+
+  const text = `Still pending, made ${formatDate(date)}: if it posts after ${formatDate(risk.statement)} it will be on the next statement`;
+  return (
+    <span className="posted-turnover pending-turnover" title={text} role="note" aria-label={text} data-testid="pending-turnover">
+      <span aria-hidden="true">→ next?</span>
     </span>
   );
 };

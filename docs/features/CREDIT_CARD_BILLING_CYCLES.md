@@ -113,6 +113,10 @@ Each billing cycle shows the count of transactions posted during that period:
 - Singular "transaction" for count of 1, plural "transactions" otherwise
 - Helps identify spending activity levels per cycle
 
+### Comparison with the bank (Bank Import)
+
+For a card linked to a bank account, the Billing Cycles tab adds a **Compared with the bank** section: each of the last (up to) three closed cycles the bank's history fully covers, with the bank's posted total, the tracker's total and the entries that explain a difference. See [Statement check](PLAID_INTEGRATION.md#statement-check-billing-cycles-tab).
+
 ## User Interface
 
 ### Accessing Billing Cycles

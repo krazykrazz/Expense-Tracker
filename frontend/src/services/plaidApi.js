@@ -70,6 +70,13 @@ export const openBankImport = (tab = 'inbox') => window.dispatchEvent(new Custom
 export const getCardBalanceChecks = (options = {}) =>
   call('fetching card balance checks', () => apiGet(API_ENDPOINTS.PLAID_CARD_BALANCES, 'check card balances with the bank', options));
 
+/**
+ * Bank vs tracker for a card's last closed statement cycles that the bank's history fully covers.
+ * @returns {Promise<{paymentMethodId: number, billingCycleDay: (number|null), cycles: Array<object>}>}
+ */
+export const getCardCycleChecks = (paymentMethodId, options = {}) =>
+  call('fetching card cycle checks', () => apiGet(API_ENDPOINTS.PLAID_CARD_CYCLES(paymentMethodId), 'check statement cycles with the bank', options));
+
 /** Set a credit card's limit to the one its bank reports. */
 export const applyBankCreditLimit = (paymentMethodId) =>
   call('using bank credit limit', () => apiPost(API_ENDPOINTS.PLAID_CARD_USE_BANK_LIMIT(paymentMethodId), {}, 'use the bank credit limit'));

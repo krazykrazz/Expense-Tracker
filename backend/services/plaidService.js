@@ -156,6 +156,35 @@ class PlaidService {
   }
 
   /**
+   * Ask Plaid to fetch new transactions from the bank now (/transactions/refresh), for a bank whose data is
+   * stale. Some banks (CIBC) refuse a fetch without a fresh login, even right after one: Plaid then reports
+   * ITEM_LOGIN_REQUIRED, the item is marked as needing a login, and the caller opens Link update mode. A login
+   * on an item in that state is what makes Plaid fetch; a login on an item Plaid considers healthy doesn't.
+   * @returns {Promise<{status: 'refreshing'|'needs_login', item: object}>} refreshing: new transactions arrive
+   *   in a later sync, once Plaid has fetched them
+   */
+  async requestRefresh(id) {
+    const item = await plaidRepository.findItemById(parseInt(id, 10));
+    if (!item) {
+      throw fail('Bank connection not found', 404);
+    }
+    const accessToken = await this._accessTokenFor(item.id);
+    try {
+      await this._client().transactionsRefresh({ access_token: accessToken });
+      logger.info('Plaid refresh requested', { plaidItemId: item.id });
+      return { status: 'refreshing', item: await this.getItem(item.id) };
+    } catch (err) {
+      const code = plaidErrorOf(err)?.error_code;
+      if (!LOGIN_CODES.has(code)) {
+        throw toServiceError(err, 'refresh');
+      }
+      // Expected for banks that only update during a login: no activity log entry (the login that follows logs)
+      await plaidRepository.setItemError(item.id, code);
+      return { status: 'needs_login', item: await this.getItem(item.id) };
+    }
+  }
+
+  /**
    * After the user logged in again through Link update mode. There is no public token to exchange: the
    * connection (and its access token) is unchanged. Clears the error, logs it, and syncs straight away.
    */

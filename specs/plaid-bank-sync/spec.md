@@ -18,11 +18,18 @@ Phase 1 (the PoC) is archived at [`specs/archive/plaid-integration/spec.md`](../
 | 1.18.0 | #440 | Reconnect expired logins (update mode), connection alerts, re-attach on reconnect (most of 2.2) |
 | 1.19.0–1.19.2 | #442, #444, #446 | Credit card balance check (4.2, pulled forward) with the balance capture part of 2.1; balances refreshed via `/accounts/get`; card view and dark theme cleanup; more balance-check causes |
 | 1.20.0 | #448 | Data freshness: "Not updating" status from Plaid's `/item/get` and institution status (2.6) |
-| next | — | Bank file import fallback (2.7): Wealthsimple card/chequing and CIBC card CSV exports into the Inbox, merged with Plaid in either order |
+| 1.21.0 | #450 | Bank file import fallback (2.7): Wealthsimple card/chequing and CIBC card CSV exports into the Inbox, merged with Plaid in either order |
+| 1.21.1 | #452 | Inbox place suggestions (learned place per bank description, else the existing place the description starts with); balance check `from_file` cause |
+| 1.21.2 | #454 | Dark mode coverage (includes the Bank Import screens) |
+| 1.21.3 | #456 | Wealthsimple pending charges settle when the card balance shows they posted (`settleFromBalance`) |
+| 1.21.4 | #459, #460 | Log in again on a "Not updating" bank (2.8, first version); fixes from the Plaid/CSV audit |
+| next | #462 | Log in again asks Plaid to fetch (`/transactions/refresh`) and opens the login when the bank needs one (2.8) |
 
-**Next:** 3.2 card payments (Record payment from the Inbox), the other half of card reconciliation. Then the rest of Phase 2 (capture the other Plaid fields, inbox badge, refactors), Phase 3 and the rest of Phase 4.
+**Next:** 3.2 card payments (Record payment from the Inbox), the other half of card reconciliation. Then the rest of Phase 2 (2.1 capture, 2.3 inbox badge, 2.4 refactors, 2.5 hygiene), Phase 3 and the rest of Phase 4.
 
-**Order change (2026-11-03):** card balance reconciliation is the biggest day-to-day problem, so 4.2 was built before the rest of Phase 2. It only needed balance capture from 2.1, done as its own migration `plaid_account_balances_v1`; the transaction columns of 2.1 still come in `plaid_capture_v1`.
+**Order changes:**
+- **2026-11-03:** card balance reconciliation is the biggest day-to-day problem, so 4.2 was built before the rest of Phase 2. It only needed balance capture from 2.1, done as its own migration `plaid_account_balances_v1`; the transaction columns of 2.1 still come in `plaid_capture_v1`.
+- **2026-11-04 → 06:** Plaid outages at Wealthsimple and CIBC's login-only updates (see [Production findings](#production-findings-2026-11-03--06)) pulled in 2.6, 2.7 and 2.8 ahead of the rest of Phase 2.
 
 ## Guiding principles
 
@@ -37,7 +44,7 @@ Phase 1 (the PoC) is archived at [`specs/archive/plaid-integration/spec.md`](../
 
 ---
 
-# As built (v1.17.0)
+# As built (v1.21.4, plus #462)
 
 ## Data
 
@@ -45,9 +52,9 @@ Phase 1 (the PoC) is archived at [`specs/archive/plaid-integration/spec.md`](../
 
 | Table | Purpose | Key columns |
 |---|---|---|
-| `plaid_items` | One per connected bank login | `item_id` UNIQUE, `institution_name`, `access_token_enc` (AES-256-GCM `v1:iv:tag:ct`), `environment` (`sandbox`/`production`), `sync_cursor`, `last_synced_at`, `last_error` |
-| `plaid_accounts` | Accounts of an item | `account_id` UNIQUE, `name`, `mask`, `type`, `subtype`, `payment_method_id` → payment_methods (SET NULL) |
-| `plaid_transactions` | Staged bank transactions | `transaction_id` UNIQUE, `plaid_account_id`, `amount` (Plaid sign: + money out), `date` (posted), `authorized_date`, `name`, `merchant_name`, `status` (`new`/`added`/`matched`/`ignored`), `expense_id` (partial UNIQUE), `pending`, `pending_transaction_id`, `removed_at` |
+| `plaid_items` | One per connected bank login | `item_id` UNIQUE, `institution_name`, `access_token_enc` (AES-256-GCM `v1:iv:tag:ct`, 12-byte IV, 16-byte tag), `environment` (`sandbox`/`production`), `sync_cursor`, `last_synced_at`, `last_error`, `bank_updated_at`, `bank_update_failed_at`, `institution_status`, `institution_status_since` |
+| `plaid_accounts` | Accounts of an item | `account_id` UNIQUE, `name`, `mask`, `type`, `subtype`, `payment_method_id` → payment_methods (SET NULL), `current_balance`, `available_balance`, `credit_limit`, `balance_currency`, `balance_as_of` |
+| `plaid_transactions` | Staged bank transactions (from Plaid, or from a bank file: `transaction_id` starting `file:`) | `transaction_id` UNIQUE, `plaid_account_id`, `amount` (Plaid sign: + money out), `date` (posted), `authorized_date`, `name`, `merchant_name`, `status` (`new`/`added`/`matched`/`ignored`), `expense_id` (partial UNIQUE), `pending`, `pending_transaction_id`, `removed_at` |
 | `plaid_fixed_expense_links` | Bank payment confirming a fixed expense | `plaid_transaction_id` UNIQUE, `fixed_expense_id` UNIQUE, `landed_date`, `planned_amount` |
 | `plaid_income_links` | Deposit confirming (or creating) an income source | `plaid_transaction_id` UNIQUE, `income_source_id` UNIQUE, `landed_date`, `planned_amount` |
 
@@ -56,11 +63,13 @@ Phase 1 (the PoC) is archived at [`specs/archive/plaid-integration/spec.md`](../
 **Migrations:**
 - `fixed_expenses_payment_method_id_backfill_v1`: links fixed expenses to payment methods by name.
 - `plaid_transactions_pending_v1`: adds the `pending`, `pending_transaction_id` and `removed_at` columns.
+- `plaid_account_balances_v1`: account balance columns (4.2).
+- `plaid_item_freshness_v1`: `bank_updated_at`, `bank_update_failed_at`, `institution_status`, `institution_status_since` (2.6).
 
 **Settings keys:**
 - `plaid_client_id`, `plaid_secret_enc`, `plaid_environment`;
 - `plaid_production_items_created` (Trial counter, never decremented);
-- `plaid_auto_sync_enabled`, `plaid_auto_sync_interval_minutes`, `plaid_auto_sync_start_hour`, `plaid_auto_sync_end_hour`.
+- `plaid_auto_sync_enabled`, `plaid_auto_sync_interval_minutes`, `plaid_auto_sync_start_hour`, `plaid_auto_sync_end_hour` (defaults: on, 30 min, 06–23).
 
 **Secrets:** the key is `<CONFIG_DIR>/secrets/plaid.key` (generated on first use, mode 600, excluded from backups) or `PLAID_TOKEN_KEY`. `PLAID_*` environment variables override the in-app keys and make Settings read-only.
 
@@ -69,35 +78,46 @@ Phase 1 (the PoC) is archived at [`specs/archive/plaid-integration/spec.md`](../
 | Module | Responsibility |
 |---|---|
 | `config/plaid.js` | Effective config (env over settings), `isEnabled()`, cached Plaid client, token key load/generate |
-| `utils/tokenCrypto.js` | AES-256-GCM encrypt/decrypt |
+| `utils/tokenCrypto.js` | AES-256-GCM encrypt/decrypt (IV and tag lengths checked) |
 | `utils/plaidMatching.js` | Pure rules: expense match (same payment method, **charged** amount `COALESCE(original_cost, amount)` to the cent, ±3 days on purchase date), fixed-expense window (due −3/+10 days, clamped due day, settled only), deposits and income window (own month; next month in the last 3 days; previous month in the first 3), income ranking (learned name → name tokens → own month → amount) |
-| `repositories/plaidRepository.js` | Items/accounts, `applySyncBatch` (atomic page apply + cursor), inbox queries, link tables, pending settlement and cancelled-charge queries, `findLinksForExpenses` |
-| `services/plaidService.js` | Link token, connect (Trial counter, orphan cleanup), mapping (+ `plaid_account_updated`), `syncItem` (per-item lock, mutation-during-pagination restart ×3, error recorded once as `plaid_sync_failed`), `syncAll`, `findStaleItems`, `syncItems`, disconnect (atomic) |
-| `services/plaidInboxService.js` | `listInbox` (candidates, suggestions, cancelled charges), add / match / match-fixed / match-income / add-income / ignore / unignore, `applySettlements`, `resolveCancelled`, per-row in-flight lock, `_logReview` |
+| `utils/plaidFreshness.js` | `isBankDataStale` (`STALE_AFTER_HOURS = 12`), shared by `connectionStatus` and the balance check |
+| `utils/bankFileImport.js` | CSV parsing per bank format and the file ↔ Plaid merge rules (2.7) |
+| `utils/placeSuggestion.js` | Inbox place pre-fill: learned place per cleaned description, else the longest existing place the description starts with |
+| `repositories/plaidRepository.js` | Items/accounts, `applySyncBatch` (atomic page apply + cursor: pending replacement, file takeover, reconnect re-attach), `applyFileImport`, inbox queries, link tables, pending settlement and cancelled-charge queries, balance-check queries, `markSettled`, `findLinksForExpenses` |
+| `services/plaidService.js` | Link token, connect (Trial counter, orphan cleanup), `markReconnected`, `requestRefresh` (2.8), mapping (+ `plaid_account_updated`), `syncItem` (per-item lock, mutation-during-pagination restart ×3, `/accounts/get` balances, `/item/get` + institution status, settle-from-balance when the balances were refreshed, error recorded once as `plaid_sync_failed`), `syncAll`, `findStaleItems`, `syncItems`, disconnect (atomic), `getStatus` (`needsAttention`, `staleData`) |
+| `services/plaidInboxService.js` | `listInbox` (candidates, place and category suggestions, cancelled charges, `source: file\|plaid`), add / match / match-fixed / match-income / add-income / ignore / unignore (409 when a sync changed the row meanwhile; an added expense is undone), `applySettlements` (logs `settle_failed` when the expense can't be updated), `resolveCancelled`, per-row in-flight lock, `_logReview` |
+| `services/plaidCardBalanceService.js` | Credit card balance check (4.2), `applyBankCreditLimit`, `settleFromBalance` |
+| `services/plaidFileImportService.js` | `importFile` (validation, default start date, preview / apply, settlements, `plaid_file_imported`) |
 | `services/plaidSettingsService.js` | Load/save/test/clear keys (encrypted secret), environment switch guard |
 | `services/plaidSyncSchedulerService.js` | 5-minute tick: syncs banks older than interval − 3 min within active hours (business timezone); settings |
 | `services/categorySuggestionService.getSuggestedCategories` | One grouped query for all inbox places (689 ms → 8 ms on production data) |
 | `expenseService.getExpenses` / `fixedExpenseService` / `incomeService` | Attach `bankLink` / `bankConfirmation` for the UI |
 
 **Sync rules:**
-- **New rows:** pending and posted transactions are staged.
+- **New rows:** pending and posted transactions are staged. A new Plaid transaction that matches an unclaimed bank-file row takes it over (2.7); one that matches a row kept from a disconnected connection re-attaches to it (2.2).
 - **Updates and removals:** modified and removed rows only touch `status = 'new'`, except pending rows:
   - a posted transaction carrying `pending_transaction_id` replaces its pending row in place (keeping status and links);
+  - a pending row that Plaid now sends as settled is updated and settled, reviewed or not; a settled row never goes back to pending;
   - a linked pending row whose amount changes is updated;
   - linked rows are returned as `settlements` and applied after the commit. The expense follows the bank if it still has the previous amount and isn't reimbursed or insurance-tracked; credit cards get `posted_date`;
   - a removed linked pending row gets `removed_at` and is reviewed as **Cancelled at bank** (Link to a settled row on the same account within 10 days and 25%, Keep, or Delete expense).
+- **After the batch:** balances (`/accounts/get`), freshness (`/item/get`, institution status), settlements, then `settleFromBalance` for banks whose balance leaves pending out (only when the balances were refreshed in this sync).
 
 ## API (`/api/plaid`, behind `authMiddleware`; 503 when not configured except status and settings)
 
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/status` | `{ enabled, source, environment, trial }` |
+| GET | `/status` | `{ enabled, source, environment, trial, needsAttention, staleData }` |
 | GET/PUT/DELETE | `/settings`; POST `/settings/test` | Keys; secret only ever masked |
-| POST | `/link-token`; GET/POST `/items`; DELETE `/items/:id` | Connect, list, disconnect |
+| POST | `/link-token { itemId? }`; GET/POST `/items`; DELETE `/items/:id` | Connect (or update mode with `itemId`), list, disconnect |
+| POST | `/items/:id/reconnected` | After update mode: clear the error, log, sync |
+| POST | `/items/:id/refresh` | Ask Plaid to fetch now; `{ status: 'refreshing' \| 'needs_login' }` (2.8) |
 | PUT | `/accounts/:id` | `{ paymentMethodId \| null }` |
+| POST | `/accounts/:id/import-file` | `{ csv, fromDate?, dryRun? }`, 2 MB route-scoped JSON limit (2.7) |
 | POST | `/sync` (`?ifStaleMinutes=N` for sync-on-open, background) | |
+| GET | `/card-balances`; POST `/card-balances/:id/use-bank-limit` | Balance check (4.2) |
 | GET/PUT | `/sync-settings` | Automatic sync schedule |
-| GET | `/inbox?status=new\|ignored` | Rows with candidates; `cancelled` for `new` |
+| GET | `/inbox?status=new\|ignored` | Rows with candidates and suggestions; `cancelled` for `new` |
 | POST | `/inbox/:id/{add,match,match-fixed,match-income,add-income,cancelled,ignore,unignore}` | Decisions |
 
 ## Activity log and sync
@@ -105,24 +125,29 @@ Phase 1 (the PoC) is archived at [`specs/archive/plaid-integration/spec.md`](../
 | Event | Entity | When |
 |---|---|---|
 | `plaid_item_added` / `plaid_item_deleted` | plaid_item | Connect / disconnect |
+| `plaid_item_updated` | plaid_item | Reconnected after a login error, or logged in again |
 | `plaid_sync_failed` | plaid_item | A bank first goes into error |
 | `plaid_account_updated` | plaid_account | Mapping changed |
 | `plaid_sync_completed` | plaid_transaction | A sync changed staged rows (manual, scheduled, on open) |
-| `plaid_transaction_updated` | plaid_transaction | Inbox decisions (`add`, `match`, `match_fixed`, `match_income`, `add_income`, `ignore`, `unignore`, `cancelled_keep`, `cancelled_delete`) and sync-driven `settled` / `pending_changed` |
+| `plaid_file_imported` | plaid_transaction | A bank file added or updated rows |
+| `plaid_transaction_updated` | plaid_transaction | Inbox decisions (`add`, `match`, `match_fixed`, `match_income`, `add_income`, `ignore`, `unignore`, `cancelled_keep`, `cancelled_delete`) and sync-driven `settled` / `pending_changed` / `settle_failed` |
 | `settings_updated` | settings | `section: 'plaid'` (keys, never values) or `'plaid_auto_sync'` |
 
-All `plaid_*` entity types route to the `plaid` window event. Consumers: `ImportInbox`, `BankConnections` and `useBankAccountLinks`. The records created or changed also log their own events (`expense_added`, `fixed_expense_updated`, …).
+All `plaid_*` entity types route to the `plaid` window event. Consumers: `ImportInbox`, `BankConnections`, `useBankAccountLinks`, `usePlaidStatus` and `useCardBalanceChecks`. The records created or changed also log their own events (`expense_added`, `fixed_expense_updated`, …). Known gap: a sync whose only changes are re-attached rows or refreshed balances logs nothing, so other tabs don't refresh.
 
 ## Frontend (`components/bank-import/`)
 
-- **`BankImportButton`:** header entry, hidden unless enabled. It runs sync-on-open: on load, on tab visible (throttled to 5 min), and on modal open.
+- **`BankImportButton`:** header entry, hidden unless enabled, with the red attention / amber stale dot. It runs sync-on-open: on load, on tab visible (throttled to 5 min), and on modal open.
 - **`BankImportModal`:** the Inbox and Connections tabs, portalled to `<body>`.
-- **`ImportInbox`:** rows, filters, Add / Add income forms, the Match picker (expenses, fixed expenses, income), the Cancelled-at-bank section, and the Pending badge.
-- **`BankConnections`:** connect (Trial confirm), mapping, Sync now, last synced; contains `AutoSyncSettings`.
+- **`ImportInbox`:** rows, filters, Add / Add income forms (place and category pre-filled), the Match picker (expenses, fixed expenses, income), the Cancelled-at-bank section, the Pending and From file badges.
+- **`BankConnections`:** connect (Trial confirm), status chips, Reconnect / Log in again, freshness line, mapping, Import file, Sync now, last synced; contains `AutoSyncSettings` and `BankFileImport`.
+- **`BankFileImport`:** file picker, preview, editable start date, Import.
 - **`PlaidSettings`:** the Settings → Bank Import screen.
 - **`bankConfirmation.js`:** pill states for the expense list and Fixed Expenses: `confirmed` green, `pending` yellow, `differs` / `cancelled` red-orange.
+- **`cardBalanceCheck.js`**, **`CardBankBalance`** and `hooks/useCardBalanceChecks`: the balance check on the Financial card table and the card detail view.
 - **`IncomeConfirmationIndicator`:** income has no pill, so it shows an icon.
 - **`BankLinkedBadge`** with `hooks/useBankAccountLinks`: the Financial page badge on mapped payment methods.
+- **`notifications/BankAttentionBanner`** with `hooks/usePlaidStatus`: the main-screen banner when a bank needs the user.
 
 ---
 
@@ -146,13 +171,29 @@ Production on the Trial plan: **Wealthsimple** (chequing, Visa, line of credit, 
 
 Balance check on the same day, done right (4.2 rules): CIBC tracker $1,554.40 = bank $1,554.40; WS VISA $2,129.92 vs $2,115.23. The difference is one $14.69 charge still pending at Wealthsimple. A naive comparison showed −$646.81 / −$1,000.00: it used the stored `current_balance`, which includes some future-dated expenses (2.4 R7), and CIBC's balance excludes pending.
 
+# Production findings (2026-11-03 → 06)
+
+What a week of real use showed; each one shaped 2.6–2.8 and the merge rules in 2.7.
+
+| Finding | Evidence | Consequence |
+|---|---|---|
+| Both banks are **Classic** (credential) connections at Plaid; no OAuth in Canada | `institutionsSearch`: `oauth: false` for CIBC, Wealthsimple, Simplii | Outages and login prompts will recur; nothing to switch to |
+| **Wealthsimple outage at Plaid**, Nov 3 → Nov 6 | `/item/get` last successful update stuck; institution status DOWN (`error_plaid`); our syncs kept succeeding with nothing new. A re-login didn't help; it recovered on its own | 2.6 "Not updating"; 2.7 file import as the fallback |
+| **CIBC only gives Plaid data during a login** | New CIBC transactions arrived only right after a login, never from the scheduled syncs in between; the login expires ~24 h later (`ITEM_LOGIN_REQUIRED` at the next sync). `/transactions/refresh` returns `ITEM_LOGIN_REQUIRED` even minutes after a login. A login on a connection Plaid considers healthy fetched nothing; a login on one marked as needing a login fetched at once (Nov 6) | 2.8: Log in again = refresh request, then the login when needed |
+| CIBC's pending charges arrive pending, then settle under a new id | As in Phase 0; the CIBC file then had Shoppers settled while Plaid still had it pending | 2.7: a file can settle a Plaid pending row |
+| Wealthsimple never flags pending through Plaid, and its card balance leaves pending out | Plaid rows `pending = 0`, no `authorized_date`; the file marks them Pending; WS VISA differed from the tracker by exactly the pending charges | File pending rows stay pending after takeover; `settleFromBalance` settles them when the balance includes them |
+| File vs Plaid dates | WS file date = purchase date, 0–1 day before Plaid's; CIBC file date = posting date = Plaid `date` | `dateKind` per format; ±3 days pairing; Plaid's `authorized_date` wins when present |
+| Pairing quality on real data | WS card 51/51 and chequing 39/39 already-received rows paired exactly | Exact amount ±3 days is enough; the 25% tolerance only applies when one side is pending |
+| Place names | Raw bank text matched the saved place for 32 of 78 reviewed rows; with learned places and the existing-place prefix, 57 of 78 | Inbox place suggestions (shipped in 1.21.1, a first step towards 5.2) |
+| Plaid Dashboard limits on Trial | The Institution Status page isn't available on the Trial plan | 2.6 uses the API (`/item/get`, `/institutions/get_by_id`) |
+
 ---
 
 # Roadmap
 
 | Phase | Goal | Depends on |
 |---|---|---|
-| **2** Foundation | Keep what Plaid sends; reconnect without new Trial slots; inbox badge; refactors and hygiene | — |
+| **2** Foundation | Keep what Plaid sends; reconnect without new Trial slots; data freshness, bank file fallback, login-only banks (2.6–2.8, built); inbox badge; refactors and hygiene | — |
 | **3** Money that isn't spending | Classify and record card payments, contributions, loan payments, refunds, transfers | 2.1, 2.4 |
 | **4** Balances | Investment and loan values from bank balances; credit card balance check | 2.1 (3.2 makes 4.2 sharper) |
 | **5** Less typing | Plaid categories, merchant rules, bulk actions | 2.1, 3.1 |
@@ -198,7 +239,9 @@ Balance check on the same day, done right (4.2 rules): CIBC tracker $1,554.40 = 
 > - Header attention dot (opens Connections), main-screen `BankAttentionBanner`, status chips + Reconnect, shared `usePlaidStatus` hook, `openBankImport(tab)` event.
 > - Not in the original design, added for the incident: **re-attach on reconnect.** A disconnect + new connection re-sends ~30 days under new transaction ids; `applySyncBatch` re-attaches kept rows (`plaid_account_id IS NULL`, added/matched) by exact match, or a posted txn to a kept pending one (purchase date, name, amount ±25%), instead of inserting duplicates. `bankLink.disconnected` explains a pending pill that can't settle.
 >
-> **Still open:** `consent_expiring` / `/item/get` refresh (req. 1, 5; no current bank has an expiry, so low value), the `institution_down` split from `error`, and the status column migration (only needed if status must survive something other than `last_error`, e.g. webhooks in Phase 7). Sandbox `reset_login` verification (2.x acceptance) is still to be done by hand.
+> **Still open:** `consent_expiring` / `/item/get` consent refresh (req. 1, 5; no current bank has an expiry, so low value), the `institution_down` split from `error` (2.6 shows Plaid's institution status instead), and the status column migration (only needed if status must survive something other than `last_error`, e.g. webhooks in Phase 7).
+>
+> **Verified in production** instead of the Sandbox `reset_login` check: CIBC went to `ITEM_LOGIN_REQUIRED` daily (Nov 3–6) and Reconnect repaired it each time on the same Item (Trial counter unchanged, sync cursor kept, no duplicates).
 
 **Problem:** a password change or MFA reset makes the Item fail with `ITEM_LOGIN_REQUIRED`. Today the only fix is disconnect + reconnect, which costs a Trial slot and the cursor.
 
@@ -246,14 +289,14 @@ Planned now, because Phase 3 adds five more inbox actions and three more link ta
 
 | # | Item | Acceptance |
 |---|---|---|
-| R1 | Split `plaidInboxService` (601 lines) into: `plaidInboxService` (listing, candidates, suggestions), `plaidReviewService` (decisions and `_logReview`), and `plaidSettlementService` (`applySettlements`, `resolveCancelled`). The controller and `plaidService` call the new modules | Same behaviour; each file under ~300 lines |
-| R2 | Move link-table access (fixed, income, and the Phase 3 links) from `plaidRepository` (561 lines) to `plaidLinkRepository`, with a shared `linkTransaction(tx, …)` / `unlinkTransaction(…)` pattern | New link tables need no copy-paste |
-| R3 | Split `ImportInbox.jsx` (442 lines): `inbox/InboxRow`, `AddExpenseForm`, `AddIncomeForm`, `MatchPicker`, `IncomeCandidates`, `CancelledRow`. Replace the action `if/else` chain with an action → API map | Same tests pass; adding an action is one map entry plus one component |
+| R1 | Split `plaidInboxService` (652 lines) into: `plaidInboxService` (listing, candidates, suggestions), `plaidReviewService` (decisions and `_logReview`), and `plaidSettlementService` (`applySettlements`, `resolveCancelled`). The controller and `plaidService` call the new modules | Same behaviour; each file under ~300 lines |
+| R2 | Move link-table access (fixed, income, and the Phase 3 links) from `plaidRepository` (922 lines) to `plaidLinkRepository`, with a shared `linkTransaction(tx, …)` / `unlinkTransaction(…)` pattern. Also split `applySyncBatch` (~150 lines) into one handler per case (pending replacement, file takeover, reconnect re-attach, insert, settle in place, update) | New link tables need no copy-paste |
+| R3 | Split `ImportInbox.jsx` (445 lines) and `BankConnections.jsx` (400 lines, 9 `useState`): `inbox/InboxRow`, `AddExpenseForm`, `AddIncomeForm`, `MatchPicker`, `IncomeCandidates`, `CancelledRow`. Replace the action `if/else` chain with an action → API map | Same tests pass; adding an action is one map entry plus one component |
 | R4 | Shared ranking helpers in `plaidMatching`: name tokens, learned names keyed by description, month windows. Reused by income now and by contributions and loans in Phase 3 | Income ranking PBT unchanged |
-| R5 | `addAsExpense`: create the expense and link it in one DB transaction (`expenseService.createExpense` with a connection, as future-month creation does) | No orphan expense if linking fails |
+| R5 | `addAsExpense`: create the expense and link it in one DB transaction (`expenseService.createExpense` with a connection, as future-month creation does). **Interim (1.21.4):** a failed link deletes the expense and returns 409 | No orphan expense if linking fails |
 | R6 | Shared backend Plaid test fixtures (`backend/test/plaidFixtures.js`: `account`, `txn`, `page`, `stage`, `connect`) | Duplicated helpers removed from the three Plaid test files |
 | R7 | `payment_methods.current_balance` is maintained incrementally: expense create adds the amount whatever the date, while payments recalculate as of today. The screens already compute "as of today" (`getAllWithExpenseCounts`, `getAllBalanceTypes`); the stored value is only read by the reminder fallback (no statement) and the edit form. Make the stored value consistent: recalculate as of today on every change, or stop treating it as a balance | Reminder fallback and stored value equal the computed as-of-today balance (test with a future-dated expense) |
-| R8 | Remove leftover PoC wording and dead code found during R1–R3 | No `PoC` in user-facing text |
+| R8 | Remove leftover PoC wording and dead code found during R1–R3. From the 1.21.4 audit: one `fail()` helper (defined in 5 files), shared `round2`/`cents`, the `0.25` and `'file:%'` literals replaced by `PENDING_AMOUNT_TOLERANCE` / `FILE_ID_PREFIX`, misplaced JSDoc in `plaidRepository`, one shared Plaid status fetch instead of one per hook | No `PoC` in user-facing text |
 
 ### 2.5 Data hygiene
 
@@ -261,7 +304,8 @@ Planned now, because Phase 3 adds five more inbox actions and three more link ta
 2. **Unknown accounts:** the "hidden, map accounts" count covers only existing unmapped accounts; rows from accounts Plaid never listed are counted separately.
 3. **Settings across tabs:** `plaid-settings-changed` also reaches other tabs (log `settings_updated` → route `settings` to that window event).
 4. **Pending backfill on upgrade (R9):** the v1.17.0 upgrade didn't show charges already pending (the sync cursor had passed them). Productize the one-off fix: on the first sync after `plaid_transactions_pending_v1`, call `/transactions/get` (last 21 days) per Item once and insert missing pending rows. Gated by `plaid_pending_backfill_done`.
-5. **Modified amounts on reviewed rows (R10):** Wealthsimple sends still-pending charges as settled, so a later amount change arrives as *modified* on an added/matched row, which is ignored today. Apply the `pending_changed` rule to any linked row: follow the bank if the expense still has the previous bank amount; log it.
+5. **Modified amounts on reviewed rows (R10):** Wealthsimple sends still-pending charges as settled, so a later amount change arrives as *modified* on an added/matched row, which is ignored today. Apply the `pending_changed` rule to any linked row: follow the bank if the expense still has the previous bank amount; log it. **Partly done (1.21.0):** a linked row still pending (e.g. from a Wealthsimple file) follows a *modified* that settles it, amount included; a *modified* amount on a linked row that is already settled is still ignored.
+6. **Refresh events (from the 1.21.4 audit):** a sync whose only changes are re-attached rows or refreshed balances logs no `plaid_sync_completed`, so other tabs and the card balance check don't refresh. Count `reattached` in the totals and log balance-only changes.
 
 **Tests:** retention keeps linked rows; backfill runs once; modified linked row follows the bank only when untouched.
 **Docs:** PLAID_INTEGRATION (Staging rules, Limitations).
@@ -290,15 +334,32 @@ Planned now, because Phase 3 adds five more inbox actions and three more link ta
 - **File import** (`planFileImport`, one DB transaction in `applyFileImport`): same key → unchanged / update; else paired existing row (Plaid or older file row) → merged (counted `updated` if anything changed, else `alreadyFromBank` / `unchanged`); else insert. A settle on a row linked to an expense produces a settlement (`applySettlements`: amount, card posted date).
 - **Takeover:** `applySyncBatch` → `_findFileRow`: a new Plaid transaction that is the same transaction as an unclaimed file row on the account takes it over via `mergePlaidIntoFileRow`. Counted as `fromFile` (and `updated`). Plaid pending for an already settled row is ignored (one-way).
 - **Default start date:** the first date Plaid sent for the account (older history is already in the tracker), else 30 days back. Verified on production data: WS card 51/51 and chequing 39/39 rows already from Plaid paired exactly (dates 0-1 day apart); the leftovers were exactly the transactions missing since the outage. CIBC: the file settled Shoppers (pending at Plaid) keeping Plaid's purchase date.
-- **API/UI:** `POST /accounts/:id/import-file { csv, fromDate?, dryRun? }` (JSON, 2 MB limit on that route only); Connections → Import file (mapped accounts) with a preview; Inbox "From file" tag; `plaid_file_imported` event. Card balance check counts file rows like Plaid's and warns when the bank's balance is stale (`utils/plaidFreshness.js`, shared with `connectionStatus`).
+- **API/UI:** `POST /accounts/:id/import-file { csv, fromDate?, dryRun? }` (JSON, 2 MB limit on that route only); Connections → Import file (mapped accounts) with a preview; Inbox "From file" tag; `plaid_file_imported` event. In the card balance check an added/matched row that exists only in a file is a `from_file` cause (Plaid's balance doesn't include it yet); unreviewed or ignored file rows aren't causes. The check warns when the bank's balance is stale (`utils/plaidFreshness.js`, shared with `connectionStatus`).
+- **Validation (1.21.4):** a row with an empty amount, or a CIBC row with neither debit nor credit, is rejected (line number in the error), not imported as $0.00. The start date in the preview applies on Enter / leaving the field; older preview responses are ignored.
 - **Not handled:** removing rows that disappear from a later export.
 
+### 2.8 Banks that only update during a login ("Log in again")
+
+> **Status: built** (1.21.4 button; #462 refresh request). From the CIBC findings above.
+
+- **Problem:** CIBC lets Plaid fetch only during a login, and only when the connection is marked as needing one. Scheduled syncs find nothing between logins; the login expires after ~24 h. A login through update mode on a connection Plaid still considers healthy fetched nothing (tried Nov 6).
+- **Button:** **Log in again** on a bank with status `stale` (Not updating). Reconnect stays for `needs_login`.
+- **Flow:** `POST /items/:id/refresh` → `requestRefresh` calls `/transactions/refresh`.
+  - Accepted → `{ status: 'refreshing' }`: Plaid fetches in the background; new rows arrive with the next sync.
+  - `LOGIN_CODES` (CIBC, always) → the item's `last_error` is set (no activity log entry; the login that follows logs `plaid_item_updated`) → `{ status: 'needs_login' }` → the frontend opens Link update mode at once → `markReconnected` syncs and reports what came in. Verified in production: the login then brought the missing CIBC transactions.
+  - Other Plaid errors → 502, the bank is left as it was.
+- **Cost:** `/transactions/refresh` works on the Trial plan; on paid plans it may be billed per call. It's only ever called from the button, never automatically.
+- **Fallback:** the file import (2.7) works whatever the bank's login state.
+
 ### Phase 2 exit criteria
-- [ ] 2.1 capture and backfill in production; PFC and balances visible in the DB for new rows.
-- [ ] 2.2 a Sandbox `reset_login` repaired with Reconnect, without a new Trial slot.
+- [ ] 2.1 capture and backfill in production; PFC and balances visible in the DB for new rows. *(Balances done with 4.2; PFC and the other transaction fields not started.)*
+- [x] 2.2 an expired login repaired with Reconnect, without a new Trial slot. *(Verified in production on CIBC instead of a Sandbox `reset_login`; consent expiry still open, low value.)*
 - [ ] 2.3 badge counts match the inbox.
-- [ ] R1–R8 merged; no Plaid source file over ~350 lines.
-- [ ] 2.5 items merged.
+- [ ] R1–R8 merged; no Plaid source file over ~350 lines. *(Not started; files have grown: `plaidRepository` 922, `plaidInboxService` 652, `plaidService` 618 lines.)*
+- [ ] 2.5 items merged. *(R10 partly done; the rest not started.)*
+- [x] 2.6 a stalled bank shows Not updating, from Plaid's own fetch time.
+- [x] 2.7 Wealthsimple and CIBC files imported in production, merged with Plaid in either order without duplicates.
+- [ ] 2.8 Log in again brings CIBC transactions without a new Trial slot. *(The mechanism was verified by hand on Nov 6: refresh → `ITEM_LOGIN_REQUIRED` → Reconnect brought the missing transactions. Tick after #462 is released and the button does it in one go.)*
 - [ ] Docs per the [matrix](#documentation-matrix); full-suite validation.
 
 ## Phase 3: Money that isn't spending
@@ -459,6 +520,10 @@ The budget plan already has monthly allocations ("RRSP $300", optionally linked 
 > - Causes come from pairing bank rows (`new` **and `ignored`**: an ignored refund is a classic cause) with unlinked tracker expenses and card payments since the bank's first date: same signed amount within 5 days, then one tracker entry against two bank rows (split Amazon charges). Leftovers are `bank_only` / `tracker_only` / `settling` causes with their effect, plus `from_file` (in the tracker from a file-only row Plaid hasn't sent, so not in Plaid's balance; unlinked file rows aren't causes but still pair with tracker entries), `cancelled` (linked pending charge the bank dropped), `fixed_expense` (charge confirmed as a fixed expense; fixed expenses aren't in the card balance) and `credit_balance` (tracker balance is clamped at $0); the rest is `unexplained`. With a user-entered statement as the balance anchor, only activity posted after its cycle end is considered.
 > - UI: the Financial page card table colours a linked card's Current balance with the expense list's bank pill classes (`cardBalanceProps`: `bank-pill-confirmed` / `bank-pill-differs`, details in the hover text). In the card detail view (`CardBankBalance.jsx`) the check is folded into the existing cards: a bank line in Current Balance, causes only when it differs, Use bank limit in the Credit Limit card. Utilization stays on the existing Credit Limit card (one figure, from the tracker balance).
 > - Verified on production data: CIBC and Wealthsimple both matched to the cent.
+> - **Stale bank data (1.21.0):** `bankError` warns when the bank isn't syncing or Plaid hasn't had new data for over 12 hours, because the bank side is then older than the tracker side.
+> - **Settling from the balance (1.21.3):** for a card whose bank leaves pending out of its balance (Wealthsimple: `includesPending` false), after each sync whose `/accounts/get` succeeded, `settleFromBalance` marks posted the `settling` charges outside the one subset that explains the difference to the cent (≤ 12 charges; ambiguous or no exact fit → nothing; stale or erroring bank → nothing). Settlements go through `applySettlements`. On production data it settled the two Wealthsimple charges that had posted and kept the one still pending.
+>
+> **As built vs the requirements below:** "settling" means a linked pending charge on a bank whose balance excludes pending (not "linked in the last 2 days"); unrecorded card payments show as `bank_only` credits until 3.2. The response is `{ paymentMethodId, name, accounts, itemIds, status, bank: { owed, includesPending, asOf, currency }, tracker, difference, futureDated, causes, unexplained, awaitingMatch, splitCharges, limit, bankError }`.
 
 **Requirements**
 1. **Tracker side:** the balance as of today (business date), as the Financial page already computes it (`paymentMethodService.calculateCurrentBalance`). Never the stored `current_balance` (2.4 R7).
@@ -480,7 +545,7 @@ The budget plan already has monthly allocations ("RRSP $300", optionally linked 
 
 ### Phase 4 exit criteria
 - [ ] Production RRSP and LOC values update from bank balances without overwriting a hand-entered month.
-- [ ] Card balance check matches the Phase 0 manual result.
+- [x] Card balance check matches the Phase 0 manual result. *(Both cards matched to the cent in 1.19.0; differences since then are fully explained by causes.)*
 - [ ] Docs per the matrix.
 
 ## Phase 5: Less typing
@@ -507,6 +572,7 @@ The budget plan already has monthly allocations ("RRSP $300", optionally linked 
    | `MEDICAL_*` | none |
 
 ### 5.2 Merchant rules
+0. **Built first step (1.21.1):** the Inbox pre-fills the place chosen before for the same cleaned bank description (store numbers, `- Purchase`-style suffixes and province removed), else the longest existing place the description starts with, else the bank's text (`utils/placeSuggestion.js`). Rules below add explicit, editable mappings and categories on top.
 1. **Match on:** `merchant_entity_id` when present (stable across description variants), else description text (equals / starts with / contains). Optionally limited by payment method and amount range.
 2. **A rule sets:** place, category, notes, action (`suggest` or `not_expense`).
 3. **Learned:** after Add with a changed place or category, offer "Always use …".
@@ -539,10 +605,9 @@ Each needs a one-time update-mode consent for that bank (`additional_consented_p
 - **Holdings and cost basis:** optional, display only.
 
 ### 6.3 Ask the bank for fresh data
-- A Sync now option calling `/transactions/refresh`.
-- Cooldown: 1 per Item per hour.
-- Never automatic (billed per call on paid plans).
-- **Tried 2026-11-03 (Trial):** Wealthsimple returned `INTERNAL_SERVER_ERROR` (Plaid's Wealthsimple connection was going down), CIBC `ITEM_LOGIN_REQUIRED` (it then needed a reconnect). Don't build this until it's been shown to work on a healthy Item.
+- **Partly built as 2.8:** `requestRefresh` (`/transactions/refresh`) behind Log in again on a stale bank; never automatic.
+- **Still open:** a Sync now option for banks that accept the refresh without a login, with a cooldown of 1 per Item per hour (billed per call on paid plans).
+- **History:** tried 2026-11-03 (Trial): Wealthsimple returned `INTERNAL_SERVER_ERROR` (Plaid's Wealthsimple connection was going down), CIBC `ITEM_LOGIN_REQUIRED`. On Nov 6, CIBC returned `ITEM_LOGIN_REQUIRED` minutes after a login; that's what 2.8 builds on. Not yet seen accepted by a healthy Item.
 
 ## Phase 7: Webhooks (optional)
 
@@ -618,3 +683,5 @@ Every PR updates the docs its change touches. Recheck after each phase.
 | Q12 | One PR per numbered item | **Decided:** yes |
 | Q13 | Add RESP as an investment type (table rebuild)? | Open; RESPs stay unlinked until decided |
 | Q14 | R7: recalculate `current_balance` on every change, or retire it as a stored balance? | Open; decide in 2.4 |
+| Q15 | CIBC only updates during a login: keep scheduled syncs for it, or treat it as "log in to update" (no scheduled syncs, no daily Needs login alert)? | Open; scheduled syncs kept for now (cheap, and they detect the expired login) |
+| Q16 | Webhooks (Phase 7) now that both banks are Classic connections with Plaid-side fetch limits? | Open; low value until a bank fetches in the background reliably |

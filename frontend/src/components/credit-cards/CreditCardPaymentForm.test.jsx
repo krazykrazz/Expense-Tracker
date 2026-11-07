@@ -315,6 +315,8 @@ describe('CreditCardPaymentForm', () => {
       fireEvent.click(submitButton);
 
       expect(screen.getByText('Recording...')).toBeInTheDocument();
+      // Let the submit finish inside the test: a state update after the test environment is gone fails the whole run
+      expect(await screen.findByText('Record Payment')).toBeInTheDocument();
     });
 
     it('should call onPaymentRecorded callback on success', async () => {
@@ -410,6 +412,8 @@ describe('CreditCardPaymentForm', () => {
 
       const cancelButton = screen.getByText('Cancel');
       expect(cancelButton).toBeDisabled();
+      // Let the submit finish inside the test (see the loading-state test)
+      await waitFor(() => expect(screen.getByText('Cancel')).not.toBeDisabled());
     });
   });
 

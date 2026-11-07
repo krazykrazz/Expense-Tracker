@@ -256,6 +256,21 @@ const MIGRATIONS = [
       }
       logger.info('Added data freshness columns to plaid_items');
     }
+  },
+  {
+    // Plaid's personal finance category (primary, detailed, confidence level) for each staged transaction,
+    // used to recognise credit card payments. Rows staged before this stay NULL.
+    name: 'plaid_transactions_pfc_v1',
+    async apply(db) {
+      for (const column of ['pfc_primary TEXT', 'pfc_detailed TEXT', 'pfc_confidence TEXT']) {
+        try {
+          await runSql(db, `ALTER TABLE plaid_transactions ADD COLUMN ${column}`);
+        } catch (err) {
+          if (!err.message.includes('duplicate column name')) throw err;
+        }
+      }
+      logger.info('Added personal finance category columns to plaid_transactions');
+    }
   }
 ];
 

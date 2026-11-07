@@ -266,7 +266,8 @@ describe('plaidService', () => {
 
       // Plaid (Wealthsimple style) sends them a day later, posted date only, its own names
       client.transactionsSync.mockResolvedValueOnce(cardPage({ added: [
-        txn('ws-cafe', { amount: 10.4, date: '2026-11-04', authorized_date: null, name: 'Corner Cafe - Purchase', merchant_name: null }),
+        txn('ws-cafe', { amount: 10.4, date: '2026-11-04', authorized_date: null, name: 'Corner Cafe - Purchase', merchant_name: null,
+          personal_finance_category: { primary: 'FOOD_AND_DRINK', detailed: 'FOOD_AND_DRINK_COFFEE', confidence_level: 'HIGH' } }),
         txn('ws-grocer', { amount: 44.57, date: '2026-11-04', authorized_date: null, name: 'Grocer - Purchase', merchant_name: null }),
         txn('ws-new', { amount: 7, date: '2026-11-05', authorized_date: null, name: 'Something new', merchant_name: null })
       ] }));
@@ -280,6 +281,9 @@ describe('plaidService', () => {
         { tid: 'ws-new', status: 'new', pending: 0, amount: 7, date: '2026-11-05', auth: null, name: 'Something new', merchant: null, expenseId: null }
       ]);
       expect(cafe).toBeDefined();
+      // The file had no category; Plaid's version brings it
+      expect(await get("SELECT pfc_detailed FROM plaid_transactions WHERE transaction_id = 'ws-cafe'"))
+        .toEqual({ pfc_detailed: 'FOOD_AND_DRINK_COFFEE' });
     });
 
     test('file first, pending at a bank that never sends pending through Plaid: stays pending until it settles', async () => {
@@ -638,6 +642,62 @@ describe('plaidService', () => {
         { transaction_id: 'done2', amount: 12.34, status: 'ignored' },
         { transaction_id: 'new1', amount: 99, status: 'new' }
       ]);
+    });
+
+    test("stores Plaid's category; a later sync without it keeps it; reviewed rows aren't touched", async () => {
+      const item = await connect();
+      const pfc = (primary, detailed, confidence = 'VERY_HIGH') => ({
+        personal_finance_category: { primary, detailed, confidence_level: confidence }
+      });
+      const categories = () => all(`SELECT transaction_id AS tid, pfc_primary AS primary_, pfc_detailed AS detailed,
+        pfc_confidence AS confidence FROM plaid_transactions ORDER BY transaction_id`);
+      client.transactionsSync.mockResolvedValueOnce(page({ added: [
+        txn('pay', pfc('LOAN_PAYMENTS', 'LOAN_PAYMENTS_CREDIT_CARD_PAYMENT')),
+        txn('none'),
+        txn('done', pfc('FOOD_AND_DRINK', 'FOOD_AND_DRINK_COFFEE', 'HIGH'))
+      ] }));
+      await plaidService.syncItem(item.id);
+
+      expect(await categories()).toEqual([
+        { tid: 'done', primary_: 'FOOD_AND_DRINK', detailed: 'FOOD_AND_DRINK_COFFEE', confidence: 'HIGH' },
+        { tid: 'none', primary_: null, detailed: null, confidence: null },
+        { tid: 'pay', primary_: 'LOAN_PAYMENTS', detailed: 'LOAN_PAYMENTS_CREDIT_CARD_PAYMENT', confidence: 'VERY_HIGH' }
+      ]);
+
+      await run("UPDATE plaid_transactions SET status = 'ignored' WHERE transaction_id = 'done'");
+      client.transactionsSync.mockResolvedValueOnce(page({
+        modified: [
+          txn('pay', { amount: 20 }),
+          txn('none', pfc('TRANSFER_OUT', 'TRANSFER_OUT_ACCOUNT_TRANSFER', 'LOW')),
+          txn('done', pfc('GENERAL_MERCHANDISE', 'GENERAL_MERCHANDISE_OTHER'))
+        ],
+        next_cursor: 'c2'
+      }));
+      await plaidService.syncItem(item.id);
+
+      expect(await categories()).toEqual([
+        { tid: 'done', primary_: 'FOOD_AND_DRINK', detailed: 'FOOD_AND_DRINK_COFFEE', confidence: 'HIGH' },
+        { tid: 'none', primary_: 'TRANSFER_OUT', detailed: 'TRANSFER_OUT_ACCOUNT_TRANSFER', confidence: 'LOW' },
+        { tid: 'pay', primary_: 'LOAN_PAYMENTS', detailed: 'LOAN_PAYMENTS_CREDIT_CARD_PAYMENT', confidence: 'VERY_HIGH' }
+      ]);
+    });
+
+    test("a pending row settling in place takes the posted transaction's category", async () => {
+      const item = await connect();
+      client.transactionsSync.mockResolvedValueOnce(page({ added: [txn('p1', { pending: true })] }));
+      await plaidService.syncItem(item.id);
+      client.transactionsSync.mockResolvedValueOnce(page({
+        added: [txn('s1', {
+          pending_transaction_id: 'p1',
+          personal_finance_category: { primary: 'LOAN_PAYMENTS', detailed: 'LOAN_PAYMENTS_CREDIT_CARD_PAYMENT', confidence_level: 'HIGH' }
+        })],
+        removed: [{ transaction_id: 'p1' }],
+        next_cursor: 'c2'
+      }));
+      await plaidService.syncItem(item.id);
+
+      expect(await all('SELECT transaction_id, pending, pfc_detailed FROM plaid_transactions'))
+        .toEqual([{ transaction_id: 's1', pending: 0, pfc_detailed: 'LOAN_PAYMENTS_CREDIT_CARD_PAYMENT' }]);
     });
 
     test('restarts from the saved cursor when data changes during pagination', async () => {

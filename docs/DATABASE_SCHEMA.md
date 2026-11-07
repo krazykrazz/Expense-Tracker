@@ -503,6 +503,7 @@ Posted bank transactions staged for review in the Import Inbox.
 | pending | INTEGER NOT NULL DEFAULT 0 | 1 while the transaction is pending at the bank |
 | pending_transaction_id | TEXT | For a settled transaction, Plaid's id of its pending version |
 | removed_at | TEXT | Set when the bank dropped a pending row that was added/matched (kept for review: cancelled hold or settled under a new reference) |
+| pfc_primary, pfc_detailed, pfc_confidence | TEXT | Plaid's personal finance category (e.g. `LOAN_PAYMENTS` / `LOAN_PAYMENTS_CREDIT_CARD_PAYMENT`) and its confidence level. NULL for rows staged before it was stored and for rows from a bank file until Plaid takes them over; a sync without it keeps the stored value |
 | created_at, updated_at | TEXT NOT NULL | Timestamps |
 
 **Indexes**: `idx_plaid_transactions_status_date` (status, date), `idx_plaid_transactions_account` (plaid_account_id), `idx_plaid_transactions_expense` (UNIQUE on expense_id WHERE expense_id IS NOT NULL: one bank transaction per expense)
@@ -678,7 +679,7 @@ Migration tracking for database schema changes.
 | migration_name | TEXT NOT NULL UNIQUE | Name of the migration |
 | applied_at | TEXT DEFAULT CURRENT_TIMESTAMP | When the migration was applied |
 
-Current entries written by `runMigrations()`: `consolidated_schema_v1`, `auth_infrastructure_v1`, `dismissed_anomalies_nullable_expense_id_v1`, `performance_compound_indexes_v1`, `analytics_hub_revamp_v1`, `fixed_expenses_payment_method_id_backfill_v1`, `plaid_transactions_pending_v1`. See [Database Migrations](DATABASE_MIGRATIONS.md).
+Current entries written by `runMigrations()`: `consolidated_schema_v1`, `auth_infrastructure_v1`, `dismissed_anomalies_nullable_expense_id_v1`, `performance_compound_indexes_v1`, `analytics_hub_revamp_v1`, `fixed_expenses_payment_method_id_backfill_v1`, `plaid_transactions_pending_v1`, `plaid_account_balances_v1`, `plaid_item_freshness_v1`, `plaid_transactions_pfc_v1`. See [Database Migrations](DATABASE_MIGRATIONS.md).
 
 ## Relationships
 

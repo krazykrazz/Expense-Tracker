@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.24.1] - 2026-11-07
+
+### Keep an entered posted date when the bank only sends the purchase date (Wealthsimple)
+
 ## [1.24.0] - 2026-11-07
 
 ### Posted date follows the bank for card expenses, statement check against the bank, pending turnover warning

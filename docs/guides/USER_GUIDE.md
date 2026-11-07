@@ -46,7 +46,7 @@ After deploying the application via Docker, access it at http://localhost:2424 i
 1. Click **"+ Add Expense"** in the expense list header (or the floating **Add Expense** button)
 2. Enter the place name first - the system will suggest a category based on your history
 3. The form remembers your last used payment method
-4. For credit card expenses, optionally enter a **Posted Date** (under **Advanced Options**) if different from the transaction date
+4. For credit card expenses, optionally enter a **Posted Date** (under **Advanced Options**) if different from the transaction date. If the card is connected to Bank Import, the bank's posted date replaces it when the expense is linked to the settled transaction. In the list, hover the card's pill to see it; a small **→ Nov 2** next to the pill means the expense posts on the *next* statement (it needs the card's billing cycle day)
 
 ### Editing and Deleting
 
@@ -189,7 +189,7 @@ Click the bank icon → **Inbox**. Each row is one bank transaction:
 
 A card payment in the inbox is two rows with the same amount a few days apart. **Don't Add** the debit as an expense: the card already has that spending, so it would be counted twice (the Add form warns you). To undo a recorded payment, delete it under the card's **Payments** tab; its bank transactions return to the inbox.
 
-Charges still **Pending** at the bank can be added right away; the expense updates itself when the charge settles. If the bank cancels a pending charge you added, it shows at the top of the inbox to keep or delete.
+Charges still **Pending** at the bank can be added right away; the expense updates itself when the charge settles. A pending card charge made on the statement's close day or the two days before shows **→ next?**: it may post after the close and land on the next bill. If the bank cancels a pending charge you added, it shows at the top of the inbox to keep or delete.
 
 ### Reading the Colours
 
@@ -209,6 +209,8 @@ On the Financial page, a linked credit card's **Current** balance turns **green*
 - something in the tracker the bank doesn't have, such as a typo, the wrong card, a duplicate, or a charge not posted yet.
 
 Entries dated after today are shown separately and aren't counted. If the card's credit limit is missing, **Use bank limit** fills it in from the bank.
+
+To check a **statement** rather than today's balance, open the card's **Billing Cycles** tab: **Compared with the bank** lists the last few closed statements with the bank's total, yours, and (when they differ) the entries that explain it. A purchase the bank posted on one side of the statement date and you counted on the other shows as being on another statement; fix it by matching it in the Inbox or editing its posted date. Only statements the bank's history fully covers (it begins about 30 days before connecting) are shown.
 
 ### When a Bank Asks You to Log In Again
 

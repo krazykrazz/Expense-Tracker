@@ -797,6 +797,55 @@
   margin-bottom: 2px;
 }
 
+/* Last closed statements against the bank (Billing Cycles tab) */
+.card-cycle-checks {
+  margin: var(--spacing-3, 12px) 0;
+  font-size: 0.9em;
+}
+
+.card-cycle-checks-title {
+  margin: 0 0 var(--spacing-1, 4px);
+  font-weight: 600;
+}
+
+.card-cycle-check {
+  margin-bottom: var(--spacing-2, 8px);
+  padding: var(--spacing-2, 8px) var(--spacing-3, 12px);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md, 8px);
+  background: var(--bg-card);
+}
+
+.card-cycle-check.differs {
+  border-color: rgba(234, 88, 12, 0.45);
+}
+
+.card-cycle-check summary {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--spacing-1, 4px) var(--spacing-3, 12px);
+  cursor: pointer;
+}
+
+.card-cycle-check-dates {
+  font-weight: 600;
+}
+
+.card-cycle-check ul {
+  margin: var(--spacing-2, 8px) 0 0;
+  padding-left: 1.2em;
+  list-style: disc;
+}
+
+.card-cycle-check li {
+  margin-bottom: 2px;
+}
+
+.card-cycle-check .bank-import-secondary {
+  margin-top: var(--spacing-2, 8px);
+}
+
 /* "Use bank limit": inside the Credit Limit card, or on its own when the card has no limit */
 .cc-bank-limit {
   display: flex;

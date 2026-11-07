@@ -27,6 +27,7 @@ router.put('/accounts/:id', plaidController.updateAccount);
 router.post('/accounts/:id/import-file', plaidController.importBankFile);
 router.post('/sync', plaidController.sync);
 router.get('/card-balances', plaidController.getCardBalances);
+router.get('/card-cycles/:id', plaidController.getCardCycleChecks);
 router.post('/card-balances/:id/use-bank-limit', plaidController.useBankCreditLimit);
 router.get('/sync-settings', plaidController.getSyncSettings);
 router.put('/sync-settings', plaidController.saveSyncSettings);

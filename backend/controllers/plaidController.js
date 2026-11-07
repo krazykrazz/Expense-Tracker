@@ -3,6 +3,7 @@ const plaidService = require('../services/plaidService');
 const plaidInboxService = require('../services/plaidInboxService');
 const plaidCardPaymentService = require('../services/plaidCardPaymentService');
 const plaidCardBalanceService = require('../services/plaidCardBalanceService');
+const plaidCycleCheckService = require('../services/plaidCycleCheckService');
 const plaidFileImportService = require('../services/plaidFileImportService');
 const plaidSettingsService = require('../services/plaidSettingsService');
 const plaidSyncSchedulerService = require('../services/plaidSyncSchedulerService');
@@ -70,6 +71,14 @@ const refreshItem = asyncHandler(async (req, res) => {
  */
 const getCardBalances = asyncHandler(async (req, res) => {
   res.json(await plaidCardBalanceService.getCardBalances());
+});
+
+/**
+ * GET /api/plaid/card-cycles/:id
+ * Bank vs tracker for the card's last closed statement cycles the bank history covers, with what explains each difference.
+ */
+const getCardCycleChecks = asyncHandler(async (req, res) => {
+  res.json(await plaidCycleCheckService.getCycleChecks(idParam(req)));
 });
 
 /**
@@ -228,6 +237,7 @@ const unignore = asyncHandler(async (req, res) => {
 
 module.exports = {
   getCardBalances,
+  getCardCycleChecks,
   useBankCreditLimit,
   importBankFile,
   getStatus,

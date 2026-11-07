@@ -10,7 +10,7 @@ import QuickStatusUpdate from './QuickStatusUpdate';
 import ReimbursementIndicator from './ReimbursementIndicator';
 import { bankLinkState, bankLinkTitle, bankPillProps } from '../bank-import/bankConfirmation';
 import '../bank-import/BankImport.css';
-import PostedIndicator from './PostedIndicator';
+import PostedTurnoverMarker, { PendingTurnoverMarker, postedDateTitle } from './PostedTurnoverMarker';
 import ExpenseForm from './ExpenseForm';
 import FilterChip from './FilterChip';
 import Icon from '../shared/Icon';
@@ -1075,6 +1075,10 @@ const ExpenseList = memo(({
               const typeHue = getCategoryHue(expense.type);
               const methodIcon = PAYMENT_TYPE_ICONS[expense.payment_method_type ?? paymentMethodMap.get(expense.method)?.type];
               const bankPill = bankPillProps(bankLinkState(expense), bankLinkTitle(expense));
+              // The posted date goes in the pill's hover text; only a later statement gets a marker (see PostedTurnoverMarker)
+              const postedTitle = postedDateTitle(expense, Boolean(expense.bankLink && !expense.bankLink.pending));
+              const pillTitle = [bankPill.attrs.title, postedTitle].filter(Boolean).join('\n') || undefined;
+              const billingCycleDay = paymentMethodMap.get(expense.method)?.billing_cycle_day ?? null;
               return (
               <tr 
                 key={expense.id}
@@ -1140,8 +1144,6 @@ const ExpenseList = memo(({
                           size="small"
                         />
                       )}
-                      {/* Posted Indicator for credit card transactions with posted_date */}
-                      <PostedIndicator postedDate={expense.posted_date} size="small" />
                     </div>
                   </div>
                 </td>
@@ -1162,6 +1164,7 @@ const ExpenseList = memo(({
                   <span
                     className={`method-pill${expense.payment_method_is_active === 0 ? ' inactive-payment-method' : ''}${bankPill.className}`}
                     {...bankPill.attrs}
+                    title={pillTitle}
                   >
                     {methodIcon && <Icon name={methodIcon} size={13} className="method-pill-icon" />}
                     {expense.method}
@@ -1175,6 +1178,8 @@ const ExpenseList = memo(({
                       </span>
                     )}
                   </span>
+                  <PostedTurnoverMarker expense={expense} billingCycleDay={billingCycleDay} />
+                  <PendingTurnoverMarker date={expense.date} pending={Boolean(expense.bankLink?.pending)} billingCycleDay={billingCycleDay} />
                 </td>
                 <td>
                   <div className="action-buttons">

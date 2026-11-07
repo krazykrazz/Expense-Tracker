@@ -10,6 +10,7 @@ import { useSyncEvent } from '../../hooks/useSyncEvent';
 import {
   CardPaymentBadge, CardPaymentButtons, CardPaymentHint, CardPaymentPanel, isCardPaymentRow
 } from './CardPaymentActions';
+import { PendingTurnoverMarker } from '../expenses/PostedTurnoverMarker';
 
 const CARD_PAYMENT_MODES = ['card-payment', 'link-payment', 'record-to-card'];
 
@@ -138,6 +139,9 @@ const MatchPicker = ({ txn, onMatch, onMatchFixed, onMatchIncome, onCancel, busy
     {txn.matchCandidates.length > 0 && (
       <>
         <div className="bank-import-muted">Expenses: same payment method and amount, within 3 days</div>
+        {txn.paymentMethodType === 'credit_card' && !txn.pending && (
+          <div className="bank-import-muted">Matching sets the expense&apos;s posted date to the bank&apos;s ({formatDate(txn.postedDate)}); its purchase date stays.</div>
+        )}
         <ul>
           {txn.matchCandidates.map(candidate => {
             const reimbursed = candidate.originalCost != null && candidate.originalCost !== candidate.amount;
@@ -244,6 +248,9 @@ const InboxRow = ({ txn, filter, expanded, onExpand, onAction, busy, error, unco
         <div className="inbox-row-badges">
           {filter === 'new' && txn.pending && (
             <span className="inbox-badge pending" title="Not settled yet. Add it now; the expense updates when it settles.">Pending</span>
+          )}
+          {filter === 'new' && txn.paymentMethodType === 'credit_card' && (
+            <PendingTurnoverMarker date={txn.date} pending={txn.pending} billingCycleDay={txn.billingCycleDay} />
           )}
           {txn.source === 'file' && (
             <span className="inbox-badge" title="Imported from a file downloaded from the bank. Plaid takes it over when it catches up.">From file</span>

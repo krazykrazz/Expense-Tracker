@@ -393,7 +393,8 @@ class PlaidRepository {
     return dbHelper.queryAll(
       `SELECT ${TXN_COLUMNS},
               pa.name AS accountName, pa.mask AS accountMask,
-              pa.payment_method_id AS paymentMethodId, pm.display_name AS paymentMethodName, pm.type AS paymentMethodType
+              pa.payment_method_id AS paymentMethodId, pm.display_name AS paymentMethodName, pm.type AS paymentMethodType,
+              pm.billing_cycle_day AS billingCycleDay
        FROM plaid_transactions pt
        JOIN plaid_accounts pa ON pa.id = pt.plaid_account_id
        JOIN payment_methods pm ON pm.id = pa.payment_method_id

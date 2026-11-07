@@ -1,0 +1,13 @@
+/* Credit card expense that posts on a later statement than it was made in */
+.posted-turnover {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: var(--radius-full, 999px);
+  font-size: var(--text-xs, 12px);
+  white-space: nowrap;
+  cursor: default;
+  vertical-align: middle;
+  background: var(--color-warning-light);
+  color: light-dark(#92400e, hsl(23 80% 78%));
+}

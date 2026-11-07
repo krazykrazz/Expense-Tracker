@@ -99,6 +99,48 @@ describe('ImportInbox', () => {
     expect(within(row).getByText(/you paid \$5\.50 after reimbursement/)).toBeInTheDocument();
   });
 
+  it('says that matching a settled card transaction sets the posted date, and not for a debit or a pending charge', async () => {
+    const candidate = { id: 42, date: '2026-10-31', place: 'La Vie En Rose', amount: 35.54, originalCost: null, chargedAmount: 35.54, type: 'Clothing', notes: null };
+    const card = (overrides) => txn({ paymentMethodType: 'credit_card', paymentMethodName: 'CIBC MC', postedDate: '2026-11-02', matchCandidates: [candidate], ...overrides });
+    plaidApi.getInbox.mockResolvedValue({
+      transactions: [card({ id: 1 }), card({ id: 2, pending: true }), txn({ id: 3, paymentMethodType: 'debit', matchCandidates: [candidate] })],
+      hiddenUnmapped: 0
+    });
+
+    renderInbox();
+    const rows = await screen.findAllByTestId('inbox-row');
+    const notes = [];
+    for (const row of rows) {
+      fireEvent.click(within(row).getByRole('button', { name: 'Match' }));
+      notes.push(row.querySelector('.inbox-match-picker')?.textContent ?? '');
+    }
+
+    expect(notes[0]).toContain("Matching sets the expense's posted date to the bank's (Nov 2, 2026); its purchase date stays.");
+    expect(notes[1]).not.toContain('posted date');
+    expect(notes[2]).not.toContain('posted date');
+  });
+
+  it('flags a pending card charge made just before the statement closes', async () => {
+    const card = (overrides) => txn({ paymentMethodType: 'credit_card', paymentMethodName: 'CIBC MC', billingCycleDay: 15, ...overrides });
+    plaidApi.getInbox.mockResolvedValue({
+      transactions: [
+        card({ id: 1, date: '2026-10-14', pending: true }),
+        card({ id: 2, date: '2026-10-14', pending: false }),
+        card({ id: 3, date: '2026-10-05', pending: true }),
+        txn({ id: 4, date: '2026-10-14', pending: true, paymentMethodType: 'debit', billingCycleDay: null })
+      ],
+      hiddenUnmapped: 0
+    });
+
+    renderInbox();
+    const rows = await screen.findAllByTestId('inbox-row');
+
+    expect(within(rows[0]).getByTestId('pending-turnover')).toHaveTextContent('→ next?');
+    expect(within(rows[1]).queryByTestId('pending-turnover')).not.toBeInTheDocument();
+    expect(within(rows[2]).queryByTestId('pending-turnover')).not.toBeInTheDocument();
+    expect(within(rows[3]).queryByTestId('pending-turnover')).not.toBeInTheDocument();
+  });
+
   describe('fixed expenses', () => {
     const fixed = (overrides = {}) => ({
       id: 9, year: 2026, month: 10, name: 'Mortgage', category: 'Housing', amount: 1500, dueDay: 1,

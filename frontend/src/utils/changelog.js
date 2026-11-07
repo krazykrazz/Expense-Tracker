@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.24.1',
+    date: 'November 7, 2026',
+    added: [],
+    changed: ['Keep an entered posted date when the bank only sends the purchase date (Wealthsimple)'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.24.0',
     date: 'November 7, 2026',
     added: [],

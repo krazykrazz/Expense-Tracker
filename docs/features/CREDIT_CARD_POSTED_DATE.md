@@ -76,9 +76,10 @@ When an expense is linked to a settled credit card transaction in Bank Import, i
 - **Add** from the inbox stores the bank's posting date when it is later than the purchase date.
 - **Match** to an expense you entered sets the posted date to the bank's, replacing an estimate (including the one the form suggests).
 - A **pending charge that settles** takes the bank's date the same way.
+- A charge first imported from a **bank file** (whose date is the purchase date for Wealthsimple) takes Plaid's date when Plaid catches up and takes the row over.
 - The **purchase date is never changed**. A bank date equal to the purchase date is stored as none (it is the same thing), and one before it is ignored.
-- **Same-day dates and banks that send purchase dates:** a bank date equal to the purchase date only counts as "posted the same day" when the bank reports real posting dates: its settled transactions show dates later than the authorization date and none falls on a weekend (CIBC). Wealthsimple mostly sends the purchase date (often a Saturday or Sunday), so there a same-day date says nothing and a posted date you entered is **kept**. A bank date later than the purchase date is always used.
-- A posted date you edit by hand **after** that stays as you set it: the bank is only consulted when the expense is linked (Add, Match) or its pending charge settles.
+- **Same-day dates and banks that send purchase dates:** a bank date equal to the purchase date only counts as "posted the same day" when the bank reports real posting dates: its settled transactions show dates later than the authorization date and at most 1 in 10 falls on a weekend (CIBC: none). Purchase dates land on a weekend about 2 days in 7; Wealthsimple mostly sends the purchase date, so there a same-day date says nothing and a posted date you entered is **kept**. A bank date later than the purchase date is always used.
+- A posted date you edit by hand **after** that stays as you set it: the bank is only consulted when the expense is linked (Add, Match), its pending charge settles, or Plaid takes over its bank-file row.
 
 ## Database Schema
 

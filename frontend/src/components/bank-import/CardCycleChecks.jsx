@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { getCardCycleChecks, openBankImport } from '../../services/plaidApi';
 import { useSyncEvent } from '../../hooks/useSyncEvent';
 import { formatDate } from '../../utils/formatters';
@@ -18,13 +18,16 @@ const hasInboxCause = (cycle) => cycle.causes.some(cause => cause.type === 'bank
  */
 const CardCycleChecks = ({ paymentMethodId, refreshKey }) => {
   const [cycles, setCycles] = useState([]);
+  // Only the newest request may update the list (a sync event can reload while the first load is in flight)
+  const requestRef = useRef(0);
 
   const load = useCallback(async (signal) => {
+    const request = ++requestRef.current;
     try {
       const result = await getCardCycleChecks(paymentMethodId, { signal });
-      if (!signal || !signal.aborted) setCycles(result?.cycles || []);
+      if (request === requestRef.current && !signal?.aborted) setCycles(result?.cycles || []);
     } catch (err) {
-      if (err.name === 'AbortError') return;
+      if (err.name === 'AbortError' || request !== requestRef.current) return;
       logger.warn('Could not load the statement bank check', err);
       setCycles([]);
     }

@@ -7,6 +7,7 @@ const express = require('express');
 
 jest.mock('../services/plaidService');
 jest.mock('../services/plaidInboxService');
+jest.mock('../services/plaidCardPaymentService');
 jest.mock('../services/plaidSettingsService');
 jest.mock('../services/plaidSyncSchedulerService');
 jest.mock('../services/plaidCardBalanceService');
@@ -15,6 +16,7 @@ jest.mock('../config/plaid', () => ({ isEnabled: jest.fn() }));
 
 const plaidService = require('../services/plaidService');
 const plaidInboxService = require('../services/plaidInboxService');
+const plaidCardPaymentService = require('../services/plaidCardPaymentService');
 const plaidCardBalanceService = require('../services/plaidCardBalanceService');
 const plaidFileImportService = require('../services/plaidFileImportService');
 const plaidSettingsService = require('../services/plaidSettingsService');
@@ -50,6 +52,7 @@ describe('plaid routes', () => {
     ['post', '/api/plaid/sync'],
     ['get', '/api/plaid/inbox'],
     ['post', '/api/plaid/inbox/1/ignore'],
+    ['post', '/api/plaid/inbox/1/card-payment'],
   ])('%s %s returns 503 when disabled', async (method, url) => {
     isEnabled.mockReturnValue(false);
 
@@ -267,6 +270,27 @@ describe('plaid routes', () => {
 
     expect(res.status).toBe(201);
     expect(plaidInboxService.addAsIncome).toHaveBeenCalledWith(3, { name: 'Gift', category: 'Gifts' }, null);
+  });
+
+  test('POST /inbox/:id/card-payment returns 201 when a payment was recorded and 200 when linked', async () => {
+    plaidCardPaymentService.act.mockResolvedValueOnce({ created: true, payment: { id: 5 }, linkedTransactionIds: [3, 4] });
+    plaidCardPaymentService.act.mockResolvedValueOnce({ created: false, payment: { id: 5 }, linkedTransactionIds: [4] });
+
+    const recorded = await request(app).post('/api/plaid/inbox/3/card-payment').send({ alsoLinkId: 4 });
+    const linked = await request(app).post('/api/plaid/inbox/4/card-payment').send({ creditCardPaymentId: 5 });
+
+    expect(recorded.status).toBe(201);
+    expect(linked.status).toBe(200);
+    expect(plaidCardPaymentService.act).toHaveBeenNthCalledWith(1, 3, { alsoLinkId: 4 });
+    expect(plaidCardPaymentService.act).toHaveBeenNthCalledWith(2, 4, { creditCardPaymentId: 5 });
+  });
+
+  test('POST /inbox/:id/card-payment passes service errors with their status', async () => {
+    plaidCardPaymentService.act.mockRejectedValue(Object.assign(new Error('That payment already has a bank transaction'), { statusCode: 409 }));
+
+    const res = await request(app).post('/api/plaid/inbox/3/card-payment').send({ creditCardPaymentId: 5 });
+
+    expect(res.status).toBe(409);
   });
 
   test('POST /inbox/:id/cancelled passes the action, settled row and tab id', async () => {

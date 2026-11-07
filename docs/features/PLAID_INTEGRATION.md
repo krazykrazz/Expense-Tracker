@@ -143,8 +143,9 @@ Lists bank transactions waiting for review, newest first, with the place (Plaid'
 | **Add** | Opens an inline editor pre-filled with place, date and a category suggested from your history for that place. The place is the one you chose before for the same bank description (store numbers, "- Purchase" and city/province ignored, so "Yig Browns 406" gets the "Brown's Independent" you used for "Yig Browns 405"), else an existing place the description starts with ("Sobeys" for "SOBEYS #4123"; the longest match, then the most used), else the bank's text. The bank's own text stays visible under the place. **Add expense** creates a normal expense (validation, activity log and sync all apply). For credit cards, the bank's posting date is stored as the posted date when it is later than the purchase date. |
 | **Match** | Shown when existing expenses could be the same purchase: same payment method, same **charged** amount to the cent, date within ±3 days, and not already linked. For reimbursed or insurance-tracked expenses the charged amount is the original cost (what the card was charged), not the out-of-pocket amount; the picker shows both. Links the transaction to the chosen expense without changing it. The same picker lists **fixed expenses** the transaction could pay and, for deposits, **expected income** (see below). |
 | **Ignore** | Hides the transaction. The **Ignored** filter lists ignored transactions with **Undo ignore**. |
+| **Record payment**, **Link to card payment**, **Record payment to…** | Credit card payments; see [Credit card payments](#credit-card-payments). |
 
-- Refunds and credits on a credit card (zero or negative amounts) are labelled *Refund / credit* and can only be ignored. Money coming into a bank account is labelled *Deposit* (see [Income](#income-confirm-a-deposit)).
+- Refunds and credits on a credit card (zero or negative amounts) are labelled *Refund / credit*, unless they look like a card payment (*Card payment*). They can be recorded as a payment or ignored, never added as an expense. Money coming into a bank account is labelled *Deposit* (see [Income](#income-confirm-a-deposit)).
 - Amounts in a currency other than CAD get a badge; they are not converted.
 
 ### Pending transactions
@@ -192,6 +193,22 @@ Expected income (Income Management) is a monthly list of sources: a name, catego
 - **Add income:** for a deposit with no expected source (a one-off government payment, a gift), creates an income source in the deposit's month with the deposit amount. The name and category are pre-filled from an earlier confirmation of the same description, else the description and *Other*.
 - **In Income Management**, a received income source shows the bank icon (income has no payment method pill) with the description, the date it landed and the deposit amount. It turns amber when the income amount differs from the deposit. Deleting the income source returns the deposit to the inbox.
 
+### Credit card payments
+
+A card payment shows up twice in the inbox: as a **debit** on the account that paid it (chequing) and as a **credit** on the card. Both resolve to **one** recorded payment (Credit Card Detail → Payments), so the card's balance, statement and reminders update exactly as if you had logged it by hand.
+
+- **How the two sides are found:** a credit on a card and a debit on another account with the **same amount to the cent**, both settled, posted **within 5 days**. The bank's wording is only a label ("Credit Card Payment", "PAYMENT THANK YOU/PAIEMEN T MERCI", "CIBC MASTERCARD - Bill payment" all differ, and Wealthsimple writes every bill, including your hydro bill, as "<payee> - Bill payment"). When several candidates fit, all are listed and you choose; nothing is picked for you.
+- **Record payment** (on the credit on a card, always offered, highlighted when it looks like a payment): creates the payment on that card with the bank's amount and the credit's posted date, and links the credit to it. When exactly one debit could have paid it, **Also mark the <account> debit as this payment** is pre-checked, so one click settles both rows. With several, pick one or none. A pending credit can be recorded once it settles.
+- **Match** (same panel): when you already entered that payment by hand (same card, same amount, within 5 days), it is listed so you can match it instead of recording it twice.
+- **Link to card payment** (on the debit): ties the debit to a payment that is already recorded, from the card side or by hand. It creates nothing. A debit whose credit hasn't arrived yet says so: record it from the credit when it shows up, usually within a few days.
+- **Record payment to…** (on the debit): only for a card with **no bank account connected**, since no credit will ever arrive for it. A connected card is refused: its own credit records the payment, so it is never recorded twice.
+- **Add** stays on a debit that looks like a card payment, but its form warns that adding it as an expense counts the spending twice (the card already has it).
+- **Each payment has at most one bank row per side** (one credit on the card, one debit on the paying account).
+- **Undo:** delete the payment in the card's Payments tab. Payments recorded from the bank show a small bank icon there, and the delete dialog says its bank transactions return to the inbox. Both rows go back to **To review**; nothing is lost.
+- **Balance check:** a payment with its credit linked no longer shows as a cause on the card's balance check.
+- **Not supported:** one debit paying two cards, one card paid by two debits, and amounts that differ by even a cent between the two sides. Record the card side and ignore (or link) the rest.
+- Categories help when Plaid sends one (`LOAN_PAYMENTS_CREDIT_CARD_PAYMENT`, stored since 1.22.0 for new rows); rows staged earlier, and rows from a bank file, are recognised by their wording.
+
 ### Bank-confirmed payment method in the expense list
 
 Expenses that were added from, or matched to, a bank transaction colour their **payment method pill**, so no extra icon is needed:
@@ -222,7 +239,7 @@ Each sync also stores the balance the bank reports for every account. For credit
     - *Credit balance:* the card is in credit at the bank, while the tracker's balance stops at $0;
     - anything left over is shown as not explained by the bank's recent transactions (e.g. an old entry, or a wrong statement balance);
   - **Use bank limit** in the Credit Limit card (or on its own when the card has no limit), only when the bank reports a different limit. Nothing else is ever changed automatically.
-- **How causes are found:** bank rows and tracker entries for the same amount within 5 days cancel out (a payment entered by hand pairs with the bank's payment). One tracker entry also cancels out two bank charges that add up to it, e.g. an Amazon order shipped and charged in two parts. When the card's latest statement balance was entered from the real statement, only activity posted after that statement is considered: the statement already accounts for everything before it.
+- **How causes are found:** bank rows and tracker entries for the same amount within 5 days cancel out (a payment entered by hand pairs with the bank's payment; a payment recorded from the inbox is already linked to its bank credit and isn't a cause at all, see [Credit card payments](#credit-card-payments)). One tracker entry also cancels out two bank charges that add up to it, e.g. an Amazon order shipped and charged in two parts. When the card's latest statement balance was entered from the real statement, only activity posted after that statement is considered: the statement already accounts for everything before it.
 - The check refreshes after every sync, payment and expense change. A bank that isn't syncing is flagged, since its balance may be out of date.
 
 ## How it works
@@ -246,7 +263,7 @@ Each sync also stores the balance the bank reports for every account. For credit
 
 ### Data
 
-Tables `plaid_items`, `plaid_accounts`, `plaid_transactions`, `plaid_fixed_expense_links` and `plaid_income_links`; see [Database Schema](../DATABASE_SCHEMA.md#plaid-tables). The expense list (`GET /api/expenses`) adds a `bankLink` field to every expense: `{ status, name, rawName, date, amount, pending, removed, disconnected }` or `null` (`disconnected`: its bank was disconnected). Fixed expenses and income sources get `bankConfirmation` (`{ landedDate, amount, plannedAmount, name }`) or `null`. A bank's `status` (`ok`, `needs_login`, `gone`, `error`) is derived from its stored `last_error`; there is no status column.
+Tables `plaid_items`, `plaid_accounts`, `plaid_transactions`, `plaid_fixed_expense_links`, `plaid_income_links` and `plaid_card_payment_links`; see [Database Schema](../DATABASE_SCHEMA.md#plaid-tables). The expense list (`GET /api/expenses`) adds a `bankLink` field to every expense: `{ status, name, rawName, date, amount, pending, removed, disconnected }` or `null` (`disconnected`: its bank was disconnected). Fixed expenses and income sources get `bankConfirmation` (`{ landedDate, amount, plannedAmount, name }`) or `null`. A bank's `status` (`ok`, `needs_login`, `gone`, `error`) is derived from its stored `last_error`; there is no status column.
 
 ### API
 
@@ -258,7 +275,7 @@ All under `/api/plaid`; see the [Endpoint Reference](../API_DOCUMENTATION.md#pla
 - Saving or removing Plaid keys logs `settings_updated` (entity `settings`) describing what changed, e.g. "environment: Sandbox → Production, secret changed", never the values.
 - Adding a transaction as an expense logs the normal `expense_added`. Confirming income with a different amount logs `income_source_updated`; Add income logs `income_source_added`.
 - A sync that changed the inbox (Sync now, scheduled or on opening the app) logs `plaid_sync_completed` (entity `plaid_transaction`, counts and source only). Changing the automatic sync schedule logs `settings_updated` with `section: 'plaid_auto_sync'`.
-- Every inbox decision (add, match, confirm fixed expense, confirm income, add income, ignore, restore) logs `plaid_transaction_updated` with the action, e.g. "Matched bank transaction "Coffee Shop" ($25.50, 2026-10-12) to an existing expense".
+- Every inbox decision (add, match, confirm fixed expense, confirm income, add income, record or link a card payment, ignore, restore) logs `plaid_transaction_updated` with the action, e.g. "Matched bank transaction "Coffee Shop" ($25.50, 2026-10-12) to an existing expense". Recording a card payment also logs `credit_card_payment_added`; each bank row it linked logs `card_payment` with `creditCardPaymentId` and `side` (`card` or `funding`).
 - Changing an account's mapping logs `plaid_account_updated`; a bank going into error logs `plaid_sync_failed` once (not on every retry).
 - All Plaid events refresh open Bank Import modals and Financial page bank badges in other tabs.
 
@@ -272,13 +289,15 @@ What a bank sends Plaid varies. As measured on the first two connected banks:
 | Pending charges | Marked pending: yellow pill, green when settled | Sent as already settled: green pill at once |
 | Balance includes pending charges | Yes (via available credit) | No: the balance lags new charges |
 | Login | Username and password (no OAuth) | Username and password (no OAuth) |
+| Card payment wording | Credit on the card: "PAYMENT THANK YOU/PAIEMEN T MERCI" | Credit on the card: "Credit Card Payment - From: Cash". On chequing the debit reads "Credit Card Payment", or "CIBC MASTERCARD - Bill payment" for a CIBC payment |
 
 ## Limitations
 
 These are deferred to later phases (see the [roadmap](../../specs/plaid-bank-sync/spec.md)):
 
 - **Connection alerts are in-app only:** a bank needing a new login is flagged in the app (header dot, notification), not by email or push, so it is noticed the next time the app is opened.
-- **Not-spending rows:** card payments, transfers, investment contributions, loan payments and refunds can't be recorded from the inbox yet; ignore them. Income can be confirmed.
+- **Not-spending rows:** transfers, investment contributions, loan payments and refunds can't be recorded from the inbox yet; ignore them. Credit card payments and income can be recorded or confirmed.
+- **Card payments:** one debit paying two cards, or one card paid by two debits, isn't paired; amounts must match to the cent. See [Credit card payments](#credit-card-payments).
 - **Bank changes after review:** a settled transaction the bank changes after you reviewed it is not followed. Pending charges are; see above. For Wealthsimple, whose pending charges arrive as settled, a later amount change isn't followed either.
 - **Categories:** they come only from your own history for the place; Plaid's categories are not used.
 - **Inbox conveniences:** no bulk actions and no count badge on the header icon.

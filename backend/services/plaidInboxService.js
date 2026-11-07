@@ -6,7 +6,7 @@ const fixedExpenseRepository = require('../repositories/fixedExpenseRepository')
 const incomeService = require('./incomeService');
 const incomeRepository = require('../repositories/incomeRepository');
 const categorySuggestionService = require('./categorySuggestionService');
-const activityLogService = require('./activityLogService');
+const plaidCardPaymentService = require('./plaidCardPaymentService');
 const logger = require('../config/logger');
 const {
   MATCH_WINDOW_DAYS, toCents, shiftDate, transactionDate, findMatchCandidates,
@@ -22,22 +22,11 @@ const INBOX_STATUSES = ['new', 'ignored'];
 const SETTLE_WINDOW_DAYS = 10;
 const SETTLE_AMOUNT_TOLERANCE = 0.25;
 
-const fail = (message, statusCode) => Object.assign(new Error(message), { statusCode });
-/**
- * The expense/income services throw plain Errors for invalid input: those become 400. Database errors
- * (sqlite `code`) and programming errors stay 500, so the error handler doesn't present them as bad input.
- */
-const asInputError = (err) => {
-  if (!err.statusCode && !err.code && !(err instanceof TypeError) && !(err instanceof ReferenceError)) err.statusCode = 400;
-  return err;
-};
-const round2 = (n) => Math.round(n * 100) / 100;
-const defaultPlace = (txn) => (txn.merchantName || txn.name || '').trim();
+const {
+  fail, asInputError, round2, defaultPlace, money, describeTxn, exclusive, requireNew, logReview
+} = require('./plaidInboxSupport');
 /** The bank description used to learn income names: same choice as the default place. */
 const incomeDescription = defaultPlace;
-const money = (amount) => `$${Math.abs(Number(amount)).toFixed(2)}`;
-/** e.g. `"Coffee Shop" ($25.50, 2026-10-12)` */
-const describeTxn = (txn) => `"${defaultPlace(txn) || 'bank transaction'}" (${money(txn.amount)}, ${txn.date})`;
 const monthIndexOf = (date) => Number(date.slice(0, 4)) * 12 + Number(date.slice(5, 7)) - 1;
 
 /**
@@ -45,10 +34,6 @@ const monthIndexOf = (date) => Number(date.slice(0, 4)) * 12 + Number(date.slice
  * existing expenses or fixed expenses, or ignore them. Nothing becomes an expense without an explicit action.
  */
 class PlaidInboxService {
-  constructor() {
-    this._inFlight = new Set();
-  }
-
   /**
    * @param {'new'|'ignored'} status
    * @returns {Promise<{transactions: Array, hiddenUnmapped: number}>}
@@ -66,11 +51,12 @@ class PlaidInboxService {
     const isNew = status === 'new';
     const placeByRow = isNew ? await this._suggestPlaces(rows) : new Map();
     const placeOf = (row) => placeByRow.get(row.id) || defaultPlace(row);
-    const [candidatesByRow, fixedByRow, incomeByRow, suggestions] = await Promise.all([
+    const [candidatesByRow, fixedByRow, incomeByRow, suggestions, cardPayments] = await Promise.all([
       isNew ? this._matchCandidates(rows) : new Map(),
       isNew ? this._fixedCandidates(rows) : new Map(),
       isNew ? this._incomeCandidates(rows) : new Map(),
-      isNew ? this._suggestCategories([...new Set(rows.flatMap(row => [placeOf(row), defaultPlace(row)]))]) : new Map()
+      isNew ? this._suggestCategories([...new Set(rows.flatMap(row => [placeOf(row), defaultPlace(row)]))]) : new Map(),
+      isNew ? plaidCardPaymentService.describeRows(rows) : { byRow: new Map(), unconnectedCards: [] }
     ]);
 
     const transactions = rows.map(row => {
@@ -100,11 +86,17 @@ class PlaidInboxService {
         matchCandidates: candidatesByRow.get(row.id) ?? [],
         fixedCandidates: fixedByRow.get(row.id) ?? [],
         incomeCandidates: income ? income.candidates : [],
-        incomeSuggestion: income ? income.suggestion : null
+        incomeSuggestion: income ? income.suggestion : null,
+        cardPayment: cardPayments.byRow.get(row.id) ?? null
       };
     });
 
-    return { transactions, hiddenUnmapped, cancelled: isNew ? await this._cancelledPending() : [] };
+    return {
+      transactions,
+      hiddenUnmapped,
+      cancelled: isNew ? await this._cancelledPending() : [],
+      unconnectedCards: cardPayments.unconnectedCards
+    };
   }
 
   /**
@@ -254,41 +246,16 @@ class PlaidInboxService {
     return suggestions;
   }
 
-  async _requireNew(id, { settled = false } = {}) {
-    const txn = await plaidRepository.findTransactionById(id);
-    if (!txn) {
-      throw fail('Bank transaction not found', 404);
-    }
-    if (txn.status !== 'new') {
-      throw fail(`Bank transaction was already ${txn.status}`, 409);
-    }
-    if (settled && txn.pending) {
-      throw fail('This transaction is still pending at the bank. Confirm it once it settles.', 400);
-    }
-    return txn;
+  _requireNew(id, options) {
+    return requireNew(id, options);
   }
 
-  async _exclusive(id, fn) {
-    if (this._inFlight.has(id)) {
-      throw fail('This bank transaction is already being processed', 409);
-    }
-    this._inFlight.add(id);
-    try {
-      return await fn();
-    } finally {
-      this._inFlight.delete(id);
-    }
+  _exclusive(id, fn) {
+    return exclusive(id, fn);
   }
 
-  /**
-   * Activity log for an inbox decision. Entity `plaid_transaction` is routed as `plaid`, so open inboxes in
-   * other tabs refresh. Side effects (expense_added, fixed_expense_updated, ...) are logged by their services.
-   * @param {'add'|'match'|'match_fixed'|'match_income'|'add_income'|'ignore'|'unignore'|'settled'|'pending_changed'|'cancelled_keep'|'cancelled_delete'} action
-   */
-  async _logReview(txn, action, description, extra = {}) {
-    await activityLogService.logEvent('plaid_transaction_updated', 'plaid_transaction', txn.id, description, {
-      action, place: defaultPlace(txn), amount: txn.amount, date: txn.date, ...extra
-    });
+  _logReview(txn, action, description, extra) {
+    return logReview(txn, action, description, extra);
   }
 
   /**

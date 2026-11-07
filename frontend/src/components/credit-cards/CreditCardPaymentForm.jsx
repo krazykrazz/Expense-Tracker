@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { recordPayment } from '../../services/creditCardApi';
-import { formatCAD as formatCurrency } from '../../utils/formatters';
+import { formatCAD as formatCurrency, getTodayLocalDate } from '../../utils/formatters';
 import { createLogger } from '../../utils/logger';
 import './CreditCardPaymentForm.css';
 
@@ -27,11 +27,9 @@ const CreditCardPaymentForm = ({
   onCancel = () => {},
   disabled = false
 }) => {
-  // Get today's date in YYYY-MM-DD format
-  const getTodayDate = () => {
-    const today = new Date();
-    return today.toISOString().split('T')[0];
-  };
+  // Today in the user's timezone (toISOString would give tomorrow's date in the evening, and a payment dated
+  // tomorrow isn't counted in today's balance)
+  const getTodayDate = getTodayLocalDate;
 
   // Form state
   const [amount, setAmount] = useState('');

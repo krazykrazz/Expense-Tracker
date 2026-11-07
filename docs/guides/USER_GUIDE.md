@@ -183,7 +183,11 @@ Click the bank icon → **Inbox**. Each row is one bank transaction:
 - **Add**: creates an expense, with the place, date and a suggested category filled in. The place is the one you used before for the same bank description, or an existing place it starts with (e.g. "Sobeys" for "SOBEYS #4123").
 - **Match**: links it to an expense you already logged, a planned **fixed expense** (records when it actually landed) or expected **income** (for deposits).
 - **Add income**: records an unplanned deposit as income.
+- **Record payment** (on a credit to a credit card): records it as a payment on that card. When you paid it from a bank account that is also connected, tick **Also mark the … debit as this payment** and one click settles both rows. If you already logged that payment by hand, **Match** it instead.
+- **Link to card payment** (on the debit that paid a card): ties it to the payment already recorded, so the money isn't counted twice. If the card's credit hasn't arrived yet, wait for it and record it there. For a card that isn't connected to a bank, use **Record payment to…** on the debit.
 - **Ignore**: hides it (the **Ignored** filter has **Undo ignore**).
+
+A card payment in the inbox is two rows with the same amount a few days apart. **Don't Add** the debit as an expense: the card already has that spending, so it would be counted twice (the Add form warns you). To undo a recorded payment, delete it under the card's **Payments** tab; its bank transactions return to the inbox.
 
 Charges still **Pending** at the bank can be added right away; the expense updates itself when the charge settles. If the bank cancels a pending charge you added, it shows at the top of the inbox to keep or delete.
 

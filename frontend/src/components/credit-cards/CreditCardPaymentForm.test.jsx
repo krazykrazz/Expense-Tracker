@@ -66,12 +66,17 @@ describe('CreditCardPaymentForm', () => {
       expect(screen.getByText('$1,500.00')).toBeInTheDocument();
     });
 
-    it('should default date to today', () => {
-      render(<CreditCardPaymentForm {...defaultProps} />);
+    it('should default date to today in the local timezone, even late in the evening', () => {
+      // 11:30 pm local: the UTC date is already tomorrow in a timezone behind UTC
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date(2026, 9, 30, 23, 30));
+      try {
+        render(<CreditCardPaymentForm {...defaultProps} />);
 
-      const dateInput = screen.getByLabelText(/Payment Date/);
-      const today = new Date().toISOString().split('T')[0];
-      expect(dateInput.value).toBe(today);
+        expect(screen.getByLabelText(/Payment Date/).value).toBe('2026-10-30');
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it('should show submit and cancel buttons', () => {

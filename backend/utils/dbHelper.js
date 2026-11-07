@@ -1,3 +1,4 @@
+const { AsyncLocalStorage } = require('async_hooks');
 const { getDatabase } = require('../database/db');
 const logger = require('../config/logger');
 
@@ -152,17 +153,60 @@ async function exists(table, whereClause, params = []) {
   return !!result;
 }
 
+/** Transactions waiting for the one open on the shared connection give up after this long. */
+const TRANSACTION_WAIT_MS = 30000;
+
+/** Tail of the queue of transactions: each one starts when the previous one has finished. */
+let transactionQueue = Promise.resolve();
+
+/** The transaction open in the current async flow, so a nested runInTransaction joins it instead of waiting for itself. */
+const openTransaction = new AsyncLocalStorage();
+
 /**
  * Run an async callback inside a database transaction.
  * Unlike `transaction()` which takes pre-defined SQL arrays, this accepts
  * an arbitrary async function, allowing complex multi-step operations
  * (e.g., SELECT then UPDATE) to be atomic.
  *
+ * The app has one shared connection and SQLite can't nest `BEGIN`, so transactions run one at a time: a second
+ * caller (a bank sync while a payment is recorded) waits for the first instead of failing with "cannot start a
+ * transaction within a transaction". A call made from inside a running callback joins that transaction.
+ * Plain queries from other requests still share the connection, so keep callbacks short.
+ *
  * @param {Function} fn - Async function to execute within the transaction.
- *   Receives the db instance as its argument. Use db.run/db.get/db.all directly.
+ *   Receives `{ run, get, all }`; use them for every statement that belongs to the transaction.
  * @returns {Promise<*>} The return value of fn
  */
 async function runInTransaction(fn) {
+  const joined = openTransaction.getStore();
+  if (joined && joined.active) {
+    return fn(joined.tx);
+  }
+
+  const previous = transactionQueue;
+  let release;
+  transactionQueue = new Promise((resolve) => { release = resolve; });
+  try {
+    await waitForTurn(previous);
+    return await runExclusiveTransaction(fn);
+  } finally {
+    release();
+  }
+}
+
+async function waitForTurn(previous) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error('The database is busy with another transaction. Try again.')), TRANSACTION_WAIT_MS);
+  });
+  try {
+    await Promise.race([previous, timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function runExclusiveTransaction(fn) {
   const db = await getDatabase();
 
   const runSql = (sql, params = []) =>
@@ -189,9 +233,12 @@ async function runInTransaction(fn) {
       });
     });
 
+  const tx = { run: runSql, get: getSql, all: allSql };
+  const context = { tx, active: true };
+
   await runSql('BEGIN TRANSACTION');
   try {
-    const result = await fn({ run: runSql, get: getSql, all: allSql });
+    const result = await openTransaction.run(context, () => fn(tx));
     await runSql('COMMIT');
     return result;
   } catch (err) {
@@ -201,6 +248,9 @@ async function runInTransaction(fn) {
       logger.error('Transaction rollback failed:', rollbackErr.message);
     }
     throw err;
+  } finally {
+    // Work the callback left running (not awaited) must not join a transaction that has ended
+    context.active = false;
   }
 }
 

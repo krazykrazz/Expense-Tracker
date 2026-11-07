@@ -8,6 +8,7 @@ import BillingCycleHistoryForm from './BillingCycleHistoryForm';
 import UnifiedBillingCycleList from './UnifiedBillingCycleList';
 import HelpTooltip from '../shared/HelpTooltip';
 import { CardBankBalanceLine, CardBankBalanceCauses, CardBankLimitAction } from '../bank-import/CardBankBalance';
+import CardPaymentBankBadge from '../bank-import/CardPaymentBankBadge';
 import { useCardBalanceChecks } from '../../hooks/useCardBalanceChecks';
 import './CreditCardDetailView.css';
 import '../financial/FinancialOverviewModal.css';
@@ -53,6 +54,7 @@ const CreditCardDetailView = ({
   const [showBillingCycleForm, setShowBillingCycleForm] = useState(false);
   const [editingBillingCycle, setEditingBillingCycle] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [deleting, setDeleting] = useState(false);
   const [deactivateConfirm, setDeactivateConfirm] = useState(false);
   const [pdfViewerCycle, setPdfViewerCycle] = useState(null);
   const [partialErrors, setPartialErrors] = useState([]);
@@ -91,16 +93,23 @@ const CreditCardDetailView = ({
     return 'good';
   };
 
-  // Fetch all data via unified endpoint
+  // Fetch all data via unified endpoint. Only the newest request may update the view, so a slow response for a
+  // card that was closed or switched away can't overwrite the current one.
+  const fetchIdRef = useRef(0);
+  useEffect(() => () => { fetchIdRef.current += 1; }, []);
+
   const fetchData = useCallback(async () => {
     if (!paymentMethodId) return;
 
+    const fetchId = ++fetchIdRef.current;
+    const isLatest = () => fetchId === fetchIdRef.current;
     setLoading(true);
     setError(null);
     setPartialErrors([]);
 
     try {
       const data = await getCreditCardDetail(paymentMethodId);
+      if (!isLatest()) return;
 
       setPaymentMethod(data.cardDetails);
       setPayments(data.payments || []);
@@ -113,10 +122,11 @@ const CreditCardDetailView = ({
         setPartialErrors(data.errors);
       }
     } catch (err) {
+      if (!isLatest()) return;
       logger.error('Failed to fetch credit card data:', err);
       setError(err.message || 'Failed to load credit card details');
     } finally {
-      setLoading(false);
+      if (isLatest()) setLoading(false);
     }
   }, [paymentMethodId]);
 
@@ -204,8 +214,9 @@ const CreditCardDetailView = ({
 
   // Confirm delete
   const confirmDelete = async () => {
-    if (!deleteConfirm) return;
+    if (!deleteConfirm || deleting) return;
 
+    setDeleting(true);
     try {
       if (deleteConfirm.type === 'payment') {
         await deletePayment(paymentMethodId, deleteConfirm.item.id);
@@ -217,7 +228,11 @@ const CreditCardDetailView = ({
       onUpdate();
     } catch (err) {
       logger.error('Failed to delete:', err);
+      // Close the dialog so the error banner behind it is visible
+      setDeleteConfirm(null);
       setError(err.message || 'Failed to delete item');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -621,16 +636,21 @@ const CreditCardDetailView = ({
                       {payments.map(payment => (
                         <div key={payment.id} className="cc-payment-item">
                           <div className="payment-info">
-                            <div className="payment-date">{formatDate(payment.payment_date)}</div>
+                            <div className="payment-date">
+                              {formatDate(payment.payment_date)}
+                              <CardPaymentBankBadge links={payment.bankLinks} />
+                            </div>
                             {payment.notes && (
                               <div className="payment-notes">{payment.notes}</div>
                             )}
                           </div>
                           <div className="payment-amount">{formatCurrency(payment.amount)}</div>
                           <button 
+                            type="button"
                             className="payment-delete-btn"
                             onClick={() => handleDeletePayment(payment)}
                             title="Delete payment"
+                            aria-label={`Delete payment of ${formatCurrency(payment.amount)} on ${formatDate(payment.payment_date)}`}
                           >
                             🗑️
                           </button>
@@ -688,6 +708,11 @@ const CreditCardDetailView = ({
                     {formatCurrency(deleteConfirm.item.amount)} on {formatDate(deleteConfirm.item.payment_date)}
                   </span>
                 )}
+                {deleteConfirm.type === 'payment' && deleteConfirm.item.bankLinks?.length > 0 && (
+                  <span className="confirm-detail" data-testid="payment-bank-note">
+                    Recorded from your bank. Its {deleteConfirm.item.bankLinks.length === 1 ? 'bank transaction returns' : 'bank transactions return'} to the Import Inbox.
+                  </span>
+                )}
                 {deleteConfirm.type === 'billingCycle' && (
                   <span className="confirm-detail">
                     {formatDate(deleteConfirm.item.cycle_start_date)} - {formatDate(deleteConfirm.item.cycle_end_date)}
@@ -698,10 +723,10 @@ const CreditCardDetailView = ({
               </p>
               <p className="confirm-warning">This action cannot be undone.</p>
               <div className="confirm-actions">
-                <button className="confirm-delete-btn" onClick={confirmDelete}>
+                <button className="confirm-delete-btn" onClick={confirmDelete} disabled={deleting}>
                   Delete
                 </button>
-                <button className="confirm-cancel-btn" onClick={() => setDeleteConfirm(null)}>
+                <button className="confirm-cancel-btn" onClick={() => setDeleteConfirm(null)} disabled={deleting}>
                   Cancel
                 </button>
               </div>

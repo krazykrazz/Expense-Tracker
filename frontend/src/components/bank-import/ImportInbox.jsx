@@ -1,12 +1,17 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   getInbox, addInboxTransaction, matchInboxTransaction, matchInboxTransactionToFixed,
-  matchInboxTransactionToIncome, addInboxTransactionAsIncome, resolveCancelledPending,
+  matchInboxTransactionToIncome, addInboxTransactionAsIncome, cardPaymentInboxTransaction, resolveCancelledPending,
   ignoreInboxTransaction, unignoreInboxTransaction
 } from '../../services/plaidApi';
 import { CATEGORIES, INCOME_CATEGORIES } from '../../utils/constants';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import { useSyncEvent } from '../../hooks/useSyncEvent';
+import {
+  CardPaymentBadge, CardPaymentButtons, CardPaymentHint, CardPaymentPanel, isCardPaymentRow
+} from './CardPaymentActions';
+
+const CARD_PAYMENT_MODES = ['card-payment', 'link-payment', 'record-to-card'];
 
 const EXPECTED_CURRENCY = 'CAD';
 
@@ -89,7 +94,7 @@ const IncomeCandidates = ({ txn, onMatchIncome, busy }) => {
   );
 };
 
-const AddForm = ({ txn, onSubmit, onCancel, busy }) => {
+const AddForm = ({ txn, onSubmit, onCancel, busy, warnCardPayment = false }) => {
   const [fields, setFields] = useState({
     place: txn.place,
     type: txn.suggestedCategory || '',
@@ -113,6 +118,12 @@ const AddForm = ({ txn, onSubmit, onCancel, busy }) => {
       </label>
       <label>Date<input type="date" value={fields.date} onChange={set('date')} required /></label>
       <label>Notes<input value={fields.notes} onChange={set('notes')} maxLength={200} /></label>
+      {warnCardPayment && (
+        <div className="inbox-form-note" role="note">
+          This looks like a credit card payment. Adding it as an expense counts the spending twice (it is already on the
+          card). Use Record payment or Link to card payment instead.
+        </div>
+      )}
       <div className="inbox-form-actions">
         <button type="submit" className="bank-import-primary" disabled={busy || !fields.type}>Add expense</button>
         <button type="button" className="bank-import-secondary" onClick={onCancel} disabled={busy}>Cancel</button>
@@ -206,7 +217,7 @@ const CancelledRow = ({ row, busy, error, onDecide }) => (
   </li>
 );
 
-const InboxRow = ({ txn, filter, expanded, onExpand, onAction, busy, error }) => {
+const InboxRow = ({ txn, filter, expanded, onExpand, onAction, busy, error, unconnectedCards = [] }) => {
   const incomeCandidates = txn.incomeCandidates || [];
   const hasCandidates = txn.matchCandidates.length > 0 || txn.fixedCandidates.length > 0 || incomeCandidates.length > 0;
   const closeFixed = txn.fixedCandidates.filter(fixed => isCloseFixed(txn, fixed));
@@ -237,7 +248,8 @@ const InboxRow = ({ txn, filter, expanded, onExpand, onAction, busy, error }) =>
           {txn.source === 'file' && (
             <span className="inbox-badge" title="Imported from a file downloaded from the bank. Plaid takes it over when it catches up.">From file</span>
           )}
-          {filter === 'new' && !txn.canAdd && <span className="inbox-badge">{txn.isDeposit ? 'Deposit' : 'Refund / credit'}</span>}
+          {filter === 'new' && !txn.canAdd && !txn.cardPayment?.kind && <span className="inbox-badge">{txn.isDeposit ? 'Deposit' : 'Refund / credit'}</span>}
+          {filter === 'new' && <CardPaymentBadge txn={txn} />}
           {filter === 'new' && closeIncome.length > 0 && (
             <span className="inbox-badge match" title="Matches expected income: confirm it to record when it landed">
               Income: {closeIncome[0].name}
@@ -262,6 +274,7 @@ const InboxRow = ({ txn, filter, expanded, onExpand, onAction, busy, error }) =>
               {txn.isDeposit && (
                 <button className="bank-import-secondary" onClick={() => onExpand(isOpen('add-income') ? null : 'add-income')} disabled={busy}>Add income</button>
               )}
+              <CardPaymentButtons txn={txn} unconnectedCards={unconnectedCards} expanded={expanded} onExpand={onExpand} busy={busy} />
               <button className="bank-import-secondary" onClick={() => onAction('ignore')} disabled={busy}>Ignore</button>
             </>
           ) : (
@@ -269,9 +282,20 @@ const InboxRow = ({ txn, filter, expanded, onExpand, onAction, busy, error }) =>
           )}
         </div>
       </div>
+      {filter === 'new' && <CardPaymentHint txn={txn} unconnectedCards={unconnectedCards} />}
       {error && <div className="bank-import-error" role="alert">{error}</div>}
       {isOpen('add') && (
-        <AddForm txn={txn} busy={busy} onCancel={() => onExpand(null)} onSubmit={(fields) => onAction('add', fields)} />
+        <AddForm txn={txn} busy={busy} warnCardPayment={isCardPaymentRow(txn)} onCancel={() => onExpand(null)} onSubmit={(fields) => onAction('add', fields)} />
+      )}
+      {CARD_PAYMENT_MODES.includes(expanded) && (
+        <CardPaymentPanel
+          txn={txn}
+          mode={expanded}
+          unconnectedCards={unconnectedCards}
+          busy={busy}
+          onCancel={() => onExpand(null)}
+          onSubmit={(body) => onAction('card-payment', body)}
+        />
       )}
       {isOpen('add-income') && (
         <AddIncomeForm txn={txn} busy={busy} onCancel={() => onExpand(null)} onSubmit={(fields) => onAction('add-income', fields)} />
@@ -326,8 +350,9 @@ const ImportInbox = ({ onExpensesChanged, onOpenConnections }) => {
     return () => controller.abort();
   }, [load]);
 
-  // A sync, or an inbox decision in another tab, changed the inbox
-  useSyncEvent('plaid', () => { load(); });
+  // A sync, or an inbox decision in another tab, changed the inbox. A card payment recorded or deleted elsewhere
+  // does too: it adds or removes the payments a row can be linked to, and deleting one returns bank rows here.
+  useSyncEvent(['plaid', 'credit_card'], () => { load(); });
 
   const handleAction = async (txn, action, payload) => {
     setBusyId(txn.id);
@@ -338,6 +363,7 @@ const ImportInbox = ({ onExpensesChanged, onOpenConnections }) => {
       else if (action === 'match-fixed') await matchInboxTransactionToFixed(txn.id, payload);
       else if (action === 'match-income') await matchInboxTransactionToIncome(txn.id, payload);
       else if (action === 'add-income') await addInboxTransactionAsIncome(txn.id, payload);
+      else if (action === 'card-payment') await cardPaymentInboxTransaction(txn.id, payload);
       else if (action === 'ignore') await ignoreInboxTransaction(txn.id);
       else if (action === 'unignore') await unignoreInboxTransaction(txn.id);
 
@@ -434,6 +460,7 @@ const ImportInbox = ({ onExpensesChanged, onOpenConnections }) => {
               onAction={(action, payload) => handleAction(txn, action, payload)}
               busy={busyId === txn.id}
               error={rowErrors[txn.id]}
+              unconnectedCards={data.unconnectedCards || []}
             />
           ))}
         </ul>

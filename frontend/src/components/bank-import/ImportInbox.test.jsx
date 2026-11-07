@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react';
 import ImportInbox from './ImportInbox';
 import * as plaidApi from '../../services/plaidApi';
 
@@ -10,6 +10,7 @@ vi.mock('../../services/plaidApi', () => ({
   matchInboxTransactionToFixed: vi.fn(),
   matchInboxTransactionToIncome: vi.fn(),
   addInboxTransactionAsIncome: vi.fn(),
+  cardPaymentInboxTransaction: vi.fn(),
   resolveCancelledPending: vi.fn(),
   ignoreInboxTransaction: vi.fn(),
   unignoreInboxTransaction: vi.fn(),
@@ -273,5 +274,215 @@ describe('ImportInbox', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Undo ignore' }));
 
     await waitFor(() => expect(plaidApi.unignoreInboxTransaction).toHaveBeenCalledWith(1));
+  });
+
+  describe('credit card payments', () => {
+    const cp = (overrides = {}) => ({
+      side: 'card', kind: 'card_payment', looksLikeCardPayment: true, pairCandidates: [], paymentCandidates: [], ...overrides
+    });
+    const debitPair = (overrides = {}) => ({
+      id: 11, date: '2026-10-30', amount: 3471.31, accountName: 'Chequing', accountMask: '5070', paymentMethodName: 'Debit', ...overrides
+    });
+    const visaCredit = (overrides = {}) => txn({
+      id: 10, transactionId: 'visa-credit', place: 'Credit Card Payment - From: Cash', rawName: 'Credit Card Payment - From: Cash',
+      amount: -3471.31, date: '2026-10-30', postedDate: '2026-10-30', accountMask: 'KL54', paymentMethodId: 4, paymentMethodName: 'WS VISA',
+      canAdd: false, cardPayment: cp({ pairCandidates: [debitPair()] }), ...overrides
+    });
+    const chequingDebit = (overrides = {}) => txn({
+      id: 11, transactionId: 'visa-debit', place: 'Credit Card Payment', rawName: 'Credit Card Payment', amount: 3471.31,
+      date: '2026-10-30', postedDate: '2026-10-30', accountMask: '5070', paymentMethodName: 'Debit', suggestedCategory: null,
+      cardPayment: cp({ side: 'funding', kind: null, pairCandidates: [{ id: 10, date: '2026-10-30', amount: -3471.31, accountMask: 'KL54', paymentMethodName: 'WS VISA' }] }),
+      ...overrides
+    });
+    const respond = (transactions, extra = {}) => plaidApi.getInbox
+      .mockResolvedValueOnce({ transactions, hiddenUnmapped: 0, unconnectedCards: [], ...extra })
+      .mockResolvedValue({ transactions: [], hiddenUnmapped: 0, unconnectedCards: [] });
+
+    it('labels a credit on a card as a card payment instead of a refund, and offers Record payment', async () => {
+      respond([visaCredit(), visaCredit({ id: 12, transactionId: 'refund', place: 'AMAZON REFUND', amount: -25, cardPayment: cp({ kind: null, looksLikeCardPayment: false }) })]);
+
+      renderInbox();
+
+      expect(await screen.findByText('Card payment')).toBeInTheDocument();
+      // A credit nothing says is a payment keeps its label, and can still be recorded
+      expect(screen.getAllByText('Refund / credit')).toHaveLength(1);
+      expect(screen.getAllByRole('button', { name: 'Record payment' })).toHaveLength(2);
+    });
+
+    it('records the payment and takes the paying debit along when exactly one could have paid it', async () => {
+      const onExpensesChanged = vi.fn();
+      respond([visaCredit(), chequingDebit()]);
+      plaidApi.cardPaymentInboxTransaction.mockResolvedValue({ created: true, payment: { id: 5 }, linkedTransactionIds: [10, 11] });
+
+      renderInbox({ onExpensesChanged });
+      const rows = await screen.findAllByTestId('inbox-row');
+      fireEvent.click(within(rows[0]).getByRole('button', { name: 'Record payment' }));
+
+      const panel = await screen.findByTestId('card-payment-panel');
+      expect(panel).toHaveTextContent('Records a $3,471.31 payment to WS VISA dated Oct 30, 2026');
+      expect(within(panel).getByLabelText(/Also mark the Debit ••5070 debit on Oct 30, 2026 as this payment/)).toBeChecked();
+      fireEvent.click(within(panel).getByRole('button', { name: 'Record payment' }));
+
+      await waitFor(() => expect(plaidApi.cardPaymentInboxTransaction).toHaveBeenCalledWith(10, { alsoLinkId: 11 }));
+      await waitFor(() => expect(screen.queryByText('Credit Card Payment')).not.toBeInTheDocument());
+      expect(onExpensesChanged).toHaveBeenCalled();
+    });
+
+    it('records the credit alone when the paying debit is unchecked', async () => {
+      respond([visaCredit()]);
+      plaidApi.cardPaymentInboxTransaction.mockResolvedValue({ created: true, payment: { id: 5 }, linkedTransactionIds: [10] });
+
+      renderInbox();
+      fireEvent.click(await screen.findByRole('button', { name: 'Record payment' }));
+      const panel = await screen.findByTestId('card-payment-panel');
+      fireEvent.click(within(panel).getByLabelText(/Also mark/));
+      fireEvent.click(within(panel).getByRole('button', { name: 'Record payment' }));
+
+      await waitFor(() => expect(plaidApi.cardPaymentInboxTransaction).toHaveBeenCalledWith(10, {}));
+    });
+
+    it('makes the user choose when several debits could have paid it', async () => {
+      respond([visaCredit({ cardPayment: cp({ pairCandidates: [debitPair(), debitPair({ id: 13, accountMask: '9999' })] }) })]);
+      plaidApi.cardPaymentInboxTransaction.mockResolvedValue({ created: true, payment: { id: 5 }, linkedTransactionIds: [10, 13] });
+
+      renderInbox();
+      fireEvent.click(await screen.findByRole('button', { name: 'Record payment' }));
+      const panel = await screen.findByTestId('card-payment-panel');
+      expect(within(panel).getByLabelText(/Don't link a debit/)).toBeChecked();
+      fireEvent.click(within(panel).getByLabelText(/••9999/));
+      fireEvent.click(within(panel).getByRole('button', { name: 'Record payment' }));
+
+      await waitFor(() => expect(plaidApi.cardPaymentInboxTransaction).toHaveBeenCalledWith(10, { alsoLinkId: 13 }));
+    });
+
+    it('offers to match a payment already entered by hand instead of recording it twice', async () => {
+      const byHand = { id: 7, paymentMethodId: 4, paymentMethodName: 'WS VISA', date: '2026-10-29', amount: 3471.31, notes: 'by hand' };
+      respond([visaCredit({ cardPayment: cp({ paymentCandidates: [byHand] }) })]);
+      plaidApi.cardPaymentInboxTransaction.mockResolvedValue({ created: false, payment: byHand, linkedTransactionIds: [10] });
+
+      renderInbox();
+      fireEvent.click(await screen.findByRole('button', { name: 'Record payment' }));
+      const panel = await screen.findByTestId('card-payment-panel');
+      expect(panel).toHaveTextContent(/Already recorded for WS VISA/);
+      fireEvent.click(within(within(panel).getByTestId('payment-candidate')).getByRole('button', { name: 'Match' }));
+
+      await waitFor(() => expect(plaidApi.cardPaymentInboxTransaction).toHaveBeenCalledWith(10, { creditCardPaymentId: 7 }));
+    });
+
+    it('cannot record a pending credit', async () => {
+      respond([visaCredit({ pending: true })]);
+
+      renderInbox();
+
+      expect(await screen.findByRole('button', { name: 'Record payment' })).toBeDisabled();
+    });
+
+    it('tells the debit where to record it, and keeps Add with a double-count warning', async () => {
+      respond([chequingDebit()]);
+
+      renderInbox();
+
+      expect(await screen.findByText('Card payment')).toBeInTheDocument();
+      expect(screen.getByText(/record it from that credit \(Oct 30, 2026\)/)).toHaveTextContent('Paid WS VISA ••KL54');
+      expect(screen.queryByRole('button', { name: /Link to card payment|Record payment/ })).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+      expect(screen.getByRole('note')).toHaveTextContent(/counts the spending twice/);
+    });
+
+    it('does not warn when adding an ordinary purchase', async () => {
+      respond([txn()]);
+
+      renderInbox();
+      fireEvent.click(await screen.findByRole('button', { name: 'Add' }));
+
+      expect(screen.queryByRole('note')).not.toBeInTheDocument();
+    });
+
+    it('links a debit to a payment that is already recorded', async () => {
+      const recorded = { id: 5, paymentMethodId: 4, paymentMethodName: 'WS VISA', date: '2026-10-30', amount: 3471.31, notes: 'Bank: Credit Card Payment' };
+      respond([chequingDebit({ cardPayment: cp({ side: 'funding', kind: null, paymentCandidates: [recorded] }) })]);
+      plaidApi.cardPaymentInboxTransaction.mockResolvedValue({ created: false, payment: recorded, linkedTransactionIds: [11] });
+
+      renderInbox();
+      expect(await screen.findByText('Card payment → WS VISA')).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Link to card payment' }));
+      const panel = await screen.findByTestId('card-payment-panel');
+      fireEvent.click(within(panel).getByRole('button', { name: 'Link' }));
+
+      await waitFor(() => expect(plaidApi.cardPaymentInboxTransaction).toHaveBeenCalledWith(11, { creditCardPaymentId: 5 }));
+    });
+
+    it('records a debit to a card that is not connected to a bank', async () => {
+      respond(
+        [chequingDebit({ cardPayment: cp({ side: 'funding', kind: null, pairCandidates: [] }) })],
+        { unconnectedCards: [{ id: 9, name: 'Amex' }, { id: 12, name: 'Store Card' }] }
+      );
+      plaidApi.cardPaymentInboxTransaction.mockResolvedValue({ created: true, payment: { id: 6 }, linkedTransactionIds: [11] });
+
+      renderInbox();
+      expect(await screen.findByText(/Looks like a credit card payment/)).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Record payment to…' }));
+      const panel = await screen.findByTestId('card-payment-panel');
+      const submit = within(panel).getByRole('button', { name: 'Record payment' });
+      expect(submit).toBeDisabled();
+      fireEvent.change(within(panel).getByLabelText('Card'), { target: { value: '12' } });
+      fireEvent.click(submit);
+
+      await waitFor(() => expect(plaidApi.cardPaymentInboxTransaction).toHaveBeenCalledWith(11, { paymentMethodId: 12 }));
+    });
+
+    it('offers nothing for a debit that is not a card payment, or to record to a card when every card is connected', async () => {
+      respond([
+        txn({ id: 20, transactionId: 'hydro', place: 'HYDRO ONE - Bill payment', cardPayment: null }),
+        chequingDebit({ cardPayment: cp({ side: 'funding', kind: null, pairCandidates: [] }) })
+      ]);
+
+      renderInbox();
+
+      await screen.findByText('HYDRO ONE - Bill payment');
+      const [hydro, debit] = screen.getAllByTestId('inbox-row');
+      expect(within(hydro).queryByText(/card payment/i)).not.toBeInTheDocument();
+      expect(within(debit).getByText(/Looks like a credit card payment/)).toBeInTheDocument();
+      // Every card is connected, so there is nowhere to record a payment from the debit
+      expect(screen.queryByRole('button', { name: /Record payment/ })).not.toBeInTheDocument();
+    });
+
+    it('reloads when a card payment changes elsewhere, and the pre-checked debit follows the new candidates', async () => {
+      plaidApi.getInbox
+        .mockResolvedValueOnce({ transactions: [visaCredit()], hiddenUnmapped: 0, unconnectedCards: [] })
+        .mockResolvedValue({
+          transactions: [visaCredit({ cardPayment: cp({ pairCandidates: [debitPair({ id: 13, accountMask: '9999' })] }) })],
+          hiddenUnmapped: 0,
+          unconnectedCards: []
+        });
+      plaidApi.cardPaymentInboxTransaction.mockResolvedValue({ created: true, payment: { id: 5 }, linkedTransactionIds: [10, 13] });
+
+      renderInbox();
+      fireEvent.click(await screen.findByRole('button', { name: 'Record payment' }));
+      const before = await screen.findByTestId('card-payment-panel');
+      expect(within(before).getByLabelText(/Also mark the Debit ••5070/)).toBeChecked();
+
+      // Deleting a card payment in another tab (or a sync) changes what could have paid this credit
+      act(() => { window.dispatchEvent(new CustomEvent('syncEvent', { detail: { entityType: 'credit_card' } })); });
+
+      const panel = await screen.findByTestId('card-payment-panel');
+      await waitFor(() => expect(within(panel).getByLabelText(/Also mark the Debit ••9999/)).toBeChecked());
+      fireEvent.click(within(panel).getByRole('button', { name: 'Record payment' }));
+
+      await waitFor(() => expect(plaidApi.cardPaymentInboxTransaction).toHaveBeenCalledWith(10, { alsoLinkId: 13 }));
+      expect(plaidApi.getInbox.mock.calls.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it('shows the failure and keeps the row when the server refuses', async () => {
+      respond([visaCredit({ cardPayment: cp() })]);
+      plaidApi.cardPaymentInboxTransaction.mockRejectedValue(new Error('Bank transaction was already reviewed'));
+
+      renderInbox();
+      fireEvent.click(await screen.findByRole('button', { name: 'Record payment' }));
+      fireEvent.click(within(await screen.findByTestId('card-payment-panel')).getByRole('button', { name: 'Record payment' }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('already reviewed');
+      expect(screen.getByText('Credit Card Payment - From: Cash')).toBeInTheDocument();
+    });
   });
 });

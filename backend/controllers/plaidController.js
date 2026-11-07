@@ -1,6 +1,7 @@
 const { asyncHandler } = require('../middleware/errorHandler');
 const plaidService = require('../services/plaidService');
 const plaidInboxService = require('../services/plaidInboxService');
+const plaidCardPaymentService = require('../services/plaidCardPaymentService');
 const plaidCardBalanceService = require('../services/plaidCardBalanceService');
 const plaidFileImportService = require('../services/plaidFileImportService');
 const plaidSettingsService = require('../services/plaidSettingsService');
@@ -196,6 +197,17 @@ const addAsIncome = asyncHandler(async (req, res) => {
 });
 
 /**
+ * POST /api/plaid/inbox/:id/card-payment
+ * Body (the row's side decides): { creditCardPaymentId } links to a recorded payment; { alsoLinkId? } on a card
+ * credit records the payment (and links the paying debit); { paymentMethodId } on a debit records it to a card
+ * with no bank connection. 201 when a payment was recorded, 200 when linked.
+ */
+const cardPayment = asyncHandler(async (req, res) => {
+  const result = await plaidCardPaymentService.act(idParam(req), req.body || {});
+  res.status(result.created ? 201 : 200).json(result);
+});
+
+/**
  * POST /api/plaid/inbox/:id/cancelled
  * Body: { action: 'keep'|'delete_expense'|'link', postedId? } — review a pending charge the bank dropped
  */
@@ -239,6 +251,7 @@ module.exports = {
   matchToFixedExpense,
   matchToIncome,
   addAsIncome,
+  cardPayment,
   resolveCancelled,
   ignore,
   unignore

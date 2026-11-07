@@ -25,8 +25,9 @@ Phase 1 (the PoC) is archived at [`specs/archive/plaid-integration/spec.md`](../
 | 1.21.4 | #459, #460 | Log in again on a "Not updating" bank (2.8, first version); fixes from the Plaid/CSV audit |
 | next | #462 | Log in again asks Plaid to fetch (`/transactions/refresh`) and opens the login when the bank needs one (2.8) |
 | next | #464 | Plaid's personal finance category stored on every staged transaction (`plaid_transactions_pfc_v1`, part of 2.1) and the pure card payment classifier `utils/plaidClassification.js` (part of 3.1), both groundwork for 3.2 |
+| next | #466 | Credit card payments from the Inbox (3.2): Record payment on a card credit (taking the paying debit along), Link to card payment on the debit, Record payment to… for a card with no bank connection; payments recorded from the bank are marked in the card view |
 
-**Next:** 3.2 card payments (Record payment from the Inbox), the other half of card reconciliation. Then the rest of Phase 2 (2.1 capture, 2.3 inbox badge, 2.4 refactors, 2.5 hygiene), Phase 3 and the rest of Phase 4.
+**Next:** the rest of Phase 2 (2.1 capture, 2.3 inbox badge, 2.4 refactors, 2.5 hygiene), then Phase 3 (3.1 To review / Not expenses, which would also move card payments out of To review automatically) and the rest of Phase 4. Verify 3.2 in production first: record the Oct 29–30 payments (WS VISA, CIBC MC) from the inbox.
 
 **Order changes:**
 - **2026-11-03:** card balance reconciliation is the biggest day-to-day problem, so 4.2 was built before the rest of Phase 2. It only needed balance capture from 2.1, done as its own migration `plaid_account_balances_v1`; the transaction columns of 2.1 still come in `plaid_capture_v1`.
@@ -387,6 +388,11 @@ About 30% of Wealthsimple rows are transfers, card payments, income or loan paym
 
 ### 3.2 Card payments
 
+> **Status: built** (#466). As built, where it differs from the design below:
+> - Data access is in its own `plaidCardPaymentRepository` and the helpers shared with the inbox (per-row lock, errors, review log) are in `plaidInboxSupport`, so neither `plaidRepository` nor `plaidInboxService` grew. One entry point, `plaidCardPaymentService.act(id, body)`, dispatches by the row's side.
+> - The card view gets `bankLinks` per payment from `GET /api/payment-methods/:id/credit-card-detail` (the endpoint it loads), not from `getPaymentHistory`.
+> - `GET /inbox` rows carry `cardPayment` (`side`, `kind`, `looksLikeCardPayment`, `pairCandidates`, `paymentCandidates`) and the response carries `unconnectedCards`.
+
 A payment leaves chequing as a debit and arrives on the card as a credit. Both bank rows resolve to **one** `credit_card_payments` row. Real rows (Oct 2026):
 
 | Side | Account | Bank text | Amount |
@@ -556,7 +562,7 @@ The budget plan already has monthly allocations ("RRSP $300", optionally linked 
 > - **Stale bank data (1.21.0):** `bankError` warns when the bank isn't syncing or Plaid hasn't had new data for over 12 hours, because the bank side is then older than the tracker side.
 > - **Settling from the balance (1.21.3):** for a card whose bank leaves pending out of its balance (Wealthsimple: `includesPending` false), after each sync whose `/accounts/get` succeeded, `settleFromBalance` marks posted the `settling` charges outside the one subset that explains the difference to the cent (≤ 12 charges; ambiguous or no exact fit → nothing; stale or erroring bank → nothing). Settlements go through `applySettlements`. On production data it settled the two Wealthsimple charges that had posted and kept the one still pending.
 >
-> **As built vs the requirements below:** "settling" means a linked pending charge on a bank whose balance excludes pending (not "linked in the last 2 days"); unrecorded card payments show as `bank_only` credits until 3.2. The response is `{ paymentMethodId, name, accounts, itemIds, status, bank: { owed, includesPending, asOf, currency }, tracker, difference, futureDated, causes, unexplained, awaitingMatch, splitCharges, limit, bankError }`.
+> **As built vs the requirements below:** "settling" means a linked pending charge on a bank whose balance excludes pending (not "linked in the last 2 days"); unrecorded card payments show as `bank_only` credits until recorded (3.2, built: a payment recorded from the inbox is linked to its bank credit and is no longer a cause). The response is `{ paymentMethodId, name, accounts, itemIds, status, bank: { owed, includesPending, asOf, currency }, tracker, difference, futureDated, causes, unexplained, awaitingMatch, splitCharges, limit, bankError }`.
 
 **Requirements**
 1. **Tracker side:** the balance as of today (business date), as the Financial page already computes it (`paymentMethodService.calculateCurrentBalance`). Never the stored `current_balance` (2.4 R7).

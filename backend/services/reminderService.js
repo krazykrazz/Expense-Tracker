@@ -93,9 +93,13 @@ class ReminderService {
         let hasActualBalance = false;
         
         if (billingCycleRecord && billingCycleRecord.is_user_entered === 1) {
-          // Use actual statement balance as authoritative source (only user-entered records)
-          balanceForAlerts = billingCycleRecord.actual_statement_balance;
-          statementBalance = billingCycleRecord.actual_statement_balance;
+          // The statement as printed is authoritative, less what has been paid since it closed (a payment
+          // recorded by hand or from the bank must clear the reminder)
+          const actual = billingCycleRecord.actual_statement_balance;
+          const paidSince = statementInfo?.totalPayments ?? 0;
+          const owed = actual == null ? actual : Math.max(0, Math.round((actual - paidSince) * 100) / 100);
+          balanceForAlerts = owed;
+          statementBalance = owed;
           hasActualBalance = true;
         } else if (statementInfo?.statementBalance !== undefined && statementInfo?.statementBalance !== null) {
           // Fall back to calculated statement balance

@@ -819,6 +819,20 @@ async function getUnifiedBillingCycles(req, res) {
  * _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7_
  */
 async function getCreditCardDetail(req, res) {
+  // Payments recorded from the Import Inbox carry the bank transactions they came from (`bankLinks`); a
+  // failed lookup only leaves the badge off
+  const withBankLinks = async (payments) => {
+    if (payments.length === 0) return payments;
+    try {
+      const plaidCardPaymentRepository = require('../repositories/plaidCardPaymentRepository');
+      const links = await plaidCardPaymentRepository.findLinksForPayments(payments.map(payment => payment.id));
+      return payments.map(payment => (links.has(payment.id) ? { ...payment, bankLinks: links.get(payment.id) } : payment));
+    } catch (err) {
+      logger.warn('Could not load bank links for credit card payments:', err.message);
+      return payments;
+    }
+  };
+
   try {
     const paymentMethodId = parseInt(req.params.id);
 
@@ -869,7 +883,7 @@ async function getCreditCardDetail(req, res) {
       return null;
     };
 
-    const payments = mapResult(results[0], 'payments') || [];
+    const payments = await withBankLinks(mapResult(results[0], 'payments') || []);
 
     let statementBalanceInfo = null;
     let currentCycleStatus = null;

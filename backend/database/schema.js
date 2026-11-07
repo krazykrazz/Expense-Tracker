@@ -440,6 +440,20 @@ const TABLE_STATEMENTS = [
     FOREIGN KEY (income_source_id) REFERENCES income_sources(id) ON DELETE CASCADE
   )`,
 
+  // plaid_card_payment_links — a bank transaction that is (one side of) a credit card payment: the credit on the
+  // card ('card') or the debit that funded it ('funding'). Both sides link to the same credit_card_payments row,
+  // so the payment id is not unique, but each payment has at most one row per side.
+  `CREATE TABLE IF NOT EXISTS plaid_card_payment_links (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    plaid_transaction_id INTEGER NOT NULL UNIQUE,
+    credit_card_payment_id INTEGER NOT NULL,
+    side TEXT NOT NULL CHECK(side IN ('card', 'funding')),
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (credit_card_payment_id, side),
+    FOREIGN KEY (plaid_transaction_id) REFERENCES plaid_transactions(id) ON DELETE CASCADE,
+    FOREIGN KEY (credit_card_payment_id) REFERENCES credit_card_payments(id) ON DELETE CASCADE
+  )`,
+
   // users — authentication user accounts
   `CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -515,6 +529,15 @@ const TRIGGER_STATEMENTS = [
    BEGIN
      UPDATE plaid_transactions SET status = 'new'
      WHERE id IN (SELECT plaid_transaction_id FROM plaid_income_links WHERE income_source_id = OLD.id);
+   END`,
+
+  // And for credit card payments: both bank rows (card credit and funding debit) return to the Import Inbox.
+  // Also fires when deleting a payment method cascades its payments.
+  `CREATE TRIGGER IF NOT EXISTS plaid_transactions_unlink_on_card_payment_delete
+   BEFORE DELETE ON credit_card_payments
+   BEGIN
+     UPDATE plaid_transactions SET status = 'new'
+     WHERE id IN (SELECT plaid_transaction_id FROM plaid_card_payment_links WHERE credit_card_payment_id = OLD.id);
    END`
 ];
 

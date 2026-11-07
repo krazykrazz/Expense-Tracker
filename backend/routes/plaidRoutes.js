@@ -36,6 +36,7 @@ router.post('/inbox/:id/match', plaidController.matchToExpense);
 router.post('/inbox/:id/match-fixed', plaidController.matchToFixedExpense);
 router.post('/inbox/:id/match-income', plaidController.matchToIncome);
 router.post('/inbox/:id/add-income', plaidController.addAsIncome);
+router.post('/inbox/:id/card-payment', plaidController.cardPayment);
 router.post('/inbox/:id/cancelled', plaidController.resolveCancelled);
 router.post('/inbox/:id/ignore', plaidController.ignore);
 router.post('/inbox/:id/unignore', plaidController.unignore);

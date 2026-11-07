@@ -73,6 +73,7 @@ Statement Balance =
 - If statement balance > 0 AND due date within 7 days → Show reminder with amount
 - If statement balance ≤ 0 → Suppress reminder (statement paid)
 - If no billing cycle configured → Fall back to current_balance (backward compatibility)
+- When the statement balance was entered from the real statement, the reminder's amount is that balance **less payments made since the statement closed**, so a payment recorded by hand or from the bank (Import Inbox) clears or reduces the reminder. An overpayment shows as $0.
 
 ### 4. Enhanced Reminder Display
 
@@ -388,6 +389,7 @@ db.run(`
 - [Configurable Payment Methods](./CONFIGURABLE_PAYMENT_METHODS.md) - Credit card management
 - [Credit Card Billing Cycles](./CREDIT_CARD_BILLING_CYCLES.md) - Billing cycle history
 - [Credit Card Posted Date](./CREDIT_CARD_POSTED_DATE.md) - Posted date support
+- [Plaid Bank Import → Credit card payments](./PLAID_INTEGRATION.md#credit-card-payments) - Payments recorded from the bank count toward the statement like any other payment (they carry the bank's posted date, and `payment_date` on or after the cycle end reduces the statement balance)
 
 ## Relationship to Billing Cycle Calculated Balance
 

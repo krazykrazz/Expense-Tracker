@@ -9,6 +9,9 @@ jest.mock('../repositories/paymentMethodRepository', () => ({
 jest.mock('../repositories/creditCardPaymentRepository', () => ({
   findByPaymentMethodId: jest.fn()
 }));
+jest.mock('../repositories/plaidCardPaymentRepository', () => ({
+  findLinksForPayments: jest.fn()
+}));
 jest.mock('../services/statementBalanceService', () => ({
   calculateStatementBalance: jest.fn()
 }));
@@ -42,6 +45,7 @@ const billingCycleController = require('./billingCycleController');
 const paymentMethodService = require('../services/paymentMethodService');
 const paymentMethodRepository = require('../repositories/paymentMethodRepository');
 const creditCardPaymentRepository = require('../repositories/creditCardPaymentRepository');
+const plaidCardPaymentRepository = require('../repositories/plaidCardPaymentRepository');
 const statementBalanceService = require('../services/statementBalanceService');
 const billingCycleHistoryService = require('../services/billingCycleHistoryService');
 
@@ -103,6 +107,7 @@ describe('billingCycleController.getCreditCardDetail', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    plaidCardPaymentRepository.findLinksForPayments.mockResolvedValue(new Map());
     req = { params: { id: '1' }, query: {} };
     res = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
   });
@@ -153,6 +158,25 @@ describe('billingCycleController.getCreditCardDetail', () => {
     expect(body.currentCycleStatus).toEqual(mockCycleStatus);
     expect(body.billingCycles).toEqual(mockUnifiedCycles.billingCycles);
     expect(body.errors).toEqual([]);
+  });
+
+  test('payments recorded from the Import Inbox carry the bank transactions; a failed lookup only drops them', async () => {
+    const withLinks = [{ ...mockPayments[0] }, { id: 2, payment_method_id: 1, amount: 50, payment_date: '2026-02-02', notes: null }];
+    const bankLinks = [{ side: 'card', date: '2026-02-01', name: 'Payment', amount: -100, accountName: 'Visa', accountMask: '1234' }];
+    paymentMethodService.getCreditCardWithComputedFields.mockResolvedValue(mockCardDetails);
+    creditCardPaymentRepository.findByPaymentMethodId.mockResolvedValue(withLinks);
+    plaidCardPaymentRepository.findLinksForPayments.mockResolvedValue(new Map([[1, bankLinks]]));
+
+    await billingCycleController.getCreditCardDetail(req, res);
+    expect(res.json.mock.calls[0][0].payments).toEqual([{ ...withLinks[0], bankLinks }, withLinks[1]]);
+    expect(plaidCardPaymentRepository.findLinksForPayments).toHaveBeenCalledWith([1, 2]);
+
+    res.json.mockClear();
+    plaidCardPaymentRepository.findLinksForPayments.mockRejectedValue(new Error('db busy'));
+    await billingCycleController.getCreditCardDetail(req, res);
+    expect(res.status).toHaveBeenLastCalledWith(200);
+    expect(res.json.mock.calls[0][0].payments).toEqual(withLinks);
+    expect(res.json.mock.calls[0][0].errors).toEqual([]);
   });
 
   test('returns partial failure with errors array when sub-query fails', async () => {

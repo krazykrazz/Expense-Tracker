@@ -44,6 +44,8 @@ The backend broadcasts the `entity_type` of each activity-log event. `useDataSyn
 | `credit_card_payment`, `credit_card_statement`, `billing_cycle` | `credit_card` | window `syncEvent` |
 | `plaid_transaction` (sync results, inbox decisions), `plaid_account` (mapping changes), `plaid_item` (connect, disconnect, sync failure) | `plaid` | window `syncEvent` |
 
+Recording a card payment from the Import Inbox logs both `credit_card_payment_added` (entity `credit_card_payment`, so card balances refresh as for a payment entered by hand) and one `plaid_transaction_updated` per linked bank row (entity `plaid_transaction`, so open inboxes in other tabs drop those rows).
+
 ### Window `syncEvent` consumers
 
 A window `syncEvent` does nothing by itself; components subscribe with `useSyncEvent(entityTypes, callback)` (`frontend/src/hooks/useSyncEvent.js`). Current consumers:

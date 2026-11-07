@@ -87,7 +87,7 @@ class CreditCardPaymentService {
     // Validate amount (must be positive)
     if (data.amount === undefined || data.amount === null) {
       errors.push('Payment amount is required');
-    } else if (typeof data.amount !== 'number' || data.amount <= 0) {
+    } else if (typeof data.amount !== 'number' || !Number.isFinite(data.amount) || data.amount <= 0) {
       errors.push('Payment amount must be greater than zero');
     }
 
@@ -112,8 +112,10 @@ class CreditCardPaymentService {
       }
     }
 
-    // Validate notes length if provided
-    if (data.notes && data.notes.length > 500) {
+    // Validate notes: text, and not too long
+    if (data.notes !== undefined && data.notes !== null && typeof data.notes !== 'string') {
+      errors.push('Notes must be text');
+    } else if (data.notes && data.notes.length > 500) {
       errors.push('Notes must not exceed 500 characters');
     }
 
@@ -126,9 +128,12 @@ class CreditCardPaymentService {
   /**
    * Record a payment and update the credit card balance
    * @param {Object} data - Payment data { payment_method_id, amount, payment_date, notes }
+   * @param {Object} [options]
+   * @param {Function} [options.withinTransaction] - `async (tx, payment) => {}` run after the payment and balance
+   *   are written, in the same transaction. Throwing rolls the payment back (used to link bank transactions).
    * @returns {Promise<Object>} Created payment record
    */
-  async recordPayment(data) {
+  async recordPayment(data, options = {}) {
     // Validate input
     const validation = this.validatePayment(data);
     if (!validation.isValid) {
@@ -163,13 +168,16 @@ class CreditCardPaymentService {
         [newBalance, data.payment_method_id]
       );
 
-      return {
+      const created = {
         id: insertResult.lastID,
         payment_method_id: data.payment_method_id,
         amount: data.amount,
         payment_date: data.payment_date,
         notes: data.notes ? data.notes.trim() : null
       };
+
+      if (options.withinTransaction) await options.withinTransaction(tx, created);
+      return created;
     });
 
     logger.info('Recorded credit card payment:', {
@@ -299,8 +307,8 @@ class CreditCardPaymentService {
   }
 
   /**
-   * Delete a payment record
-   * Note: This does NOT reverse the balance change
+   * Delete a payment record and recompute the card's balance in the same transaction. Bank transactions
+   * linked to it return to the Import Inbox (trigger plaid_transactions_unlink_on_card_payment_delete).
    * @param {number} paymentId - Payment ID
    * @returns {Promise<boolean>} True if deleted
    */

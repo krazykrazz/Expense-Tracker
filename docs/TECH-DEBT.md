@@ -241,6 +241,14 @@ Use this template when spinning up any item below:
   - Validation run: `cd backend && npm test -- database/db.transaction.test.js services/backupService.integration.test.js` (22 tests passing).
   - PR 2 is complete. Remaining optional follow-up: extend transaction coverage to adjacent multi-write service paths beyond expense create/update.
 
+  Update (2026-11-07): `dbHelper.runInTransaction` (used by credit card payments and the Plaid sync and inbox) now runs
+  transactions one at a time on the shared connection (a second caller waits, up to 30 s, instead of failing with
+  "cannot start a transaction within a transaction"), and a call made inside a running callback joins it.
+  Not covered yet: `db.js` `withTransaction`, `dbHelper.transaction`, and the raw `BEGIN TRANSACTION` in
+  `expensePeopleRepository` and `placeNameRepository` are not serialized with it, and plain queries from other
+  requests still share the open transaction. The lasting fix is one serialized write path (or a connection per
+  transaction).
+
   Done when:
   - At least the most failure-sensitive multi-step operations are atomic.
   - Rollback behavior is covered by focused tests.

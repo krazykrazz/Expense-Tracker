@@ -147,6 +147,16 @@ export const addInboxTransactionAsIncome = (id, fields) =>
   call('adding bank deposit as income', () => apiPost(API_ENDPOINTS.PLAID_INBOX_ACTION(id, 'add-income'), fields, 'add income'));
 
 /**
+ * Card payments in the Inbox. The row's side decides what the body means:
+ * - `{ creditCardPaymentId }`: link the row to a payment that is already recorded;
+ * - `{ alsoLinkId? }` on a credit on a card: record the payment (and link the debit that paid it);
+ * - `{ paymentMethodId }` on a debit: record the payment to a card that has no bank connection.
+ * @returns {Promise<{created: boolean, payment: object, linkedTransactionIds: number[]}>}
+ */
+export const cardPaymentInboxTransaction = (id, body = {}) =>
+  call('recording card payment', () => apiPost(API_ENDPOINTS.PLAID_INBOX_ACTION(id, 'card-payment'), body, 'record card payment'));
+
+/**
  * Review a pending charge (added as an expense) that the bank dropped.
  * @param {{action: 'keep'|'delete_expense'|'link', postedId?: number}} decision
  */

@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, cleanup, act } from '@testing-library/react';
 
 // Mock config
 vi.mock('../../config', () => ({
@@ -504,6 +504,93 @@ describe('CreditCardDetailView', () => {
 
       // Verify detail view was NOT closed
       expect(onClose).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('payments recorded from the bank', () => {
+    const bankLinks = [
+      { side: 'card', date: '2026-10-30', name: 'Credit Card Payment - From: Cash', amount: -3471.31, accountName: 'Visa', accountMask: 'KL54' },
+      { side: 'funding', date: '2026-10-30', name: 'Credit Card Payment', amount: 3471.31, accountName: 'Chequing', accountMask: '5070' }
+    ];
+    const payment = (id, extra = {}) => ({ id, payment_method_id: 1, amount: 3471.31, payment_date: '2026-10-30', notes: null, ...extra });
+
+    it('marks them with the bank transactions they came from, and not payments entered by hand', async () => {
+      creditCardApi.getCreditCardDetail.mockResolvedValue({ ...makeApiResponse(), payments: [payment(1, { bankLinks }), payment(2, { amount: 50 })] });
+
+      render(<CreditCardDetailView {...defaultProps} initialTab="payments" />);
+
+      const badge = await screen.findByTestId('payment-bank-badge');
+      expect(screen.getAllByTestId('payment-bank-badge')).toHaveLength(1);
+      expect(badge.getAttribute('title')).toBe('From the bank: Visa ••KL54 credit, Oct 30, 2026; Chequing ••5070 debit, Oct 30, 2026');
+    });
+
+    it('says the bank transactions return to the Import Inbox before deleting such a payment', async () => {
+      creditCardApi.getCreditCardDetail.mockResolvedValue({ ...makeApiResponse(), payments: [payment(1, { bankLinks }), payment(2)] });
+      render(<CreditCardDetailView {...defaultProps} initialTab="payments" />);
+
+      const deleteButtons = await screen.findAllByTitle('Delete payment');
+      fireEvent.click(deleteButtons[0]);
+      expect(await screen.findByTestId('payment-bank-note')).toHaveTextContent('Its bank transactions return to the Import Inbox');
+
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+      fireEvent.click(screen.getAllByTitle('Delete payment')[1]);
+      await screen.findByText('Delete Payment');
+      expect(screen.queryByTestId('payment-bank-note')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('deleting a payment', () => {
+    const payment = { id: 1, payment_method_id: 1, amount: 100, payment_date: '2026-10-30', notes: null };
+
+    async function openDeleteDialog() {
+      creditCardApi.getCreditCardDetail.mockResolvedValue({ ...makeApiResponse(), payments: [payment] });
+      render(<CreditCardDetailView {...defaultProps} initialTab="payments" />);
+      fireEvent.click(await screen.findByTitle('Delete payment'));
+      await screen.findByText('Delete Payment');
+    }
+
+    it('sends one request however many times Delete is clicked', async () => {
+      let finish;
+      creditCardApi.deletePayment.mockReturnValue(new Promise((resolve) => { finish = resolve; }));
+      await openDeleteDialog();
+
+      const button = screen.getByRole('button', { name: 'Delete' });
+      fireEvent.click(button);
+      fireEvent.click(button);
+      expect(button).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
+      finish(true);
+
+      await waitFor(() => expect(screen.queryByText('Delete Payment')).not.toBeInTheDocument());
+      expect(creditCardApi.deletePayment).toHaveBeenCalledTimes(1);
+    });
+
+    it('closes the dialog and shows the error when the delete fails', async () => {
+      creditCardApi.deletePayment.mockRejectedValue(new Error('Payment not found'));
+      await openDeleteDialog();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+
+      await waitFor(() => expect(screen.queryByText('Delete Payment')).not.toBeInTheDocument());
+      expect(screen.getByText('Payment not found')).toBeInTheDocument();
+    });
+  });
+
+  describe('overlapping loads', () => {
+    it('keeps the newest response when an older request answers last', async () => {
+      let answerFirst;
+      creditCardApi.getCreditCardDetail
+        .mockReturnValueOnce(new Promise((resolve) => { answerFirst = resolve; }))
+        .mockResolvedValue({ ...makeApiResponse({ display_name: 'Second Card' }), payments: [] });
+
+      const { rerender } = render(<CreditCardDetailView {...defaultProps} paymentMethodId={1} initialTab="payments" />);
+      rerender(<CreditCardDetailView {...defaultProps} paymentMethodId={2} initialTab="payments" />);
+      await screen.findByText('Second Card');
+
+      await act(async () => { answerFirst({ ...makeApiResponse({ display_name: 'First Card' }), payments: [] }); });
+
+      expect(screen.getByText('Second Card')).toBeInTheDocument();
+      expect(screen.queryByText('First Card')).not.toBeInTheDocument();
     });
   });
 });

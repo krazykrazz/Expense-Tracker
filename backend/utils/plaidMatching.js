@@ -169,8 +169,79 @@ function findIncomeCandidates(txn, sources, learnedNames = new Set()) {
     .map(({ source, nameScore }) => ({ ...source, nameScore }));
 }
 
+// ─── Card payments ───
+
+/** A payment leaves chequing and reaches the card a few days apart (cut-off times, weekends). */
+const PAYMENT_WINDOW_DAYS = 5;
+
+/** A row on an account mapped to a credit card; every other mapped account is a funding account. */
+const isCardRow = (txn) => txn.paymentMethodType === 'credit_card';
+/** Money in on a card: a payment or a refund. */
+const isCardCredit = (txn) => isCardRow(txn) && txn.amount < 0;
+/** Money out of a non-card account: what a card payment looks like on the funding side. */
+const isFundingDebit = (txn) => !isCardRow(txn) && txn.amount > 0;
+
+/** A bank row can be one side of a card payment: a settled card credit or funding debit. */
+const isCardPaymentSide = (txn) => !txn.pending && (isCardCredit(txn) || isFundingDebit(txn));
+
+const sameCentsWithinWindow = (a, b) => Math.abs(toCents(a.amount)) === Math.abs(toCents(b.amount))
+  && dayDiff(a.date, b.date) <= PAYMENT_WINDOW_DAYS;
+
+/** A card credit and a funding debit (either order), settled, of the same cents within the window. */
+const isPaymentPair = (a, b) => isCardPaymentSide(a) && isCardPaymentSide(b)
+  && isCardCredit(a) !== isCardCredit(b) && sameCentsWithinWindow(a, b);
+
+/**
+ * The other side of each card payment among the given bank rows: for a card credit, the funding debits of the
+ * same cents within ±5 days (posted dates), and the reverse. Never picks: several candidates are all listed,
+ * closest date first. Symmetric by construction.
+ * @param {Array<{id: number, amount: number, date: string, pending?: boolean, paymentMethodType?: string}>} rows
+ * @returns {Map<number, Array>} row id → opposite-side rows
+ */
+function pairCardPayments(rows) {
+  const sides = rows.filter(isCardPaymentSide);
+  const credits = sides.filter(isCardCredit);
+  const debits = sides.filter(isFundingDebit);
+  const pairs = new Map(sides.map(row => [row.id, []]));
+  const byCloseness = (row) => (a, b) => dayDiff(row.date, a.date) - dayDiff(row.date, b.date) || a.id - b.id;
+
+  for (const credit of credits) {
+    for (const debit of debits) {
+      if (!sameCentsWithinWindow(credit, debit)) continue;
+      pairs.get(credit.id).push(debit);
+      pairs.get(debit.id).push(credit);
+    }
+  }
+  for (const row of sides) pairs.get(row.id).sort(byCloseness(row));
+  return pairs;
+}
+
+/**
+ * Recorded card payments a bank row could be (one side of): the same cents within ±5 days of the payment date.
+ * A card row only takes payments on its own card that no card row is linked to; a funding row takes any
+ * card's payment that no funding row is linked to.
+ * @param {{amount: number, date: string, paymentMethodId?: number, paymentMethodType?: string}} txn
+ * @param {Array<{id: number, paymentMethodId: number, amount: number, date: string, cardLinked: boolean, fundingLinked: boolean}>} payments
+ */
+function findPaymentCandidates(txn, payments) {
+  if (!isCardPaymentSide(txn)) return [];
+  const card = isCardCredit(txn);
+  return payments
+    .filter(payment => (card ? payment.paymentMethodId === txn.paymentMethodId && !payment.cardLinked : !payment.fundingLinked)
+      && sameCentsWithinWindow(txn, payment))
+    .sort((a, b) => dayDiff(txn.date, a.date) - dayDiff(txn.date, b.date) || a.id - b.id);
+}
+
 module.exports = {
   MATCH_WINDOW_DAYS,
+  PAYMENT_WINDOW_DAYS,
+  isCardRow,
+  isCardCredit,
+  isFundingDebit,
+  isCardPaymentSide,
+  isPaymentPair,
+  pairCardPayments,
+  findPaymentCandidates,
   FIXED_EARLY_DAYS,
   FIXED_LATE_DAYS,
   INCOME_BOUNDARY_DAYS,

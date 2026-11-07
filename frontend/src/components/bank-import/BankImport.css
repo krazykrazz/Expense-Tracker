@@ -459,6 +459,47 @@
   cursor: pointer;
 }
 
+/* Credit card payments: what to do with the other side, and the double-count warning in the Add form */
+
+.inbox-row-hint {
+  margin-top: 4px;
+  font-size: var(--text-xs, 12px);
+  color: var(--text-secondary);
+}
+
+.inbox-form-note {
+  grid-column: 1 / -1;
+  padding: var(--spacing-2, 8px) var(--spacing-3, 12px);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm, 13px);
+  background: var(--color-warning-light);
+  color: light-dark(#92400e, hsl(23 80% 78%));
+}
+
+.inbox-card-payment-also {
+  display: flex;
+  margin: var(--spacing-2, 8px) 0 0;
+}
+
+.inbox-card-payment-pairs {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: var(--spacing-2, 8px) 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.inbox-card-payment-select {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 260px;
+  margin: var(--spacing-2, 8px) 0;
+  font-size: var(--text-xs, 12px);
+  color: var(--text-secondary);
+}
+
 @media (max-width: 768px) {
   .inbox-row-main {
     grid-template-columns: 1fr auto;

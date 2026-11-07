@@ -163,12 +163,23 @@ describe('merging the two sources (best information kept)', () => {
     });
 
     test('takes Plaid\'s id and description, keeps the file\'s purchase date and merchant name', () => {
-      const { fields, settlement } = mergePlaidIntoFileRow(fileStaged(), txn(), true);
+      const { fields, settlement } = mergePlaidIntoFileRow(fileStaged({ status: 'new', expenseId: null }), txn(), true);
       expect(fields).toMatchObject({
         transactionId: 'plaid-9', pending: 0, amount: 28.24, date: '2026-11-04', authorizedDate: '2026-11-03',
         name: 'Corner Cafe - Purchase', merchantName: 'Corner Cafe'
       });
       expect(settlement).toBeNull();
+    });
+
+    test('a settled file row linked to an expense passes Plaid\'s posting date on, and nothing else', () => {
+      const { settlement } = mergePlaidIntoFileRow(fileStaged({ id: 7, expenseId: 42, status: 'added' }), txn(), true);
+      expect(settlement).toEqual({
+        plaidTransactionId: 7, expenseId: 42, settled: true, postedDateOnly: true,
+        previousAmount: 28.24, amount: 28.24, postedDate: '2026-11-04'
+      });
+
+      expect(mergePlaidIntoFileRow(fileStaged({ id: 7, expenseId: 42, date: '2026-11-04' }), txn(), true).settlement).toBeNull();
+      expect(mergePlaidIntoFileRow(fileStaged({ id: 7, expenseId: 42 }), txn({ pending: true }), true).settlement).toBeNull();
     });
 
     test('a pending file row settles when this bank sends pending through Plaid', () => {

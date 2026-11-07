@@ -11,6 +11,7 @@ import ReimbursementIndicator from './ReimbursementIndicator';
 import { bankLinkState, bankLinkTitle, bankPillProps } from '../bank-import/bankConfirmation';
 import '../bank-import/BankImport.css';
 import PostedTurnoverMarker, { PendingTurnoverMarker, postedDateTitle } from './PostedTurnoverMarker';
+import { laterStatement } from '../../utils/statementCycle';
 import ExpenseForm from './ExpenseForm';
 import FilterChip from './FilterChip';
 import Icon from '../shared/Icon';
@@ -1179,7 +1180,10 @@ const ExpenseList = memo(({
                     )}
                   </span>
                   <PostedTurnoverMarker expense={expense} billingCycleDay={billingCycleDay} />
-                  <PendingTurnoverMarker date={expense.date} pending={Boolean(expense.bankLink?.pending)} billingCycleDay={billingCycleDay} />
+                  {/* A posted date already on a later statement answers the question the pending marker asks */}
+                  {!laterStatement(expense, billingCycleDay) && (
+                    <PendingTurnoverMarker date={expense.date} pending={Boolean(expense.bankLink?.pending)} billingCycleDay={billingCycleDay} />
+                  )}
                 </td>
                 <td>
                   <div className="action-buttons">

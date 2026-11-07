@@ -319,6 +319,18 @@ function mergeFileIntoRow(existing, file, dateKind) {
 }
 
 /**
+ * A settled file row linked to an expense that Plaid takes over with a different date: Plaid's date is the posting
+ * date (a Wealthsimple file has the purchase date), so it reaches the expense's posted date like a settlement.
+ */
+function postedDateUpdate(fileRow, fields) {
+  if (!fileRow.expenseId || fileRow.pending || fields.pending || fields.date === fileRow.date) return null;
+  return {
+    plaidTransactionId: fileRow.id, expenseId: fileRow.expenseId, settled: true, postedDateOnly: true,
+    previousAmount: fileRow.amount, amount: fileRow.amount, postedDate: fields.date
+  };
+}
+
+/**
  * Merge an incoming Plaid transaction into a file row it takes over (see the rules at the top).
  * @param {object} fileRow staged row from a file (camelCase columns)
  * @param {object} txn Plaid transaction (snake_case, as from /transactions/sync)
@@ -342,7 +354,7 @@ function mergePlaidIntoFileRow(fileRow, txn, reportsPending) {
     pendingTransactionId: txn.pending_transaction_id ?? null,
     removedAt: null
   };
-  return { fields, settlement: settlementFor(fileRow, fields) };
+  return { fields, settlement: settlementFor(fileRow, fields) ?? postedDateUpdate(fileRow, fields) };
 }
 
 /**

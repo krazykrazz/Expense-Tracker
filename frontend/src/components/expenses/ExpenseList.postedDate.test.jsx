@@ -100,6 +100,13 @@ describe('posted date in the expense list', () => {
     expect(screen.getAllByTestId('pending-turnover')).toHaveLength(1);
     expect(marker.closest('tr')).toBe(rowOf('Cafe'));
   });
+  it('shows only the later-statement marker for a pending charge whose posted date is already on the next statement', async () => {
+    const pendingLink = { status: 'matched', name: 'Cafe', rawName: 'CAFE', date: '2026-10-14', amount: 9, pending: true };
+    renderList([expense({ id: 1, place: 'Cafe', date: '2026-10-14', posted_date: '2026-10-16', bankLink: pendingLink })]);
+
+    expect(await screen.findByTestId('posted-turnover')).toHaveTextContent('→ Oct 16');
+    expect(screen.queryByTestId('pending-turnover')).not.toBeInTheDocument();
+  });
 });
 
 describe('PostedTurnoverMarker and postedDateTitle', () => {

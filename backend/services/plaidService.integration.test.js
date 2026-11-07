@@ -281,6 +281,14 @@ describe('plaidService', () => {
         { tid: 'ws-new', status: 'new', pending: 0, amount: 7, date: '2026-11-05', auth: null, name: 'Something new', merchant: null, expenseId: null }
       ]);
       expect(cafe).toBeDefined();
+      // A file row is dated the day of purchase; Plaid's later date is the posting date, so it reaches the expense
+      expect(await get("SELECT e.date, e.posted_date FROM expenses e JOIN plaid_transactions pt ON pt.expense_id = e.id WHERE pt.transaction_id = 'ws-cafe'"))
+        .toEqual({ date: '2026-11-03', posted_date: '2026-11-04' });
+      expect(activityLogService.logEvent).toHaveBeenCalledWith(
+        'plaid_transaction_updated', 'plaid_transaction', expect.any(Number),
+        expect.stringMatching(/from a bank file, posting date from the bank: posted date 2026-11-04$/),
+        expect.objectContaining({ action: 'posted_date', postedDateUpdated: true })
+      );
       // The file had no category; Plaid's version brings it
       expect(await get("SELECT pfc_detailed FROM plaid_transactions WHERE transaction_id = 'ws-cafe'"))
         .toEqual({ pfc_detailed: 'FOOD_AND_DRINK_COFFEE' });

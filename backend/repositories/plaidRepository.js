@@ -25,6 +25,8 @@ const pfcValues = (txn) => {
 /** A sync without the category never blanks one already stored. */
 const PFC_SET_FIELDS = `pfc_primary = COALESCE(?, pfc_primary), pfc_detailed = COALESCE(?, pfc_detailed),
   pfc_confidence = COALESCE(?, pfc_confidence)`;
+/** Share of weekend dates above which a bank's dates are purchase dates, not posting dates (purchases: ~2 in 7). */
+const MAX_WEEKEND_POSTING_SHARE = 0.1;
 
 /**
  * Data access for Plaid items, accounts and staged transactions.
@@ -844,18 +846,20 @@ class PlaidRepository {
 
   /**
    * Does the bank behind this account report real posting dates? Yes when its settled transactions show a date
-   * later than the authorization date (CIBC) and none falls on a weekend (a bank never posts then: Wealthsimple
-   * sends the purchase date for most charges). Rows imported from a file are left out.
+   * later than the authorization date (CIBC) and hardly any fall on a weekend (banks rarely post then; purchase
+   * dates land there about 2 days in 7: Wealthsimple sends the purchase date for most charges). Rows imported
+   * from a file are left out.
    */
   async bankReportsPostingDates(plaidAccountId) {
     const row = await dbHelper.queryOne(
-      `SELECT COALESCE(SUM(authorized_date IS NOT NULL AND date > authorized_date), 0) AS later,
+      `SELECT COUNT(*) AS total,
+              COALESCE(SUM(authorized_date IS NOT NULL AND date > authorized_date), 0) AS later,
               COALESCE(SUM(CAST(strftime('%w', date) AS INTEGER) IN (0, 6)), 0) AS weekend
        FROM plaid_transactions
        WHERE plaid_account_id = ? AND pending = 0 AND transaction_id NOT LIKE 'file:%'`,
       [plaidAccountId]
     );
-    return row.later > 0 && row.weekend === 0;
+    return row.later > 0 && row.weekend <= row.total * MAX_WEEKEND_POSTING_SHARE;
   }
 
   async findMappedCardAccounts(environment) {

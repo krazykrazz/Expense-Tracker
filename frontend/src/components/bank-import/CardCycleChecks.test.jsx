@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react';
 import CardCycleChecks from './CardCycleChecks';
 import { describeCycleCause, describeCycleTotals } from './cardCycleCheck';
 import { getCardCycleChecks, openBankImport } from '../../services/plaidApi';
+import { useSyncEvent } from '../../hooks/useSyncEvent';
 
 vi.mock('../../services/plaidApi', () => ({
   getCardCycleChecks: vi.fn(),
@@ -57,6 +58,22 @@ describe('CardCycleChecks', () => {
     expect(screen.getByText(/2 Inbox transactions match entries already in the tracker/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Open Inbox' }));
     expect(openBankImport).toHaveBeenCalledWith('inbox');
+  });
+
+  it('a slow earlier response never replaces a newer one', async () => {
+    let resolveFirst;
+    getCardCycleChecks
+      .mockImplementationOnce(() => new Promise(resolve => { resolveFirst = resolve; }))
+      .mockResolvedValueOnce({ cycles: [cycle({ endDate: '2026-10-15' })] });
+
+    render(<CardCycleChecks paymentMethodId={4} />);
+    // A bank sync elsewhere reloads while the first load is still in flight
+    const onSync = useSyncEvent.mock.calls.at(-1)[1];
+    await act(async () => { onSync(); });
+    expect(await screen.findByText('Bank $100.00 · Tracker $100.00 · matches')).toBeInTheDocument();
+
+    await act(async () => { resolveFirst({ cycles: [] }); });
+    expect(screen.getByTestId('card-cycle-checks')).toBeInTheDocument();
   });
 
   it('renders nothing without cycles or when the request fails', async () => {

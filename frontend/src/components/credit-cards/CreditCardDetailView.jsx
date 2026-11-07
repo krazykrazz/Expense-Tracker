@@ -681,7 +681,7 @@ const CreditCardDetailView = ({
                         formatDate={formatDate}
                         loading={loading}
                       />
-                      {bankCheck && <CardCycleChecks paymentMethodId={paymentMethodId} refreshKey={paymentMethod} />}
+                      {bankCheck && <CardCycleChecks key={paymentMethodId} paymentMethodId={paymentMethodId} refreshKey={paymentMethod} />}
                     </div>
                   ) : (
                     <div className="cc-empty-state">

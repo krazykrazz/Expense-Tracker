@@ -23,23 +23,24 @@ Phase 1 (the PoC) is archived at [`specs/archive/plaid-integration/spec.md`](../
 | 1.21.2 | #454 | Dark mode coverage (includes the Bank Import screens) |
 | 1.21.3 | #456 | Wealthsimple pending charges settle when the card balance shows they posted (`settleFromBalance`) |
 | 1.21.4 | #459, #460 | Log in again on a "Not updating" bank (2.8, first version); fixes from the Plaid/CSV audit |
-| next | #462 | Log in again asks Plaid to fetch (`/transactions/refresh`) and opens the login when the bank needs one (2.8) |
-| next | #464 | Plaid's personal finance category stored on every staged transaction (`plaid_transactions_pfc_v1`, part of 2.1) and the pure card payment classifier `utils/plaidClassification.js` (part of 3.1), both groundwork for 3.2 |
-| next | #466 | Credit card payments from the Inbox (3.2): Record payment on a card credit (taking the paying debit along), Link to card payment on the debit, Record payment to… for a card with no bank connection; payments recorded from the bank are marked in the card view |
-| next | #468 | Posted date follows the bank: Match and settle set a card expense's posted date from the settled transaction (replacing an estimate; the purchase date is never changed); the green check in the expense list is replaced by a marker only when an expense posts on a later statement; a pending charge made just before the statement closes shows **→ next?**; and a bank-linked card's Billing Cycles tab compares each of its last closed statements with the bank (`GET /api/plaid/card-cycles/:id`) |
+| 1.22.0 | #462, #464 | Log in again asks Plaid to fetch (`/transactions/refresh`) and opens the login when the bank needs one (2.8). Plaid's personal finance category stored on every staged transaction (`plaid_transactions_pfc_v1`, part of 2.1) and the pure card payment classifier `utils/plaidClassification.js` (part of 3.1), both groundwork for 3.2 |
+| 1.23.0 | #466 | Credit card payments from the Inbox (3.2): Record payment on a card credit (taking the paying debit along), Link to card payment on the debit, Record payment to… for a card with no bank connection; payments recorded from the bank are marked in the card view. Fixes from the credit card payment audit (serialised DB transactions, reminder after a paid entered statement, local-date payment form) |
+| 1.24.0 | #468 | Posted date follows the bank: Match and settle set a card expense's posted date from the settled transaction (replacing an estimate; the purchase date is never changed); the green check in the expense list is replaced by a marker only when an expense posts on a later statement; a pending charge made just before the statement closes shows **→ next?**; and a bank-linked card's Billing Cycles tab compares each of its last closed statements with the bank (`GET /api/plaid/card-cycles/:id`). One-off: 16 matched card expenses got the bank's posted date (production, Nov 7) |
+| 1.24.1 | #470 | A same-day bank date only clears a posted date you entered when the bank reports real posting dates (CIBC), not purchase dates (Wealthsimple) |
+| next | this PR | Spot-check fixes: Plaid taking over a settled bank-file row now passes its posting date to the linked card expense (`posted_date` log action); the posting-date test tolerates an occasional weekend posting; no double marker on a pending charge already dated on the next statement; the statement check can't show an older response or another card's cycles |
 
-**Next:** the rest of Phase 2 (2.1 capture, 2.3 inbox badge, 2.4 refactors, 2.5 hygiene), then Phase 3 (3.1 To review / Not expenses, which would also move card payments out of To review automatically) and the rest of Phase 4. Verify 3.2 in production first: record the Oct 29–30 payments (WS VISA, CIBC MC) from the inbox.
+**Next:** the rest of Phase 2: 2.3 inbox badge, 2.4 refactors (before Phase 3 adds more Inbox actions), 2.1 capture of the remaining fields, 2.5 hygiene. Then Phase 3 (3.1 To review / Not expenses, which would also move card payments out of To review automatically) and 4.1. 3.2 is verified in production: the Oct 30 WS VISA and CIBC MC payments are recorded from the card credits with their chequing debits linked.
 
 **Order changes:**
 - **2026-11-03:** card balance reconciliation is the biggest day-to-day problem, so 4.2 was built before the rest of Phase 2. It only needed balance capture from 2.1, done as its own migration `plaid_account_balances_v1`; the transaction columns of 2.1 still come in `plaid_capture_v1`.
-- **2026-11-04 → 06:** Plaid outages at Wealthsimple and CIBC's login-only updates (see [Production findings](#production-findings-2026-11-03--06)) pulled in 2.6, 2.7 and 2.8 ahead of the rest of Phase 2.
+- **2026-11-04 → 06:** Plaid outages at Wealthsimple and CIBC's login-only updates (see [Production findings](#production-findings-2026-11-03--07)) pulled in 2.6, 2.7 and 2.8 ahead of the rest of Phase 2.
 - **2026-11-07:** 3.2 needs to recognise card payments. Plaid's category columns (2.1) and `kindFor` (3.1) were pulled forward as their own PR, ahead of the rest of 2.1 and 3.1.
 
 ## Guiding principles
 
 1. **The tracker is complete without Plaid; Plaid only makes it smarter.** Every feature works with manual entry. Plaid UI (header button, badges, coloured pills, inbox) appears only when Plaid is configured; while it isn't, no Plaid calls or background jobs run (check `isEnabled()` / `/api/plaid/status` first), and no screen depends on bank data.
 2. **Nothing becomes money data without the user's say-so.** Every bank transaction goes through the inbox. Rules only pre-fill (no auto-add, Q6). Bank-driven *updates* to records the user already created are allowed when they follow the bank faithfully and are logged: settled amounts (as built), current-month balances (Phase 4), and optionally loan payments from confirmed fixed expenses (3.5).
-3. **Never overwrite what the user typed.** Bank values fill empty slots, or update values that came from the bank; a hand-entered or hand-edited value wins, and the difference is shown. **Exceptions the owner chose:** a credit card expense's `posted_date` always follows the bank once the transaction is settled (Add, Match, or a pending charge settling), because statements are built from it; the purchase `date` is never changed.
+3. **Never overwrite what the user typed.** Bank values fill empty slots, or update values that came from the bank; a hand-entered or hand-edited value wins, and the difference is shown. **Exceptions the owner chose:** a credit card expense's `posted_date` always follows the bank once the transaction is settled (Add, Match, a pending charge settling, or Plaid taking over a settled bank-file row), because statements are built from it; the purchase `date` is never changed. A bank date equal to the purchase date only replaces an entered posted date when the bank's dates are real posting dates (see Production findings).
 4. **Never waste a Trial slot.** No flow may require disconnect + reconnect when update mode can repair the same Item (`TRIAL_ITEM_LIMIT = 10`, never refunded).
 5. **Reuse the domain services for writes** (`expenseService`, `fixedExpenseService`, `incomeService`, `creditCardPaymentService`, `loanPaymentService`, `investmentValueService`, `loanBalanceService`). Validation, balances, activity log and SSE then behave as for manual entry.
 6. **Every user-visible mutation emits an activity-log event** whose `entity_type` is routed by `useDataSync` (directly or via `ENTITY_TYPE_ALIASES`) to a consumer that refreshes.
@@ -175,7 +176,7 @@ Production on the Trial plan: **Wealthsimple** (chequing, Visa, line of credit, 
 
 Balance check on the same day, done right (4.2 rules): CIBC tracker $1,554.40 = bank $1,554.40; WS VISA $2,129.92 vs $2,115.23. The difference is one $14.69 charge still pending at Wealthsimple. A naive comparison showed −$646.81 / −$1,000.00: it used the stored `current_balance`, which includes some future-dated expenses (2.4 R7), and CIBC's balance excludes pending.
 
-# Production findings (2026-11-03 → 06)
+# Production findings (2026-11-03 → 07)
 
 What a week of real use showed; each one shaped 2.6–2.8 and the merge rules in 2.7.
 
@@ -190,6 +191,8 @@ What a week of real use showed; each one shaped 2.6–2.8 and the merge rules in
 | Pairing quality on real data | WS card 51/51 and chequing 39/39 already-received rows paired exactly | Exact amount ±3 days is enough; the 25% tolerance only applies when one side is pending |
 | Place names | Raw bank text matched the saved place for 32 of 78 reviewed rows; with learned places and the existing-place prefix, 57 of 78 | Inbox place suggestions (shipped in 1.21.1, a first step towards 5.2) |
 | Plaid Dashboard limits on Trial | The Institution Status page isn't available on the Trial plan | 2.6 uses the API (`/item/get`, `/institutions/get_by_id`) |
+| **Wealthsimple's Plaid `date` is mostly the purchase date** (Nov 7) | WS VISA: 45 of 58 rows have no `authorized_date`, 19 fall on a Saturday or Sunday, no `pending_transaction_id` ever; CIBC: 25 of 30 posted a day after authorization, none on a weekend | 1.24.1: a same-day date is evidence only from a bank whose dates are posting dates (`bankReportsPostingDates`: some later than the authorization date, at most 1 in 10 on a weekend) |
+| **Plaid taking over a file row didn't update the posted date** (Nov 7 spot check) | Dollarama, added from a WS file dated Nov 5; Plaid took the row over with Nov 6, but the expense kept no posted date (only pending file rows passed dates on) | Fixed: a settled, linked file row passes Plaid's later date on (`postedDateOnly` settlement, `posted_date` log action) |
 
 ---
 
@@ -363,7 +366,7 @@ Planned now, because Phase 3 adds five more inbox actions and three more link ta
 - [ ] 2.5 items merged. *(R10 partly done; the rest not started.)*
 - [x] 2.6 a stalled bank shows Not updating, from Plaid's own fetch time.
 - [x] 2.7 Wealthsimple and CIBC files imported in production, merged with Plaid in either order without duplicates.
-- [ ] 2.8 Log in again brings CIBC transactions without a new Trial slot. *(The mechanism was verified by hand on Nov 6: refresh → `ITEM_LOGIN_REQUIRED` → Reconnect brought the missing transactions. Tick after #462 is released and the button does it in one go.)*
+- [ ] 2.8 Log in again brings CIBC transactions without a new Trial slot. *(The mechanism was verified by hand on Nov 6: refresh → `ITEM_LOGIN_REQUIRED` → Reconnect brought the missing transactions. #462 shipped in 1.22.0: tick once the button has brought CIBC transactions in production in one go.)*
 - [ ] Docs per the [matrix](#documentation-matrix); full-suite validation.
 
 ## Phase 3: Money that isn't spending
@@ -513,7 +516,7 @@ The budget plan already has monthly allocations ("RRSP $300", optionally linked 
 
 ### Phase 3 exit criteria
 - [ ] Inbox shows To review / Not expenses.
-- [ ] A real card payment recorded from the card side, with the chequing side linked.
+- [x] A real card payment recorded from the card side, with the chequing side linked. *(WS VISA $3,471.31 and CIBC MC $4,104.59 on Oct 30, both sides linked.)*
 - [ ] A contribution recorded against an allocation, shown in the Plan tab.
 - [ ] A loan payment recorded.
 - [ ] Docs per the matrix; full-suite validation.

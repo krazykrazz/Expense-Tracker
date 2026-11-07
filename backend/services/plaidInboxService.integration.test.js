@@ -364,6 +364,21 @@ describe('plaidInboxService', () => {
       expect(await expenseRow(expenseId)).toEqual({ date: '2026-10-30', posted_date: '2026-11-02' });
     });
 
+    test('one weekend posting among many weekday ones does not make a bank\'s dates purchase dates', async () => {
+      for (let day = 5; day <= 16; day++) {
+        if ([10, 11].includes(day)) continue;
+        const date = `2026-10-${String(day).padStart(2, '0')}`;
+        await stage(`weekday-${day}`, { accountId: cardAccountId, amount: 5, date, authorizedDate: `2026-10-${String(day - 1).padStart(2, '0')}` });
+      }
+      await stage('saturday', { accountId: cardAccountId, amount: 9, date: '2026-10-17', authorizedDate: '2026-10-16' });
+      const expenseId = await cardExpense({ date: '2026-10-30', posted_date: '2026-11-02' });
+      const id = await cardRow({ date: '2026-10-30', authorizedDate: null });
+
+      await plaidInboxService.matchToExpense(id, expenseId);
+
+      expect(await expenseRow(expenseId)).toEqual({ date: '2026-10-30', posted_date: null });
+    });
+
     test('rows imported from a file do not decide whether the bank reports posting dates', async () => {
       await stage('file:abc', { accountId: cardAccountId, amount: 5, date: '2026-10-20', authorizedDate: '2026-10-19' });
       const expenseId = await cardExpense({ date: '2026-10-30', posted_date: '2026-11-02' });

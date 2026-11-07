@@ -353,7 +353,7 @@ class PlaidInboxService {
       // Best effort: the match stands even when the posted date can't be updated (it is logged either way)
       let postedDate;
       if (!txn.pending && txn.paymentMethodType === 'credit_card') {
-        const change = postedDateChange(expense, txn.date, await this._bankDatesAreReal(txn, expense));
+        const change = postedDateChange(expense, txn.date, await this._bankDatesAreReal(txn.plaidAccountId, txn.date, expense));
         if (change) {
           try {
             await expenseService.updateExpense(expense.id, { ...expense, ...change });
@@ -529,9 +529,9 @@ class PlaidInboxService {
    * Does this transaction's bank report real posting dates? Only asked when it matters: the bank's date equals
    * the purchase date and the expense already has a posted date to keep or replace.
    */
-  async _bankDatesAreReal(txn, expense) {
-    if (!expense.posted_date || txn.date !== expense.date || !txn.plaidAccountId) return true;
-    return plaidRepository.bankReportsPostingDates(txn.plaidAccountId);
+  async _bankDatesAreReal(plaidAccountId, bankDate, expense) {
+    if (!expense.posted_date || bankDate !== expense.date || !plaidAccountId) return true;
+    return plaidRepository.bankReportsPostingDates(plaidAccountId);
   }
 
   /**
@@ -564,8 +564,10 @@ class PlaidInboxService {
         // The expense's own payment method decides: after a reconnect the bank account may not be mapped yet
         const isCard = expense.payment_method_type === 'credit_card' || txn.paymentMethodType === 'credit_card';
         if (s.settled && isCard) {
-          Object.assign(changes, postedDateChange(expense, s.postedDate, await this._bankDatesAreReal(txn, expense)));
+          Object.assign(changes, postedDateChange(expense, s.postedDate, await this._bankDatesAreReal(txn.plaidAccountId, s.postedDate, expense)));
         }
+        // Plaid took over a settled bank-file row with another date: only worth a log entry when the expense changed
+        if (s.postedDateOnly && !('posted_date' in changes)) continue;
         if (Object.keys(changes).length > 0) {
           await expenseService.updateExpense(expense.id, { ...expense, ...changes });
         }
@@ -577,10 +579,16 @@ class PlaidInboxService {
         if ('posted_date' in changes) {
           outcome += `${outcome ? '; ' : ': '}posted date ${changes.posted_date ?? 'same as the purchase date'}`;
         }
+        const action = s.postedDateOnly ? 'posted_date' : s.settled ? 'settled' : 'pending_changed';
+        const description = {
+          posted_date: `Bank transaction ${describeTxn(txn)} from a bank file, posting date from the bank${outcome}`,
+          settled: `Pending charge ${describeTxn(txn)} settled${outcome}`,
+          pending_changed: `Pending charge ${describeTxn(txn)} changed${outcome}`
+        }[action];
         await this._logReview(
           txn,
-          s.settled ? 'settled' : 'pending_changed',
-          s.settled ? `Pending charge ${describeTxn(txn)} settled${outcome}` : `Pending charge ${describeTxn(txn)} changed${outcome}`,
+          action,
+          description,
           { expenseId: expense.id, previousAmount: s.previousAmount, amountUpdated: Boolean(changes.amount), postedDateUpdated: 'posted_date' in changes }
         );
       } catch (err) {
@@ -590,7 +598,7 @@ class PlaidInboxService {
           await this._logReview(
             txn,
             'settle_failed',
-            `Pending charge ${describeTxn(txn)} ${s.settled ? 'settled' : 'changed'}, but its expense could not be updated (${err.message}). Check its amount${s.settled && s.postedDate ? ` and posted date (${s.postedDate})` : ''}.`,
+            `${s.postedDateOnly ? 'Bank transaction' : 'Pending charge'} ${describeTxn(txn)} ${s.postedDateOnly ? 'got its posting date from the bank' : s.settled ? 'settled' : 'changed'}, but its expense could not be updated (${err.message}). Check its ${s.postedDateOnly ? '' : 'amount'}${s.postedDateOnly ? `posted date (${s.postedDate})` : s.settled && s.postedDate ? ` and posted date (${s.postedDate})` : ''}.`,
             { expenseId: s.expenseId, amount: s.amount, postedDate: s.postedDate ?? null }
           ).catch(() => {});
         }

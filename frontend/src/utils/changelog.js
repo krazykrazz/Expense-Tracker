@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.22.0',
+    date: 'November 7, 2026',
+    added: [],
+    changed: ['Log in again asks the bank for fresh data and opens the login only when the bank needs one; the summary hides inactive payment methods with no spending that month; bank transactions keep the Plaid category'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.21.4',
     date: 'November 6, 2026',
     added: [],

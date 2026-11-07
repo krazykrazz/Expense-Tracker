@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.24.2',
+    date: 'November 7, 2026',
+    added: [],
+    changed: ['Posted date now follows Plaid after a bank file import, plus Plaid spot check fixes'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.24.1',
     date: 'November 7, 2026',
     added: [],

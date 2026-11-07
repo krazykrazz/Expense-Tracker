@@ -237,6 +237,7 @@ Each sync also stores the balance the bank reports for every account. For credit
 - **Staging rules:**
   - Pending transactions are staged with `pending = 1`. A settled transaction that names its pending version (`pending_transaction_id`) replaces that row in place, keeping its review state and links.
   - New transactions are inserted once (unique `transaction_id`, so re-syncing is safe).
+  - Plaid's personal finance category (primary, detailed, confidence) is stored with each transaction. Rows staged before it was stored keep none, and a later sync that omits it never clears it. Nothing uses it yet; it will recognise credit card payments.
   - Modified and removed transactions only affect rows still waiting for review. Anything you have added, matched or ignored is never changed by a sync, except pending charges: they settle in place (see [Pending transactions](#pending-transactions)), and a linked one the bank drops is kept and flagged (`removed_at`) for review.
 - **One link per expense:** a unique index on `plaid_transactions.expense_id` ensures an expense is linked to at most one bank transaction.
 - **Deleting a linked expense** sends its bank transaction back to the inbox (as "To review"), so it can be re-added, matched to another expense, or ignored. It is never silently lost.

@@ -162,6 +162,22 @@ describe('Consolidated Schema – Unit Tests', () => {
     expect(after.cnt).toBe(1);
   });
 
+  test('plaid_transactions_pfc_v1 adds the category columns to a database created before them', async () => {
+    await runMigrations(db);
+    const pfcColumns = async () => (await dbAll(db, 'PRAGMA table_info(plaid_transactions)'))
+      .map(c => c.name).filter(name => name.startsWith('pfc_'));
+    for (const column of await pfcColumns()) {
+      await dbRun(db, `ALTER TABLE plaid_transactions DROP COLUMN ${column}`);
+    }
+    await dbRun(db, "DELETE FROM schema_migrations WHERE migration_name = 'plaid_transactions_pfc_v1'");
+    expect(await pfcColumns()).toEqual([]);
+
+    await runMigrations(db);
+
+    expect(await pfcColumns()).toEqual(['pfc_primary', 'pfc_detailed', 'pfc_confidence']);
+    expect(await checkMigrationApplied(db, 'plaid_transactions_pfc_v1')).toBe(true);
+  });
+
   // ── Requirement 7.3: update_budgets_timestamp trigger exists and fires ──
 
   test('update_budgets_timestamp trigger exists', async () => {

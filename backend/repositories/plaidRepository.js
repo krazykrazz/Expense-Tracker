@@ -15,7 +15,16 @@ const STAGED_COLUMN_NAMES = {
 const TXN_COLUMNS = `pt.id, pt.transaction_id AS transactionId, pt.plaid_account_id AS plaidAccountId, pt.amount,
   pt.iso_currency_code AS isoCurrencyCode, pt.date, pt.authorized_date AS authorizedDate, pt.name,
   pt.merchant_name AS merchantName, pt.status, pt.expense_id AS expenseId, pt.pending,
-  pt.pending_transaction_id AS pendingTransactionId, pt.removed_at AS removedAt`;
+  pt.pending_transaction_id AS pendingTransactionId, pt.removed_at AS removedAt,
+  pt.pfc_primary AS pfcPrimary, pt.pfc_detailed AS pfcDetailed, pt.pfc_confidence AS pfcConfidence`;
+/** Plaid's personal finance category as stored: primary, detailed, confidence level (NULL when not sent). */
+const pfcValues = (txn) => {
+  const pfc = txn.personal_finance_category || {};
+  return [pfc.primary ?? null, pfc.detailed ?? null, pfc.confidence_level ?? null];
+};
+/** A sync without the category never blanks one already stored. */
+const PFC_SET_FIELDS = `pfc_primary = COALESCE(?, pfc_primary), pfc_detailed = COALESCE(?, pfc_detailed),
+  pfc_confidence = COALESCE(?, pfc_confidence)`;
 
 /**
  * Data access for Plaid items, accounts and staged transactions.
@@ -155,7 +164,7 @@ class PlaidRepository {
       const claimedOrphans = new Set();
       // Keep a purchase date and merchant name another source supplied when Plaid sends none
       const SET_FIELDS = `plaid_account_id = ?, amount = ?, iso_currency_code = ?, date = ?, authorized_date = COALESCE(?, authorized_date),
-        name = ?, merchant_name = COALESCE(?, merchant_name), pending = ?, pending_transaction_id = ?`;
+        name = ?, merchant_name = COALESCE(?, merchant_name), pending = ?, pending_transaction_id = ?, ${PFC_SET_FIELDS}`;
       let reportsPending = null;
       const bankReportsPending = async () => {
         if (reportsPending === null) {
@@ -173,7 +182,8 @@ class PlaidRepository {
         const pending = txn.pending ? 1 : 0;
         const values = [
           accountIdMap.get(txn.account_id) ?? null, txn.amount, txn.iso_currency_code ?? null, txn.date,
-          txn.authorized_date ?? null, txn.name ?? null, txn.merchant_name ?? null, pending, txn.pending_transaction_id ?? null
+          txn.authorized_date ?? null, txn.name ?? null, txn.merchant_name ?? null, pending, txn.pending_transaction_id ?? null,
+          ...pfcValues(txn)
         ];
         const existing = await tx.get(
           'SELECT id, status, amount, pending, expense_id AS expenseId FROM plaid_transactions WHERE transaction_id = ?',
@@ -211,10 +221,12 @@ class PlaidRepository {
             const { fields, settlement } = mergePlaidIntoFileRow(fromFile, txn, await bankReportsPending());
             await tx.run(
               `UPDATE plaid_transactions SET transaction_id = ?, plaid_account_id = ?, amount = ?, iso_currency_code = ?, date = ?,
-                 authorized_date = ?, name = ?, merchant_name = ?, pending = ?, pending_transaction_id = ?, removed_at = NULL
+                 authorized_date = ?, name = ?, merchant_name = ?, pending = ?, pending_transaction_id = ?, removed_at = NULL,
+                 ${PFC_SET_FIELDS}
                WHERE id = ?`,
               [fields.transactionId, accountIdMap.get(txn.account_id), fields.amount, fields.isoCurrencyCode, fields.date,
-                fields.authorizedDate, fields.name, fields.merchantName, fields.pending, fields.pendingTransactionId, fromFile.id]
+                fields.authorizedDate, fields.name, fields.merchantName, fields.pending, fields.pendingTransactionId,
+                ...pfcValues(txn), fromFile.id]
             );
             counts.fromFile++;
             counts.updated++;
@@ -243,8 +255,8 @@ class PlaidRepository {
           await tx.run(
             `INSERT INTO plaid_transactions
                (plaid_account_id, amount, iso_currency_code, date, authorized_date, name, merchant_name, pending,
-                pending_transaction_id, transaction_id)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                pending_transaction_id, pfc_primary, pfc_detailed, pfc_confidence, transaction_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [...values, txn.transaction_id]
           );
           counts.added++;

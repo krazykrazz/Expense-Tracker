@@ -18,11 +18,15 @@ Phase 1 (the PoC) is archived at [`specs/archive/plaid-integration/spec.md`](../
 | 1.18.0 | #440 | Reconnect expired logins (update mode), connection alerts, re-attach on reconnect (most of 2.2) |
 | 1.19.0–1.19.2 | #442, #444, #446 | Credit card balance check (4.2, pulled forward) with the balance capture part of 2.1; balances refreshed via `/accounts/get`; card view and dark theme cleanup; more balance-check causes |
 | 1.20.0 | #448 | Data freshness: "Not updating" status from Plaid's `/item/get` and institution status (2.6) |
-| next | — | Bank file import fallback (2.7): Wealthsimple card/chequing and CIBC card CSV exports into the Inbox, merged with Plaid in either order |
+| 1.21.0 | #450 | Bank file import fallback (2.7): Wealthsimple card/chequing and CIBC card CSV exports into the Inbox, merged with Plaid in either order |
+| 1.21.1–1.21.4 | #452, #456, #459, #460 | Place suggestions in the Inbox; Wealthsimple pending charges settle from the card balance; log in again for stale banks; audit fixes |
+| next | — | Plaid's personal finance category stored on every staged transaction (`plaid_transactions_pfc_v1`, part of 2.1) and the pure card payment classifier `utils/plaidClassification.js` (part of 3.1), both groundwork for 3.2 |
 
 **Next:** 3.2 card payments (Record payment from the Inbox), the other half of card reconciliation. Then the rest of Phase 2 (capture the other Plaid fields, inbox badge, refactors), Phase 3 and the rest of Phase 4.
 
 **Order change (2026-11-03):** card balance reconciliation is the biggest day-to-day problem, so 4.2 was built before the rest of Phase 2. It only needed balance capture from 2.1, done as its own migration `plaid_account_balances_v1`; the transaction columns of 2.1 still come in `plaid_capture_v1`.
+
+**Order change (2026-11-07):** 3.2 needs to recognise card payments. Plaid's category columns (2.1) and `kindFor` (3.1) were pulled forward as their own PR, ahead of the rest of 2.1 and 3.1.
 
 ## Guiding principles
 
@@ -169,7 +173,7 @@ Balance check on the same day, done right (4.2 rules): CIBC tracker $1,554.40 = 
 
 **Requirements**
 1. Store, for every staged transaction:
-   - `personal_finance_category` primary, detailed and confidence;
+   - `personal_finance_category` primary, detailed and confidence (**done with 3.2's groundwork**: migration `plaid_transactions_pfc_v1`, written on insert and every update path, `COALESCE` so a sync without it never clears it);
    - `merchant_entity_id`, `logo_url`, `website`, `original_description`;
    - `payment_channel`.
 2. Store, for every account on every sync: `current`, `available`, `limit`, currency, and the time received. **Done with 4.2** (`plaid_account_balances_v1`); drop the `plaid_accounts` columns from `plaid_capture_v1`.
@@ -177,7 +181,7 @@ Balance check on the same day, done right (4.2 rules): CIBC tracker $1,554.40 = 
 
 **Design**
 - **Migration `plaid_capture_v1`:**
-  - `plaid_transactions` + `pfc_primary`, `pfc_detailed`, `pfc_confidence`, `merchant_entity_id`, `logo_url`, `website`, `original_description`, `payment_channel` (all TEXT).
+  - `plaid_transactions` + `merchant_entity_id`, `logo_url`, `website`, `original_description`, `payment_channel` (all TEXT). The `pfc_*` columns already exist (`plaid_transactions_pfc_v1`).
   - `plaid_accounts` + `current_balance`, `available_balance`, `credit_limit` (REAL), `balance_currency`, `balance_as_of` (TEXT).
   - Same end state in `schema.js`.
   - Index `idx_plaid_transactions_merchant_entity` in the migration, because the column is migration-added.
@@ -317,25 +321,56 @@ About 30% of Wealthsimple rows are transfers, card payments, income or loan paym
 
 **Design**
 - **Migration:** `plaid_transactions` + `review_bucket TEXT NOT NULL DEFAULT 'spending'` (CHECK), `bucket_overridden INTEGER DEFAULT 0`, `ignore_reason TEXT`, `link_type TEXT` (`expense|fixed|income|card_payment|contribution|loan_payment|refund`).
-- **Pure `plaidClassification.js`:** `bucketFor({ pfcPrimary, pfcDetailed, amount, accountType })` and `kindFor(...)` (`card_payment` / `transfer` / `income` / `loan_payment` / `fee`). Computed on insert and on update of `new` rows unless overridden.
+- **Pure `plaidClassification.js`:** `bucketFor({ pfcPrimary, pfcDetailed, amount, accountType })` and `kindFor(...)` (`card_payment` / `transfer` / `income` / `loan_payment` / `fee`). Computed on insert and on update of `new` rows unless overridden. **`kindFor` exists with `card_payment` only** (built for 3.2): the category on either side; on a card, a credit whose text says payment/paiement/pmt; never text alone off the card (every Wealthsimple bill payment reads "<payee> - Bill payment"). `looksLikeCardPayment` is a weaker, hint-only version for chequing debits.
 - **Review service:** `markReviewed(id, reason)` (ignore with a reason) and `setBucket(id, bucket)`.
 
 **Tests:** classification table (PBT over sign × account type × PFC); override survives modified.
 
 ### 3.2 Card payments
 
+A payment leaves chequing as a debit and arrives on the card as a credit. Both bank rows resolve to **one** `credit_card_payments` row. Real rows (Oct 2026):
+
+| Side | Account | Bank text | Amount |
+|---|---|---|---|
+| Card | WS VISA | "Credit Card Payment - From: Cash" | −$3,471.31 |
+| Chequing | WS chequing | "Credit Card Payment" | +$3,471.31 |
+| Card | CIBC MC | "PAYMENT THANK YOU/PAIEMEN T MERCI" | −$4,104.59 |
+| Chequing | WS chequing | place "CIBC", raw "CIBC MASTERCARD - Bill payment" | +$4,104.59 |
+
+The chequing text never reliably names the card, and Wealthsimple writes every bill payment as "<payee> - Bill payment". So the link between the two sides is **same cents, opposite sides, ±5 days**; category and text only label rows.
+
+Terms: a **card row** is on an account mapped to a `credit_card` payment method; a **funding row** is on any other mapped account.
+
 **Requirements**
-1. **Card side records** (Q3 revised). A credit on a card account of kind `card_payment` (or whose description contains "payment") shows **Card payment → Record payment**. It creates a `credit_card_payments` row (bank amount, posted date) via `creditCardPaymentService.recordPayment`, so the balance updates and the payment is logged.
-2. **Already recorded by hand** (same card, amount, ±5 days): offer **Match** instead.
-3. **Chequing side:** a debit of kind `card_payment` offers **Same payment** (link to the card payment recorded from the card side, same amount ±5 days) or Mark reviewed. Never record twice.
-4. Deleting the card payment returns the bank row(s) to the inbox.
+1. **Card side records** (Q3). **Every** settled credit on a card row offers **Record payment**; `kindFor = card_payment` only adds the "Card payment" badge and makes it the primary action. It creates a `credit_card_payments` row (bank amount, card row's posted date) through `creditCardPaymentService.recordPayment`, so the balance, statement and activity log behave as for manual entry.
+2. **Both sides at once:** when one funding debit pairs with the card credit, Record payment offers "Also mark the <account> debit on <date> as this payment", checked only when there is exactly one pair. Several pairs: listed, none preselected.
+3. **Already recorded by hand** (same card, same cents, ±5 days, no card-side link): Record payment warns and offers **Match**.
+4. **Funding side links:** a debit with a payment candidate (same cents, ±5 days, no funding-side link) offers **Link to card payment**. It never creates a payment, except:
+5. **Card not connected:** when a credit card payment method has no bank account mapped, a funding debit can **Record payment to…** that card (no card-side row will ever arrive).
+6. **Hints, not actions:** a funding debit that pairs with a card credit, or looks like a card payment, says where to record it. **Add** stays, but its form warns that adding a card payment as an expense counts the spending twice.
+7. **Never twice:** at most one card-side and one funding-side link per payment.
+8. **Undo:** deleting the payment returns its bank rows to the inbox. The card view marks bank-linked payments and its delete dialog says so.
+9. **Pending** rows can't be recorded or linked until they settle.
+10. **Balance check:** a payment with a card-side link is not a `tracker_only` cause; its card row is no longer unreviewed.
 
 **Design:**
-- `plaid_card_payment_links(plaid_transaction_id UNIQUE → CASCADE, credit_card_payment_id → CASCADE, created_at)`. The chequing and card rows can both link to one payment, so `credit_card_payment_id` is not unique.
-- An unlink trigger on `credit_card_payments` delete.
-- Endpoints `POST /inbox/:id/card-payment { paymentMethodId? , creditCardPaymentId? }`.
+- `plaid_card_payment_links(plaid_transaction_id UNIQUE → CASCADE, credit_card_payment_id → CASCADE, side CHECK IN ('card','funding'), created_at, UNIQUE(credit_card_payment_id, side))`, in `schema.js` only (new tables need no migration).
+- Trigger `plaid_transactions_unlink_on_card_payment_delete` (BEFORE DELETE ON `credit_card_payments`) sets linked rows back to `new`; it also fires when a card's payment method is deleted and its payments cascade. Linked rows are `matched` with `expense_id = NULL`, like fixed and income links.
+- Pure rules in `plaidMatching`: `pairCardPayments(rows)` (symmetric, no auto-pick) and `findPaymentCandidates(row, payments)` (side rules).
+- `plaidCardPaymentService` (not in `plaidInboxService`, which R1 still has to split): `record`, `recordFromFunding`, `link`. Payment, links and row statuses commit in one transaction through a hook inside `creditCardPaymentService.recordPayment` (`runInTransaction` can't nest). Shares the inbox's per-row lock.
+- `POST /inbox/:id/card-payment { alsoLinkId? | paymentMethodId? | creditCardPaymentId? }`. The row's side decides which action; mismatched bodies are 400.
+- Events: `credit_card_payment_added` (existing), plus `plaid_transaction_updated` (`action: 'card_payment'`) per linked bank row.
+- `getPaymentHistory` adds `bankLinks` for the card view badge.
 
-**Tests:** record creates exactly one payment and updates the balance; match; both-sides guard; delete trigger.
+**Limitations:** one debit paying two cards, or one card paid from two debits, isn't paired; exact cents only.
+
+**Tests:**
+- The four rows above as fixtures.
+- Record creates exactly one payment, updates the balance and links one or both rows; a conflicting second row rolls the payment back.
+- Match; funding Link; second link on either side 409; Record payment to… refused for a connected card.
+- Delete trigger, including the payment-method cascade.
+- Balance check has no cause for a card-linked payment.
+- PBT for pairing symmetry and the window.
 
 ### 3.3 Contributions close the loop on planned savings
 
@@ -606,7 +641,7 @@ Every PR updates the docs its change touches. Recheck after each phase.
 |---|---|---|
 | Q1 | OAuth redirect needed? | **Decided:** no; both banks use credentials |
 | Q2 | Sync schedule | **Decided:** every 30 min 06:00–23:00 + on open |
-| Q3 | Card payments, which side records? | **Revised:** card side records, chequing links (3.2); confirm when building |
+| Q3 | Card payments, which side records? | **Decided (2026-11-07):** card side records, funding side links (3.2); exception: a funding debit can record for a card with no bank account connected |
 | Q4 | Classify rows staged before capture? | **Decided:** new rows only, plus the 2.1 backfill of unreviewed rows |
 | Q5 | Full refunds | **Decided:** ask each time |
 | Q6 | Auto-add | **Decided:** not building |

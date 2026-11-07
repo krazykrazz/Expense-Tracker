@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.24.0',
+    date: 'November 7, 2026',
+    added: [],
+    changed: ['Posted date follows the bank for card expenses, statement check against the bank, pending turnover warning'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.23.0',
     date: 'November 7, 2026',
     added: [],

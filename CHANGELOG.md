@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.24.0] - 2026-11-07
+
+### Posted date follows the bank for card expenses, statement check against the bank, pending turnover warning
+
 ## [1.23.0] - 2026-11-07
 
 ### Record credit card payments from the Import Inbox: a payment paid from a bank account and received on the card becomes one payment, with the paying debit linked. Also fixes payment reminders not clearing after a statement is paid, the payment form defaulting to tomorrow in the evening, and bank syncs colliding with payments

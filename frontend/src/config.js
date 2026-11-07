@@ -176,6 +176,7 @@ export const API_ENDPOINTS = {
   PLAID_ITEMS: `${API_BASE_URL}/api/plaid/items`,
   PLAID_ITEM_BY_ID: (id) => `${API_BASE_URL}/api/plaid/items/${id}`,
   PLAID_ITEM_RECONNECTED: (id) => `${API_BASE_URL}/api/plaid/items/${id}/reconnected`,
+  PLAID_ITEM_REFRESH: (id) => `${API_BASE_URL}/api/plaid/items/${id}/refresh`,
   PLAID_ACCOUNT_BY_ID: (id) => `${API_BASE_URL}/api/plaid/accounts/${id}`,
   PLAID_ACCOUNT_IMPORT_FILE: (id) => `${API_BASE_URL}/api/plaid/accounts/${id}/import-file`,
   PLAID_SYNC: `${API_BASE_URL}/api/plaid/sync`,

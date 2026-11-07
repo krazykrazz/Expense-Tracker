@@ -56,6 +56,14 @@ const reconnectedItem = asyncHandler(async (req, res) => {
 });
 
 /**
+ * POST /api/plaid/items/:id/refresh
+ * Ask Plaid to fetch from the bank now. `{ status: 'needs_login' }` when the bank needs a login first.
+ */
+const refreshItem = asyncHandler(async (req, res) => {
+  res.json(await plaidService.requestRefresh(idParam(req)));
+});
+
+/**
  * GET /api/plaid/card-balances
  * Bank vs tracker balance for every credit card mapped to a bank account, with likely causes of a difference.
  */
@@ -217,6 +225,7 @@ module.exports = {
   clearSettings,
   createLinkToken,
   reconnectedItem,
+  refreshItem,
   connectItem,
   listItems,
   disconnectItem,

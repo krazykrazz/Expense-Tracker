@@ -21,6 +21,7 @@ router.post('/link-token', plaidController.createLinkToken);
 router.get('/items', plaidController.listItems);
 router.post('/items', plaidController.connectItem);
 router.post('/items/:id/reconnected', plaidController.reconnectedItem);
+router.post('/items/:id/refresh', plaidController.refreshItem);
 router.delete('/items/:id', plaidController.disconnectItem);
 router.put('/accounts/:id', plaidController.updateAccount);
 router.post('/accounts/:id/import-file', plaidController.importBankFile);

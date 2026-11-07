@@ -1061,9 +1061,9 @@ class ExpenseRepository {
       WHERE date >= ? AND date < ?
     `;
     
-    // Query for all payment method display names (for initialization)
+    // Only active methods are pre-seeded with 0; inactive ones appear only if they have spend this period
     const paymentMethodsSQL = `
-      SELECT display_name FROM payment_methods ORDER BY display_name
+      SELECT display_name FROM payment_methods WHERE is_active = 1 ORDER BY display_name
     `;
     
     // Helper function to promisify db.all
@@ -1097,7 +1097,7 @@ class ExpenseRepository {
       typeTotals[category] = 0;
     });
     
-    // Initialize methodTotals dynamically from payment_methods table
+    // Initialize methodTotals from active payment_methods rows
     // Falls back to empty object if no payment methods exist yet
     const methodTotals = {};
     if (paymentMethods && paymentMethods.length > 0) {

@@ -10,6 +10,7 @@ import { useSyncEvent } from '../../hooks/useSyncEvent';
 import { useBankAccountLinks } from '../../hooks/useBankAccountLinks';
 import { useCardBalanceChecks } from '../../hooks/useCardBalanceChecks';
 import BankLinkedBadge from '../bank-import/BankLinkedBadge';
+import BankBalance from '../bank-import/BankBalance';
 import { cardBalanceProps } from '../bank-import/cardBalanceCheck';
 import CreditCardPaymentForm from '../credit-cards/CreditCardPaymentForm';
 import LoanRow from '../loans/LoanRow';
@@ -369,6 +370,7 @@ const PaymentMethodsSection = ({ paymentMethods, loading, onPaymentRecorded, onV
                       {method.display_name}
                       <BankLinkedBadge accounts={bankLinks.get(method.id)} name={method.display_name} />
                     </span>
+                    <BankBalance accounts={bankLinks.get(method.id)} />
                     <span className="other-payment-method-type-badge" data-testid="type-badge">{getTypeBadgeLabel(method.type)}</span>
                     {activeTab === 'active' ? (
                       <button

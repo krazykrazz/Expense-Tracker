@@ -105,7 +105,38 @@ describe('plaidService', () => {
     });
 
     test('sandbox has no Trial counter', async () => {
-      expect(await plaidService.getStatus()).toEqual({ enabled: true, source: 'env', environment: 'sandbox', trial: null, needsAttention: [], staleData: [] });
+      expect(await plaidService.getStatus()).toEqual({ enabled: true, source: 'env', environment: 'sandbox', trial: null, toReview: 0, needsAttention: [], staleData: [] });
+    });
+
+    test('toReview counts what the Inbox lists: new rows on mapped accounts and dropped pending charges, nothing else', async () => {
+      const itemId = await run("INSERT INTO plaid_items (item_id, institution_name, access_token_enc, environment) VALUES ('i-1', 'Bank', 'v1:x:y:z', 'sandbox')");
+      const mapped = await run("INSERT INTO plaid_accounts (plaid_item_id, account_id, name, type, payment_method_id) VALUES (?, 'a-mapped', 'Chequing', 'depository', 4)", [itemId]);
+      const unmapped = await run("INSERT INTO plaid_accounts (plaid_item_id, account_id, name, type) VALUES (?, 'a-unmapped', 'Savings', 'depository')", [itemId]);
+      const stage = (id, accountId, { status = 'new', pending = 0, removed = false } = {}) => run(
+        `INSERT INTO plaid_transactions (transaction_id, plaid_account_id, amount, date, name, status, pending, removed_at)
+         VALUES (?, ?, 10, '2026-11-01', 'X', ?, ?, ?)`,
+        [id, accountId, status, pending, removed ? '2026-11-02T00:00:00Z' : null]
+      );
+      await stage('new-1', mapped);
+      await stage('new-pending', mapped, { pending: 1 });
+      await stage('new-hidden', unmapped);
+      await stage('ignored', mapped, { status: 'ignored' });
+      await stage('added', mapped, { status: 'added' });
+      await stage('dropped', mapped, { status: 'added', pending: 1, removed: true });
+
+      expect((await plaidService.getStatus()).toReview).toBe(3);
+    });
+
+    test('accounts carry the balances the last sync stored, and null before any', async () => {
+      const item = await connect();
+      expect((await plaidService.listItems())[0].accounts[0]).toMatchObject({ currentBalance: null, availableBalance: null, balanceAsOf: null });
+
+      client.transactionsSync.mockResolvedValueOnce(page({ accounts: [account('acc-1', { balances: { current: 700.52, available: 650, iso_currency_code: 'CAD' } })] }));
+      await plaidService.syncItem(item.id);
+
+      expect((await plaidService.listItems())[0].accounts[0]).toMatchObject({
+        currentBalance: 700.52, availableBalance: 650, balanceCurrency: 'CAD', balanceAsOf: expect.any(String)
+      });
     });
 
     test('a bank Plaid has had no new data from for over 12 hours is stale; a login problem takes precedence', async () => {

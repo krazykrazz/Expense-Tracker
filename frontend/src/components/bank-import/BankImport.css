@@ -234,6 +234,25 @@
   box-shadow: 0 0 0 2px var(--bg-card, #fff);
 }
 
+/* Number of Inbox rows to review: bottom right, so the warning dot (top right) stays visible */
+.bank-count-badge {
+  position: absolute;
+  bottom: 1px;
+  right: 1px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: var(--radius-full, 999px);
+  box-sizing: border-box;
+  background: var(--color-primary-strong, #0369a1);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  box-shadow: 0 0 0 2px var(--bg-card, #fff);
+}
+
 /* Connections: per-bank status */
 
 .bank-connection-status {
@@ -795,6 +814,20 @@
 
 .card-bank-causes li {
   margin-bottom: 2px;
+}
+
+/* The bank's own balance on a linked payment method (Financial page): muted when the last balance is old */
+.bank-balance {
+  flex-shrink: 0;
+  font-size: var(--text-sm, 13px);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  cursor: default;
+}
+
+.bank-balance.stale {
+  opacity: 0.65;
 }
 
 /* Last closed statements against the bank (Billing Cycles tab) */

@@ -11,11 +11,18 @@ vi.mock('../../services/plaidApi', () => ({
 }));
 
 vi.mock('./BankImportModal', () => ({
-  default: ({ initialTab }) => <div data-testid="bank-import-modal">{initialTab}</div>,
+  default: ({ initialTab, onInboxChanged, onClose }) => (
+    <div data-testid="bank-import-modal">
+      {initialTab}
+      <button data-testid="inbox-changed" onClick={onInboxChanged}>changed</button>
+      <button data-testid="close-modal" onClick={onClose}>close</button>
+    </div>
+  ),
 }));
 
+let expenseContext = { refreshExpenses: vi.fn(), refreshTrigger: 0, currentMonthExpenseCount: 0 };
 vi.mock('../../contexts/ExpenseContext', () => ({
-  useExpenseContext: () => ({ refreshExpenses: vi.fn() }),
+  useExpenseContext: () => expenseContext,
 }));
 
 describe('BankImportButton', () => {
@@ -61,6 +68,114 @@ describe('BankImportButton', () => {
     act(() => { window.dispatchEvent(new CustomEvent('plaid-settings-changed')); });
 
     expect(await screen.findByRole('button', { name: 'Bank import' })).toBeInTheDocument();
+  });
+});
+
+describe('BankImportButton inbox count badge', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    syncBanksIfStale.mockResolvedValue({ started: false, banks: 0 });
+  });
+  const status = (extra) => ({ enabled: true, environment: 'production', trial: null, needsAttention: [], ...extra });
+
+  it('shows the number waiting in the Inbox, and says it to screen readers', async () => {
+    getPlaidStatus.mockResolvedValue(status({ toReview: 12 }));
+
+    render(<BankImportButton />);
+
+    expect(await screen.findByTestId('bank-review-count')).toHaveTextContent('12');
+    expect(screen.getByRole('button', { name: 'Bank import: 12 to review' })).toBeInTheDocument();
+  });
+
+  it('shows nothing when the Inbox is empty or the server sent no count', async () => {
+    getPlaidStatus.mockResolvedValue(status({ toReview: 0 }));
+    const { unmount } = render(<BankImportButton />);
+    await screen.findByRole('button', { name: 'Bank import' });
+    expect(screen.queryByTestId('bank-review-count')).not.toBeInTheDocument();
+    unmount();
+
+    getPlaidStatus.mockResolvedValue(status());
+    render(<BankImportButton />);
+    await screen.findByRole('button', { name: 'Bank import' });
+    expect(screen.queryByTestId('bank-review-count')).not.toBeInTheDocument();
+  });
+
+  it('caps the badge at 99+', async () => {
+    getPlaidStatus.mockResolvedValue(status({ toReview: 250 }));
+
+    render(<BankImportButton />);
+
+    expect(await screen.findByTestId('bank-review-count')).toHaveTextContent('99+');
+    expect(screen.getByRole('button', { name: 'Bank import: 250 to review' })).toBeInTheDocument();
+  });
+
+  it('keeps the warning dot and names both in the label', async () => {
+    getPlaidStatus.mockResolvedValue(status({ toReview: 3, needsAttention: [{ id: 3, institutionName: 'CIBC', status: 'needs_login' }] }));
+
+    render(<BankImportButton />);
+
+    expect(await screen.findByTestId('bank-review-count')).toHaveTextContent('3');
+    expect(screen.getByTestId('bank-attention-dot')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /3 to review; CIBC needs your attention/ })).toBeInTheDocument();
+  });
+
+  it('follows a sync from another tab', async () => {
+    getPlaidStatus.mockResolvedValue(status({ toReview: 1 }));
+    render(<BankImportButton />);
+    expect(await screen.findByTestId('bank-review-count')).toHaveTextContent('1');
+    await waitFor(() => expect(syncBanksIfStale).toHaveBeenCalled());
+
+    getPlaidStatus.mockResolvedValue(status({ toReview: 4 }));
+    act(() => { window.dispatchEvent(new CustomEvent('syncEvent', { detail: { entityType: 'plaid' } })); });
+
+    await waitFor(() => expect(screen.getByTestId('bank-review-count')).toHaveTextContent('4'));
+  });
+
+  it('reloads after the sync this tab started (the server sends a tab no event for its own sync)', async () => {
+    getPlaidStatus.mockResolvedValueOnce(status({ toReview: 0 }));
+    syncBanksIfStale.mockResolvedValue({ started: true, banks: 1 });
+    getPlaidStatus.mockResolvedValueOnce(status({ toReview: 7 }));
+
+    render(<BankImportButton />);
+
+    await waitFor(() => expect(screen.getByTestId('bank-review-count')).toHaveTextContent('7'));
+  });
+
+  it('reloads when expenses change in this tab (deleting a linked expense returns its bank row to the Inbox)', async () => {
+    getPlaidStatus.mockResolvedValueOnce(status({ toReview: 0 }));
+    const { rerender } = render(<BankImportButton />);
+    await screen.findByRole('button', { name: 'Bank import' });
+    const before = getPlaidStatus.mock.calls.length;
+
+    getPlaidStatus.mockResolvedValueOnce(status({ toReview: 1 }));
+    expenseContext = { ...expenseContext, currentMonthExpenseCount: 5 };
+    rerender(<BankImportButton />);
+
+    await waitFor(() => expect(screen.getByTestId('bank-review-count')).toHaveTextContent('1'));
+    expect(getPlaidStatus.mock.calls.length).toBe(before + 1);
+
+    // An unrelated re-render does not ask again
+    rerender(<BankImportButton />);
+    expect(getPlaidStatus.mock.calls.length).toBe(before + 1);
+    expenseContext = { refreshExpenses: vi.fn(), refreshTrigger: 0, currentMonthExpenseCount: 0 };
+  });
+
+  it('reloads when the Inbox changes and when the modal closes', async () => {
+    getPlaidStatus.mockResolvedValue(status({ toReview: 2 }));
+    render(<BankImportButton />);
+    fireEvent.click(await screen.findByRole('button', { name: /Bank import/ }));
+    await screen.findByTestId('bank-import-modal');
+    await waitFor(() => expect(getPlaidStatus.mock.calls.length).toBeGreaterThanOrEqual(2));
+    const before = getPlaidStatus.mock.calls.length;
+
+    getPlaidStatus.mockResolvedValue(status({ toReview: 1 }));
+    fireEvent.click(screen.getByTestId('inbox-changed'));
+    await waitFor(() => expect(screen.getByTestId('bank-review-count')).toHaveTextContent('1'));
+    expect(getPlaidStatus.mock.calls.length).toBeGreaterThan(before);
+
+    getPlaidStatus.mockResolvedValue(status({ toReview: 0 }));
+    fireEvent.click(screen.getByTestId('close-modal'));
+    await waitFor(() => expect(screen.queryByTestId('bank-review-count')).not.toBeInTheDocument());
   });
 });
 

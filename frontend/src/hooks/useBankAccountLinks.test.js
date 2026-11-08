@@ -11,9 +11,9 @@ vi.mock('../services/plaidApi', () => ({
 
 const items = [
   {
-    id: 1, institutionName: 'Wealthsimple', accounts: [
-      { id: 10, name: 'Chequing', mask: '5070', paymentMethodId: 2 },
-      { id: 11, name: 'Savings', mask: '9999', paymentMethodId: null }
+    id: 1, institutionName: 'Wealthsimple', status: 'stale', bankUpdatedAt: '2026-11-03T21:11:14Z', accounts: [
+      { id: 10, name: 'Chequing', mask: '5070', type: 'depository', paymentMethodId: 2, currentBalance: 700.52, availableBalance: null, balanceCurrency: 'CAD', balanceAsOf: '2026-11-08T17:10:00.993Z' },
+      { id: 11, name: 'Savings', mask: '9999', paymentMethodId: null, currentBalance: 5 }
     ]
   },
   { id: 2, institutionName: 'RBC', accounts: [{ id: 20, name: 'Visa', mask: '1111', paymentMethodId: 2 }] }
@@ -32,7 +32,7 @@ describe('useBankAccountLinks', () => {
     expect(result.current.size).toBe(0);
   });
 
-  it('groups mapped accounts by payment method and skips unmapped ones', async () => {
+  it('groups mapped accounts by payment method and skips unmapped ones, carrying the stored balance', async () => {
     getPlaidStatus.mockResolvedValue({ enabled: true });
     getBankConnections.mockResolvedValue({ items });
 
@@ -40,8 +40,16 @@ describe('useBankAccountLinks', () => {
 
     await waitFor(() => expect(result.current.size).toBe(1));
     expect(result.current.get(2)).toEqual([
-      { institutionName: 'Wealthsimple', accountName: 'Chequing', mask: '5070' },
-      { institutionName: 'RBC', accountName: 'Visa', mask: '1111' }
+      {
+        institutionName: 'Wealthsimple', accountName: 'Chequing', mask: '5070', accountType: 'depository',
+        currentBalance: 700.52, availableBalance: null, balanceCurrency: 'CAD', balanceAsOf: '2026-11-08T17:10:00.993Z',
+        bankStatus: 'stale', bankUpdatedAt: '2026-11-03T21:11:14Z'
+      },
+      {
+        institutionName: 'RBC', accountName: 'Visa', mask: '1111', accountType: null,
+        currentBalance: null, availableBalance: null, balanceCurrency: null, balanceAsOf: null,
+        bankStatus: 'ok', bankUpdatedAt: null
+      }
     ]);
   });
 

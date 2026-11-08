@@ -369,6 +369,28 @@ describe('FinancialOverviewModal', () => {
       expect(screen.getByRole('img', { name: 'WS VISA linked to bank: Wealthsimple · Visa' })).toBeInTheDocument();
     });
 
+    it('shows the bank balance on a linked debit or cheque account, and nothing on cash, cards or an account without a balance yet', async () => {
+      paymentMethodApi.getPaymentMethods.mockResolvedValue([
+        { id: 1, type: 'cash', display_name: 'My Cash Wallet', is_active: true },
+        { id: 2, type: 'debit', display_name: 'Debit - WS', is_active: true },
+        { id: 3, type: 'credit_card', display_name: 'WS VISA', is_active: true, current_balance: 0 },
+        { id: 4, type: 'cheque', display_name: 'Cheque - RBC', is_active: true }
+      ]);
+      const link = (extra) => ({ institutionName: 'Bank', accountName: 'Chequing', mask: '5070', accountType: 'depository', bankStatus: 'ok', ...extra });
+      useBankAccountLinks.mockReturnValue(new Map([
+        [2, [link({ currentBalance: 700.52, availableBalance: null, balanceCurrency: 'CAD', balanceAsOf: new Date().toISOString() })]],
+        [3, [link({ currentBalance: 2333.38, balanceAsOf: new Date().toISOString() })]],
+        [4, [link({ currentBalance: null })]]
+      ]));
+
+      render(<FinancialOverviewModal {...defaultProps} />);
+
+      const balance = await screen.findByTestId('bank-balance');
+      expect(balance).toHaveTextContent('Bank $700.52');
+      expect(balance.closest('.other-payment-method-row')).toHaveTextContent('Debit - WS');
+      expect(screen.getAllByTestId('bank-balance')).toHaveLength(1);
+    });
+
     it('colours each linked card balance by whether it matches the bank, like the expense list pill', async () => {
       paymentMethodApi.getPaymentMethods.mockResolvedValue([
         { id: 3, type: 'credit_card', display_name: 'WS VISA', is_active: true, current_balance: 2129.92 },

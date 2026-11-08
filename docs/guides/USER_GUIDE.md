@@ -178,7 +178,7 @@ Banks then sync on their own: every 30 minutes from 06:00 to 23:00, and whenever
 
 ### Reviewing Transactions
 
-Click the bank icon → **Inbox**. Each row is one bank transaction:
+Click the bank icon → **Inbox**. A small number on the icon says how many rows are waiting. Each row is one bank transaction:
 
 - **Add**: creates an expense, with the place, date and a suggested category filled in. The place is the one you used before for the same bank description, or an existing place it starts with (e.g. "Sobeys" for "SOBEYS #4123").
 - **Match**: links it to an expense you already logged, a planned **fixed expense** (records when it actually landed) or expected **income** (for deposits).
@@ -199,7 +199,7 @@ An expense that came from (or was matched to) the bank colours its payment metho
 - **Yellow**: still pending at the bank.
 - **Red-orange**: needs a look, because the amount differs from the bank or the bank dropped the charge.
 
-Payment methods linked to a bank account show a small green bank icon on the Financial page.
+Payment methods linked to a bank account show a small green bank icon on the Financial page. A linked debit or cheque account also shows the bank's own balance there (**Bank $700.52 · as of 12:10 pm**; hover for details). It is dimmed and marked *may be out of date* when the bank needs a login, isn't updating, or the balance is over 12 hours old.
 
 ### Checking Card Balances Against the Bank
 

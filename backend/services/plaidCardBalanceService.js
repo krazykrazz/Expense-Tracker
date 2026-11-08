@@ -213,6 +213,8 @@ class PlaidCardBalanceService {
    * - `tracker_only`: entered in the tracker since the bank history starts, but not at the bank (a typo,
    *   a wrong card, a duplicate, or not posted yet);
    * - `settling`: added from a pending charge on a bank whose balance leaves pending charges out;
+   * - `posts_later`: a pending charge on a bank whose balance includes pending charges (CIBC), linked to an
+   *   expense whose posted date is after today, so the tracker's balance as of today doesn't count it yet;
    * - `from_file`: in the tracker from a bank file row Plaid hasn't sent yet, so the bank's balance from Plaid
    *   doesn't include it (Plaid takes the row over once it catches up);
    * - `cancelled`: added from a pending charge the bank then dropped (review it in the Inbox);
@@ -231,6 +233,7 @@ class PlaidCardBalanceService {
 
     const bankItems = [];
     const settling = [];
+    const postsLater = [];
     const fromFile = [];
     const cancelled = [];
     const fixedCharges = [];
@@ -249,8 +252,11 @@ class PlaidCardBalanceService {
       } else if (row.fixedExpense) {
         fixedCharges.push(row);
       } else if (row.expenseId != null) {
-        // Linked pending charge: in the tracker; in the bank balance only when the bank counts pending
+        // Linked pending charge: in the tracker; in the bank balance only when the bank counts pending.
+        // When it does, but the expense's posted date is after today (an estimate from the expense form), the
+        // tracker's balance as of today leaves it out until then.
         if (!includesPending) settling.push(row);
+        else if (row.pending && row.expensePostedDate && row.expensePostedDate > today) postsLater.push(row);
       } else if (!(row.pending && !includesPending)) {
         bankItems.push({ ...row, effect: row.amount });
       }
@@ -285,6 +291,7 @@ class PlaidCardBalanceService {
         .map(row => bankCause('bank_only', row, row.amount, { pending: Boolean(row.pending), inboxStatus: row.status })),
       ...trackerOnly.map(item => trackerCause('tracker_only', item)),
       ...settling.map(row => bankCause('settling', row, -row.amount, { expenseId: row.expenseId })),
+      ...postsLater.map(row => bankCause('posts_later', row, row.amount, { expenseId: row.expenseId, trackerPostedDate: row.expensePostedDate })),
       ...fromFile.map(row => bankCause('from_file', row, -row.amount, { expenseId: row.expenseId, pending: Boolean(row.pending) })),
       ...fileHeld.map(item => trackerCause('from_file', item)),
       ...cancelled.map(row => bankCause('cancelled', row, -row.amount, { expenseId: row.expenseId })),

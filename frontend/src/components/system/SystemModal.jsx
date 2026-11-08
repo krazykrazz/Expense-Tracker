@@ -452,6 +452,16 @@ const SystemModal = () => {
           <div className="changelog">
             <div className="changelog-entry">
               <div className="changelog-version">
+                v1.24.5
+                {isCurrentVersion('v1.24.5') && <span className="current-version-badge">Current Version</span>}
+              </div>
+              <div className="changelog-date">November 8, 2026</div>
+              <ul className="changelog-items">
+                <li>Wealthsimple pending charges settle when the card balance matches exactly</li>
+              </ul>
+            </div>
+            <div className="changelog-entry">
+              <div className="changelog-version">
                 v1.24.4
                 {isCurrentVersion('v1.24.4') && <span className="current-version-badge">Current Version</span>}
               </div>

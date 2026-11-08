@@ -1215,6 +1215,13 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v1.24.5</div>
+                <div className="changelog-date">November 8, 2026</div>
+                <ul className="changelog-items">
+                  <li>Wealthsimple pending charges settle when the card balance matches exactly</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v1.24.4</div>
                 <div className="changelog-date">November 7, 2026</div>
                 <ul className="changelog-items">

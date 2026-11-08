@@ -128,6 +128,18 @@ class PlaidRepository {
     return dbHelper.queryOne(`SELECT ${ACCOUNT_COLUMNS} FROM plaid_accounts WHERE id = ?`, [id]);
   }
 
+  /**
+   * Stored balances of a bank's accounts that import into a payment method (compared before and after a
+   * balance refresh, for the activity log).
+   */
+  async findMappedAccountBalances(plaidItemId) {
+    return dbHelper.queryAll(
+      `SELECT account_id AS accountId, name, mask, current_balance AS currentBalance, available_balance AS availableBalance
+       FROM plaid_accounts WHERE plaid_item_id = ? AND payment_method_id IS NOT NULL ORDER BY name, id`,
+      [plaidItemId]
+    );
+  }
+
   async updateAccountPaymentMethod(id, paymentMethodId) {
     const { changes } = await dbHelper.execute(
       'UPDATE plaid_accounts SET payment_method_id = ? WHERE id = ?',

@@ -133,12 +133,12 @@ Phase 1 (the PoC) is archived at [`specs/archive/plaid-integration/spec.md`](../
 | `plaid_item_updated` | plaid_item | Reconnected after a login error, or logged in again |
 | `plaid_sync_failed` | plaid_item | A bank first goes into error |
 | `plaid_account_updated` | plaid_account | Mapping changed |
-| `plaid_sync_completed` | plaid_transaction | A sync changed staged rows (manual, scheduled, on open) |
+| `plaid_sync_completed` | plaid_transaction | Per bank, a sync that brought anything (manual, scheduled, on open, after a login): transaction counts incl. re-attached, and changed balances of mapped accounts |
 | `plaid_file_imported` | plaid_transaction | A bank file added or updated rows |
 | `plaid_transaction_updated` | plaid_transaction | Inbox decisions (`add`, `match`, `match_fixed`, `match_income`, `add_income`, `ignore`, `unignore`, `cancelled_keep`, `cancelled_delete`) and sync-driven `settled` / `pending_changed` / `settle_failed` |
 | `settings_updated` | settings | `section: 'plaid'` (keys, never values) or `'plaid_auto_sync'` |
 
-All `plaid_*` entity types route to the `plaid` window event. Consumers: `ImportInbox`, `BankConnections`, `useBankAccountLinks`, `usePlaidStatus` and `useCardBalanceChecks`. The records created or changed also log their own events (`expense_added`, `fixed_expense_updated`, …). Known gap: a sync whose only changes are re-attached rows or refreshed balances logs nothing, so other tabs don't refresh.
+All `plaid_*` entity types route to the `plaid` window event. Consumers: `ImportInbox`, `BankConnections`, `useBankAccountLinks`, `usePlaidStatus` and `useCardBalanceChecks`. The records created or changed also log their own events (`expense_added`, `fixed_expense_updated`, …). Balance changes of unmapped accounts (investments, loans) aren't logged until 4.1.
 
 ## Frontend (`components/bank-import/`)
 
@@ -312,7 +312,7 @@ Planned now, because Phase 3 adds five more inbox actions and three more link ta
 3. **Settings across tabs:** `plaid-settings-changed` also reaches other tabs (log `settings_updated` → route `settings` to that window event).
 4. **Pending backfill on upgrade (R9):** the v1.17.0 upgrade didn't show charges already pending (the sync cursor had passed them). Productize the one-off fix: on the first sync after `plaid_transactions_pending_v1`, call `/transactions/get` (last 21 days) per Item once and insert missing pending rows. Gated by `plaid_pending_backfill_done`.
 5. **Modified amounts on reviewed rows (R10):** Wealthsimple sends still-pending charges as settled, so a later amount change arrives as *modified* on an added/matched row, which is ignored today. Apply the `pending_changed` rule to any linked row: follow the bank if the expense still has the previous bank amount; log it. **Partly done (1.21.0):** a linked row still pending (e.g. from a Wealthsimple file) follows a *modified* that settles it, amount included; a *modified* amount on a linked row that is already settled is still ignored.
-6. **Refresh events (from the 1.21.4 audit):** a sync whose only changes are re-attached rows or refreshed balances logs no `plaid_sync_completed`, so other tabs and the card balance check don't refresh. Count `reattached` in the totals and log balance-only changes.
+6. **Refresh events (from the 1.21.4 audit):** ~~a sync whose only changes are re-attached rows or refreshed balances logs no `plaid_sync_completed`~~ **Done (1.24.6):** `syncItem` logs one `plaid_sync_completed` per bank whenever a sync brought transactions, re-attached rows or a changed balance of a mapped account (also the sync after a login, which used to be silent). Balances of unmapped investment/loan accounts are left for 4.1.
 
 **Tests:** retention keeps linked rows; backfill runs once; modified linked row follows the bank only when untouched.
 **Docs:** PLAID_INTEGRATION (Staging rules, Limitations).

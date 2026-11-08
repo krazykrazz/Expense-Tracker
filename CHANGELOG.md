@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.24.5] - 2026-11-08
+
+### Wealthsimple pending charges settle when the card balance matches exactly
+
 ## [1.24.4] - 2026-11-07
 
 ### Fix header and accent colours missing in production builds

@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.24.7] - 2026-11-08
+
+### Balance check explains pending charges that post later in the tracker
+
 ## [1.24.6] - 2026-11-08
 
 ### Activity log shows every bank sync that brought something, including balance changes and the sync after a login

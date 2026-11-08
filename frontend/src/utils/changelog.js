@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.24.7',
+    date: 'November 8, 2026',
+    added: [],
+    changed: ['Balance check explains pending charges that post later in the tracker'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.24.6',
     date: 'November 8, 2026',
     added: [],

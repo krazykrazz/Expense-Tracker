@@ -1,20 +1,22 @@
 name: CI
 
 on:
+  # Documentation-only pushes to main don't run CI (no tests, no image). Keep this list in sync with the
+  # `code` filter in the path-filter job below.
   push:
     branches:
       - main
     paths-ignore:
+      - '**/*.md'
       - 'docs/**'
-      - '*.md'
-      - 'CHANGELOG.md'
+      - 'specs/**'
+      - '.github/instructions/**'
+      - '.github/skills/**'
+  # Pull requests always run: main requires Backend/Frontend Tests Status, and a workflow skipped by
+  # paths-ignore would leave them pending forever. A docs-only PR skips the test jobs instead (path-filter).
   pull_request:
     branches:
       - main
-    paths-ignore:
-      - 'docs/**'
-      - '*.md'
-      - 'CHANGELOG.md'
   workflow_dispatch:
     inputs:
       health_check_timeout:
@@ -63,6 +65,22 @@ jobs:
               - 'package.json'
               - 'package-lock.json'
 
+      # Anything that isn't documentation. A separate step because `every` applies to all of a step's
+      # filters: a file counts only if it matches '**' and none of the documentation patterns.
+      - name: Detect non-documentation changes
+        uses: dorny/paths-filter@v4
+        id: code_filter
+        with:
+          predicate-quantifier: 'every'
+          filters: |
+            code:
+              - '**'
+              - '!**/*.md'
+              - '!docs/**'
+              - '!specs/**'
+              - '!.github/instructions/**'
+              - '!.github/skills/**'
+
       - name: Generate filtering summary
         run: |
           echo "## Path-Based Test Filtering" >> $GITHUB_STEP_SUMMARY
@@ -78,14 +96,20 @@ jobs:
             echo "⚠️ **Shared infrastructure changed - running all tests**" >> $GITHUB_STEP_SUMMARY
           fi
 
-      - name: Check for empty PR
+      # empty_pr (kept as the output name): something other than documentation changed, but it isn't backend,
+      # frontend or shared infrastructure (e.g. an unrecognised config file). Run every test to be safe.
+      # Documentation-only changes run nothing; the status jobs then report the tests as skipped (passed).
+      - name: Check for unclassified changes
         id: empty_check
         run: |
-          if [ "${{ steps.filter.outputs.backend }}" = "false" ] && \
+          if [ "${{ steps.code_filter.outputs.code }}" = "false" ]; then
+            echo "empty_pr=false" >> $GITHUB_OUTPUT
+            echo "📝 **Documentation-only change - tests skipped**" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ steps.filter.outputs.backend }}" = "false" ] && \
              [ "${{ steps.filter.outputs.frontend }}" = "false" ] && \
              [ "${{ steps.filter.outputs.shared }}" = "false" ]; then
             echo "empty_pr=true" >> $GITHUB_OUTPUT
-            echo "⚠️ **Empty PR detected - will run all tests**" >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ **Changes outside backend/frontend/shared detected - will run all tests**" >> $GITHUB_STEP_SUMMARY
           else
             echo "empty_pr=false" >> $GITHUB_OUTPUT
           fi

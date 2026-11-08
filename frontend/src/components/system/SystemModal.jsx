@@ -452,6 +452,16 @@ const SystemModal = () => {
           <div className="changelog">
             <div className="changelog-entry">
               <div className="changelog-version">
+                v1.25.1
+                {isCurrentVersion('v1.25.1') && <span className="current-version-badge">Current Version</span>}
+              </div>
+              <div className="changelog-date">November 8, 2026</div>
+              <ul className="changelog-items">
+                <li>Quieter server log for bank syncs that changed nothing, plus internal Plaid inbox refactor</li>
+              </ul>
+            </div>
+            <div className="changelog-entry">
+              <div className="changelog-version">
                 v1.25.0
                 {isCurrentVersion('v1.25.0') && <span className="current-version-badge">Current Version</span>}
               </div>

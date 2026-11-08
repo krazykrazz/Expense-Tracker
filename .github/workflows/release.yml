@@ -223,7 +223,10 @@ jobs:
           echo "## Pull Request Created" >> $GITHUB_STEP_SUMMARY
           echo "[$PR_URL]($PR_URL)" >> $GITHUB_STEP_SUMMARY
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # A PR opened with GITHUB_TOKEN is authored by github-actions[bot], which the repo's fork PR
+          # approval policy ("all external contributors") treats as external: its CI waits for a manual
+          # approval. Opened with RELEASE_PAT it is authored by the owner and CI runs straight away.
+          GH_TOKEN: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
 
       # Enable auto-merge with a PAT (not GITHUB_TOKEN). When auto-merge completes
       # under GITHUB_TOKEN, the resulting push to main does NOT trigger downstream

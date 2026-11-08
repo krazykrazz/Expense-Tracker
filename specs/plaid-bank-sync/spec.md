@@ -313,6 +313,20 @@ Planned now, because Phase 3 adds five more inbox actions and three more link ta
 4. **Pending backfill on upgrade (R9):** the v1.17.0 upgrade didn't show charges already pending (the sync cursor had passed them). Productize the one-off fix: on the first sync after `plaid_transactions_pending_v1`, call `/transactions/get` (last 21 days) per Item once and insert missing pending rows. Gated by `plaid_pending_backfill_done`.
 5. **Modified amounts on reviewed rows (R10):** Wealthsimple sends still-pending charges as settled, so a later amount change arrives as *modified* on an added/matched row, which is ignored today. Apply the `pending_changed` rule to any linked row: follow the bank if the expense still has the previous bank amount; log it. **Partly done (1.21.0):** a linked row still pending (e.g. from a Wealthsimple file) follows a *modified* that settles it, amount included; a *modified* amount on a linked row that is already settled is still ignored.
 6. **Refresh events (from the 1.21.4 audit):** ~~a sync whose only changes are re-attached rows or refreshed balances logs no `plaid_sync_completed`~~ **Done (1.24.6):** `syncItem` logs one `plaid_sync_completed` per bank whenever a sync brought transactions, re-attached rows or a changed balance of a mapped account (also the sync after a login, which used to be silent). Balances of unmapped investment/loan accounts are left for 4.1.
+7. **Posted date on every bank-reported card transaction (owner, 2026-11-08):** any credit card expense linked to a settled bank transaction should have a `posted_date`. Today it's inconsistent (found on the WS Visa):
+
+   | How the expense got there | Posted date today |
+   |---|---|
+   | Hand-entered | The form's suggestion (next business day), sometimes left empty |
+   | Added from the Inbox, settled | The bank's `date`, only when later than the chosen purchase date |
+   | Added while pending, then settled | Plaid's date (CIBC); **none** when settled from the balance (`settleFromBalance` passes no date) or by a file |
+   | Older recurring entries | None |
+
+   - **CIBC (easy):** Plaid sends the posting date (`date`, with `authorized_date` as the purchase date), and the CIBC file has posting dates. Set it whenever the row is settled, also when it equals the purchase date (today it's skipped unless later).
+   - **Wealthsimple (harder):** no source has a real posting date. Plaid's single date is the purchase day or the next day, the file has only the purchase date, and a balance settlement only says "posted before this sync". Proposed rule: the form's rule (next business day after purchase, `utils/businessDays`), capped at the date the settlement was seen; mark it as estimated if the UI needs to tell them apart.
+   - **Never overwrite** a posted date the user entered or edited (principle 3). Backfill linked settled rows once.
+   - **Why it matters:** the card balance as of today and the statement a charge lands on are both computed from the posted date, and the next-statement marker only works with one.
+8. **Balance check: hand-entered charges posting after today (CIBC):** a hand-entered card expense gets the next business day as its posted date, so the tracker's balance as of today leaves it out. CIBC's balance includes pending charges, so with fresh bank data the check would show the amount as unexplained until the posted date (seen 2026-11-08: three Nov 7 charges posting Nov 9; it matched only because CIBC's data was stale). For banks whose balance includes pending, list tracker entries purchased by today but posting later as a known cause ("pending at the bank, posts Nov 9") instead.
 
 **Tests:** retention keeps linked rows; backfill runs once; modified linked row follows the bank only when untouched.
 **Docs:** PLAID_INTEGRATION (Staging rules, Limitations).

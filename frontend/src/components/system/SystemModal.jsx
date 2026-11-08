@@ -452,6 +452,16 @@ const SystemModal = () => {
           <div className="changelog">
             <div className="changelog-entry">
               <div className="changelog-version">
+                v1.25.0
+                {isCurrentVersion('v1.25.0') && <span className="current-version-badge">Current Version</span>}
+              </div>
+              <div className="changelog-date">November 8, 2026</div>
+              <ul className="changelog-items">
+                <li>Inbox count badge on the bank icon and bank balances for linked chequing accounts on the Financial page</li>
+              </ul>
+            </div>
+            <div className="changelog-entry">
+              <div className="changelog-version">
                 v1.24.7
                 {isCurrentVersion('v1.24.7') && <span className="current-version-badge">Current Version</span>}
               </div>

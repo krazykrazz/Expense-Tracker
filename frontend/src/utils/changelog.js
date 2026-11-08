@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.24.6',
+    date: 'November 8, 2026',
+    added: [],
+    changed: ['Activity log shows every bank sync that brought something, including balance changes and the sync after a login'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.24.5',
     date: 'November 8, 2026',
     added: [],

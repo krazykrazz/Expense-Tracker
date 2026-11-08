@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.24.6] - 2026-11-08
+
+### Activity log shows every bank sync that brought something, including balance changes and the sync after a login
+
 ## [1.24.5] - 2026-11-08
 
 ### Wealthsimple pending charges settle when the card balance matches exactly

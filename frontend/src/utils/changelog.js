@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.25.1',
+    date: 'November 8, 2026',
+    added: [],
+    changed: ['Quieter server log for bank syncs that changed nothing, plus internal Plaid inbox refactor'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.25.0',
     date: 'November 8, 2026',
     added: [],

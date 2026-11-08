@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.25.1] - 2026-11-08
+
+### Quieter server log for bank syncs that changed nothing, plus internal Plaid inbox refactor
+
 ## [1.25.0] - 2026-11-08
 
 ### Inbox count badge on the bank icon and bank balances for linked chequing accounts on the Financial page

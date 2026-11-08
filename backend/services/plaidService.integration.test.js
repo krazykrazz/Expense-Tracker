@@ -183,6 +183,10 @@ describe('plaidService', () => {
         'plaid_item_updated', 'plaid_item', item.id, 'Reconnected bank: Test Bank',
         { institutionName: 'Test Bank', previousError: 'ITEM_LOGIN_REQUIRED' }
       );
+      // What the login brought is logged too (it used to be silent)
+      expect(activityLogService.logEvent).toHaveBeenCalledWith(
+        'plaid_sync_completed', 'plaid_transaction', null, 'Bank sync (login) Test Bank: 1 new', expect.objectContaining({ source: 'login' })
+      );
     });
 
     test('logging in again to a working bank (stale data) syncs and is logged as a login, not a reconnect', async () => {
@@ -773,9 +777,54 @@ describe('plaidService', () => {
       ]);
       expect(totals).toEqual({ added: 1, updated: 0, removed: 0 });
       expect(activityLogService.logEvent).toHaveBeenCalledWith(
-        'plaid_sync_completed', 'plaid_transaction', null, 'Bank sync (manual): 1 new, 0 updated, 0 removed',
-        { source: 'manual', added: 1, updated: 0, removed: 0 }
+        'plaid_sync_completed', 'plaid_transaction', null, 'Bank sync (manual) Bank B: 1 new',
+        { source: 'manual', institutionName: 'Bank B', added: 1, updated: 0, removed: 0, reattached: 0, balances: [] }
       );
+    });
+
+    test('a sync that only changed a balance is logged, with the account and the amounts', async () => {
+      const item = await connect('Card Bank');
+      await plaidService.updateAccountMapping(item.accounts[0].id, 4);
+      const withBalance = (current, available = null) => ({ data: { accounts: [account('acc-1', {
+        type: 'credit', balances: { current, available, limit: available == null ? null : 1000, iso_currency_code: 'CAD' }
+      })] } });
+      client.transactionsSync.mockResolvedValueOnce(page());
+      client.accountsGet.mockResolvedValueOnce(withBalance(2269.12));
+      await plaidService.syncItem(item.id, 'scheduled');
+      activityLogService.logEvent.mockClear();
+
+      // Nothing new and the same balance: not logged
+      client.transactionsSync.mockResolvedValueOnce(page());
+      client.accountsGet.mockResolvedValueOnce(withBalance(2269.12));
+      await plaidService.syncItem(item.id, 'scheduled');
+      expect(activityLogService.logEvent).not.toHaveBeenCalled();
+
+      // The balance moved (a pending charge posted at Wealthsimple)
+      client.transactionsSync.mockResolvedValueOnce(page());
+      client.accountsGet.mockResolvedValueOnce(withBalance(2333.38));
+      await plaidService.syncItem(item.id, 'scheduled');
+      expect(activityLogService.logEvent).toHaveBeenCalledWith(
+        'plaid_sync_completed', 'plaid_transaction', null,
+        'Bank sync (scheduled) Card Bank: Account acc-1 ••1234 balance $2,269.12 → $2,333.38',
+        expect.objectContaining({ source: 'scheduled', added: 0, balances: [
+          { name: 'Account acc-1', mask: '1234', field: 'balance', from: 2269.12, to: 2333.38 }
+        ] })
+      );
+    });
+
+    test('a balance change on an account that imports into nothing is not logged', async () => {
+      const item = await connect('Investments');
+      const withBalance = (current) => ({ data: { accounts: [account('acc-1', { type: 'investment', balances: { current, iso_currency_code: 'CAD' } })] } });
+      client.transactionsSync.mockResolvedValueOnce(page());
+      client.accountsGet.mockResolvedValueOnce(withBalance(191533.86));
+      await plaidService.syncItem(item.id);
+      client.transactionsSync.mockResolvedValueOnce(page());
+      client.accountsGet.mockResolvedValueOnce(withBalance(192004.10));
+      activityLogService.logEvent.mockClear();
+
+      await plaidService.syncItem(item.id);
+
+      expect(activityLogService.logEvent).not.toHaveBeenCalled();
     });
   });
 
@@ -815,7 +864,7 @@ describe('plaidService', () => {
       expect(result).toEqual({ synced: 1, totals: { added: 2, updated: 0, removed: 0 } });
       expect(await plaidService.findStaleItems(30)).toEqual([]);
       expect(activityLogService.logEvent).toHaveBeenCalledWith(
-        'plaid_sync_completed', 'plaid_transaction', null, 'Bank sync (scheduled): 2 new, 0 updated, 0 removed', expect.any(Object)
+        'plaid_sync_completed', 'plaid_transaction', null, 'Bank sync (scheduled) Bank B: 2 new', expect.any(Object)
       );
 
       activityLogService.logEvent.mockClear();

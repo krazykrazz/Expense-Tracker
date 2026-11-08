@@ -121,7 +121,7 @@ gh workflow run release.yml -f bump_type=MINOR -f description="Short release sum
 2. Updates the version locations listed in [release.instructions.md](../../.github/instructions/release.instructions.md): both `package.json` files, `CHANGELOG.md`, `frontend/src/utils/changelog.js`, `BackupSettings.jsx` and `SystemModal.jsx`. Each changelog entry contains only `description`.
 3. Runs a frontend build as a sanity check (`frontend/dist` is gitignored; the shipped bundle is built inside the Docker image)
 4. Commits through the GitHub API (`gh api graphql` → `createCommitOnBranch`), so the commit is signed by GitHub and shows as Verified
-5. Opens the PR `Release vX.Y.Z: <description>`
+5. Opens the PR `Release vX.Y.Z: <description>` with the `RELEASE_PAT` secret, so it is authored by the owner. Opened as `github-actions[bot]`, the repo's "require approval for all external contributors" setting would hold its checks until someone clicks **Approve and run**.
 6. With `auto_merge=true`, enables auto-merge using the `RELEASE_PAT` secret. A PAT is required: a merge performed under `GITHUB_TOKEN` would not trigger the `main` CI run, so no image would be built.
 
 When the release PR merges, the `main` CI run builds `:<sha>` and `:vX.Y.Z` and creates the GitHub Release and git tag `vX.Y.Z`. No manual tagging is needed.

@@ -555,7 +555,7 @@ It:
 2. Bumps `backend/package.json` and `frontend/package.json`, and inserts a new entry into `CHANGELOG.md`, `frontend/src/utils/changelog.js`, `frontend/src/components/system/BackupSettings.jsx` and `frontend/src/components/system/SystemModal.jsx`
 3. Builds the frontend (`npm ci && npm run build`)
 4. Commits through the GitHub API (`gh api graphql` → `createCommitOnBranch`) so the commit is signed by GitHub and shows as **Verified**, as the ruleset requires. A plain `git push` from CI would be unsigned; a third-party commit action would be blocked by the Actions allowlist
-5. Opens the PR with `gh pr create`
+5. Opens the PR with `gh pr create`, using the `RELEASE_PAT` secret (falls back to `GITHUB_TOKEN` when it isn't set). The repo requires approval before workflows run for **all external contributors**, and a PR opened with `GITHUB_TOKEN` is authored by `github-actions[bot]`, which counts as external: its CI and Version Consistency Check would wait for a manual **Approve and run**. Opened with the PAT, the PR is authored by the owner and its checks start at once
 6. If `auto_merge` is set, enables auto-merge (merge commit, delete branch) using the `RELEASE_PAT` secret. A merge performed with `GITHUB_TOKEN` would not trigger the `push` CI run on `main`, so the GHCR image would never be built
 
 After the merge, CI builds and pushes the image; promote it locally with `.\scripts\build-and-push.ps1 -Environment staging` and then `-Environment latest`. See [Deployment Workflow](../deployment/DEPLOYMENT_WORKFLOW.md).

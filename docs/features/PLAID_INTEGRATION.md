@@ -134,7 +134,7 @@ Nobody needs to know about Sync now:
 - **On a schedule:** a check runs every 5 minutes and syncs each bank whose last sync is older than the interval (with 3 minutes of slack, so "30 minutes" stays 30), during the active hours only.
 - **When the app is opened:** loading the app, coming back to its tab (at most once every 5 minutes) or opening Bank Import syncs, in the background, any bank not synced in the last 30 minutes. This works at any hour, including overnight.
 - **What is skipped:** banks waiting for you (expired login, removed at the bank) until they are reconnected (see [When a bank needs you](#when-a-bank-needs-you-expired-login)), banks from another Plaid environment, and a bank that just failed (it is retried at the next interval, not every 5 minutes). Nothing runs while Plaid is not configured.
-- **Results:** a sync that brings new, changed or removed transactions refreshes the inbox and connections in every open tab (toast "↻ Bank import updated"). Syncs with nothing new are silent.
+- **Results:** a sync that brings new, changed or removed transactions refreshes the inbox and connections in every open tab (toast "↻ Bank import updated"). Syncs with nothing new are silent, and the server log records them at debug level (`LOG_LEVEL=debug`); a sync that changed something (transactions, settled charges or a balance of a mapped account) is logged at info.
 - **Cost:** Plaid does not charge per sync call (Transactions is billed per connected account per month on paid plans, and is included in the Trial). Plaid itself collects new data from most banks 1 to 4 times a day, so most syncs find nothing new.
 
 ### Inbox tab

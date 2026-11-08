@@ -15,6 +15,7 @@ jest.mock('./activityLogService');
 const { getDatabase } = require('../database/db');
 const activityLogService = require('./activityLogService');
 const plaidInboxService = require('./plaidInboxService');
+const plaidReviewService = require('./plaidReviewService');
 const plaidCardPaymentService = require('./plaidCardPaymentService');
 const creditCardPaymentService = require('./creditCardPaymentService');
 const plaidCardPaymentRepository = require('../repositories/plaidCardPaymentRepository');
@@ -262,7 +263,7 @@ describe('plaidCardPaymentService', () => {
     test('creates nothing when the paying debit was already reviewed', async () => {
       await stageVisaCredit();
       await stageVisaDebit();
-      await plaidInboxService.ignore(await idOf('visa-debit'));
+      await plaidReviewService.ignore(await idOf('visa-debit'));
 
       await rejectsWith(plaidCardPaymentService.act(await idOf('visa-credit'), { alsoLinkId: await idOf('visa-debit') }), 409);
 

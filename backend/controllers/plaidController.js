@@ -1,6 +1,8 @@
 const { asyncHandler } = require('../middleware/errorHandler');
 const plaidService = require('../services/plaidService');
 const plaidInboxService = require('../services/plaidInboxService');
+const plaidReviewService = require('../services/plaidReviewService');
+const plaidSettlementService = require('../services/plaidSettlementService');
 const plaidCardPaymentService = require('../services/plaidCardPaymentService');
 const plaidCardBalanceService = require('../services/plaidCardBalanceService');
 const plaidCycleCheckService = require('../services/plaidCycleCheckService');
@@ -169,7 +171,7 @@ const getInbox = asyncHandler(async (req, res) => {
  * Body: { type, place?, date?, notes? }
  */
 const addAsExpense = asyncHandler(async (req, res) => {
-  res.status(201).json(await plaidInboxService.addAsExpense(idParam(req), req.body || {}, tabIdOf(req)));
+  res.status(201).json(await plaidReviewService.addAsExpense(idParam(req), req.body || {}, tabIdOf(req)));
 });
 
 /**
@@ -177,7 +179,7 @@ const addAsExpense = asyncHandler(async (req, res) => {
  * Body: { expenseId }
  */
 const matchToExpense = asyncHandler(async (req, res) => {
-  res.json(await plaidInboxService.matchToExpense(idParam(req), (req.body || {}).expenseId));
+  res.json(await plaidReviewService.matchToExpense(idParam(req), (req.body || {}).expenseId));
 });
 
 /**
@@ -185,7 +187,7 @@ const matchToExpense = asyncHandler(async (req, res) => {
  * Body: { fixedExpenseId }
  */
 const matchToFixedExpense = asyncHandler(async (req, res) => {
-  res.json(await plaidInboxService.matchToFixedExpense(idParam(req), (req.body || {}).fixedExpenseId, tabIdOf(req)));
+  res.json(await plaidReviewService.matchToFixedExpense(idParam(req), (req.body || {}).fixedExpenseId, tabIdOf(req)));
 });
 
 /**
@@ -194,7 +196,7 @@ const matchToFixedExpense = asyncHandler(async (req, res) => {
  */
 const matchToIncome = asyncHandler(async (req, res) => {
   const { incomeSourceId, updateAmount } = req.body || {};
-  res.json(await plaidInboxService.matchToIncome(idParam(req), incomeSourceId, { updateAmount: updateAmount !== false }, tabIdOf(req)));
+  res.json(await plaidReviewService.matchToIncome(idParam(req), incomeSourceId, { updateAmount: updateAmount !== false }, tabIdOf(req)));
 });
 
 /**
@@ -202,7 +204,7 @@ const matchToIncome = asyncHandler(async (req, res) => {
  * Body: { name?, category? }
  */
 const addAsIncome = asyncHandler(async (req, res) => {
-  res.status(201).json(await plaidInboxService.addAsIncome(idParam(req), req.body || {}, tabIdOf(req)));
+  res.status(201).json(await plaidReviewService.addAsIncome(idParam(req), req.body || {}, tabIdOf(req)));
 });
 
 /**
@@ -222,17 +224,17 @@ const cardPayment = asyncHandler(async (req, res) => {
  */
 const resolveCancelled = asyncHandler(async (req, res) => {
   const { action, postedId } = req.body || {};
-  res.json(await plaidInboxService.resolveCancelled(idParam(req), { action, postedId }, tabIdOf(req)));
+  res.json(await plaidSettlementService.resolveCancelled(idParam(req), { action, postedId }, tabIdOf(req)));
 });
 
 /** POST /api/plaid/inbox/:id/ignore */
 const ignore = asyncHandler(async (req, res) => {
-  res.json(await plaidInboxService.ignore(idParam(req)));
+  res.json(await plaidReviewService.ignore(idParam(req)));
 });
 
 /** POST /api/plaid/inbox/:id/unignore */
 const unignore = asyncHandler(async (req, res) => {
-  res.json(await plaidInboxService.unignore(idParam(req)));
+  res.json(await plaidReviewService.unignore(idParam(req)));
 });
 
 module.exports = {

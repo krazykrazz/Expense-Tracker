@@ -276,6 +276,7 @@ describe('plaidService', () => {
   describe('bank files and Plaid together (either order)', () => {
     const CREDIT_CARD = 4;
     const plaidInboxService = require('./plaidInboxService');
+    const plaidReviewService = require('./plaidReviewService');
     const plaidFileImportService = require('./plaidFileImportService');
     const WS_HEADER = 'transaction_date,transaction_type,status,merchant,amount,currency,notes,category';
     const wsFile = (...lines) => [WS_HEADER, ...lines].join('\n');
@@ -297,7 +298,7 @@ describe('plaidService', () => {
         fromDate: '2026-11-01'
       });
       const cafe = (await rows()).find(r => r.name === 'Corner Cafe');
-      await plaidInboxService.addAsExpense((await get('SELECT id FROM plaid_transactions WHERE name = ?', ['Corner Cafe'])).id, { type: 'Dining Out' });
+      await plaidReviewService.addAsExpense((await get('SELECT id FROM plaid_transactions WHERE name = ?', ['Corner Cafe'])).id, { type: 'Dining Out' });
 
       // Plaid (Wealthsimple style) sends them a day later, posted date only, its own names
       client.transactionsSync.mockResolvedValueOnce(cardPage({ added: [
@@ -333,7 +334,7 @@ describe('plaidService', () => {
       const { item, accountId } = await cardBank('No Pending Bank');
       await plaidFileImportService.importFile(accountId, { csv: wsFile('2026-11-04,Purchase,Pending,Ridge Rock Brewing,-40.00,CAD,,'), fromDate: '2026-11-01' });
       const rowId = (await get("SELECT id FROM plaid_transactions WHERE name = 'Ridge Rock Brewing'")).id;
-      const { expense } = await plaidInboxService.addAsExpense(rowId, { type: 'Dining Out' });
+      const { expense } = await plaidReviewService.addAsExpense(rowId, { type: 'Dining Out' });
 
       // Plaid says "settled" right away (as Wealthsimple does): not evidence, the file said pending
       client.transactionsSync.mockResolvedValueOnce(cardPage({ added: [txn('ws-rr', { amount: 40, date: '2026-11-04', authorized_date: null, name: 'Ridge Rock Brewing - Purchase' })] }));
@@ -355,7 +356,7 @@ describe('plaidService', () => {
         fromDate: '2026-11-01'
       });
       for (const name of ['First Choice Haircutters', 'Sobeys']) {
-        await plaidInboxService.addAsExpense((await get('SELECT id FROM plaid_transactions WHERE name = ?', [name])).id, { type: 'Other' });
+        await plaidReviewService.addAsExpense((await get('SELECT id FROM plaid_transactions WHERE name = ?', [name])).id, { type: 'Other' });
       }
       const ws = (id, amount, name) => txn(id, { amount, date: '2026-11-04', authorized_date: null, name: `${name} - Purchase`, merchant_name: null });
       const balance = (current) => client.accountsGet.mockResolvedValueOnce({ data: { accounts: [account('acc-1', {
@@ -387,7 +388,7 @@ describe('plaidService', () => {
         fromDate: '2026-11-01'
       });
       for (const name of ['Haircut', 'Grocer']) {
-        await plaidInboxService.addAsExpense((await get('SELECT id FROM plaid_transactions WHERE name = ?', [name])).id, { type: 'Other' });
+        await plaidReviewService.addAsExpense((await get('SELECT id FROM plaid_transactions WHERE name = ?', [name])).id, { type: 'Other' });
       }
       // Plaid takes both over; the bank balance doesn't include them yet
       const ws = (id, amount, name) => txn(id, { amount, date: '2026-11-04', authorized_date: null, name: `${name} - Purchase`, merchant_name: null });
@@ -415,7 +416,7 @@ describe('plaidService', () => {
       ] }));
       await plaidService.syncItem(item.id);
       const rowId = (await get("SELECT id FROM plaid_transactions WHERE transaction_id = 'cibc-p'")).id;
-      const { expense } = await plaidInboxService.addAsExpense(rowId, { type: 'Groceries' });
+      const { expense } = await plaidReviewService.addAsExpense(rowId, { type: 'Groceries' });
 
       const imported = await plaidFileImportService.importFile(accountId, {
         csv: '2026-11-04,"SHOPPERS DRUG MART #13 STITTSVILLE, ON",28.24,,5223********1234', fromDate: '2026-11-01'
@@ -456,7 +457,7 @@ describe('plaidService', () => {
       // Ignored as a file row, then Plaid sends it
       await plaidFileImportService.importFile(accountId, { csv: wsFile('2026-11-02,Refund,Completed,Book Store,15.50,CAD,,'), fromDate: '2026-11-01' });
       const fromFile = await get("SELECT id FROM plaid_transactions WHERE name = 'Book Store'");
-      await plaidInboxService.ignore(fromFile.id);
+      await plaidReviewService.ignore(fromFile.id);
       // Ignored as a Plaid row, then a file brings it
       client.transactionsSync.mockResolvedValueOnce(cardPage({ added: [
         txn('plaid-refund', { amount: -15.5, date: '2026-11-02', authorized_date: null, name: 'Book Store - Refund' }),
@@ -464,7 +465,7 @@ describe('plaidService', () => {
       ] }));
       await plaidService.syncItem(item.id);
       const fee = await get("SELECT id FROM plaid_transactions WHERE transaction_id = 'plaid-fee'");
-      await plaidInboxService.ignore(fee.id);
+      await plaidReviewService.ignore(fee.id);
 
       const imported = await plaidFileImportService.importFile(accountId, {
         csv: wsFile('2026-11-03,Fee,Completed,Annual fee,-3.50,CAD,,', '2026-11-02,Refund,Completed,Book Store,15.50,CAD,,'), fromDate: '2026-11-01'
@@ -475,13 +476,13 @@ describe('plaidService', () => {
       expect((await plaidInboxService.listInbox('new')).transactions).toEqual([]);
       expect((await plaidInboxService.listInbox('ignored')).transactions.map(t => t.source)).toEqual(['plaid', 'plaid']);
       // Undo ignore still works on a row that came from a file
-      await plaidInboxService.unignore(fromFile.id);
+      await plaidReviewService.unignore(fromFile.id);
       expect((await plaidInboxService.listInbox('new')).transactions.map(t => t.transactionId)).toEqual(['plaid-refund']);
     });
   });
   describe('connecting a bank again after disconnecting', () => {
     const CREDIT_CARD = 4;
-    const plaidInboxService = require('./plaidInboxService');
+    const plaidReviewService = require('./plaidReviewService');
 
     test('re-sent history re-attaches to the kept rows instead of coming back as duplicates', async () => {
       const first = await connect('Card Bank');
@@ -496,8 +497,8 @@ describe('plaidService', () => {
       await plaidService.syncItem(first.id);
       const coffee = await get("SELECT id FROM plaid_transactions WHERE transaction_id = 'old-coffee'");
       const pendingRow = await get("SELECT id FROM plaid_transactions WHERE transaction_id = 'old-pending'");
-      const { expense: coffeeExpense } = await plaidInboxService.addAsExpense(coffee.id, { type: 'Dining Out' });
-      const { expense: dinner } = await plaidInboxService.addAsExpense(pendingRow.id, { type: 'Dining Out' });
+      const { expense: coffeeExpense } = await plaidReviewService.addAsExpense(coffee.id, { type: 'Dining Out' });
+      const { expense: dinner } = await plaidReviewService.addAsExpense(pendingRow.id, { type: 'Dining Out' });
       await plaidService.disconnectItem(first.id);
 
       // Kept while disconnected; the pending one says so in the expense list
@@ -581,6 +582,40 @@ describe('plaidService', () => {
   });
 
   describe('syncItem', () => {
+    test('logs a sync that brought something at info, and a quiet one at debug', async () => {
+      const logger = require('../config/logger');
+      const info = jest.spyOn(logger, 'info').mockImplementation(() => {});
+      const debug = jest.spyOn(logger, 'debug').mockImplementation(() => {});
+      try {
+        const item = await connect('Log Bank');
+        client.transactionsSync.mockResolvedValueOnce(page({ added: [txn('quiet-1')] }));
+        await plaidService.syncItem(item.id);
+        expect(info).toHaveBeenCalledWith('Plaid sync completed', expect.objectContaining({ added: 1 }));
+        expect(debug).not.toHaveBeenCalledWith('Plaid sync completed', expect.anything());
+
+        info.mockClear();
+        client.transactionsSync.mockResolvedValueOnce(page({ next_cursor: 'c2' }));
+        await plaidService.syncItem(item.id);
+        expect(debug).toHaveBeenCalledWith('Plaid sync completed', expect.objectContaining({ added: 0, updated: 0, settled: 0, balancesChanged: 0 }));
+        expect(info).not.toHaveBeenCalledWith('Plaid sync completed', expect.anything());
+
+        // Nothing new, but the balance of a mapped account moved: worth an info line
+        await plaidService.updateAccountMapping(item.accounts[0].id, 4);
+        const withBalance = (current) => ({ data: { accounts: [account('acc-1', { balances: { current, iso_currency_code: 'CAD' } })] } });
+        client.transactionsSync.mockResolvedValueOnce(page({ next_cursor: 'c3' }));
+        client.accountsGet.mockResolvedValueOnce(withBalance(100));
+        await plaidService.syncItem(item.id);
+        info.mockClear();
+        client.transactionsSync.mockResolvedValueOnce(page({ next_cursor: 'c4' }));
+        client.accountsGet.mockResolvedValueOnce(withBalance(125.5));
+        await plaidService.syncItem(item.id);
+        expect(info).toHaveBeenCalledWith('Plaid sync completed', expect.objectContaining({ added: 0, balancesChanged: 1 }));
+      } finally {
+        info.mockRestore();
+        debug.mockRestore();
+      }
+    });
+
     test('stores every account balance after a sync, even one with no transactions', async () => {
       const item = await connect();
       client.transactionsSync.mockResolvedValueOnce(page({ accounts: [] }));
@@ -907,6 +942,8 @@ describe('plaidService', () => {
 
   describe('pending transactions', () => {
     const plaidInboxService = require('./plaidInboxService');
+    const plaidReviewService = require('./plaidReviewService');
+    const plaidSettlementService = require('./plaidSettlementService');
     const CREDIT_CARD = 4;
     const expenseOf = (id) => get('SELECT amount, date, posted_date FROM expenses WHERE id = ?', [id]);
 
@@ -918,7 +955,7 @@ describe('plaidService', () => {
       }));
       await plaidService.syncItem(item.id);
       const row = await get("SELECT id FROM plaid_transactions WHERE transaction_id = 'p1'");
-      const { expense } = await plaidInboxService.addAsExpense(row.id, { type: 'Dining Out' });
+      const { expense } = await plaidReviewService.addAsExpense(row.id, { type: 'Dining Out' });
       return { item, rowId: row.id, expenseId: expense.id };
     }
 
@@ -969,7 +1006,7 @@ describe('plaidService', () => {
       expect((await require('./expenseService').getExpenses({ year: 2026, month: 10 })).find(e => e.id === expenseId).bankLink)
         .toMatchObject({ pending: true, removed: true });
 
-      await plaidInboxService.resolveCancelled(rowId, { action: 'link', postedId: transactions[0].id });
+      await plaidSettlementService.resolveCancelled(rowId, { action: 'link', postedId: transactions[0].id });
 
       expect(await all('SELECT transaction_id, status, expense_id FROM plaid_transactions'))
         .toEqual([{ transaction_id: 's9', status: 'added', expense_id: expenseId }]);
@@ -982,11 +1019,11 @@ describe('plaidService', () => {
       client.transactionsSync.mockResolvedValueOnce(page({ removed: [{ transaction_id: 'p1' }], next_cursor: 'c2' }));
       await plaidService.syncItem(first.item.id);
 
-      await plaidInboxService.resolveCancelled(first.rowId, { action: 'delete_expense' });
+      await plaidSettlementService.resolveCancelled(first.rowId, { action: 'delete_expense' });
 
       expect(await get('SELECT COUNT(*) AS n FROM expenses WHERE id = ?', [first.expenseId])).toEqual({ n: 0 });
       expect(await get('SELECT COUNT(*) AS n FROM plaid_transactions')).toEqual({ n: 0 });
-      await expect(plaidInboxService.resolveCancelled(first.rowId, { action: 'keep' })).rejects.toMatchObject({ statusCode: 404 });
+      await expect(plaidSettlementService.resolveCancelled(first.rowId, { action: 'keep' })).rejects.toMatchObject({ statusCode: 404 });
     });
 
     test('unreviewed pending rows follow the bank: removed when dropped, replaced in place when settled', async () => {

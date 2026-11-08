@@ -38,7 +38,7 @@ Phase 1 (the PoC) is archived at [`specs/archive/plaid-integration/spec.md`](../
 
 ## Guiding principles
 
-1. **The tracker is complete without Plaid; Plaid only makes it smarter.** Every feature works with manual entry. Plaid UI (header button, badges, coloured pills, inbox) appears only when Plaid is configured; while it isn't, no Plaid calls or background jobs run (check `isEnabled()` / `/api/plaid/status` first), and no screen depends on bank data.
+1. **The tracker is complete without Plaid or bank files; they only make it smarter.** Plaid and CSV imports complement the tracker; neither is ever required. Every feature works with manual entry. Plaid UI (header button, badges, coloured pills, inbox, bank balances) appears only when Plaid is configured (or, for 2.9, when bank files have been imported); while it isn't, no Plaid calls or background jobs run (check `isEnabled()` / `/api/plaid/status` first), and no screen depends on bank data.
 2. **Nothing becomes money data without the user's say-so.** Every bank transaction goes through the inbox. Rules only pre-fill (no auto-add, Q6). Bank-driven *updates* to records the user already created are allowed when they follow the bank faithfully and are logged: settled amounts (as built), current-month balances (Phase 4), and optionally loan payments from confirmed fixed expenses (3.5).
 3. **Never overwrite what the user typed.** Bank values fill empty slots, or update values that came from the bank; a hand-entered or hand-edited value wins, and the difference is shown. **Exceptions the owner chose:** a credit card expense's `posted_date` always follows the bank once the transaction is settled (Add, Match, a pending charge settling, or Plaid taking over a settled bank-file row), because statements are built from it; the purchase `date` is never changed. A bank date equal to the purchase date only replaces an entered posted date when the bank's dates are real posting dates (see Production findings).
 4. **Never waste a Trial slot.** No flow may require disconnect + reconnect when update mode can repair the same Item (`TRIAL_ITEM_LIMIT = 10`, never refunded).
@@ -204,7 +204,7 @@ What a week of real use showed; each one shaped 2.6–2.8 and the merge rules in
 |---|---|---|
 | **2** Foundation | Keep what Plaid sends; reconnect without new Trial slots; data freshness, bank file fallback, login-only banks (2.6–2.8, built); bank files without Plaid (2.9); inbox badge; refactors and hygiene | — |
 | **3** Money that isn't spending | Classify and record card payments, contributions, loan payments, refunds, transfers | 2.1, 2.4 |
-| **4** Balances | Investment and loan values from bank balances; credit card balance check | 2.1 (3.2 makes 4.2 sharper) |
+| **4** Balances | Investment and loan values from bank balances; credit card balance check; bank balances shown for debit accounts (4.3) | 2.1 (3.2 makes 4.2 sharper) |
 | **5** Less typing | Plaid categories, merchant rules, bulk actions | 2.1, 3.1 |
 | **6** Extra Plaid products | CIBC statements and due dates (Liabilities); Wealthsimple contributions and holdings (Investments); fresh-data button | 2.2, 4.2 / 3.3 |
 | **7** Webhooks (optional) | Near-instant sync for installs with a public hostname | 2.2 |
@@ -315,18 +315,10 @@ Planned now, because Phase 3 adds five more inbox actions and three more link ta
 4. **Pending backfill on upgrade (R9):** the v1.17.0 upgrade didn't show charges already pending (the sync cursor had passed them). Productize the one-off fix: on the first sync after `plaid_transactions_pending_v1`, call `/transactions/get` (last 21 days) per Item once and insert missing pending rows. Gated by `plaid_pending_backfill_done`.
 5. **Modified amounts on reviewed rows (R10):** Wealthsimple sends still-pending charges as settled, so a later amount change arrives as *modified* on an added/matched row, which is ignored today. Apply the `pending_changed` rule to any linked row: follow the bank if the expense still has the previous bank amount; log it. **Partly done (1.21.0):** a linked row still pending (e.g. from a Wealthsimple file) follows a *modified* that settles it, amount included; a *modified* amount on a linked row that is already settled is still ignored.
 6. **Refresh events (from the 1.21.4 audit):** ~~a sync whose only changes are re-attached rows or refreshed balances logs no `plaid_sync_completed`~~ **Done (1.24.6):** `syncItem` logs one `plaid_sync_completed` per bank whenever a sync brought transactions, re-attached rows or a changed balance of a mapped account (also the sync after a login, which used to be silent). Balances of unmapped investment/loan accounts are left for 4.1.
-7. **Posted date on every bank-reported card transaction (owner, 2026-11-08):** any credit card expense linked to a settled bank transaction should have a `posted_date`. Today it's inconsistent (found on the WS Visa):
-
-   | How the expense got there | Posted date today |
-   |---|---|
-   | Hand-entered | The form's suggestion (next business day), sometimes left empty |
-   | Added from the Inbox, settled | The bank's `date`, only when later than the chosen purchase date |
-   | Added while pending, then settled | Plaid's date (CIBC); **none** when settled from the balance (`settleFromBalance` passes no date) or by a file |
-   | Older recurring entries | None |
-
-   - **CIBC (easy):** Plaid sends the posting date (`date`, with `authorized_date` as the purchase date), and the CIBC file has posting dates. Set it whenever the row is settled, also when it equals the purchase date (today it's skipped unless later).
-   - **Wealthsimple (harder):** no source has a real posting date. Plaid's single date is the purchase day or the next day, the file has only the purchase date, and a balance settlement only says "posted before this sync". Proposed rule: the form's rule (next business day after purchase, `utils/businessDays`), capped at the date the settlement was seen; mark it as estimated if the UI needs to tell them apart.
-   - **Never overwrite** a posted date the user entered or edited (principle 3). Backfill linked settled rows once.
+7. **Posted date on every bank-reported card transaction (owner, 2026-11-08):** any credit card expense linked to a settled bank transaction should have a `posted_date`.
+   - **Already done (1.24.0–1.24.1):** Match and settlements set the posted date from the settled bank transaction (`postedDateChange`; a bank posting date replaces an estimate). A same-day date only clears a posted date where the bank reports real posting dates (CIBC, `bankReportsPostingDates`).
+   - **Still missing (Wealthsimple):** no source has a real posting date. Plaid's single date is the purchase day or the next day, the file has only the purchase date, and a balance settlement only says "posted before this sync" (`settleFromBalance` passes no date). So Sobeys and First Choice (added while pending, settled from the balance) have none, while hand-entered charges have the form's estimate. Proposed: when a Wealthsimple charge settles without a posting date, use the form's rule (next business day after purchase, `utils/businessDays`), capped at the date the settlement was seen; never replace a posted date already set.
+   - **Also:** older recurring entries linked later have none; backfill linked settled rows once.
    - **Why it matters:** the card balance as of today and the statement a charge lands on are both computed from the posted date, and the next-statement marker only works with one.
 8. **Balance check: hand-entered charges posting after today (CIBC):** a hand-entered card expense gets the next business day as its posted date, so the tracker's balance as of today leaves it out. CIBC's balance includes pending charges, so with fresh bank data the check would show the amount as unexplained until the posted date (seen 2026-11-08: three Nov 7 charges posting Nov 9; it matched only because CIBC's data was stale). For banks whose balance includes pending, list tracker entries purchased by today but posting later as a known cause ("pending at the bank, posts Nov 9") instead.
 
@@ -622,9 +614,24 @@ The budget plan already has monthly allocations ("RRSP $300", optionally linked 
 
 **Tests:** both bank styles; future-dated separation; settling window.
 
+### 4.3 Bank balances on the Financial page (information only)
+
+> **Status: planned** (owner, 2026-11-08). Plaid already stores a balance for every account on every sync (`/accounts/get`), e.g. WS Shared ••5070 $712.52 (current only; Wealthsimple sends no available balance). Since 1.24.6 a change is logged for mapped accounts, but it isn't shown anywhere outside the credit card check.
+
+**Requirements**
+1. For a **debit / chequing** payment method mapped to a bank account, the Financial page shows the bank's balance: "Bank: $712.52 · as of 6:40 am" (available balance too when the bank sends it). Several accounts mapped to one payment method are summed.
+2. **Information only:** no reconciliation, no difference, no causes (the tracker keeps no running balance for debit methods). Credit cards keep the 4.2 check.
+3. Shown only when Plaid is configured and the bank has sent a balance; stale bank data (2.6) is flagged ("may be out of date"). Without Plaid nothing changes (principle 1).
+4. Refreshes on the `plaid` sync event, like the card check.
+
+**Design (sketch):** extend `GET /api/plaid/card-balances` (or a sibling `GET /api/plaid/account-balances`) with mapped non-credit accounts `{ paymentMethodId, bank: { current, available, asOf, currency }, bankError }`; render it next to the payment method row (reuse `useCardBalanceChecks` / `BankLinkedBadge`).
+
+**Later, optional:** cash on hand in the Budget Plan, or a low-balance warning before a fixed expense is due. Not part of 4.3.
+
 ### Phase 4 exit criteria
 - [ ] Production RRSP and LOC values update from bank balances without overwriting a hand-entered month.
 - [x] Card balance check matches the Phase 0 manual result. *(Both cards matched to the cent in 1.19.0; differences since then are fully explained by causes.)*
+- [ ] 4.3 the WS Shared bank balance shows on the Financial page; nothing changes with Plaid not configured.
 - [ ] Docs per the matrix.
 
 ## Phase 5: Less typing

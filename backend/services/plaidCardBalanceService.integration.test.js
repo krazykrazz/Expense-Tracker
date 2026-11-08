@@ -315,6 +315,19 @@ describe('plaidCardBalanceService', () => {
     expect(await cardCheck()).toMatchObject({ difference: -12.41, unexplained: 0 });
   });
 
+  test('settleFromBalance: when the balance matches the tracker, the last pending charge posted (Sobeys case)', async () => {
+    const groceries = await addExpense('2026-11-02', 12.41, 'Groceries');
+    await stage('t-groceries', { amount: 12.41, date: '2026-11-02', status: 'added', pending: 1, expenseId: groceries });
+    await setBank({ current: 12.41 });
+    expect(await cardCheck()).toMatchObject({ status: 'match', difference: 0 });
+
+    const settlements = await plaidCardBalanceService.settleFromBalance(itemId);
+
+    expect(settlements).toEqual([expect.objectContaining({ expenseId: groceries, settled: true })]);
+    expect(await get("SELECT pending FROM plaid_transactions WHERE transaction_id = 't-groceries'")).toEqual({ pending: 0 });
+    expect((await cardCheck()).causes).toEqual([]);
+  });
+
   test('settleFromBalance does nothing for banks whose balance includes pending charges, or when unsure', async () => {
     const haircut = await addExpense('2026-11-02', 45.41, 'Haircut');
     await stage('t-haircut', { amount: 45.41, date: '2026-11-02', status: 'added', pending: 1, expenseId: haircut });
@@ -372,6 +385,9 @@ describe('bank balance helpers', () => {
     expect(postedFromBalance({ difference: -16.41, causes }).map(c => c.transactionId)).toEqual([1, 2]);
     // All still pending: nothing posted
     expect(postedFromBalance({ difference: -72.22, causes })).toEqual([]);
+    // The balance matches the tracker: every one of them posted
+    expect(postedFromBalance({ difference: -4, causes }).map(c => c.transactionId)).toEqual([1, 2, 3]);
+    expect(postedFromBalance({ difference: 0, causes: [settling(9, 12.41)] }).map(c => c.transactionId)).toEqual([9]);
   });
 
   test('postedFromBalance settles nothing when unsure', () => {

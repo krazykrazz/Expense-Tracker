@@ -191,6 +191,8 @@ What a week of real use showed; each one shaped 2.6–2.8 and the merge rules in
 | Pairing quality on real data | WS card 51/51 and chequing 39/39 already-received rows paired exactly | Exact amount ±3 days is enough; the 25% tolerance only applies when one side is pending |
 | Place names | Raw bank text matched the saved place for 32 of 78 reviewed rows; with learned places and the existing-place prefix, 57 of 78 | Inbox place suggestions (shipped in 1.21.1, a first step towards 5.2) |
 | Plaid Dashboard limits on Trial | The Institution Status page isn't available on the Trial plan | 2.6 uses the API (`/item/get`, `/institutions/get_by_id`) |
+| CIBC login fetches are unreliable | Nov 7 14:45: the Log in again flow ran as designed (refresh refused → login) but Plaid didn't fetch; Nov 7 02:37, the same sequence did. The login still renewed the session, so the daily "login required" came later | Don't rely on 2.8 for CIBC data; the file import is the dependable path (Q15) |
+| **RBC can't be connected** | Nov 8: Link reported RBC's sign-in verification (MFA) as incompatible. No Item was created, Trial counter unchanged (3) | 2.9: file import into a payment method without Plaid |
 | **Wealthsimple's Plaid `date` is mostly the purchase date** (Nov 7) | WS VISA: 45 of 58 rows have no `authorized_date`, 19 fall on a Saturday or Sunday, no `pending_transaction_id` ever; CIBC: 25 of 30 posted a day after authorization, none on a weekend | 1.24.1: a same-day date is evidence only from a bank whose dates are posting dates (`bankReportsPostingDates`: some later than the authorization date, at most 1 in 10 on a weekend) |
 | **Plaid taking over a file row didn't update the posted date** (Nov 7 spot check) | Dollarama, added from a WS file dated Nov 5; Plaid took the row over with Nov 6, but the expense kept no posted date (only pending file rows passed dates on) | Fixed: a settled, linked file row passes Plaid's later date on (`postedDateOnly` settlement, `posted_date` log action) |
 
@@ -200,7 +202,7 @@ What a week of real use showed; each one shaped 2.6–2.8 and the merge rules in
 
 | Phase | Goal | Depends on |
 |---|---|---|
-| **2** Foundation | Keep what Plaid sends; reconnect without new Trial slots; data freshness, bank file fallback, login-only banks (2.6–2.8, built); inbox badge; refactors and hygiene | — |
+| **2** Foundation | Keep what Plaid sends; reconnect without new Trial slots; data freshness, bank file fallback, login-only banks (2.6–2.8, built); bank files without Plaid (2.9); inbox badge; refactors and hygiene | — |
 | **3** Money that isn't spending | Classify and record card payments, contributions, loan payments, refunds, transfers | 2.1, 2.4 |
 | **4** Balances | Investment and loan values from bank balances; credit card balance check | 2.1 (3.2 makes 4.2 sharper) |
 | **5** Less typing | Plaid categories, merchant rules, bulk actions | 2.1, 3.1 |
@@ -372,15 +374,35 @@ Planned now, because Phase 3 adds five more inbox actions and three more link ta
 - **Cost:** `/transactions/refresh` works on the Trial plan; on paid plans it may be billed per call. It's only ever called from the button, never automatically.
 - **Fallback:** the file import (2.7) works whatever the bank's login state.
 
+### 2.9 Bank files without Plaid (banks Plaid can't connect)
+
+> **Status: planned** (owner, 2026-11-08). RBC can't be connected: Plaid reports its sign-in verification (MFA) as unsupported for a classic connection. RBC lets you download transactions as CSV, but 2.7 imports files only into a Plaid account (`POST /accounts/:id/import-file` needs a mapped `plaid_accounts` row of the current environment), so there is no way in for them.
+
+**Requirements**
+1. Import a bank CSV into a **payment method** directly, with no Plaid connection: Financial page (or Bank Import) → payment method → **Import file**. Same preview / start date / Import flow as 2.7.
+2. Rows go to the same Inbox (Add, Match, Ignore, pending, place and category suggestions) with the "From file" tag, and count in the card balance check where a balance is known (none for a file-only card; the check shows "no bank balance").
+3. The file ↔ file merge rules of 2.7 apply (same key → update, pending → completed in place). If the bank is connected through Plaid later, Plaid takes the file rows over as in 2.7.
+4. Works with Plaid not configured at all (principle 1): Inbox and file import available without keys.
+5. New formats per bank as samples arrive: **RBC** first (chequing and Visa exports); the format set stays in `utils/bankFileImport.js`.
+
+**Design (sketch)**
+- A synthetic "file-only" account per payment method instead of a Plaid account: either `plaid_accounts` rows with no item (`plaid_item_id` NULL, `source = 'file'`, `payment_method_id` set; needs a table rebuild because `plaid_item_id` is NOT NULL), or a new table. See Q17; the inbox, balance-check and takeover queries already join through `plaid_accounts`.
+- `importFile` takes `{ paymentMethodId }` or `{ plaidAccountId }`; the environment check applies only to Plaid accounts. Account-number checks use the payment method's last four digits when set.
+- Takeover when the bank is connected later: `_findFileRow` already matches by account; map the new Plaid account to the same payment method and move the file-only account's rows (or match across both accounts for that payment method).
+- Bank Import UI is currently hidden without Plaid: show the Inbox (and Import file) whenever file-only accounts exist.
+
+**Open:** Q17.
+
 ### Phase 2 exit criteria
 - [ ] 2.1 capture and backfill in production; PFC and balances visible in the DB for new rows. *(Balances done with 4.2; PFC and the other transaction fields not started.)*
 - [x] 2.2 an expired login repaired with Reconnect, without a new Trial slot. *(Verified in production on CIBC instead of a Sandbox `reset_login`; consent expiry still open, low value.)*
 - [ ] 2.3 badge counts match the inbox.
 - [ ] R1–R8 merged; no Plaid source file over ~350 lines. *(Not started; files have grown: `plaidRepository` 922, `plaidInboxService` 652, `plaidService` 618 lines.)*
-- [ ] 2.5 items merged. *(R10 partly done; the rest not started.)*
 - [x] 2.6 a stalled bank shows Not updating, from Plaid's own fetch time.
 - [x] 2.7 Wealthsimple and CIBC files imported in production, merged with Plaid in either order without duplicates.
-- [ ] 2.8 Log in again brings CIBC transactions without a new Trial slot. *(The mechanism was verified by hand on Nov 6: refresh → `ITEM_LOGIN_REQUIRED` → Reconnect brought the missing transactions. #462 shipped in 1.22.0: tick once the button has brought CIBC transactions in production in one go.)*
+- [ ] 2.8 Log in again brings CIBC transactions without a new Trial slot. *(The mechanism was verified by hand on Nov 6: refresh → `ITEM_LOGIN_REQUIRED` → Reconnect brought the missing transactions. #462 shipped in 1.22.0: tick once the button has brought CIBC transactions in production in one go. On Nov 7 a login brought nothing; see Production findings.)*
+- [ ] 2.9 an RBC CSV imported into a payment method with no Plaid connection, reviewed in the Inbox.
+- [ ] 2.5 items merged. *(R10 partly done; 2.5.6 done in 1.24.6; 2.5.7–8 added 2026-11-08.)*
 - [ ] Docs per the [matrix](#documentation-matrix); full-suite validation.
 
 ## Phase 3: Money that isn't spending
@@ -742,3 +764,4 @@ Every PR updates the docs its change touches. Recheck after each phase.
 | Q14 | R7: recalculate `current_balance` on every change, or retire it as a stored balance? | Open; decide in 2.4 |
 | Q15 | CIBC only updates during a login: keep scheduled syncs for it, or treat it as "log in to update" (no scheduled syncs, no daily Needs login alert)? | Open; scheduled syncs kept for now (cheap, and they detect the expired login) |
 | Q16 | Webhooks (Phase 7) now that both banks are Classic connections with Plaid-side fetch limits? | Open; low value until a bank fetches in the background reliably |
+| Q17 | 2.9: where file-only accounts live (`plaid_accounts` without an item, after a table rebuild, vs a separate table), and whether a file-only card should take a balance from the file or a statement for the balance check | Open; leaning to `plaid_accounts` rows (the Inbox, balance check and takeover already join through it); no balance at first |

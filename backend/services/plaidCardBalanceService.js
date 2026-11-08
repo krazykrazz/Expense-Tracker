@@ -331,7 +331,8 @@ class PlaidCardBalanceService {
     const settlements = [];
     for (const card of cards) {
       if (!card.itemIds.includes(plaidItemId) || card.itemIds.length > 1) continue;
-      if (card.status !== 'differs' || !card.bank || card.bank.includesPending || card.bankError) continue;
+      // No status check: a $0 difference with charges still marked pending means all of them posted
+      if (!card.bank || card.bank.includesPending || card.bankError) continue;
       const posted = postedFromBalance(card);
       if (posted.length === 0) continue;
       const settled = await plaidRepository.markSettled(posted.map(cause => cause.transactionId));

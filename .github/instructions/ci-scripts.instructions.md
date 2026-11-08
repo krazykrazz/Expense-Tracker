@@ -23,7 +23,7 @@ Other scripts: `health-check.sh` and `rollback.sh` (used by the Deployment Healt
 
 ## Workflow Facts
 
-- Required checks: `Backend Tests Status` and `Frontend Tests Status`. A path filter (`dorny/paths-filter`) skips irrelevant jobs; docs-only pushes don't trigger CI at all.
+- Required checks: `Backend Tests Status` and `Frontend Tests Status`. A path filter (`dorny/paths-filter`) skips irrelevant jobs. Documentation (`**/*.md`, `docs/**`, `specs/**`, `.github/instructions/**`, `.github/skills/**`): pushes to `main` don't trigger CI; PRs always trigger it (never add `paths-ignore` to `pull_request`, or the required checks stay pending) and skip every test job. Keep the `push` `paths-ignore` list and the `code` filter in sync.
 - The repo enforces an Actions allowlist (`actions/*`, `docker/*`, `aquasecurity/*`, `dorny/paths-filter`); other third-party actions cause `startup_failure`.
 - GHCR build/push only runs on pushes to `main`, never on PRs. Release commits are created via `gh api graphql createCommitOnBranch` (signed) and auto-merged with `RELEASE_PAT`.
 - `[skip-budget]` in the commit message bypasses the budget check only on `push` events.

@@ -194,7 +194,7 @@ These can be set when manually triggering the workflow from the Actions tab. The
 
 > **Note**: Feature branches do **not** trigger CI via direct pushes. CI runs on feature branches through the `pull_request` event when a PR is opened against `main`. This matches the branch protection model where all changes go through PRs.
 
-Both `push` and `pull_request` triggers use `paths-ignore` to skip CI for documentation-only changes (`docs/**`, `*.md`, `CHANGELOG.md`).
+Documentation is any `*.md` file plus `docs/**`, `specs/**`, `.github/instructions/**` and `.github/skills/**`. A documentation-only **push to `main`** doesn't run CI at all (`paths-ignore`; no tests, no image). **Pull requests always run CI**: `main` requires `Backend Tests Status` and `Frontend Tests Status`, and a workflow skipped by `paths-ignore` would leave them pending. For a documentation-only PR the path filter skips every test job, and the two status jobs report the tests as skipped (passed), so the PR can merge after about a minute.
 
 Runs are grouped by workflow and ref with `cancel-in-progress: true`, so a new push to a PR branch cancels the previous run for that branch.
 
@@ -213,7 +213,8 @@ path-filter:
 - Evaluates which files changed using `dorny/paths-filter@v4`
 - Sets outputs for backend, frontend, and shared infrastructure changes
 - Generates workflow summary showing which tests will run
-- Detects "empty" changes (nothing matched any filter) and ensures all tests run in that case
+- Detects documentation-only changes (a second filter, `code`, with `predicate-quantifier: every`: any file that isn't documentation) and skips every test job for them
+- Detects changes that are neither documentation nor backend/frontend/shared (output `empty_pr`) and runs all tests in that case
 
 **Path Patterns:**
 - **Backend**: `backend/**`
@@ -225,7 +226,8 @@ path-filter:
 - Backend-only changes → Skip frontend tests
 - Shared infrastructure changes → Run all tests
 - Mixed changes → Run all tests
-- No matching changes (e.g. only `eslint.config.js` or `.github/dependabot.yml`) → Run all tests (fail-safe)
+- Documentation only (`*.md`, `docs/**`, `specs/**`, `.github/instructions/**`, `.github/skills/**`) → Skip all tests; status jobs pass
+- Other unmatched changes (e.g. only `eslint.config.js` or `.github/dependabot.yml`) → Run all tests (fail-safe)
 - Path filter job failed → Run all tests (fail-safe)
 
 #### Lockfile Integrity
@@ -672,7 +674,7 @@ Vitest fails the run when it reports **Unhandled Errors** (e.g. a rejected promi
 - Workflow file is in `.github/workflows/`
 - YAML syntax is valid
 - GitHub Actions is enabled for the repository
-- Changes are not exclusively in `paths-ignore` paths (`docs/**`, root `*.md`, `CHANGELOG.md`)
+- For a push to `main`: changes are not exclusively documentation (`**/*.md`, `docs/**`, `specs/**`, `.github/instructions/**`, `.github/skills/**`)
 - A newer push to the same branch cancels the older run (`cancel-in-progress`)
 
 #### Slow CI Runs

@@ -234,6 +234,7 @@ Each sync also stores the balance the bank reports for every account. For credit
     - *At the bank, not in the tracker:* a charge or credit still waiting in the Inbox, or one that was **ignored**, such as a refund that was never recorded. **Open Inbox** goes straight there;
     - *In the tracker, not at the bank:* an expense or payment since the bank's history starts (about 30 days before connecting) that no bank transaction is linked to: a typo, the wrong card, a duplicate, or not posted yet;
     - *Still pending:* an expense added from a pending charge, on a bank whose balance leaves pending charges out;
+    - *Posts later in the tracker:* a pending charge on a bank whose balance includes pending charges (CIBC), matched to an expense whose posted date is after today. A charge entered by hand gets the next business day as its posted date, so the tracker counts it from then while the bank counts it already;
     - *Cancelled by the bank:* an expense added from a pending charge the bank then dropped (review it in the Inbox);
     - *Fixed expense:* a charge confirmed as a fixed expense, which the card balance doesn't include;
     - *Credit balance:* the card is in credit at the bank, while the tracker's balance stops at $0;

@@ -315,6 +315,18 @@ describe('plaidCardBalanceService', () => {
     expect(await cardCheck()).toMatchObject({ difference: -12.41, unexplained: 0 });
   });
 
+  test('a pending charge the bank counts (CIBC) but the tracker counts from a later posted date explains the difference', async () => {
+    // Hand-entered yesterday with the form's estimated posted date (the next business day, after today)
+    const scone = await addExpense('2026-11-02', 25, 'Rocket Scone', { postedDate: '2026-11-04' });
+    await stage('t-scone', { amount: 25, date: '2026-11-02', status: 'matched', pending: 1, expenseId: scone, name: 'ROCKET SCONE' });
+    await setBank({ current: 0, available: 975, limit: 1000 });
+
+    const card = await cardCheck();
+
+    expect(card).toMatchObject({ status: 'differs', tracker: 0, difference: 25, unexplained: 0 });
+    expect(card.causes).toEqual([expect.objectContaining({ type: 'posts_later', name: 'ROCKET SCONE', effect: 25, trackerPostedDate: '2026-11-04' })]);
+  });
+
   test('settleFromBalance: when the balance matches the tracker, the last pending charge posted (Sobeys case)', async () => {
     const groceries = await addExpense('2026-11-02', 12.41, 'Groceries');
     await stage('t-groceries', { amount: 12.41, date: '2026-11-02', status: 'added', pending: 1, expenseId: groceries });

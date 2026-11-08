@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.25.0',
+    date: 'November 8, 2026',
+    added: [],
+    changed: ['Inbox count badge on the bank icon and bank balances for linked chequing accounts on the Financial page'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.24.7',
     date: 'November 8, 2026',
     added: [],

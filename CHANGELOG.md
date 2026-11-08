@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.25.0] - 2026-11-08
+
+### Inbox count badge on the bank icon and bank balances for linked chequing accounts on the Financial page
+
 ## [1.24.7] - 2026-11-08
 
 ### Balance check explains pending charges that post later in the tracker

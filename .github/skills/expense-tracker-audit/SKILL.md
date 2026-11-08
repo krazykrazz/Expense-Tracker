@@ -204,7 +204,7 @@ Past confirmed-true patterns on THIS repo:
   - `-Number('')` is `-0` and passes `Number.isFinite`: CSV money columns must treat an empty
     cell as NaN (`amountOf` in `utils/bankFileImport.js`), or blank rows import as $0.00.
   - `if (!err.statusCode) err.statusCode = 400` around service calls labels database errors as
-    bad input; `asInputError` in `plaidInboxService` leaves errors with a sqlite `code` as 500.
+    bad input; `asInputError` in `plaidInboxSupport` leaves errors with a sqlite `code` as 500.
 Past confirmed-false patterns (subagent hallucinations on THIS repo):
 - "Duplicate `findById()` in `loanPaymentRepository.js`" — FALSE, there is only
   one `findById()` (line 98). The two methods at lines 47/68 are `findByLoan` and

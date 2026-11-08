@@ -4,7 +4,7 @@ const plaidRepository = require('../repositories/plaidRepository');
 const paymentMethodRepository = require('../repositories/paymentMethodRepository');
 const settingsRepository = require('../repositories/settingsRepository');
 const activityLogService = require('./activityLogService');
-const plaidInboxService = require('./plaidInboxService');
+const plaidSettlementService = require('./plaidSettlementService');
 const plaidCardBalanceService = require('./plaidCardBalanceService');
 const { runWithTabId } = require('../utils/requestContext');
 const { encrypt, decrypt } = require('../utils/tokenCrypto');
@@ -369,14 +369,20 @@ class PlaidService {
         try {
           const batch = await this._fetchAllPages(accessToken, item.syncCursor);
           const { settlements, ...counts } = await plaidRepository.applySyncBatch(id, batch);
-          logger.info('Plaid sync completed', { plaidItemId: id, ...counts, settled: settlements.length });
           const balancesFresh = await this._refreshBalances(id, accessToken);
           await this._refreshHealth(id, accessToken);
-          await this._logSync(item, source, counts, await this._balanceChanges(id, balancesBefore));
+          const balanceChanges = await this._balanceChanges(id, balancesBefore);
+          // Automatic sync runs every 30 minutes per bank: only a sync that changed something is worth an info line
+          const changed = counts.added + counts.updated + counts.removed + counts.reattached + counts.fromFile
+            + settlements.length + balanceChanges.length > 0;
+          logger[changed ? 'info' : 'debug']('Plaid sync completed', {
+            plaidItemId: id, ...counts, settled: settlements.length, balancesChanged: balanceChanges.length
+          });
+          await this._logSync(item, source, counts, balanceChanges);
           if (settlements.length > 0) {
             // After the batch is committed: expense updates go through expenseService (validation, card balance, log),
             // outside any request's tab context so every tab (including one that pressed Sync now) refreshes
-            await runWithTabId(null, () => plaidInboxService.applySettlements(settlements));
+            await runWithTabId(null, () => plaidSettlementService.applySettlements(settlements));
           }
           // Only against a balance fetched just now: an old one would settle the wrong charges, irreversibly
           if (balancesFresh) await this._settleFromBalance(id);
@@ -418,7 +424,7 @@ class PlaidService {
       const settlements = await plaidCardBalanceService.settleFromBalance(id);
       if (settlements.length > 0) {
         logger.info('Pending charges settled from the bank balance', { plaidItemId: id, settled: settlements.length });
-        await runWithTabId(null, () => plaidInboxService.applySettlements(settlements));
+        await runWithTabId(null, () => plaidSettlementService.applySettlements(settlements));
       }
     } catch (err) {
       logger.warn('Settling pending charges from the bank balance failed', { plaidItemId: id, error: err.message });

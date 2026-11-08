@@ -194,7 +194,7 @@ describe('plaidCardBalanceService', () => {
 
   test('bank file rows are not in the bank\'s balance until Plaid sends them: added ones are a cause, unreviewed or ignored ones are not', async () => {
     const plaidFileImportService = require('./plaidFileImportService');
-    const plaidInboxService = require('./plaidInboxService');
+    const plaidReviewService = require('./plaidReviewService');
     const header = 'transaction_date,transaction_type,status,merchant,amount,currency,notes,category';
     await plaidFileImportService.importFile(cardAccountId, {
       csv: [header, '2026-11-02,Purchase,Completed,Grocer,-50.00,CAD,,', '2026-11-03,Refund,Completed,Book Store,15.50,CAD,,'].join('\n'),
@@ -207,8 +207,8 @@ describe('plaidCardBalanceService', () => {
 
     const grocer = await get("SELECT id FROM plaid_transactions WHERE name = 'Grocer'");
     const refund = await get("SELECT id FROM plaid_transactions WHERE name = 'Book Store'");
-    await plaidInboxService.addAsExpense(grocer.id, { type: 'Groceries' });
-    await plaidInboxService.ignore(refund.id);
+    await plaidReviewService.addAsExpense(grocer.id, { type: 'Groceries' });
+    await plaidReviewService.ignore(refund.id);
 
     const card = await cardCheck();
     expect(card).toMatchObject({ tracker: 50, difference: -50, unexplained: 0 });

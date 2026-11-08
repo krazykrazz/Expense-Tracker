@@ -14,6 +14,8 @@ jest.mock('./activityLogService');
 const { getDatabase } = require('../database/db');
 const activityLogService = require('./activityLogService');
 const plaidInboxService = require('./plaidInboxService');
+const plaidReviewService = require('./plaidReviewService');
+const plaidSettlementService = require('./plaidSettlementService');
 const expenseService = require('./expenseService');
 const fixedExpenseService = require('./fixedExpenseService');
 const incomeService = require('./incomeService');
@@ -164,7 +166,7 @@ describe('plaidInboxService', () => {
         expect.objectContaining({ id: insured, amount: 5.5, originalCost: 25.5, chargedAmount: 25.5 })
       ]);
 
-      await plaidInboxService.matchToExpense(id, insured);
+      await plaidReviewService.matchToExpense(id, insured);
       const expenses = await expenseService.getExpenses({ year: 2026, month: 10 });
       expect(expenses.find(e => e.id === insured)).toMatchObject({ amount: 5.5, original_cost: 25.5, bankLink: expect.objectContaining({ status: 'matched', amount: 25.5 }) });
     });
@@ -184,21 +186,21 @@ describe('plaidInboxService', () => {
     test('creates exactly one expense from the bank transaction and links it', async () => {
       const id = await stage('t1');
 
-      const { transaction, expense } = await plaidInboxService.addAsExpense(id, { type: 'Dining Out', notes: ' latte ' }, 'tab-1');
+      const { transaction, expense } = await plaidReviewService.addAsExpense(id, { type: 'Dining Out', notes: ' latte ' }, 'tab-1');
 
       expect(expense).toMatchObject({ date: '2026-10-10', place: 'Coffee Shop', amount: 25.5, type: 'Dining Out', payment_method_id: DEBIT, notes: 'latte', posted_date: null });
       expect(transaction).toMatchObject({ status: 'added', expenseId: expense.id });
       expect((await get('SELECT COUNT(*) AS n FROM expenses')).n).toBe(1);
       expect(activityLogService.logEvent).toHaveBeenCalledWith('expense_added', 'expense', expense.id, expect.any(String), expect.objectContaining({ tabId: 'tab-1' }));
 
-      await expect(plaidInboxService.addAsExpense(id, { type: 'Dining Out' })).rejects.toMatchObject({ statusCode: 409 });
+      await expect(plaidReviewService.addAsExpense(id, { type: 'Dining Out' })).rejects.toMatchObject({ statusCode: 409 });
       expect((await get('SELECT COUNT(*) AS n FROM expenses')).n).toBe(1);
     });
 
     test('keeps the bank posting date on credit card expenses and honours edits', async () => {
       const id = await stage('t1', { accountId: cardAccountId });
 
-      const { expense } = await plaidInboxService.addAsExpense(id, { type: 'Groceries', place: ' Corner Store ', date: '2026-10-09' });
+      const { expense } = await plaidReviewService.addAsExpense(id, { type: 'Groceries', place: ' Corner Store ', date: '2026-10-09' });
 
       expect(expense).toMatchObject({ date: '2026-10-09', posted_date: '2026-10-12', place: 'Corner Store', payment_method_id: CREDIT_CARD });
     });
@@ -209,13 +211,13 @@ describe('plaidInboxService', () => {
       ['an invalid category', {}, { type: 'Nope' }, 400],
     ])('rejects %s', async (_label, stageOptions, input, statusCode) => {
       const id = await stage('t1', stageOptions);
-      await expect(plaidInboxService.addAsExpense(id, input)).rejects.toMatchObject({ statusCode });
+      await expect(plaidReviewService.addAsExpense(id, input)).rejects.toMatchObject({ statusCode });
       expect((await get('SELECT status FROM plaid_transactions WHERE id = ?', [id])).status).toBe('new');
     });
 
     test('requires a mapped account', async () => {
       const id = await stage('t1', { accountId: unmappedAccountId });
-      await expect(plaidInboxService.addAsExpense(id, { type: 'Other' })).rejects.toMatchObject({ statusCode: 400 });
+      await expect(plaidReviewService.addAsExpense(id, { type: 'Other' })).rejects.toMatchObject({ statusCode: 400 });
     });
 
     test('undoes the expense when a sync changed the bank row meanwhile', async () => {
@@ -223,7 +225,7 @@ describe('plaidInboxService', () => {
       const id = await stage('t1');
       jest.spyOn(plaidRepository, 'resolveTransaction').mockResolvedValueOnce(false);
 
-      await expect(plaidInboxService.addAsExpense(id, { type: 'Dining Out' })).rejects.toMatchObject({ statusCode: 409 });
+      await expect(plaidReviewService.addAsExpense(id, { type: 'Dining Out' })).rejects.toMatchObject({ statusCode: 409 });
 
       expect((await get('SELECT COUNT(*) AS n FROM expenses')).n).toBe(0);
       expect(activityLogService.logEvent).not.toHaveBeenCalledWith('plaid_transaction_updated', expect.anything(), expect.anything(), expect.anything(), expect.objectContaining({ action: 'add' }));
@@ -233,7 +235,7 @@ describe('plaidInboxService', () => {
       const id = await stage('t1');
       jest.spyOn(expenseService, 'createExpense').mockRejectedValueOnce(Object.assign(new Error('SQLITE_BUSY: database is locked'), { code: 'SQLITE_BUSY' }));
 
-      const err = await plaidInboxService.addAsExpense(id, { type: 'Dining Out' }).catch(e => e);
+      const err = await plaidReviewService.addAsExpense(id, { type: 'Dining Out' }).catch(e => e);
 
       expect(err.statusCode).toBeUndefined();
       expect((await get('SELECT status FROM plaid_transactions WHERE id = ?', [id])).status).toBe('new');
@@ -245,7 +247,7 @@ describe('plaidInboxService', () => {
       const expenseId = await addExpense({ place: 'Coffee', amount: 25.5 });
       const id = await stage('t1');
 
-      const { transaction } = await plaidInboxService.matchToExpense(id, expenseId);
+      const { transaction } = await plaidReviewService.matchToExpense(id, expenseId);
 
       expect(transaction).toMatchObject({ status: 'matched', expenseId });
       expect(await get('SELECT place, amount FROM expenses WHERE id = ?', [expenseId])).toEqual({ place: 'Coffee', amount: 25.5 });
@@ -261,9 +263,9 @@ describe('plaidInboxService', () => {
       const expenseId = await addExpense();
       const first = await stage('t1');
       const second = await stage('t2');
-      await plaidInboxService.matchToExpense(first, expenseId);
+      await plaidReviewService.matchToExpense(first, expenseId);
 
-      await expect(plaidInboxService.matchToExpense(second, expenseId)).rejects.toMatchObject({ statusCode: 409 });
+      await expect(plaidReviewService.matchToExpense(second, expenseId)).rejects.toMatchObject({ statusCode: 409 });
       expect((await get('SELECT status FROM plaid_transactions WHERE id = ?', [second])).status).toBe('new');
     });
 
@@ -271,8 +273,8 @@ describe('plaidInboxService', () => {
       const cardExpense = await addExpense({ paymentMethodId: CREDIT_CARD, method: 'Credit Card' });
       const id = await stage('t1');
 
-      await expect(plaidInboxService.matchToExpense(id, cardExpense)).rejects.toMatchObject({ statusCode: 400 });
-      await expect(plaidInboxService.matchToExpense(id, 99999)).rejects.toMatchObject({ statusCode: 404 });
+      await expect(plaidReviewService.matchToExpense(id, cardExpense)).rejects.toMatchObject({ statusCode: 400 });
+      await expect(plaidReviewService.matchToExpense(id, 99999)).rejects.toMatchObject({ statusCode: 404 });
     });
   });
 
@@ -285,7 +287,7 @@ describe('plaidInboxService', () => {
       const expenseId = await cardExpense();
       const id = await cardRow();
 
-      const result = await plaidInboxService.matchToExpense(id, expenseId);
+      const result = await plaidReviewService.matchToExpense(id, expenseId);
 
       expect(await expenseRow(expenseId)).toEqual({ date: '2026-10-31', posted_date: '2026-11-02' });
       expect(result.postedDateUpdated).toBe(true);
@@ -303,7 +305,7 @@ describe('plaidInboxService', () => {
       const expenseId = await cardExpense({ posted_date: '2026-11-04' });
       const id = await cardRow();
 
-      await plaidInboxService.matchToExpense(id, expenseId);
+      await plaidReviewService.matchToExpense(id, expenseId);
 
       expect(await expenseRow(expenseId)).toEqual({ date: '2026-10-31', posted_date: '2026-11-02' });
     });
@@ -316,7 +318,7 @@ describe('plaidInboxService', () => {
       const expenseId = await cardExpense({ date: '2026-10-30', posted_date: '2026-11-02' });
       const id = await cardRow({ date: '2026-10-30', authorizedDate: null });
 
-      await plaidInboxService.matchToExpense(id, expenseId);
+      await plaidReviewService.matchToExpense(id, expenseId);
 
       expect(await expenseRow(expenseId)).toEqual({ date: '2026-10-30', posted_date: null });
     });
@@ -327,7 +329,7 @@ describe('plaidInboxService', () => {
       const expenseId = await cardExpense({ date: '2026-10-30', posted_date: '2026-11-02' });
       const id = await cardRow({ date: '2026-10-30', authorizedDate: null });
 
-      const result = await plaidInboxService.matchToExpense(id, expenseId);
+      const result = await plaidReviewService.matchToExpense(id, expenseId);
 
       expect(await expenseRow(expenseId)).toEqual({ date: '2026-10-30', posted_date: '2026-11-02' });
       expect(result.postedDateUpdated).toBe(false);
@@ -337,7 +339,7 @@ describe('plaidInboxService', () => {
       const expenseId = await cardExpense({ date: '2026-10-30', posted_date: '2026-11-02' });
       const id = await cardRow({ date: '2026-10-30', authorizedDate: null });
 
-      await plaidInboxService.matchToExpense(id, expenseId);
+      await plaidReviewService.matchToExpense(id, expenseId);
 
       expect(await expenseRow(expenseId)).toEqual({ date: '2026-10-30', posted_date: '2026-11-02' });
     });
@@ -347,7 +349,7 @@ describe('plaidInboxService', () => {
       const expenseId = await cardExpense({ date: '2026-10-30', posted_date: '2026-11-04' });
       const id = await cardRow({ date: '2026-11-02', authorizedDate: null });
 
-      await plaidInboxService.matchToExpense(id, expenseId);
+      await plaidReviewService.matchToExpense(id, expenseId);
 
       expect(await expenseRow(expenseId)).toEqual({ date: '2026-10-30', posted_date: '2026-11-02' });
     });
@@ -357,7 +359,7 @@ describe('plaidInboxService', () => {
       const expenseId = await cardExpense({ date: '2026-10-30', posted_date: '2026-11-02' });
       const id = await cardRow({ date: '2026-10-30', authorizedDate: null });
 
-      await plaidInboxService.applySettlements([
+      await plaidSettlementService.applySettlements([
         { plaidTransactionId: id, expenseId, settled: true, previousAmount: 35.54, amount: 35.54, postedDate: '2026-10-30' }
       ]);
 
@@ -374,7 +376,7 @@ describe('plaidInboxService', () => {
       const expenseId = await cardExpense({ date: '2026-10-30', posted_date: '2026-11-02' });
       const id = await cardRow({ date: '2026-10-30', authorizedDate: null });
 
-      await plaidInboxService.matchToExpense(id, expenseId);
+      await plaidReviewService.matchToExpense(id, expenseId);
 
       expect(await expenseRow(expenseId)).toEqual({ date: '2026-10-30', posted_date: null });
     });
@@ -384,7 +386,7 @@ describe('plaidInboxService', () => {
       const expenseId = await cardExpense({ date: '2026-10-30', posted_date: '2026-11-02' });
       const id = await cardRow({ date: '2026-10-30', authorizedDate: null });
 
-      await plaidInboxService.matchToExpense(id, expenseId);
+      await plaidReviewService.matchToExpense(id, expenseId);
 
       expect(await expenseRow(expenseId)).toEqual({ date: '2026-10-30', posted_date: '2026-11-02' });
     });
@@ -392,13 +394,13 @@ describe('plaidInboxService', () => {
     test('a bank date before the purchase date is ignored, and an agreeing date is left as is', async () => {
       const early = await cardExpense({ date: '2026-11-05', posted_date: '2026-11-06' });
       const earlyRow = await cardRow({ date: '2026-11-02', authorizedDate: null });
-      await plaidInboxService.matchToExpense(earlyRow, early);
+      await plaidReviewService.matchToExpense(earlyRow, early);
       expect(await expenseRow(early)).toEqual({ date: '2026-11-05', posted_date: '2026-11-06' });
 
       const agreeing = await cardExpense({ posted_date: '2026-11-02' });
       const agreeingRow = await stage('agree', { accountId: cardAccountId, amount: 35.54, date: '2026-11-02', authorizedDate: '2026-10-31' });
       activityLogService.logEvent.mockClear();
-      const result = await plaidInboxService.matchToExpense(agreeingRow, agreeing);
+      const result = await plaidReviewService.matchToExpense(agreeingRow, agreeing);
 
       expect(result.postedDateUpdated).toBe(false);
       expect(activityLogService.logEvent).not.toHaveBeenCalledWith('expense_updated', expect.anything(), expect.anything(), expect.anything(), expect.anything());
@@ -407,12 +409,12 @@ describe('plaidInboxService', () => {
     test('a pending charge leaves the posted date until it settles; debit accounts have none', async () => {
       const pendingExpense = await cardExpense();
       const pendingRow = await cardRow({ pending: 1 });
-      await plaidInboxService.matchToExpense(pendingRow, pendingExpense);
+      await plaidReviewService.matchToExpense(pendingRow, pendingExpense);
       expect((await expenseRow(pendingExpense)).posted_date).toBeNull();
 
       const debitExpense = await addExpense({ date: '2026-10-31' });
       const debitRow = await stage('debit-row', { amount: 25.5, date: '2026-11-02', authorizedDate: '2026-10-31' });
-      await plaidInboxService.matchToExpense(debitRow, debitExpense);
+      await plaidReviewService.matchToExpense(debitRow, debitExpense);
       expect((await expenseRow(debitExpense)).posted_date).toBeNull();
     });
 
@@ -420,7 +422,7 @@ describe('plaidInboxService', () => {
       const expenseId = await cardExpense({ posted_date: '2026-11-04' });
       const id = await cardRow();
 
-      await plaidInboxService.applySettlements([
+      await plaidSettlementService.applySettlements([
         { plaidTransactionId: id, expenseId, settled: true, previousAmount: 35.54, amount: 35.54, postedDate: '2026-11-02' }
       ]);
 
@@ -440,19 +442,19 @@ describe('plaidInboxService', () => {
       const id = await stage('t1');
       jest.spyOn(plaidRepository, 'resolveTransaction').mockResolvedValueOnce(false).mockResolvedValueOnce(false);
 
-      await expect(plaidInboxService.matchToExpense(id, expenseId)).rejects.toMatchObject({ statusCode: 409 });
-      await expect(plaidInboxService.ignore(id)).rejects.toMatchObject({ statusCode: 409 });
+      await expect(plaidReviewService.matchToExpense(id, expenseId)).rejects.toMatchObject({ statusCode: 409 });
+      await expect(plaidReviewService.ignore(id)).rejects.toMatchObject({ statusCode: 409 });
       expect(activityLogService.logEvent).not.toHaveBeenCalled();
     });
 
     test('round-trips between the inbox and the ignored list', async () => {
       const id = await stage('t1');
 
-      await plaidInboxService.ignore(id);
+      await plaidReviewService.ignore(id);
       expect((await plaidInboxService.listInbox('new')).transactions).toHaveLength(0);
       expect((await plaidInboxService.listInbox('ignored')).transactions.map(t => t.id)).toEqual([id]);
 
-      await plaidInboxService.unignore(id);
+      await plaidReviewService.unignore(id);
       expect((await plaidInboxService.listInbox('new')).transactions.map(t => t.id)).toEqual([id]);
 
       const actions = activityLogService.logEvent.mock.calls
@@ -464,21 +466,21 @@ describe('plaidInboxService', () => {
     test('a rejected action logs nothing', async () => {
       const expenseId = await addExpense();
       const id = await stage('t1');
-      await plaidInboxService.matchToExpense(id, expenseId);
+      await plaidReviewService.matchToExpense(id, expenseId);
       activityLogService.logEvent.mockClear();
 
-      await expect(plaidInboxService.ignore(id)).rejects.toMatchObject({ statusCode: 409 });
+      await expect(plaidReviewService.ignore(id)).rejects.toMatchObject({ statusCode: 409 });
       expect(activityLogService.logEvent).not.toHaveBeenCalled();
     });
 
     test('only new rows can be ignored and only ignored rows restored', async () => {
       const expenseId = await addExpense();
       const id = await stage('t1');
-      await plaidInboxService.matchToExpense(id, expenseId);
+      await plaidReviewService.matchToExpense(id, expenseId);
 
-      await expect(plaidInboxService.ignore(id)).rejects.toMatchObject({ statusCode: 409 });
-      await expect(plaidInboxService.unignore(id)).rejects.toMatchObject({ statusCode: 409 });
-      await expect(plaidInboxService.ignore(99999)).rejects.toMatchObject({ statusCode: 404 });
+      await expect(plaidReviewService.ignore(id)).rejects.toMatchObject({ statusCode: 409 });
+      await expect(plaidReviewService.unignore(id)).rejects.toMatchObject({ statusCode: 409 });
+      await expect(plaidReviewService.ignore(99999)).rejects.toMatchObject({ statusCode: 404 });
     });
   });
 
@@ -507,7 +509,7 @@ describe('plaidInboxService', () => {
       const mortgage = await addFixed({ amount: 1500, dueDay: 1 });
       const id = await stage('t-bill', { amount: 1500, date: '2026-10-03', authorizedDate: '2026-10-02' });
 
-      const result = await plaidInboxService.matchToFixedExpense(id, mortgage, 'tab-1');
+      const result = await plaidReviewService.matchToFixedExpense(id, mortgage, 'tab-1');
 
       expect(result.transaction).toMatchObject({ status: 'matched', expenseId: null });
       expect(result.fixedExpense).toMatchObject({ id: mortgage, plannedAmount: 1500, amount: 1500, amountUpdated: false, landedDate: '2026-10-03' });
@@ -524,7 +526,7 @@ describe('plaidInboxService', () => {
       const heloc = await addFixed({ name: 'HELOC Interest', amount: 17.47, dueDay: 25, month: 10 });
       const id = await stage('t-heloc', { amount: 17.78, date: '2026-10-27', authorizedDate: '2026-10-27' });
 
-      const result = await plaidInboxService.matchToFixedExpense(id, heloc, 'tab-1');
+      const result = await plaidReviewService.matchToFixedExpense(id, heloc, 'tab-1');
 
       expect(result.fixedExpense).toMatchObject({ plannedAmount: 17.47, amount: 17.78, amountUpdated: true });
       expect(await get('SELECT amount FROM fixed_expenses WHERE id = ?', [heloc])).toEqual({ amount: 17.78 });
@@ -539,7 +541,7 @@ describe('plaidInboxService', () => {
       const legacy = await addFixed({ amount: 50, dueDay: 1, paymentType: 'Fixed', paymentMethodId: DEBIT });
       const id = await stage('t-legacy', { amount: 55, date: '2026-10-02', authorizedDate: '2026-10-02' });
 
-      await expect(plaidInboxService.matchToFixedExpense(id, legacy)).rejects.toMatchObject({ statusCode: 400 });
+      await expect(plaidReviewService.matchToFixedExpense(id, legacy)).rejects.toMatchObject({ statusCode: 400 });
 
       expect(await get('SELECT status FROM plaid_transactions WHERE id = ?', [id])).toEqual({ status: 'new' });
       expect((await get('SELECT COUNT(*) AS n FROM plaid_fixed_expense_links')).n).toBe(0);
@@ -553,18 +555,18 @@ describe('plaidInboxService', () => {
       const first = await stage('t1', { amount: 1500, date: '2026-10-02', authorizedDate: '2026-10-02' });
       const second = await stage('t2', { amount: 1500, date: '2026-10-03', authorizedDate: '2026-10-03' });
 
-      await expect(plaidInboxService.matchToFixedExpense(first, card)).rejects.toMatchObject({ statusCode: 400 });
-      await expect(plaidInboxService.matchToFixedExpense(first, septemberDue)).rejects.toMatchObject({ statusCode: 400 });
-      await expect(plaidInboxService.matchToFixedExpense(first, 99999)).rejects.toMatchObject({ statusCode: 404 });
-      await plaidInboxService.matchToFixedExpense(first, mortgage);
-      await expect(plaidInboxService.matchToFixedExpense(second, mortgage)).rejects.toMatchObject({ statusCode: 409 });
+      await expect(plaidReviewService.matchToFixedExpense(first, card)).rejects.toMatchObject({ statusCode: 400 });
+      await expect(plaidReviewService.matchToFixedExpense(first, septemberDue)).rejects.toMatchObject({ statusCode: 400 });
+      await expect(plaidReviewService.matchToFixedExpense(first, 99999)).rejects.toMatchObject({ statusCode: 404 });
+      await plaidReviewService.matchToFixedExpense(first, mortgage);
+      await expect(plaidReviewService.matchToFixedExpense(second, mortgage)).rejects.toMatchObject({ statusCode: 409 });
       expect(await get('SELECT status FROM plaid_transactions WHERE id = ?', [second])).toEqual({ status: 'new' });
     });
 
     test('deleting a confirmed fixed expense returns the bank transaction to the inbox', async () => {
       const mortgage = await addFixed();
       const id = await stage('t-bill', { amount: 1500, date: '2026-10-02', authorizedDate: '2026-10-02' });
-      await plaidInboxService.matchToFixedExpense(id, mortgage);
+      await plaidReviewService.matchToFixedExpense(id, mortgage);
 
       await run('DELETE FROM fixed_expenses WHERE id = ?', [mortgage]);
 
@@ -576,7 +578,7 @@ describe('plaidInboxService', () => {
       const october = await addFixed({ month: 10 });
       const november = await addFixed({ month: 11 });
       const octTxn = await stage('t-oct', { amount: 1500, date: '2026-10-01', authorizedDate: '2026-10-01' });
-      await plaidInboxService.matchToFixedExpense(octTxn, october);
+      await plaidReviewService.matchToFixedExpense(octTxn, october);
       await stage('t-nov', { amount: 1500, date: '2026-11-02', authorizedDate: '2026-11-02' });
 
       const { transactions } = await plaidInboxService.listInbox('new');
@@ -611,7 +613,7 @@ describe('plaidInboxService', () => {
       const pay = await addIncome();
       const id = await stageDeposit('t-pay');
 
-      const result = await plaidInboxService.matchToIncome(id, pay, {}, 'tab-1');
+      const result = await plaidReviewService.matchToIncome(id, pay, {}, 'tab-1');
 
       expect(result.transaction).toMatchObject({ status: 'matched', expenseId: null });
       expect(result.incomeSource).toMatchObject({ id: pay, amount: 10848.23, amountUpdated: false, landedDate: '2026-10-29' });
@@ -631,18 +633,18 @@ describe('plaidInboxService', () => {
       const first = await stageDeposit('t-1', { amount: -10848.23 });
       const second = await stageDeposit('t-2', { amount: -120, name: 'Other pay' });
 
-      expect((await plaidInboxService.matchToIncome(first, pay, {}, 'tab-1')).incomeSource).toMatchObject({ plannedAmount: 10500, amountUpdated: true });
+      expect((await plaidReviewService.matchToIncome(first, pay, {}, 'tab-1')).incomeSource).toMatchObject({ plannedAmount: 10500, amountUpdated: true });
       expect(await get('SELECT amount FROM income_sources WHERE id = ?', [pay])).toEqual({ amount: 10848.23 });
       expect(activityLogService.logEvent).toHaveBeenCalledWith('income_source_updated', 'income_source', pay, expect.any(String), expect.objectContaining({ tabId: 'tab-1' }));
 
-      expect((await plaidInboxService.matchToIncome(second, other, { updateAmount: false })).incomeSource).toMatchObject({ amountUpdated: false });
+      expect((await plaidReviewService.matchToIncome(second, other, { updateAmount: false })).incomeSource).toMatchObject({ amountUpdated: false });
       expect(await get('SELECT amount FROM income_sources WHERE id = ?', [other])).toEqual({ amount: 100 });
     });
 
     test('next month the same description suggests the same income source first', async () => {
       const october = await addIncome({ name: 'Paycheque', month: 10 });
       const octDeposit = await stageDeposit('t-oct', { date: '2026-10-15' });
-      await plaidInboxService.matchToIncome(octDeposit, october);
+      await plaidReviewService.matchToIncome(octDeposit, october);
       await addIncome({ name: 'Bonus', amount: 10848.23, month: 11 });
       const november = await addIncome({ name: 'Paycheque', amount: 9000, month: 11 });
       await stageDeposit('t-nov', { date: '2026-11-14' });
@@ -661,19 +663,19 @@ describe('plaidInboxService', () => {
       const first = await stageDeposit('t-1');
       const second = await stageDeposit('t-2');
 
-      await expect(plaidInboxService.matchToIncome(cardCredit, pay)).rejects.toMatchObject({ statusCode: 400 });
-      await expect(plaidInboxService.matchToIncome(purchase, pay)).rejects.toMatchObject({ statusCode: 400 });
-      await expect(plaidInboxService.matchToIncome(first, september)).rejects.toMatchObject({ statusCode: 400 });
-      await expect(plaidInboxService.matchToIncome(first, 99999)).rejects.toMatchObject({ statusCode: 404 });
-      await plaidInboxService.matchToIncome(first, pay);
-      await expect(plaidInboxService.matchToIncome(second, pay)).rejects.toMatchObject({ statusCode: 409 });
+      await expect(plaidReviewService.matchToIncome(cardCredit, pay)).rejects.toMatchObject({ statusCode: 400 });
+      await expect(plaidReviewService.matchToIncome(purchase, pay)).rejects.toMatchObject({ statusCode: 400 });
+      await expect(plaidReviewService.matchToIncome(first, september)).rejects.toMatchObject({ statusCode: 400 });
+      await expect(plaidReviewService.matchToIncome(first, 99999)).rejects.toMatchObject({ statusCode: 404 });
+      await plaidReviewService.matchToIncome(first, pay);
+      await expect(plaidReviewService.matchToIncome(second, pay)).rejects.toMatchObject({ statusCode: 409 });
       expect(await get('SELECT status FROM plaid_transactions WHERE id = ?', [second])).toEqual({ status: 'new' });
     });
 
     test('Add as income creates an income source in the deposit month and links it', async () => {
       const id = await stageDeposit('t-gift', { amount: -250, date: '2026-10-12', name: 'E-TRANSFER FROM MOM' });
 
-      const result = await plaidInboxService.addAsIncome(id, { name: 'Birthday', category: 'Gifts' }, 'tab-1');
+      const result = await plaidReviewService.addAsIncome(id, { name: 'Birthday', category: 'Gifts' }, 'tab-1');
 
       expect(result.transaction).toMatchObject({ status: 'added' });
       expect(await get('SELECT year, month, name, amount, category FROM income_sources WHERE id = ?', [result.incomeSource.id]))
@@ -682,16 +684,16 @@ describe('plaidInboxService', () => {
       expect(sources[0].bankConfirmation).toMatchObject({ landedDate: '2026-10-12', amount: 250, plannedAmount: null });
 
       const purchase = await stage('t-buy', { amount: 50 });
-      await expect(plaidInboxService.addAsIncome(purchase, {})).rejects.toMatchObject({ statusCode: 400 });
+      await expect(plaidReviewService.addAsIncome(purchase, {})).rejects.toMatchObject({ statusCode: 400 });
       const other = await stageDeposit('t-other');
-      await expect(plaidInboxService.addAsIncome(other, { category: 'Lottery' })).rejects.toMatchObject({ statusCode: 400 });
+      await expect(plaidReviewService.addAsIncome(other, { category: 'Lottery' })).rejects.toMatchObject({ statusCode: 400 });
       expect((await get('SELECT COUNT(*) AS n FROM income_sources')).n).toBe(1);
     });
 
     test('deleting a confirmed income source returns the deposit to the inbox', async () => {
       const pay = await addIncome();
       const id = await stageDeposit('t-pay');
-      await plaidInboxService.matchToIncome(id, pay);
+      await plaidReviewService.matchToIncome(id, pay);
 
       await run('DELETE FROM income_sources WHERE id = ?', [pay]);
 
@@ -714,19 +716,19 @@ describe('plaidInboxService', () => {
 
       expect(pendingCharge).toMatchObject({ pending: true, canAdd: true, fixedCandidates: [] });
       expect(pendingDeposit).toMatchObject({ pending: true, isDeposit: false, incomeCandidates: [] });
-      await expect(plaidInboxService.matchToFixedExpense(charge, 1)).rejects.toMatchObject({ statusCode: 400, message: expect.stringContaining('still pending') });
-      await expect(plaidInboxService.addAsIncome(deposit, {})).rejects.toMatchObject({ statusCode: 400 });
+      await expect(plaidReviewService.matchToFixedExpense(charge, 1)).rejects.toMatchObject({ statusCode: 400, message: expect.stringContaining('still pending') });
+      await expect(plaidReviewService.addAsIncome(deposit, {})).rejects.toMatchObject({ statusCode: 400 });
 
-      const { expense } = await plaidInboxService.addAsExpense(charge, { type: 'Housing' });
+      const { expense } = await plaidReviewService.addAsExpense(charge, { type: 'Housing' });
       expect(expense).toMatchObject({ amount: 1500, date: '2026-10-11', posted_date: null });
     });
 
     test('a settled charge whose expense cannot be updated is reported in the activity log', async () => {
       const id = await stage('p-fail', { accountId: cardAccountId, amount: 40, date: '2026-10-12', authorizedDate: '2026-10-10' });
-      const { expense } = await plaidInboxService.addAsExpense(id, { type: 'Other' });
+      const { expense } = await plaidReviewService.addAsExpense(id, { type: 'Other' });
       jest.spyOn(expenseService, 'updateExpense').mockRejectedValueOnce(new Error('Expense date is locked'));
 
-      await plaidInboxService.applySettlements([
+      await plaidSettlementService.applySettlements([
         { plaidTransactionId: id, expenseId: expense.id, settled: true, previousAmount: 40, amount: 46, postedDate: '2026-10-12' }
       ]);
 
@@ -736,15 +738,25 @@ describe('plaidInboxService', () => {
         expect.objectContaining({ action: 'settle_failed', expenseId: expense.id })
       );
     });
+
+    test.each([
+      [{ settled: true, postedDate: '2026-10-12' }, 'Pending charge "X" ($40.00, 2026-10-12) settled, but its expense could not be updated (boom). Check its amount and posted date (2026-10-12).'],
+      [{ settled: true, postedDate: null }, 'Pending charge "X" ($40.00, 2026-10-12) settled, but its expense could not be updated (boom). Check its amount.'],
+      [{ settled: false, postedDate: null }, 'Pending charge "X" ($40.00, 2026-10-12) changed, but its expense could not be updated (boom). Check its amount.'],
+      [{ settled: true, postedDateOnly: true, postedDate: '2026-10-13' }, 'Bank transaction "X" ($40.00, 2026-10-12) got its posting date from the bank, but its expense could not be updated (boom). Check its posted date (2026-10-13).']
+    ])('the settle_failed message for %j says what to check', (settlement, expected) => {
+      const { settleFailedMessage } = plaidSettlementService._internal;
+      expect(settleFailedMessage(settlement, { name: 'X', amount: 40, date: '2026-10-12' }, new Error('boom'))).toBe(expected);
+    });
   });
 
   describe('expense list bankLink', () => {
     test('deleting a linked expense puts its bank transaction back in the inbox', async () => {
       const matched = await addExpense();
       const matchedTxn = await stage('t-matched');
-      await plaidInboxService.matchToExpense(matchedTxn, matched);
+      await plaidReviewService.matchToExpense(matchedTxn, matched);
       const addedTxn = await stage('t-added', { name: 'OTHER', merchantName: 'Other Shop', amount: 9 });
-      const { expense: added } = await plaidInboxService.addAsExpense(addedTxn, { type: 'Other' });
+      const { expense: added } = await plaidReviewService.addAsExpense(addedTxn, { type: 'Other' });
       expect((await plaidInboxService.listInbox('new')).transactions).toHaveLength(0);
 
       await run('DELETE FROM expenses WHERE id IN (?, ?)', [matched, added.id]);
@@ -758,7 +770,7 @@ describe('plaidInboxService', () => {
       const matched = await addExpense({ date: '2026-10-10', amount: 25.5 });
       await addExpense({ date: '2026-10-11', amount: 7, place: 'Cash thing' });
       const id = await stage('t1');
-      await plaidInboxService.matchToExpense(id, matched);
+      await plaidReviewService.matchToExpense(id, matched);
 
       const expenses = await expenseService.getExpenses({ year: 2026, month: 10 });
 

@@ -7,6 +7,8 @@ const express = require('express');
 
 jest.mock('../services/plaidService');
 jest.mock('../services/plaidInboxService');
+jest.mock('../services/plaidReviewService');
+jest.mock('../services/plaidSettlementService');
 jest.mock('../services/plaidCardPaymentService');
 jest.mock('../services/plaidSettingsService');
 jest.mock('../services/plaidSyncSchedulerService');
@@ -16,6 +18,8 @@ jest.mock('../config/plaid', () => ({ isEnabled: jest.fn() }));
 
 const plaidService = require('../services/plaidService');
 const plaidInboxService = require('../services/plaidInboxService');
+const plaidReviewService = require('../services/plaidReviewService');
+const plaidSettlementService = require('../services/plaidSettlementService');
 const plaidCardPaymentService = require('../services/plaidCardPaymentService');
 const plaidCardBalanceService = require('../services/plaidCardBalanceService');
 const plaidFileImportService = require('../services/plaidFileImportService');
@@ -132,43 +136,43 @@ describe('plaid routes', () => {
   });
 
   test('POST /inbox/:id/add passes the edits and the tab id', async () => {
-    plaidInboxService.addAsExpense.mockResolvedValue({ transaction: {}, expense: { id: 9 } });
+    plaidReviewService.addAsExpense.mockResolvedValue({ transaction: {}, expense: { id: 9 } });
 
     const res = await request(app).post('/api/plaid/inbox/3/add').set('X-Tab-ID', 'tab-7').send({ type: 'Groceries' });
 
     expect(res.status).toBe(201);
-    expect(plaidInboxService.addAsExpense).toHaveBeenCalledWith(3, { type: 'Groceries' }, 'tab-7');
+    expect(plaidReviewService.addAsExpense).toHaveBeenCalledWith(3, { type: 'Groceries' }, 'tab-7');
   });
 
   test('POST /inbox/:id/match honours the service statusCode', async () => {
-    plaidInboxService.matchToExpense.mockRejectedValue(Object.assign(new Error('already linked'), { statusCode: 409 }));
+    plaidReviewService.matchToExpense.mockRejectedValue(Object.assign(new Error('already linked'), { statusCode: 409 }));
 
     const res = await request(app).post('/api/plaid/inbox/3/match').send({ expenseId: 4 });
 
     expect(res.status).toBe(409);
     expect(res.body.error).toBe('already linked');
-    expect(plaidInboxService.matchToExpense).toHaveBeenCalledWith(3, 4);
+    expect(plaidReviewService.matchToExpense).toHaveBeenCalledWith(3, 4);
   });
 
   test('POST /inbox/:id/match-fixed passes the fixed expense and tab id', async () => {
-    plaidInboxService.matchToFixedExpense.mockResolvedValue({ transaction: {}, fixedExpense: { id: 8 } });
+    plaidReviewService.matchToFixedExpense.mockResolvedValue({ transaction: {}, fixedExpense: { id: 8 } });
 
     const res = await request(app).post('/api/plaid/inbox/3/match-fixed').set('X-Tab-ID', 'tab-2').send({ fixedExpenseId: 8 });
 
     expect(res.status).toBe(200);
-    expect(plaidInboxService.matchToFixedExpense).toHaveBeenCalledWith(3, 8, 'tab-2');
+    expect(plaidReviewService.matchToFixedExpense).toHaveBeenCalledWith(3, 8, 'tab-2');
   });
 
   test('POST /inbox/:id/match-income passes the income source, updateAmount and tab id', async () => {
-    plaidInboxService.matchToIncome.mockResolvedValue({ transaction: {}, incomeSource: { id: 9 } });
+    plaidReviewService.matchToIncome.mockResolvedValue({ transaction: {}, incomeSource: { id: 9 } });
 
     const kept = await request(app).post('/api/plaid/inbox/3/match-income').set('X-Tab-ID', 'tab-2').send({ incomeSourceId: 9 });
     const declined = await request(app).post('/api/plaid/inbox/3/match-income').send({ incomeSourceId: 9, updateAmount: false });
 
     expect(kept.status).toBe(200);
     expect(declined.status).toBe(200);
-    expect(plaidInboxService.matchToIncome).toHaveBeenNthCalledWith(1, 3, 9, { updateAmount: true }, 'tab-2');
-    expect(plaidInboxService.matchToIncome).toHaveBeenNthCalledWith(2, 3, 9, { updateAmount: false }, null);
+    expect(plaidReviewService.matchToIncome).toHaveBeenNthCalledWith(1, 3, 9, { updateAmount: true }, 'tab-2');
+    expect(plaidReviewService.matchToIncome).toHaveBeenNthCalledWith(2, 3, 9, { updateAmount: false }, null);
   });
 
   test('POST /sync?ifStaleMinutes starts only stale banks in the background and answers at once', async () => {
@@ -264,12 +268,12 @@ describe('plaid routes', () => {
   });
 
   test('POST /inbox/:id/add-income returns 201', async () => {
-    plaidInboxService.addAsIncome.mockResolvedValue({ transaction: {}, incomeSource: { id: 10 } });
+    plaidReviewService.addAsIncome.mockResolvedValue({ transaction: {}, incomeSource: { id: 10 } });
 
     const res = await request(app).post('/api/plaid/inbox/3/add-income').send({ name: 'Gift', category: 'Gifts' });
 
     expect(res.status).toBe(201);
-    expect(plaidInboxService.addAsIncome).toHaveBeenCalledWith(3, { name: 'Gift', category: 'Gifts' }, null);
+    expect(plaidReviewService.addAsIncome).toHaveBeenCalledWith(3, { name: 'Gift', category: 'Gifts' }, null);
   });
 
   test('POST /inbox/:id/card-payment returns 201 when a payment was recorded and 200 when linked', async () => {
@@ -294,12 +298,12 @@ describe('plaid routes', () => {
   });
 
   test('POST /inbox/:id/cancelled passes the action, settled row and tab id', async () => {
-    plaidInboxService.resolveCancelled.mockResolvedValue({ action: 'link' });
+    plaidSettlementService.resolveCancelled.mockResolvedValue({ action: 'link' });
 
     const res = await request(app).post('/api/plaid/inbox/3/cancelled').set('X-Tab-ID', 'tab-4').send({ action: 'link', postedId: 9 });
 
     expect(res.status).toBe(200);
-    expect(plaidInboxService.resolveCancelled).toHaveBeenCalledWith(3, { action: 'link', postedId: 9 }, 'tab-4');
+    expect(plaidSettlementService.resolveCancelled).toHaveBeenCalledWith(3, { action: 'link', postedId: 9 }, 'tab-4');
   });
 
   test('DELETE /items/:id returns 204', async () => {

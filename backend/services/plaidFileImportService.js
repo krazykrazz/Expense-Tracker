@@ -1,7 +1,7 @@
 const plaidConfig = require('../config/plaid');
 const plaidRepository = require('../repositories/plaidRepository');
 const activityLogService = require('./activityLogService');
-const plaidInboxService = require('./plaidInboxService');
+const plaidSettlementService = require('./plaidSettlementService');
 const { parseBankFile } = require('../utils/bankFileImport');
 const { shiftDate } = require('../utils/plaidMatching');
 const { getTodayString } = require('../utils/dateUtils');
@@ -70,7 +70,7 @@ class PlaidFileImportService {
 
     if (settlements.length > 0) {
       // Outside the request's tab context so every tab, including this one, refreshes the updated expenses
-      await runWithTabId(null, () => plaidInboxService.applySettlements(settlements));
+      await runWithTabId(null, () => plaidSettlementService.applySettlements(settlements));
     }
     await activityLogService.logEvent(
       'plaid_file_imported',

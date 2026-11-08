@@ -20,6 +20,7 @@ const { getDatabase } = require('../database/db');
 const activityLogService = require('./activityLogService');
 const plaidFileImportService = require('./plaidFileImportService');
 const plaidInboxService = require('./plaidInboxService');
+const plaidReviewService = require('./plaidReviewService');
 
 const DEBIT = 2;
 const CREDIT_CARD = 4;
@@ -119,7 +120,7 @@ describe('plaidFileImportService', () => {
   test('a later export settles a pending charge already added as an expense', async () => {
     await plaidFileImportService.importFile(cardAccountId, { csv: cardCsv('2026-11-04,Purchase,Pending,Corner Cafe,-10.40,CAD,,'), fromDate: '2026-11-01' });
     const [row] = await all("SELECT id FROM plaid_transactions WHERE transaction_id LIKE 'file:%'");
-    await plaidInboxService.addAsExpense(row.id, { type: 'Dining Out' });
+    await plaidReviewService.addAsExpense(row.id, { type: 'Dining Out' });
 
     const result = await plaidFileImportService.importFile(cardAccountId, {
       csv: cardCsv('2026-11-04,Purchase,Completed,Corner Cafe,-10.40,CAD,,'), fromDate: '2026-11-01'

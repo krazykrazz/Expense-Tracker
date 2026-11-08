@@ -277,7 +277,7 @@ function diff(existing, next) {
   return Object.keys(changes).length > 0 ? changes : null;
 }
 
-/** A linked expense follows a pending charge that settles or changes amount (plaidInboxService.applySettlements). */
+/** A linked expense follows a pending charge that settles or changes amount (plaidSettlementService.applySettlements). */
 function settlementFor(existing, next) {
   if (!existing.expenseId || !existing.pending) return null;
   const settled = !next.pending;

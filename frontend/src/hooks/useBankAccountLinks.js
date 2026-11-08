@@ -7,7 +7,9 @@ import { useSyncEvent } from './useSyncEvent';
  * Returns an empty Map, without calling the bank endpoints, while Plaid is not configured, so screens
  * behave the same with or without Plaid. Failures also yield an empty Map (the badge is informational).
  *
- * @returns {Map<number, Array<{institutionName: string, accountName: string, mask: string|null}>>}
+ * @returns {Map<number, Array<{institutionName: string, accountName: string, mask: string|null, accountType: (string|null),
+ *   currentBalance: (number|null), availableBalance: (number|null), balanceCurrency: (string|null),
+ *   balanceAsOf: (string|null), bankStatus: string, bankUpdatedAt: (string|null)}>>}
  */
 export function useBankAccountLinks() {
   const [links, setLinks] = useState(() => new Map());
@@ -25,7 +27,19 @@ export function useBankAccountLinks() {
         for (const account of item.accounts || []) {
           if (account.paymentMethodId == null) continue;
           const list = next.get(account.paymentMethodId) || [];
-          list.push({ institutionName: item.institutionName, accountName: account.name, mask: account.mask ?? null });
+          list.push({
+            institutionName: item.institutionName,
+            accountName: account.name,
+            mask: account.mask ?? null,
+            accountType: account.type ?? null,
+            currentBalance: account.currentBalance ?? null,
+            availableBalance: account.availableBalance ?? null,
+            balanceCurrency: account.balanceCurrency ?? null,
+            balanceAsOf: account.balanceAsOf ?? null,
+            // The connection's own state: a balance from a bank that needs a login or isn't updating may be old
+            bankStatus: item.status ?? 'ok',
+            bankUpdatedAt: item.bankUpdatedAt ?? null
+          });
           next.set(account.paymentMethodId, list);
         }
       }

@@ -68,11 +68,14 @@ Plaid Link loads from `https://cdn.plaid.com`. The helmet CSP in `backend/server
 
 The **bank icon** in the header opens the Bank Import modal. It appears as soon as Plaid keys are saved.
 
+- **Count badge:** a small blue number on the icon is how many rows are waiting in the Inbox's **To review** tab: new transactions from accounts mapped to a payment method (pending ones included) plus pending charges the bank dropped that need a decision. Rows from unmapped accounts, ignored rows and rows you already added or matched aren't counted. It shows **99+** above 99 and disappears at zero. The badge sits at the bottom right, so the red or amber warning dot (top right) stays visible. It updates after every sync, every Inbox decision and when expenses change, in any open tab.
+
 ### Connections tab
 
 1. **Connect a bank** opens Plaid Link. In Production it first asks you to confirm, showing how many Trial connections you have used.
 2. For each account, choose the **payment method** it pays from (debit or credit card payment methods), or *Don't import*. Transactions from unmapped accounts are kept but hidden from the inbox.
    - Mapped payment methods show a small green **bank badge** next to their name on the Financial page (Payment Methods). Hovering it lists the linked bank accounts. Without Plaid configured, the Financial page makes no bank calls and shows no badges.
+   - **Bank balance:** a debit or cheque payment method mapped to a chequing or savings account also shows **Bank $700.52 · as of 12:10 pm** (the balance the bank reported on the last sync, with the available amount when the bank sends one and it differs) in its row in **Other Payment Methods**. Hover it for the details. It is dimmed and marked **(may be out of date)** when the bank needs a login, Plaid has had no new data from it for over 12 hours, the last sync failed, or the stored balance is over 12 hours old; the hover text says which. Only the bank's balance is shown: nothing is calculated from your own entries, and several accounts mapped to one method are added up. Nothing shows before the first balance arrives, or for accounts that aren't mapped (Don't import). Credit cards have their own [balance check](#credit-card-balance-check); investment and loan accounts aren't shown yet.
 3. **Sync now** pulls changes for every connected bank and reports new / updated / removed counts. One failing bank does not stop the others.
    - The first sync covers about 30 days of history. Plaid may need a minute after connecting before history is ready.
    - Each bank shows when it last synced (date and time) and its last error.
@@ -312,8 +315,8 @@ These are deferred to later phases (see the [roadmap](../../specs/plaid-bank-syn
 - **Card payments:** one debit paying two cards, or one card paid by two debits, isn't paired; amounts must match to the cent. See [Credit card payments](#credit-card-payments).
 - **Bank changes after review:** a settled transaction the bank changes after you reviewed it is not followed. Pending charges are; see above. For Wealthsimple, whose pending charges arrive as settled, a later amount change isn't followed either.
 - **Categories:** they come only from your own history for the place; Plaid's categories are not used.
-- **Inbox conveniences:** no bulk actions and no count badge on the header icon.
+- **Inbox conveniences:** no bulk actions.
 - **Loan payments:** confirmed fixed expenses don't yet feed auto-logged loan payments (those still use the due day).
 - **Medical, donation, insurance and reimbursement details** are not in the inline Add form. Add the expense, then edit it in the expense list to set people, insurance, receipts or a reimbursement. Its bank colour keeps comparing against the original charged amount.
-- **Balances:** credit card balances are checked against the bank (see [Credit card balance check](#credit-card-balance-check)); investment, loan and line-of-credit balances are received but not yet shown or used.
+- **Balances:** credit card balances are checked against the bank (see [Credit card balance check](#credit-card-balance-check)) and the bank's balance of a mapped chequing or savings account is shown on the Financial page; investment, loan and line-of-credit balances are received but not yet shown or used.
 - **No webhooks:** new transactions arrive with the next automatic sync, not instantly.

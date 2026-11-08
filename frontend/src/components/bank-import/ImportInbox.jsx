@@ -324,7 +324,7 @@ const InboxRow = ({ txn, filter, expanded, onExpand, onAction, busy, error, unco
 /**
  * Inbox tab: each synced bank transaction is added as a new expense, matched to an existing one, or ignored.
  */
-const ImportInbox = ({ onExpensesChanged, onOpenConnections }) => {
+const ImportInbox = ({ onExpensesChanged, onInboxChanged, onOpenConnections }) => {
   const [filter, setFilter] = useState('new');
   const [data, setData] = useState({ transactions: [], hiddenUnmapped: 0 });
   const [loading, setLoading] = useState(true);
@@ -376,6 +376,8 @@ const ImportInbox = ({ onExpensesChanged, onOpenConnections }) => {
 
       setData(prev => ({ ...prev, transactions: prev.transactions.filter(t => t.id !== txn.id) }));
       setExpanded({ id: null, mode: null });
+      // The header badge counts what is waiting here
+      onInboxChanged?.();
       if (action !== 'ignore' && action !== 'unignore') {
         // Also refreshes the summary, whose fixed-expense and income totals change when an amount is updated
         onExpensesChanged?.();
@@ -397,6 +399,7 @@ const ImportInbox = ({ onExpensesChanged, onOpenConnections }) => {
     setRowErrors(prev => ({ ...prev, [`c-${row.id}`]: null }));
     try {
       await resolveCancelledPending(row.id, decision);
+      onInboxChanged?.();
       onExpensesChanged?.();
       await load();
     } catch (err) {

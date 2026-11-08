@@ -27,9 +27,15 @@ Phase 1 (the PoC) is archived at [`specs/archive/plaid-integration/spec.md`](../
 | 1.23.0 | #466 | Credit card payments from the Inbox (3.2): Record payment on a card credit (taking the paying debit along), Link to card payment on the debit, Record payment to… for a card with no bank connection; payments recorded from the bank are marked in the card view. Fixes from the credit card payment audit (serialised DB transactions, reminder after a paid entered statement, local-date payment form) |
 | 1.24.0 | #468 | Posted date follows the bank: Match and settle set a card expense's posted date from the settled transaction (replacing an estimate; the purchase date is never changed); the green check in the expense list is replaced by a marker only when an expense posts on a later statement; a pending charge made just before the statement closes shows **→ next?**; and a bank-linked card's Billing Cycles tab compares each of its last closed statements with the bank (`GET /api/plaid/card-cycles/:id`). One-off: 16 matched card expenses got the bank's posted date (production, Nov 7) |
 | 1.24.1 | #470 | A same-day bank date only clears a posted date you entered when the bank reports real posting dates (CIBC), not purchase dates (Wealthsimple) |
-| next | this PR | Spot-check fixes: Plaid taking over a settled bank-file row now passes its posting date to the linked card expense (`posted_date` log action); the posting-date test tolerates an occasional weekend posting; no double marker on a pending charge already dated on the next statement; the statement check can't show an older response or another card's cycles |
+| 1.24.2 | #472 | Spot-check fixes: Plaid taking over a settled bank-file row now passes its posting date to the linked card expense (`posted_date` log action); the posting-date test tolerates an occasional weekend posting; no double marker on a pending charge already dated on the next statement; the statement check can't show an older response or another card's cycles |
+| 1.24.3 | #474 | Light mode readability: text and buttons meet WCAG AA contrast across the app |
+| 1.24.4 | #476 | Fix header and accent colours missing in production builds |
+| 1.24.5 | #478 | Wealthsimple pending charges settle when the card balance matches exactly (a $0 difference counts) |
+| 1.24.6 | #480 | Activity log shows every bank sync that brought something, including balance changes and the sync after a login |
+| 1.24.7 | #484 | Balance check explains pending charges that post later in the tracker (`posts_later`) |
+| next | this PR | Inbox count badge on the header icon (2.3: `toReview` on `GET /status`); the bank's balance of mapped chequing/savings accounts on the Financial page (4.3: balances now on the `/items` accounts) |
 
-**Next:** the rest of Phase 2: 2.3 inbox badge, 2.4 refactors (before Phase 3 adds more Inbox actions), 2.1 capture of the remaining fields, 2.5 hygiene. Then Phase 3 (3.1 To review / Not expenses, which would also move card payments out of To review automatically) and 4.1. 3.2 is verified in production: the Oct 30 WS VISA and CIBC MC payments are recorded from the card credits with their chequing debits linked.
+**Next:** the rest of Phase 2: 2.4 refactors (before Phase 3 adds more Inbox actions), 2.1 capture of the remaining fields, 2.5 hygiene. Then Phase 3 (3.1 To review / Not expenses, which would also move card payments out of To review automatically) and 4.1 (investment and loan values, history). 3.2 is verified in production: the Oct 30 WS VISA and CIBC MC payments are recorded from the card credits with their chequing debits linked.
 
 **Order changes:**
 - **2026-11-03:** card balance reconciliation is the biggest day-to-day problem, so 4.2 was built before the rest of Phase 2. It only needed balance capture from 2.1, done as its own migration `plaid_account_balances_v1`; the transaction columns of 2.1 still come in `plaid_capture_v1`.
@@ -142,7 +148,7 @@ All `plaid_*` entity types route to the `plaid` window event. Consumers: `Import
 
 ## Frontend (`components/bank-import/`)
 
-- **`BankImportButton`:** header entry, hidden unless enabled, with the red attention / amber stale dot. It runs sync-on-open: on load, on tab visible (throttled to 5 min), and on modal open.
+- **`BankImportButton`:** header entry, hidden unless enabled, with the Inbox count badge (2.3) and the red attention / amber stale dot. It runs sync-on-open: on load, on tab visible (throttled to 5 min), and on modal open.
 - **`BankImportModal`:** the Inbox and Connections tabs, portalled to `<body>`.
 - **`ImportInbox`:** rows, filters, Add / Add income forms (place and category pre-filled), the Match picker (expenses, fixed expenses, income), the Cancelled-at-bank section, the Pending and From file badges.
 - **`BankConnections`:** connect (Trial confirm), status chips, Reconnect / Log in again, freshness line, mapping, Import file, Sync now, last synced; contains `AutoSyncSettings` and `BankFileImport`.
@@ -151,7 +157,7 @@ All `plaid_*` entity types route to the `plaid` window event. Consumers: `Import
 - **`bankConfirmation.js`:** pill states for the expense list and Fixed Expenses: `confirmed` green, `pending` yellow, `differs` / `cancelled` red-orange.
 - **`cardBalanceCheck.js`**, **`CardBankBalance`** and `hooks/useCardBalanceChecks`: the balance check on the Financial card table and the card detail view.
 - **`IncomeConfirmationIndicator`:** income has no pill, so it shows an icon.
-- **`BankLinkedBadge`** with `hooks/useBankAccountLinks`: the Financial page badge on mapped payment methods.
+- **`BankLinkedBadge`** with `hooks/useBankAccountLinks`: the Financial page badge on mapped payment methods; **`BankBalance`** (`bankBalanceUtils.js`) next to it: the bank's balance of a mapped chequing/savings account (4.3).
 - **`notifications/BankAttentionBanner`** with `hooks/usePlaidStatus`: the main-screen banner when a bank needs the user.
 
 ---
@@ -283,6 +289,11 @@ What a week of real use showed; each one shaped 2.6–2.8 and the merge rules in
 
 ### 2.3 Inbox count badge
 
+> **Status: built.** As built:
+> - `GET /status` adds `toReview` (`needsAttention` already existed): `plaidRepository.countToReview()` counts exactly what the To review tab lists, i.e. `new` rows on accounts mapped to a payment method (the same join as `findInbox`, pending ones included) plus pending charges the bank dropped that wait for a decision (they are `added`/`matched` rows shown at the top, so "not pending-cancelled" in the original wording would have left them out). Later it counts only `review_bucket = 'spending'`.
+> - `BankImportButton` shows it bottom right of the icon (the warning dot stays top right), capped at **99+**, and in the button's label.
+> - It reloads on `plaid` sync events and on `refreshTrigger` / `currentMonthExpenseCount` changes in the expense context (the server sends a tab no event for its own changes: deleting a linked expense returns its bank row to the Inbox); after the sync this tab started; after every Inbox decision (`onInboxChanged`); and when the modal closes. `usePlaidStatus` now returns a `reload` and ignores out-of-order responses.
+
 **Requirements:** the header bank icon shows the number to review (status `new`, mapped accounts, not pending-cancelled; later only `review_bucket = 'spending'`), next to 2.2's attention dot (built; the count must not hide it).
 
 **Design:**
@@ -388,7 +399,7 @@ Planned now, because Phase 3 adds five more inbox actions and three more link ta
 ### Phase 2 exit criteria
 - [ ] 2.1 capture and backfill in production; PFC and balances visible in the DB for new rows. *(Balances done with 4.2; PFC and the other transaction fields not started.)*
 - [x] 2.2 an expired login repaired with Reconnect, without a new Trial slot. *(Verified in production on CIBC instead of a Sandbox `reset_login`; consent expiry still open, low value.)*
-- [ ] 2.3 badge counts match the inbox.
+- [x] 2.3 badge counts match the inbox. *(`countToReview` mirrors `findInbox` plus the dropped pending charges; tested against both.)*
 - [ ] R1–R8 merged; no Plaid source file over ~350 lines. *(Not started; files have grown: `plaidRepository` 922, `plaidInboxService` 652, `plaidService` 618 lines.)*
 - [x] 2.6 a stalled bank shows Not updating, from Plaid's own fetch time.
 - [x] 2.7 Wealthsimple and CIBC files imported in production, merged with Plaid in either order without duplicates.
@@ -553,6 +564,8 @@ The budget plan already has monthly allocations ("RRSP $300", optionally linked 
 
 ### 4.1 Linked balances: investments, loans, lines of credit
 
+> **Status: planned.** The display-only 4.3 reuses the balances 4.2 stores; nothing below is built yet.
+
 **Decisions (owner):**
 - The bank fills empty months and keeps the current month updated; it never overwrites a hand-entered value (Q8).
 - Several bank accounts can sum into one item.
@@ -616,7 +629,11 @@ The budget plan already has monthly allocations ("RRSP $300", optionally linked 
 
 ### 4.3 Bank balances on the Financial page (information only)
 
-> **Status: planned** (owner, 2026-11-08). Plaid already stores a balance for every account on every sync (`/accounts/get`), e.g. WS Shared ••5070 $712.52 (current only; Wealthsimple sends no available balance). Since 1.24.6 a change is logged for mapped accounts, but it isn't shown anywhere outside the credit card check.
+> **Status: built** (this PR; the owner's 2026-11-08 plan was: "Plaid already stores a balance for every account on every sync (`/accounts/get`), e.g. WS Shared ••5070 $712.52 (current only; Wealthsimple sends no available balance). Since 1.24.6 a change is logged for mapped accounts, but it isn't shown anywhere outside the credit card check."). As built:
+> - **No new endpoint:** `GET /api/plaid/items` accounts now carry `currentBalance`, `availableBalance`, `balanceCurrency` and `balanceAsOf` (`ACCOUNT_COLUMNS`), and `useBankAccountLinks` passes them on with the account `type` and the connection's `status` / `bankUpdatedAt`. It already refreshes on the `plaid` sync event, so requirement 4 needed no new wiring.
+> - **`BankBalance`** (with `bankBalanceUtils.js`) renders in the **Other Payment Methods** rows: **Bank $700.52 · as of 12:10 pm**, plus "$650.00 available" when the bank sends it and it differs. Several accounts on one method are summed (oldest time), mixed currencies and **non-deposit accounts** (a card or loan balance is owed, not held) show nothing, and so does a method whose accounts haven't all received a balance.
+> - **"May be out of date"** (requirement 3) follows the connection, not just our own clock: `login` (needs a login / removed), `error` (last sync failed), `plaid` (Plaid has no new data, the 2.6 status; our sync still succeeds and stores the old balance, so `balance_as_of` alone would look fresh) or `old` (stored balance over 12 hours). Dimmed, marked inline, with the reason in the hover text.
+> - **Not done:** `Property Tax ••7943` and other accounts that aren't mapped to a payment method have nothing to show a balance on (map one in Connections, or wait for 4.1); investments, loans and lines of credit are 4.1.
 
 **Requirements**
 1. For a **debit / chequing** payment method mapped to a bank account, the Financial page shows the bank's balance: "Bank: $712.52 · as of 6:40 am" (available balance too when the bank sends it). Several accounts mapped to one payment method are summed.
@@ -631,7 +648,7 @@ The budget plan already has monthly allocations ("RRSP $300", optionally linked 
 ### Phase 4 exit criteria
 - [ ] Production RRSP and LOC values update from bank balances without overwriting a hand-entered month.
 - [x] Card balance check matches the Phase 0 manual result. *(Both cards matched to the cent in 1.19.0; differences since then are fully explained by causes.)*
-- [ ] 4.3 the WS Shared bank balance shows on the Financial page; nothing changes with Plaid not configured.
+- [x] 4.3 the WS Shared bank balance shows on the Financial page; nothing changes with Plaid not configured. *(Checked in the browser on a copy of production data: Debit - WS shows Bank $700.52; with Plaid off the hook makes no bank calls and `BankBalance` renders nothing.)*
 - [ ] Docs per the matrix.
 
 ## Phase 5: Less typing

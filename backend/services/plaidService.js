@@ -86,9 +86,11 @@ class PlaidService {
 
   /**
    * @returns {Promise<{enabled: boolean, environment?: string, trial?: {limit: number, used: number}|null,
+   *   toReview?: number,
    *   needsAttention?: Array<{id: number, institutionName: string, status: string}>,
    *   staleData?: Array<{id: number, institutionName: string, bankUpdatedAt: string, institutionStatus: (string|null)}>}>}
-   *   needsAttention lists the banks the user has to act on (log in again, or removed at the bank), for the header
+   *   toReview is the number of rows waiting in the Inbox, for the header badge; needsAttention lists the banks
+   *   the user has to act on (log in again, or removed at the bank), for the header
    *   dot and main-screen banner; staleData the banks Plaid has had no new data from for hours (amber header dot)
    */
   async getStatus() {
@@ -96,11 +98,12 @@ class PlaidService {
     if (!config.enabled) {
       return { enabled: false, source: config.source };
     }
-    const [trial, items] = await Promise.all([
+    const [trial, items, toReview] = await Promise.all([
       config.environment === 'production'
         ? this._productionItemsCreated().then(used => ({ limit: plaidConfig.TRIAL_ITEM_LIMIT, used }))
         : null,
-      plaidRepository.findAllItems()
+      plaidRepository.findAllItems(),
+      plaidRepository.countToReview()
     ]);
     const current = items
       .filter(item => item.environment === config.environment)
@@ -114,7 +117,7 @@ class PlaidService {
         id: item.id, institutionName: item.institutionName, bankUpdatedAt: item.bankUpdatedAt,
         institutionStatus: item.institutionStatus || null
       }));
-    return { enabled: true, source: config.source, environment: config.environment, trial, needsAttention, staleData };
+    return { enabled: true, source: config.source, environment: config.environment, trial, toReview, needsAttention, staleData };
   }
 
   /**

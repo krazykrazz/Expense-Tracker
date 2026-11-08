@@ -12,7 +12,7 @@ const TABS = [
 /**
  * Bank Import modal: review synced bank transactions (Inbox) and manage Plaid connections.
  */
-const BankImportModal = ({ status, initialTab = 'inbox', onStatusChange, onExpensesChanged, onClose }) => {
+const BankImportModal = ({ status, initialTab = 'inbox', onStatusChange, onExpensesChanged, onInboxChanged, onClose }) => {
   const [activeTab, setActiveTab] = useState(initialTab);
 
   useEffect(() => {
@@ -59,6 +59,7 @@ const BankImportModal = ({ status, initialTab = 'inbox', onStatusChange, onExpen
           {activeTab === 'inbox' ? (
             <ImportInbox
               onExpensesChanged={onExpensesChanged}
+              onInboxChanged={onInboxChanged}
               onOpenConnections={() => setActiveTab('connections')}
             />
           ) : (

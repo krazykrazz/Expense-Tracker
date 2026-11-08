@@ -4,7 +4,8 @@ const { FILE_ID_PREFIX, SAME_TXN_DAYS, planFileImport, mergePlaidIntoFileRow, sa
 const PUBLIC_ITEM_COLUMNS = `id, item_id AS itemId, institution_name AS institutionName, environment, last_synced_at AS lastSyncedAt,
   last_error AS lastError, bank_updated_at AS bankUpdatedAt, bank_update_failed_at AS bankUpdateFailedAt,
   institution_status AS institutionStatus, institution_status_since AS institutionStatusSince, created_at AS createdAt`;
-const ACCOUNT_COLUMNS = 'id, plaid_item_id AS plaidItemId, account_id AS accountId, name, mask, type, subtype, payment_method_id AS paymentMethodId';
+const ACCOUNT_COLUMNS = `id, plaid_item_id AS plaidItemId, account_id AS accountId, name, mask, type, subtype, payment_method_id AS paymentMethodId,
+  current_balance AS currentBalance, available_balance AS availableBalance, balance_currency AS balanceCurrency, balance_as_of AS balanceAsOf`;
 /** A staged row as the file-import merge sees it (utils/bankFileImport), and its columns by those names. */
 const STAGED_COLUMNS = `id, transaction_id AS transactionId, date, authorized_date AS authorizedDate, amount, pending, name,
   merchant_name AS merchantName, status, expense_id AS expenseId, removed_at AS removedAt`;
@@ -416,6 +417,23 @@ class PlaidRepository {
        ORDER BY COALESCE(pt.authorized_date, pt.date) DESC, pt.id DESC`,
       [status]
     );
+  }
+
+  /**
+   * How many rows the Inbox's To review tab lists: new rows on accounts mapped to a payment method (same join as
+   * findInbox), plus pending charges the bank dropped that are waiting for a decision (shown at the top).
+   */
+  async countToReview() {
+    const row = await dbHelper.queryOne(
+      `SELECT
+         (SELECT COUNT(*) FROM plaid_transactions pt
+            JOIN plaid_accounts pa ON pa.id = pt.plaid_account_id
+            JOIN payment_methods pm ON pm.id = pa.payment_method_id
+          WHERE pt.status = 'new') AS fresh,
+         (SELECT COUNT(*) FROM plaid_transactions
+          WHERE pending = 1 AND removed_at IS NOT NULL AND status IN ('added', 'matched')) AS cancelled`
+    );
+    return row ? row.fresh + row.cancelled : 0;
   }
 
   /**

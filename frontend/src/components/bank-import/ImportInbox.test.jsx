@@ -292,6 +292,29 @@ describe('ImportInbox', () => {
     await waitFor(() => expect(screen.queryByText('Coffee Shop')).not.toBeInTheDocument());
   });
 
+  it('tells the header badge when an Inbox decision changed what is waiting', async () => {
+    const onInboxChanged = vi.fn();
+    plaidApi.getInbox.mockResolvedValue({ transactions: [txn({ amount: -10, canAdd: false })], hiddenUnmapped: 0 });
+    plaidApi.ignoreInboxTransaction.mockResolvedValue({ transaction: {} });
+
+    renderInbox({ onInboxChanged });
+    fireEvent.click(await screen.findByRole('button', { name: 'Ignore' }));
+
+    await waitFor(() => expect(onInboxChanged).toHaveBeenCalledTimes(1));
+  });
+
+  it('does not tell the badge about a decision that failed', async () => {
+    const onInboxChanged = vi.fn();
+    plaidApi.getInbox.mockResolvedValue({ transactions: [txn()], hiddenUnmapped: 0 });
+    plaidApi.ignoreInboxTransaction.mockRejectedValue(new Error('Bank transaction was already added'));
+
+    renderInbox({ onInboxChanged });
+    fireEvent.click(await screen.findByRole('button', { name: 'Ignore' }));
+
+    await screen.findByRole('alert');
+    expect(onInboxChanged).not.toHaveBeenCalled();
+  });
+
   it('shows the server error on the row and keeps it', async () => {
     plaidApi.getInbox.mockResolvedValue({ transactions: [txn()], hiddenUnmapped: 0 });
     plaidApi.ignoreInboxTransaction.mockRejectedValue(new Error('Bank transaction was already added'));

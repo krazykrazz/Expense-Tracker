@@ -123,6 +123,38 @@ describe('plaidCardBalanceService', () => {
     ]);
   });
 
+  test('a bank without available credit that sends charges as posted: a recent one it leaves out is "likely_pending"', async () => {
+    const older = await addExpense('2026-10-20', 40, 'Grocer');
+    await stage('t-older', { amount: 40, date: '2026-10-20', status: 'added', expenseId: older });
+    const tire = await addExpense('2026-11-03', 30.5, 'Canadian Tire');
+    await stage('t-tire', { amount: 30.5, date: '2026-11-03', status: 'added', expenseId: tire, name: 'CANADIAN TIRE' });
+    const lunch = await addExpense('2026-11-02', 12, 'Lunch');
+    await stage('t-lunch', { amount: 12, date: '2026-11-02', status: 'added', expenseId: lunch });
+    await setBank({ current: 52 });
+
+    const card = await cardCheck();
+
+    expect(card).toMatchObject({ status: 'differs', difference: -30.5, unexplained: 0 });
+    expect(card.causes).toEqual([
+      expect.objectContaining({ type: 'likely_pending', expenseId: tire, name: 'CANADIAN TIRE', amount: 30.5, effect: -30.5 })
+    ]);
+  });
+
+  test('likely_pending: nothing when several recent charges could explain it, or only older ones', async () => {
+    for (const [id, date] of [['t-a', '2026-11-01'], ['t-b', '2026-11-02']]) {
+      const expense = await addExpense(date, 20);
+      await stage(id, { amount: 20, date, status: 'added', expenseId: expense });
+    }
+    const old = await addExpense('2026-10-20', 15);
+    await stage('t-old', { amount: 15, date: '2026-10-20', status: 'added', expenseId: old });
+
+    await setBank({ current: 35 });
+    expect(await cardCheck()).toMatchObject({ difference: -20, causes: [], unexplained: -20 });
+
+    await setBank({ current: 40 });
+    expect(await cardCheck()).toMatchObject({ difference: -15, causes: [], unexplained: -15 });
+  });
+
   test('explains a typo in the tracker, an unrecorded charge and an ignored refund', async () => {
     const first = await addExpense('2026-10-10', 25);
     await stage('t-first', { amount: 25, date: '2026-10-10', status: 'matched', expenseId: first });

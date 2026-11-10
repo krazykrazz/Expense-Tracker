@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.25.2] - 2026-11-10
+
+### Balance check explains recent WS charges that are probably still pending
+
 ## [1.25.1] - 2026-11-08
 
 ### Quieter server log for bank syncs that changed nothing, plus internal Plaid inbox refactor

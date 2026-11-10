@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.25.2',
+    date: 'November 10, 2026',
+    added: [],
+    changed: ['Balance check explains recent WS charges that are probably still pending'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.25.1',
     date: 'November 8, 2026',
     added: [],

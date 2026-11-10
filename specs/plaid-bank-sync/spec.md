@@ -557,11 +557,41 @@ The budget plan already has monthly allocations ("RRSP $300", optionally linked 
 3. **Full refund:** ask each time whether to delete the expense or keep it and ignore the refund (Q5).
 4. Insurance-tracked medical expenses are excluded.
 
+### 3.7 Insurance reimbursements close the claim
+
+Closes the loop on medical insurance claims (see [`MEDICAL_INSURANCE_TRACKING.md`](../../docs/features/MEDICAL_INSURANCE_TRACKING.md)): today a claim is marked Paid and its out-of-pocket amount typed in by hand, with nothing showing the money arrived. The insurer pays into the Wealthsimple chequing (Shared) account, and **one deposit can pay several claims**. Claims are often split across family members.
+
+**Requirements**
+1. A deposit (money into a mapped chequing or savings account) offers **Apply to insurance claims** next to the income actions (Confirm income / Add income stay as they are).
+2. **Candidates:** insurance-eligible expenses (`insurance_eligible = 1`) with claim status *In progress*, then *Not claimed* (submitted but not updated in the tracker), from the 180 days before the deposit, on any payment method. *Paid* claims with an out-of-pocket amount above $0 are listed last, for a second plan paying the rest (coordination of benefits). Ranking:
+   - claims whose combined original costs (or remaining out-of-pocket amounts) add up to the deposit exactly come first (one claim alone, then the unique combination when exactly one exists, as in `postedFromBalance`);
+   - then oldest claim first.
+   - The deposit's description is learned (like income) so the next deposit from the same insurer goes straight to this action.
+3. **Several claims per deposit:** pick one or more claims and enter the reimbursed amount for each. Pre-filled: the deposit when one claim is picked; otherwise each claim's remaining out-of-pocket amount when they add up to the deposit, else split in proportion to the original costs (cents to the largest). **The amounts must add up to the deposit to the cent** before applying; each must be above $0 and at most the claim's current out-of-pocket amount.
+4. **Applying, per claim** (one DB transaction for the whole deposit, through `expenseService.updateExpense` so validation, activity log and SSE apply):
+   - `amount` (out-of-pocket) = current `amount` − reimbursed;
+   - `claim_status` = *Paid*;
+   - `original_cost` unchanged, so the card balance (which counts the original cost) is unaffected;
+   - **people allocations:** each person's `amount` drops in proportion to their `original_amount` (cents to the largest share), so per-person out-of-pocket in the Tax Deductible report stays consistent. The preview shows the per-person result.
+5. The deposit is handled (leaves the Inbox, `link_type = 'insurance'`). The expense shows the reimbursement: "Reimbursed $X on <date> (bank)" on its claim status indicator and in the edit form, one line per deposit.
+6. **Undo:** Unlink on the deposit puts each claim back as it was: `amount` += reimbursed, and `claim_status` back to *In progress* when no other deposit is linked to it. Deleting the expense removes its link; a deposit left without links returns to the Inbox.
+7. **Without Plaid** nothing changes: claim status and out-of-pocket are still set by hand (principle 1).
+
+**Design**
+- `plaid_insurance_links(id, plaid_transaction_id → plaid_transactions CASCADE, expense_id → expenses CASCADE, amount REAL NOT NULL, created_at, UNIQUE(plaid_transaction_id, expense_id))`: many claims per deposit and several deposits per claim. In `schema.js` only (new table, no migration).
+- `plaidInsuranceService` with the per-row lock and helpers from `plaidInboxSupport`: `candidates(id)` and `apply(id, claims: [{ expenseId, amount }])`, `unlink(id)`. The pure split and ranking (`splitReimbursement`, exact-combination search) in a util with unit tests and PBT (amounts always add up to the deposit; per-person shares add up to the expense).
+- Endpoints: `GET /api/plaid/inbox/:id/insurance-candidates`, `POST /api/plaid/inbox/:id/insurance { claims }`, `DELETE /api/plaid/inbox/:id/insurance`.
+- Activity log: `plaid_insurance_applied` / `plaid_insurance_unlinked` (deposit, claims and amounts), plus the `expense_updated` events from `updateExpense`.
+- Insurance claim reminders (`INSURANCE_CLAIM_REMINDERS.md`) clear as usual once the status is Paid.
+
+**Tests:** split and ranking (unit + PBT); apply/unlink round trip restores amounts, status and people allocations; one deposit over three claims across two people; second-plan deposit on a Paid claim; amounts not adding up are rejected; Plaid not configured.
+
 ### Phase 3 exit criteria
 - [ ] Inbox shows To review / Not expenses.
 - [x] A real card payment recorded from the card side, with the chequing side linked. *(WS VISA $3,471.31 and CIBC MC $4,104.59 on Oct 30, both sides linked.)*
 - [ ] A contribution recorded against an allocation, shown in the Plan tab.
 - [ ] A loan payment recorded.
+- [ ] A real insurance deposit applied to its claims (3.7), with the claims Paid and the out-of-pocket amounts updated.
 - [ ] Docs per the matrix; full-suite validation.
 
 ## Phase 4: Balances
@@ -757,6 +787,7 @@ Every PR updates the docs its change touches. Recheck after each phase.
 | `docs/features/ACTIVITY_LOG.md`, `REAL_TIME_SYNC.md` | | ✓ | | ✓ | ✓ | ✓ | ✓ | | |
 | `docs/features/BUDGET*` / Budget Plan API (contributions) | | | | | 3.3 | | | 6.2 | |
 | `docs/features/CREDIT_CARD_*` (balance check, statements) | | | | R7 | 3.2 | 4.2 | | 6.1 | |
+| `docs/features/MEDICAL_INSURANCE_TRACKING.md` (reimbursements from the bank) | | | | | 3.7 | | | | |
 | `docs/deployment/*` (webhook exposure) | | | | | | | | | ✓ |
 | README / `docs/features/README.md` (one-line summary) | | | | | ✓ | ✓ | | | |
 
@@ -793,3 +824,4 @@ Every PR updates the docs its change touches. Recheck after each phase.
 | Q15 | CIBC only updates during a login: keep scheduled syncs for it, or treat it as "log in to update" (no scheduled syncs, no daily Needs login alert)? | Open; scheduled syncs kept for now (cheap, and they detect the expired login) |
 | Q16 | Webhooks (Phase 7) now that both banks are Classic connections with Plaid-side fetch limits? | Open; low value until a bank fetches in the background reliably |
 | Q17 | 2.9: where file-only accounts live (`plaid_accounts` without an item, after a table rebuild, vs a separate table), and whether a file-only card should take a balance from the file or a statement for the balance check | Open; leaning to `plaid_accounts` rows (the Inbox, balance check and takeover already join through it); no balance at first |
+| Q18 | 3.7: when one deposit pays several claims, pre-fill the split (remaining amounts / proportional) or always ask for each amount from the insurer's statement? | Open; pre-fill, editable, must add up to the deposit |

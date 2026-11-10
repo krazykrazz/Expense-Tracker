@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { API_ENDPOINTS } from '../../config';
 import { createLogger } from '../../utils/logger';
+import { notifyInvoicesChanged } from '../../utils/invoiceEvents';
 import InvoicePDFViewer from './InvoicePDFViewer';
 import InvoiceList from './InvoiceList';
 import './InvoiceUpload.css';
@@ -180,6 +181,7 @@ const InvoiceUpload = ({
         
         // Notify parent component with invoice data
         onInvoiceUploaded(response.invoice);
+        notifyInvoicesChanged(expenseId);
         
         // Clear file input
         if (fileInputRef.current) {
@@ -319,7 +321,8 @@ const InvoiceUpload = ({
    */
   const handleInvoiceDeleted = useCallback((invoiceId) => {
     onInvoiceDeleted(invoiceId);
-  }, [onInvoiceDeleted]);
+    notifyInvoicesChanged(expenseId);
+  }, [onInvoiceDeleted, expenseId]);
 
   /**
    * Handle person link updated from list

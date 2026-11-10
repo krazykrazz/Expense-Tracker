@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { getInvoicesForExpense, updateInvoicePersonLink } from '../services/invoiceApi';
 import { createLogger } from '../utils/logger';
+import { INVOICES_CHANGED_EVENT } from '../utils/invoiceEvents';
 
 const logger = createLogger('useInvoiceManagement');
 
@@ -168,6 +169,23 @@ function useInvoiceManagement({ expenses = [] } = {}) {
     setShowInvoiceModal(false);
     setInvoiceModalExpense(null);
     setInvoiceModalInvoices([]);
+  }, []);
+
+  // Receipts changed elsewhere (the expense form, another tab): drop the cached copy so the auto-load below
+  // fetches it again
+  useEffect(() => {
+    const handleChanged = (event) => {
+      const expenseId = event.detail?.expenseId ?? null;
+      setInvoiceCache(prev => {
+        if (expenseId == null) return new Map();
+        if (!prev.has(expenseId)) return prev;
+        const newMap = new Map(prev);
+        newMap.delete(expenseId);
+        return newMap;
+      });
+    };
+    window.addEventListener(INVOICES_CHANGED_EVENT, handleChanged);
+    return () => window.removeEventListener(INVOICES_CHANGED_EVENT, handleChanged);
   }, []);
 
   // Auto-load invoices for tax-deductible expenses when expenses array changes

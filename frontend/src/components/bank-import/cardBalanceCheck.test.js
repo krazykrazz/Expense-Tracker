@@ -12,6 +12,11 @@ describe('cardBalanceCheck describeCause', () => {
       .toBe("Pending at the bank, which counts pending charges; in the tracker's balance from its posted date 2026-11-09: Rocket Scone $25.00 (2026-11-07)");
   });
 
+  it('explains a recent charge that is probably still pending at a bank that does not report pending', () => {
+    expect(describeCause({ type: 'likely_pending', name: 'Canadian Tire', amount: 30.5, date: '2026-11-10' }))
+      .toBe("Probably still pending at the bank, which leaves pending charges out of its balance (it doesn't tell Plaid which are pending): Canadian Tire $30.50 (2026-11-10)");
+  });
+
   it('explains a pending charge on a bank that leaves pending out', () => {
     expect(describeCause({ type: 'settling', name: 'Sobeys', amount: 12.41, date: '2026-11-05' }))
       .toBe('Still pending at the bank, which leaves pending charges out of its balance: Sobeys $12.41 (2026-11-05)');

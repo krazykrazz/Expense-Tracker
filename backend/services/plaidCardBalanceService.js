@@ -81,32 +81,42 @@ function pairUp(bankItems, trackerItems) {
 
 /** Most pending charges considered at once (subsets are enumerated). */
 const MAX_SETTLING_ROWS = 12;
+/** How far back a charge Plaid sent as posted may still be pending at a bank that doesn't say (Wealthsimple). */
+const LIKELY_PENDING_DAYS = 7;
+
+/**
+ * The one choice of items whose effects add up to `target` cents, as a bit mask; null when none or several fit.
+ */
+function uniqueSubset(items, target) {
+  let match = null;
+  for (let mask = 0; mask < (1 << items.length); mask++) {
+    let sum = 0;
+    for (let i = 0; i < items.length; i++) {
+      if (mask & (1 << i)) sum += cents(items[i].effect);
+    }
+    if (sum !== target) continue;
+    if (match !== null) return null;
+    match = mask;
+  }
+  return match;
+}
 
 /**
  * Which charges kept pending ("settling") the bank's balance shows have posted, for a bank whose balance
  * leaves pending charges out and that doesn't tell Plaid which charges are pending (Wealthsimple). The
  * difference must be explained to the cent by exactly one choice of charges still pending; everything else
  * is then in the bank's balance, i.e. posted. Anything less certain (several choices fit, or none: a tip or
- * fee changed the total) settles nothing.
+ * fee changed the total) settles nothing. `likely_pending` causes are guesses made from the same difference,
+ * so they don't count here.
  * @param {{difference: number, causes: Array<{type: string, effect: number}>}} card
  * @returns {Array<object>} the settling causes that posted (empty when unsure)
  */
 function postedFromBalance(card) {
   const settling = card.causes.filter(cause => cause.type === 'settling');
   if (settling.length === 0 || settling.length > MAX_SETTLING_ROWS) return [];
-  const otherEffects = card.causes.filter(cause => cause.type !== 'settling').reduce((sum, cause) => sum + cents(cause.effect), 0);
-  const target = cents(card.difference) - otherEffects;
-
-  let match = null;
-  for (let mask = 0; mask < (1 << settling.length); mask++) {
-    let sum = 0;
-    for (let i = 0; i < settling.length; i++) {
-      if (mask & (1 << i)) sum += cents(settling[i].effect);
-    }
-    if (sum !== target) continue;
-    if (match !== null) return [];
-    match = mask;
-  }
+  const otherEffects = card.causes.filter(cause => cause.type !== 'settling' && cause.type !== 'likely_pending')
+    .reduce((sum, cause) => sum + cents(cause.effect), 0);
+  const match = uniqueSubset(settling, cents(card.difference) - otherEffects);
   if (match === null) return [];
   return settling.filter((_, i) => !(match & (1 << i)));
 }
@@ -213,6 +223,8 @@ class PlaidCardBalanceService {
    * - `tracker_only`: entered in the tracker since the bank history starts, but not at the bank (a typo,
    *   a wrong card, a duplicate, or not posted yet);
    * - `settling`: added from a pending charge on a bank whose balance leaves pending charges out;
+   * - `likely_pending`: on such a bank that sends every charge to Plaid as posted (Wealthsimple), recent linked
+   *   charges that exactly account for what's otherwise unexplained (see _likelyPending);
    * - `posts_later`: a pending charge on a bank whose balance includes pending charges (CIBC), linked to an
    *   expense whose posted date is after today, so the tracker's balance as of today doesn't count it yet;
    * - `from_file`: in the tracker from a bank file row Plaid hasn't sent yet, so the bank's balance from Plaid
@@ -303,12 +315,40 @@ class PlaidCardBalanceService {
       causes.push({ type: 'credit_balance', date: today, name: 'Credit balance', amount: bank.owed, effect: round2(bank.owed) });
     }
 
+    if (bank && !includesPending) {
+      causes.push(...await this._likelyPending(accounts, bank, tracker, today, causes, afterAnchor));
+      causes.sort((a, b) => a.date.localeCompare(b.date));
+    }
+
     return {
       causes,
       awaitingMatch: pairs.filter(pair => pair.bank.status === 'new').length,
       splitCharges: splits.length
     };
   }
+  /**
+   * Recent charges that are probably still pending at a bank whose balance leaves pending charges out and that
+   * sends every charge to Plaid as posted (Wealthsimple): in the tracker, not yet in the bank's balance. Only
+   * when exactly one choice of charges from the last LIKELY_PENDING_DAYS days accounts for what the other
+   * causes leave unexplained, to the cent; otherwise none.
+   */
+  async _likelyPending(accounts, bank, tracker, today, causes, afterAnchor) {
+    const leftover = cents(bank.owed - tracker) - causes.reduce((sum, cause) => sum + cents(cause.effect), 0);
+    if (leftover >= 0) return [];
+    const fromDate = new Date((dayNumber(today) - LIKELY_PENDING_DAYS) * 86400000).toISOString().slice(0, 10);
+    const rows = await plaidRepository.findRecentLinkedCharges(accounts.map(a => a.id), fromDate);
+    const candidates = rows
+      .filter(row => row.amount > 0 && row.date <= today && row.expensePostedDate <= today && afterAnchor(row.postedDate))
+      .slice(0, MAX_SETTLING_ROWS)
+      .map(row => ({ ...row, effect: -row.amount }));
+    const match = uniqueSubset(candidates, leftover);
+    if (match === null) return [];
+    return candidates.filter((_, i) => match & (1 << i)).map(row => ({
+      type: 'likely_pending', transactionId: row.id, date: row.date, name: row.name, amount: row.amount,
+      effect: round2(row.effect), expenseId: row.expenseId
+    }));
+  }
+
   /**
    * Set a card's credit limit to the one the bank reports (the user chose to). Logged as payment_method_updated.
    */

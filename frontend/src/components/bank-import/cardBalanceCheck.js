@@ -46,6 +46,8 @@ export function describeCause(cause) {
         : `In the tracker, not at the bank: ${what}. A typo, the wrong card, a duplicate, or not posted yet?`;
     case 'settling':
       return `Still pending at the bank, which leaves pending charges out of its balance: ${what}`;
+    case 'likely_pending':
+      return `Probably still pending at the bank, which leaves pending charges out of its balance (it doesn't tell Plaid which are pending): ${what}`;
     case 'from_file':
       return `From a bank file, not in the bank's balance yet (Plaid hasn't sent it): ${what}`;
     case 'posts_later':

@@ -945,6 +945,27 @@ class PlaidRepository {
   }
 
   /**
+   * Charges Plaid sent as posted since `fromDate` and linked to an expense, for the card balance check: a bank
+   * that doesn't tell Plaid which charges are pending (Wealthsimple) may still have some pending.
+   */
+  async findRecentLinkedCharges(plaidAccountIds, fromDate) {
+    if (plaidAccountIds.length === 0) return [];
+    const placeholders = plaidAccountIds.map(() => '?').join(',');
+    return dbHelper.queryAll(
+      `SELECT pt.id, pt.amount, COALESCE(pt.authorized_date, pt.date) AS date, pt.date AS postedDate,
+              COALESCE(pt.merchant_name, pt.name) AS name, pt.expense_id AS expenseId,
+              COALESCE(e.posted_date, e.date) AS expensePostedDate
+       FROM plaid_transactions pt
+       JOIN expenses e ON e.id = pt.expense_id
+       WHERE pt.plaid_account_id IN (${placeholders}) AND pt.pending = 0 AND pt.removed_at IS NULL
+         AND pt.transaction_id NOT LIKE 'file:%' AND COALESCE(pt.authorized_date, pt.date) >= ?
+         AND NOT EXISTS (SELECT 1 FROM plaid_fixed_expense_links fl WHERE fl.plaid_transaction_id = pt.id)
+       ORDER BY date DESC, pt.id DESC`,
+      [...plaidAccountIds, fromDate]
+    );
+  }
+
+  /**
    * Expenses on a card from `fromDate` to `toDate` (as the balance counts them: posted date when set) that no
    * bank transaction is linked to, and card payments in the same window, for the card balance check.
    */

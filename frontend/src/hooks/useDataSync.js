@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 // Note: SyncToast uses useSyncExternalStore to subscribe to toast changes
 import { API_ENDPOINTS } from '../config.js';
 import { getTabId } from '../utils/tabId.js';
+import { notifyInvoicesChanged } from '../utils/invoiceEvents.js';
 
 /**
  * Computes the exponential backoff delay for reconnect attempts.
@@ -154,8 +155,11 @@ export function useDataSync({
       if (CONTEXT_ENTITY_TYPES.has(entityType)) {
         switch (entityType) {
           case 'expense':
+            refreshExpensesRef.current?.();
+            break;
           case 'invoice': // invoice changes affect expense list (receipt badges)
             refreshExpensesRef.current?.();
+            notifyInvoicesChanged();
             break;
           case 'budget':
             refreshBudgetsRef.current?.();

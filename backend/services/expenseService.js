@@ -4,7 +4,6 @@ const peopleRepository = require('../repositories/peopleRepository');
 const paymentMethodRepository = require('../repositories/paymentMethodRepository');
 const plaidRepository = require('../repositories/plaidRepository');
 const { calculateWeek } = require('../utils/dateUtils');
-const logger = require('../config/logger');
 const expenseValidationService = require('./expenseValidationService');
 const expenseInsuranceService = require('./expenseInsuranceService');
 const expensePeopleService = require('./expensePeopleService');
@@ -188,63 +187,6 @@ class ExpenseService {
   }
 
   /**
-   * Check if a date is in the future (after today).
-   * @private
-   */
-  _isFutureDate(dateString) {
-    const today = new Date();
-    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-    return dateString > todayStr;
-  }
-
-  /**
-   * Get the effective posting date for an expense (for credit card balance calculations).
-   * Uses COALESCE logic: posted_date if set, otherwise transaction date.
-   * @private
-   */
-  _getEffectivePostingDate(expense) {
-    return expense.posted_date || expense.date;
-  }
-
-  /**
-   * Update credit card balance after expense creation.
-   * @private
-   */
-  async _updateCreditCardBalanceOnCreate(paymentMethod, amount, expenseDate, dbConnection = null) {
-    if (paymentMethod && paymentMethod.type === 'credit_card') {
-      if (dbConnection) {
-        await paymentMethodRepository.updateBalance(paymentMethod.id, amount, dbConnection);
-      } else {
-        await paymentMethodRepository.updateBalance(paymentMethod.id, amount);
-      }
-      logger.debug('Updated credit card balance after expense creation:', {
-        paymentMethodId: paymentMethod.id,
-        displayName: paymentMethod.display_name,
-        amountAdded: amount
-      });
-    }
-  }
-
-  /**
-   * Update credit card balance after expense deletion.
-   * @private
-   */
-  async _updateCreditCardBalanceOnDelete(paymentMethod, amount, expenseDate, dbConnection = null) {
-    if (paymentMethod && paymentMethod.type === 'credit_card') {
-      if (dbConnection) {
-        await paymentMethodRepository.updateBalance(paymentMethod.id, -amount, dbConnection);
-      } else {
-        await paymentMethodRepository.updateBalance(paymentMethod.id, -amount);
-      }
-      logger.debug('Updated credit card balance after expense deletion:', {
-        paymentMethodId: paymentMethod.id,
-        displayName: paymentMethod.display_name,
-        amountSubtracted: amount
-      });
-    }
-  }
-
-  /**
    * Process reimbursement data for an expense.
    * Amount = net (out-of-pocket), original_cost = charged amount.
    * @private
@@ -310,7 +252,7 @@ class ExpenseService {
       );
     }
 
-    const { payment_method_id, method, paymentMethod } = await this._resolvePaymentMethod(reimbursementProcessedData, dbConnection);
+    const { payment_method_id, method } = await this._resolvePaymentMethod(reimbursementProcessedData, dbConnection);
     const week = calculateWeek(reimbursementProcessedData.date);
 
     const expense = {
@@ -334,30 +276,45 @@ class ExpenseService {
       ? await expenseRepository.create(expense, dbConnection)
       : await expenseRepository.create(expense);
 
-    const chargedAmount = expense.original_cost !== null ? expense.original_cost : expense.amount;
-    await this._updateCreditCardBalanceOnCreate(paymentMethod, chargedAmount, expense.date, dbConnection);
-
     if (skipSideEffects) {
       return createdExpense;
     }
 
-    // Log activity event
+    await this._logExpenseAdded(createdExpense, method, tabId);
+    return createdExpense;
+  }
+
+  /** Activity log (and so cross-tab refresh) for a created expense. */
+  async _logExpenseAdded(expense, method, tabId = null) {
     await activityLogService.logEvent(
       'expense_added',
       'expense',
-      createdExpense.id,
+      expense.id,
       `Added expense: ${expense.place || 'Unknown'} - ${expense.amount.toFixed(2)} (${expense.date}, ${method})`,
       {
         amount: expense.amount,
         category: expense.type,
         date: expense.date,
         place: expense.place,
-        method: method,
+        method,
         tabId
       }
     );
+  }
 
-    return createdExpense;
+  /**
+   * Create one expense inside a transaction the caller holds (dbHelper.runInTransaction), so it commits or rolls
+   * back together with the caller's other writes; e.g. Bank Import adds an expense and links its bank
+   * transaction as one step. Validation applies as usual. The activity log must wait
+   * for the commit, so it is returned instead of written: call `logCreated()` after the transaction.
+   * @param {object} expenseData
+   * @param {object} dbConnection the shared connection the transaction is open on
+   * @returns {Promise<{expense: object, logCreated: () => Promise<void>}>}
+   */
+  async createExpenseInTransaction(expenseData, dbConnection, tabId = null) {
+    this.validateExpense(expenseData);
+    const expense = await this._createSingleExpense(expenseData, tabId, { dbConnection, skipSideEffects: true });
+    return { expense, logCreated: () => this._logExpenseAdded(expense, expense.method, tabId) };
   }
 
   /**
@@ -412,21 +369,7 @@ class ExpenseService {
       });
 
       for (const sideEffect of sideEffects) {
-        const { expense, method } = sideEffect;
-        await activityLogService.logEvent(
-          'expense_added',
-          'expense',
-          expense.id,
-          `Added expense: ${expense.place || 'Unknown'} - ${expense.amount.toFixed(2)} (${expense.date}, ${method})`,
-          {
-            amount: expense.amount,
-            category: expense.type,
-            date: expense.date,
-            place: expense.place,
-            method,
-            tabId
-          }
-        );
+        await this._logExpenseAdded(sideEffect.expense, sideEffect.method, tabId);
       }
 
       return result;
@@ -499,14 +442,7 @@ class ExpenseService {
 
     const monthsToCreate = futureMonths || 0;
     const applyPrimaryUpdate = async (dbConnection = null) => {
-      const { payment_method_id, method, paymentMethod } = await this._resolvePaymentMethod(reimbursementProcessedData, dbConnection);
-
-      let oldPaymentMethod = null;
-      if (oldExpense.payment_method_id) {
-        oldPaymentMethod = dbConnection
-          ? await paymentMethodRepository.findById(oldExpense.payment_method_id, dbConnection)
-          : await paymentMethodRepository.findById(oldExpense.payment_method_id);
-      }
+      const { payment_method_id, method } = await this._resolvePaymentMethod(reimbursementProcessedData, dbConnection);
 
       const week = calculateWeek(reimbursementProcessedData.date);
 
@@ -528,64 +464,6 @@ class ExpenseService {
       const updatedExpense = dbConnection
         ? await expenseRepository.update(id, expense, dbConnection)
         : await expenseRepository.update(id, expense);
-
-      // Handle credit card balance updates for payment method changes
-      const oldChargedAmount = oldExpense.original_cost !== null ? oldExpense.original_cost : oldExpense.amount;
-      const newChargedAmount = expense.original_cost !== null ? expense.original_cost : expense.amount;
-      const paymentMethodChanged = oldExpense.payment_method_id !== payment_method_id;
-      const chargedAmountChanged = oldChargedAmount !== newChargedAmount;
-      const oldEffectiveDate = this._getEffectivePostingDate(oldExpense);
-      const newEffectiveDate = this._getEffectivePostingDate(expense);
-      const effectiveDateChanged = oldEffectiveDate !== newEffectiveDate;
-      const oldIsFuture = this._isFutureDate(oldEffectiveDate);
-      const newIsFuture = this._isFutureDate(newEffectiveDate);
-
-      if (paymentMethodChanged) {
-        if (oldPaymentMethod && oldPaymentMethod.type === 'credit_card') {
-          await this._updateCreditCardBalanceOnDelete(oldPaymentMethod, oldChargedAmount, oldEffectiveDate, dbConnection);
-        }
-        if (paymentMethod && paymentMethod.type === 'credit_card') {
-          await this._updateCreditCardBalanceOnCreate(paymentMethod, newChargedAmount, newEffectiveDate, dbConnection);
-        }
-      } else if (paymentMethod && paymentMethod.type === 'credit_card') {
-        if (effectiveDateChanged && oldIsFuture !== newIsFuture) {
-          if (oldIsFuture && !newIsFuture) {
-            if (dbConnection) {
-              await paymentMethodRepository.updateBalance(paymentMethod.id, newChargedAmount, dbConnection);
-            } else {
-              await paymentMethodRepository.updateBalance(paymentMethod.id, newChargedAmount);
-            }
-            logger.debug('Added expense to credit card balance (moved from future to past):', {
-              paymentMethodId: paymentMethod.id,
-              displayName: paymentMethod.display_name,
-              amount: newChargedAmount
-            });
-          } else if (!oldIsFuture && newIsFuture) {
-            if (dbConnection) {
-              await paymentMethodRepository.updateBalance(paymentMethod.id, -oldChargedAmount, dbConnection);
-            } else {
-              await paymentMethodRepository.updateBalance(paymentMethod.id, -oldChargedAmount);
-            }
-            logger.debug('Removed expense from credit card balance (moved from past to future):', {
-              paymentMethodId: paymentMethod.id,
-              displayName: paymentMethod.display_name,
-              amount: oldChargedAmount
-            });
-          }
-        } else if (chargedAmountChanged && !oldIsFuture && !newIsFuture) {
-          const amountDiff = newChargedAmount - oldChargedAmount;
-          if (dbConnection) {
-            await paymentMethodRepository.updateBalance(paymentMethod.id, amountDiff, dbConnection);
-          } else {
-            await paymentMethodRepository.updateBalance(paymentMethod.id, amountDiff);
-          }
-          logger.debug('Updated credit card balance after expense amount change:', {
-            paymentMethodId: paymentMethod.id,
-            displayName: paymentMethod.display_name,
-            amountDiff
-          });
-        }
-      }
 
       return { updatedExpense, expense, payment_method_id, method };
     };
@@ -645,20 +523,7 @@ class ExpenseService {
         futureExpenses = txResult.futureExpenses;
 
         for (const sideEffect of futureSideEffects) {
-          await activityLogService.logEvent(
-            'expense_added',
-            'expense',
-            sideEffect.expense.id,
-            `Added expense: ${sideEffect.expense.place || 'Unknown'} - ${sideEffect.expense.amount.toFixed(2)} (${sideEffect.expense.date}, ${sideEffect.method})`,
-            {
-              amount: sideEffect.expense.amount,
-              category: sideEffect.expense.type,
-              date: sideEffect.expense.date,
-              place: sideEffect.expense.place,
-              method: sideEffect.method,
-              tabId
-            }
-          );
+          await this._logExpenseAdded(sideEffect.expense, sideEffect.method, tabId);
         }
       } catch (error) {
         throw Object.assign(new Error('Failed to create future expenses. Please try again.'), { statusCode: 500 });
@@ -742,17 +607,7 @@ class ExpenseService {
       return false;
     }
 
-    let paymentMethod = null;
-    if (expense.payment_method_id) {
-      paymentMethod = await paymentMethodRepository.findById(expense.payment_method_id);
-    }
-
     const deleted = await expenseRepository.delete(id);
-
-    if (deleted && paymentMethod) {
-      const chargedAmount = expense.original_cost !== null ? expense.original_cost : expense.amount;
-      await this._updateCreditCardBalanceOnDelete(paymentMethod, chargedAmount, expense.date);
-    }
 
     if (deleted && expense) {
       // Log activity event

@@ -15,9 +15,36 @@ const call = async (context, fn) => {
   }
 };
 
-/** @returns {Promise<{enabled: boolean, source: string, environment?: string, trial?: {limit: number, used: number}|null}>} */
-export const getPlaidStatus = (options = {}) =>
-  call('fetching Plaid status', () => apiGet(API_ENDPOINTS.PLAID_STATUS, 'fetch bank import status', options));
+const abortError = () => (typeof DOMException === 'function'
+  ? new DOMException('The operation was aborted.', 'AbortError')
+  : Object.assign(new Error('The operation was aborted.'), { name: 'AbortError' }));
+
+/** The status request shared by every caller in the current task (see getPlaidStatus). */
+let statusInTask = null;
+
+/**
+ * Plaid status. Callers in the same task share one request: the header button, the attention banner, bank badges
+ * and card balance checks all reload on the same `plaid` sync event. A request started in an earlier task is never
+ * reused, since it may predate the change the caller is reacting to. Aborting a caller's signal only rejects that
+ * caller.
+ * @returns {Promise<{enabled: boolean, source: string, environment?: string, trial?: {limit: number, used: number}|null,
+ *   toReview?: number, needsAttention?: Array, staleData?: Array}>}
+ */
+export const getPlaidStatus = ({ signal } = {}) => {
+  if (signal?.aborted) return Promise.reject(abortError());
+  if (!statusInTask) {
+    const request = call('fetching Plaid status', () => apiGet(API_ENDPOINTS.PLAID_STATUS, 'fetch bank import status'));
+    statusInTask = request;
+    setTimeout(() => { if (statusInTask === request) statusInTask = null; }, 0);
+  }
+  const shared = statusInTask;
+  if (!signal) return shared;
+  return new Promise((resolve, reject) => {
+    const onAbort = () => reject(abortError());
+    signal.addEventListener('abort', onAbort, { once: true });
+    shared.then(resolve, reject).finally(() => signal.removeEventListener('abort', onAbort));
+  });
+};
 
 /** Window event fired after Plaid settings change, so the header entry point can re-check status. */
 export const PLAID_SETTINGS_CHANGED_EVENT = 'plaid-settings-changed';

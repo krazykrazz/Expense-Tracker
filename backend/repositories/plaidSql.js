@@ -1,5 +1,5 @@
 /**
- * SQL fragments shared by the Plaid repositories (plaidRepository, plaidSyncRepository).
+ * SQL fragments shared by the Plaid repositories (plaidFileImportRepository, plaidSyncRepository).
  */
 
 /** A staged row as the file-import merge sees it (utils/bankFileImport), and its columns by those names. */

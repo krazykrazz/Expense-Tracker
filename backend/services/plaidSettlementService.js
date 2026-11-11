@@ -1,4 +1,5 @@
 const plaidRepository = require('../repositories/plaidRepository');
+const plaidFileImportRepository = require('../repositories/plaidFileImportRepository');
 const expenseRepository = require('../repositories/expenseRepository');
 const expenseService = require('./expenseService');
 const logger = require('../config/logger');
@@ -101,7 +102,7 @@ class PlaidSettlementService {
       }
 
       if (action === 'keep') {
-        await plaidRepository.deleteTransaction(id);
+        await plaidFileImportRepository.deleteTransaction(id);
         await logReview(txn, 'cancelled_keep', `Kept the expense for cancelled pending charge ${describeTxn(txn)}`, { expenseId: txn.expenseId });
         return { action };
       }
@@ -109,7 +110,7 @@ class PlaidSettlementService {
       if (action === 'delete_expense') {
         // Expense first: if that fails nothing has changed
         if (txn.expenseId) await expenseService.deleteExpense(txn.expenseId, tabId);
-        await plaidRepository.deleteTransaction(id);
+        await plaidFileImportRepository.deleteTransaction(id);
         await logReview(txn, 'cancelled_delete', `Deleted the expense for cancelled pending charge ${describeTxn(txn)}`, { expenseId: txn.expenseId });
         return { action };
       }

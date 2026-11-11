@@ -7,8 +7,10 @@
 
 const MATCH_WINDOW_DAYS = 3;
 const DAY_MS = 24 * 60 * 60 * 1000;
+/** A pending charge can settle for a different amount (tip, gas hold): within this share of the pending amount. */
+const PENDING_AMOUNT_TOLERANCE = 0.25;
 
-const toCents = (amount) => Math.round(Number(amount) * 100);
+const { toCents } = require('./money');
 
 /** @param {string} date YYYY-MM-DD */
 const toUtcDay = (date) => {
@@ -103,15 +105,39 @@ function findFixedCandidates(txn, fixedExpenses) {
       || a.id - b.id);
 }
 
+// ─── Ranking helpers shared by income (and, in Phase 3, contributions and loan payments) ───
+
+/** Month index (year * 12 + month - 1): consecutive months differ by 1, across year ends too. */
+const monthIndex = (year, month) => year * 12 + month - 1;
+
+/** Month index of a YYYY-MM-DD date. */
+const monthIndexOfDate = (date) => monthIndex(Number(date.slice(0, 4)), Number(date.slice(5, 7)));
+
+/**
+ * Inclusive month-index range covering every date, widened by `margin` months on each side: the months to load
+ * candidates for when a match may land in the neighbouring month.
+ * @param {string[]} dates YYYY-MM-DD, at least one
+ * @returns {[number, number]} [from, to]
+ */
+const monthWindow = (dates, margin = 0) => {
+  const indexes = dates.map(monthIndexOfDate);
+  return [Math.min(...indexes) - margin, Math.max(...indexes) + margin];
+};
+
+/** Lower-case words of a bank description or income source name ("JAT - Direct deposit" → jat, direct, deposit). */
+const nameTokens = (text) => String(text || '').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+
+/**
+ * The key decisions are learned by: the bank description (merchant name, else the raw name), trimmed and
+ * lower-case. A later row with the same key gets the same suggestion (e.g. the income it confirmed before).
+ * @param {{merchantName?: string|null, name?: string|null}} txn
+ */
+const descriptionKey = (txn) => (txn.merchantName || txn.name || '').trim().toLowerCase();
+
 // ─── Income ───
 
 /** Pay due on the 1st often lands a few days early (weekends, holidays), and vice versa at month start. */
 const INCOME_BOUNDARY_DAYS = 3;
-
-const monthIndex = (year, month) => year * 12 + month - 1;
-
-/** Lower-case words of a bank description or income source name ("JAT - Direct deposit" → jat, direct, deposit). */
-const nameTokens = (text) => String(text || '').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
 
 /** A settled bank deposit (money in) on a non-credit-card account. Plaid amounts are negative for money in. */
 const isDeposit = (txn) => txn.amount < 0 && !txn.pending && txn.paymentMethodType !== 'credit_card';
@@ -234,6 +260,7 @@ function findPaymentCandidates(txn, payments) {
 
 module.exports = {
   MATCH_WINDOW_DAYS,
+  PENDING_AMOUNT_TOLERANCE,
   PAYMENT_WINDOW_DAYS,
   isCardRow,
   isCardCredit,
@@ -245,7 +272,11 @@ module.exports = {
   FIXED_EARLY_DAYS,
   FIXED_LATE_DAYS,
   INCOME_BOUNDARY_DAYS,
+  monthIndex,
+  monthIndexOfDate,
+  monthWindow,
   nameTokens,
+  descriptionKey,
   isDeposit,
   incomeMonthOffset,
   isIncomeCandidate,

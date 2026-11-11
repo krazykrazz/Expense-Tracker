@@ -5,6 +5,7 @@
  */
 
 const { createIsolatedTestDb, cleanupIsolatedTestDb } = require('../test/dbIsolation');
+const { sqlHelpers, insertItem } = require('../test/plaidFixtures');
 
 jest.mock('../database/db', () => ({
   ...jest.requireActual('../database/db'),
@@ -33,15 +34,7 @@ let cardAccountId;
 let chequingAccountId;
 let unmappedAccountId;
 
-const run = (sql, params = []) => new Promise((resolve, reject) => {
-  db.run(sql, params, function (err) { return err ? reject(err) : resolve(this.lastID); });
-});
-const all = (sql, params = []) => new Promise((resolve, reject) => {
-  db.all(sql, params, (err, rows) => (err ? reject(err) : resolve(rows)));
-});
-const get = (sql, params = []) => new Promise((resolve, reject) => {
-  db.get(sql, params, (err, row) => (err ? reject(err) : resolve(row)));
-});
+const { run, all, get } = sqlHelpers(() => db);
 
 const stagePlaid = (transactionId, accountId, amount, date, extra = {}) =>
   run(
@@ -64,7 +57,7 @@ beforeEach(async () => {
   await run('DELETE FROM plaid_accounts');
   await run('DELETE FROM plaid_items');
   await run('DELETE FROM expenses');
-  const itemId = await run("INSERT INTO plaid_items (item_id, institution_name, access_token_enc, environment) VALUES ('item-1', 'Test Bank', 'v1:x:y:z', 'sandbox')");
+  const itemId = await insertItem(run);
   cardAccountId = await run("INSERT INTO plaid_accounts (plaid_item_id, account_id, name, mask, type, payment_method_id) VALUES (?, 'acc-card', 'Visa', 'KL54', 'credit', ?)", [itemId, CREDIT_CARD]);
   chequingAccountId = await run("INSERT INTO plaid_accounts (plaid_item_id, account_id, name, mask, type, payment_method_id) VALUES (?, 'acc-chq', 'Chequing', '5678', 'depository', ?)", [itemId, DEBIT]);
   unmappedAccountId = await run("INSERT INTO plaid_accounts (plaid_item_id, account_id, name, mask, type) VALUES (?, 'acc-sav', 'Savings', '9999', 'depository')", [itemId]);

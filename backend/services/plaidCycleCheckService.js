@@ -1,5 +1,5 @@
 const plaidConfig = require('../config/plaid');
-const plaidRepository = require('../repositories/plaidRepository');
+const plaidBalanceCheckRepository = require('../repositories/plaidBalanceCheckRepository');
 const plaidCycleRepository = require('../repositories/plaidCycleRepository');
 const paymentMethodRepository = require('../repositories/paymentMethodRepository');
 const statementBalanceService = require('./statementBalanceService');
@@ -9,8 +9,7 @@ const { getTodayString } = require('../utils/dateUtils');
 /** Closed cycles to show, newest first. */
 const MAX_CYCLES = 3;
 
-const round2 = (n) => Math.round(n * 100) / 100;
-const cents = (n) => Math.round(n * 100);
+const { round2, toCents: cents } = require('../utils/money');
 
 const bankItem = (row) => ({ effect: row.amount, date: row.date, name: row.name, transactionId: row.id, status: row.status });
 const trackerItem = (row, effect, kind) => ({ effect, date: row.date, name: row.name, kind, id: row.id });
@@ -28,7 +27,7 @@ class PlaidCycleCheckService {
   async getCycleChecks(paymentMethodId) {
     const id = parseInt(paymentMethodId, 10);
     const { environment } = plaidConfig.getPlaidConfig();
-    const accounts = (await plaidRepository.findMappedCardAccounts(environment)).filter(a => a.paymentMethodId === id);
+    const accounts = (await plaidBalanceCheckRepository.findMappedCardAccounts(environment)).filter(a => a.paymentMethodId === id);
     if (accounts.length === 0) {
       throw Object.assign(new Error('No bank account is linked to this credit card'), { statusCode: 404 });
     }

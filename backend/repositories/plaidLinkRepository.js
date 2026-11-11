@@ -1,4 +1,5 @@
 const dbHelper = require('../utils/dbHelper');
+const { descriptionKey } = require('../utils/plaidMatching');
 
 /**
  * What a bank transaction can be linked to besides an expense, each in its own link table keyed by
@@ -154,23 +155,24 @@ class PlaidLinkRepository {
 
   /**
    * Income source names (and categories) that earlier deposits with the same bank description confirmed,
-   * most recent first, keyed by the lower-case description (merchant name, else name).
+   * most recent first, keyed by plaidMatching.descriptionKey (the same key the Inbox looks rows up by).
    * @returns {Promise<Map<string, Array<{name: string, category: string}>>>}
    */
   async findLearnedIncomeNames() {
     const rows = await dbHelper.queryAll(
-      `SELECT LOWER(TRIM(COALESCE(pt.merchant_name, pt.name))) AS description, s.name, s.category
+      `SELECT pt.merchant_name AS merchantName, pt.name AS bankName, s.name, s.category
        FROM plaid_income_links l
        JOIN plaid_transactions pt ON pt.id = l.plaid_transaction_id
        JOIN income_sources s ON s.id = l.income_source_id
        ORDER BY l.landed_date DESC, l.id DESC`
     );
     const learned = new Map();
-    for (const { description, name, category } of rows) {
-      if (!description) continue;
-      const list = learned.get(description) || [];
+    for (const { merchantName, bankName, name, category } of rows) {
+      const key = descriptionKey({ merchantName, name: bankName });
+      if (!key) continue;
+      const list = learned.get(key) || [];
       if (!list.some(entry => entry.name.toLowerCase() === name.toLowerCase())) list.push({ name, category });
-      learned.set(description, list);
+      learned.set(key, list);
     }
     return learned;
   }

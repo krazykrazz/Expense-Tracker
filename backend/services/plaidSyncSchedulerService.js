@@ -21,7 +21,7 @@ const KEYS = {
 };
 const DEFAULTS = { enabled: true, intervalMinutes: 30, startHour: 6, endHour: 23 };
 
-const fail = (message, statusCode) => Object.assign(new Error(message), { statusCode });
+const { fail } = require('../utils/httpError');
 
 const toInt = (value, fallback) => {
   const n = parseInt(value, 10);

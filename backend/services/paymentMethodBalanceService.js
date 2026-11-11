@@ -254,9 +254,10 @@ class PaymentMethodBalanceService {
   }
 
   /**
-   * Recalculate the current balance for a credit card based on actual expenses and payments
+   * A card with its balance as of today. Balances are always computed (payment_methods.current_balance is no
+   * longer maintained), so nothing is written; kept for the POST /:id/recalculate-balance endpoint.
    * @param {number} id - Payment method ID
-   * @returns {Promise<Object>} Updated payment method with recalculated balance
+   * @returns {Promise<Object>} The payment method, with `current_balance` as of today
    */
   async recalculateBalance(id) {
     if (!id) {
@@ -274,29 +275,8 @@ class PaymentMethodBalanceService {
 
     const { getDatabase } = require('../database/db');
     const db = await getDatabase();
-
-    const todayStr = getTodayString();
-    const newBalance = await this._calculateAnchoredCurrentBalance(db, id, todayStr);
-
-    await new Promise((resolve, reject) => {
-      db.run(
-        'UPDATE payment_methods SET current_balance = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-        [newBalance, id],
-        (err) => {
-          if (err) return reject(err);
-          resolve();
-        }
-      );
-    });
-
-    logger.info('Recalculated credit card balance:', {
-      paymentMethodId: id,
-      displayName: paymentMethod.display_name,
-      newBalance,
-      todayStr
-    });
-
-    return paymentMethodRepository.findById(id);
+    const currentBalance = await this._calculateAnchoredCurrentBalance(db, id, getTodayString());
+    return { ...paymentMethod, current_balance: currentBalance };
   }
 
   async _calculateAnchoredCurrentBalance(db, paymentMethodId, todayStr) {

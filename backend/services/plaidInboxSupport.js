@@ -1,4 +1,5 @@
 const plaidRepository = require('../repositories/plaidRepository');
+const plaidBalanceCheckRepository = require('../repositories/plaidBalanceCheckRepository');
 const activityLogService = require('./activityLogService');
 
 /**
@@ -7,7 +8,7 @@ const activityLogService = require('./activityLogService');
  * one-action-per-row lock, the review log and the posted date a settled card transaction gives its expense.
  */
 
-const fail = (message, statusCode) => Object.assign(new Error(message), { statusCode });
+const { fail } = require('../utils/httpError');
 
 /**
  * The expense/income/payment services throw plain Errors for invalid input: those become 400. Database errors
@@ -18,7 +19,7 @@ const asInputError = (err) => {
   return err;
 };
 
-const round2 = (n) => Math.round(n * 100) / 100;
+const { round2 } = require('../utils/money');
 const defaultPlace = (txn) => (txn.merchantName || txn.name || '').trim();
 /** The bank description used to learn income names (Inbox suggestion and Add as income): same choice as the default place. */
 const incomeDescription = defaultPlace;
@@ -91,7 +92,7 @@ const postedDateChange = (expense, bankPostedDate, bankDatesAreReal = true) => {
  */
 async function postedDateFor(expense, bankPostedDate, plaidAccountId) {
   const needsCheck = expense.posted_date && bankPostedDate === expense.date && plaidAccountId;
-  const real = needsCheck ? await plaidRepository.bankReportsPostingDates(plaidAccountId) : true;
+  const real = needsCheck ? await plaidBalanceCheckRepository.bankReportsPostingDates(plaidAccountId) : true;
   return postedDateChange(expense, bankPostedDate, real);
 }
 

@@ -4,6 +4,7 @@
  */
 
 const { createIsolatedTestDb, cleanupIsolatedTestDb } = require('../test/dbIsolation');
+const { sqlHelpers, insertItem } = require('../test/plaidFixtures');
 
 jest.mock('../database/db', () => ({
   ...jest.requireActual('../database/db'),
@@ -28,9 +29,7 @@ let db;
 let itemId;
 let cardAccountId;
 
-const run = (sql, params = []) => new Promise((resolve, reject) => {
-  db.run(sql, params, function (err) { return err ? reject(err) : resolve(this.lastID); });
-});
+const { run } = sqlHelpers(() => db);
 
 const addExpense = (date, amount, place = 'Shop', postedDate = null) =>
   run(
@@ -65,7 +64,7 @@ beforeEach(async () => {
   await run('DELETE FROM fixed_expenses');
   await run('DELETE FROM credit_card_payments');
   await run('UPDATE payment_methods SET billing_cycle_day = 15 WHERE id = ?', [CREDIT_CARD]);
-  itemId = await run("INSERT INTO plaid_items (item_id, institution_name, access_token_enc, environment) VALUES ('item-1', 'Test Bank', 'v1:x:y:z', 'sandbox')");
+  itemId = await insertItem(run);
   cardAccountId = await run("INSERT INTO plaid_accounts (plaid_item_id, account_id, name, mask, type, payment_method_id) VALUES (?, 'acc-card', 'Visa', '4242', 'credit', ?)", [itemId, CREDIT_CARD]);
 });
 

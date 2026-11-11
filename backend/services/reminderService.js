@@ -1,5 +1,6 @@
 const reminderRepository = require('../repositories/reminderRepository');
 const statementBalanceService = require('./statementBalanceService');
+const paymentMethodBalanceService = require('./paymentMethodBalanceService');
 const billingCycleRepository = require('../repositories/billingCycleRepository');
 const fixedExpenseRepository = require('../repositories/fixedExpenseRepository');
 const loanPaymentRepository = require('../repositories/loanPaymentRepository');
@@ -32,10 +33,23 @@ class ReminderService {
   }
 
   /**
+   * A card's balance as of today, as the Financial page shows it (never the stored payment_methods.current_balance,
+   * which is no longer maintained). 0 when it can't be calculated, so one card can't break the reminders.
+   */
+  async _currentBalance(cardId) {
+    try {
+      return (await paymentMethodBalanceService.calculateCurrentBalance(cardId)) || 0;
+    } catch (error) {
+      logger.warn('Failed to calculate current balance for card:', { cardId, error: error.message });
+      return 0;
+    }
+  }
+
+  /**
    * Get credit card payment reminders
    * Returns credit cards with payments due within the reminder threshold
    * Uses actual statement balance from billing cycle history as authoritative source
-   * Falls back to calculated statement balance, then current_balance for backward compatibility
+   * Falls back to calculated statement balance, then the balance as of today (cards without a billing cycle day)
    * @param {Date} referenceDate - Reference date (defaults to today)
    * @returns {Promise<Object>} Credit card reminder status
    * _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 7.4, 7.5, 7.6_
@@ -55,6 +69,7 @@ class ReminderService {
       // Calculate statement balance and days until due for each card
       const cardsWithDueDates = await Promise.all(creditCards.map(async (card) => {
         const daysUntilDue = this.calculateDaysUntilDue(card.payment_due_day, referenceDate);
+        const currentBalance = await this._currentBalance(card.id);
         
         // Calculate statement balance if billing cycle is configured
         // _Requirements: 5.1, 5.6_
@@ -81,12 +96,12 @@ class ReminderService {
               cardId: card.id,
               error: error.message
             });
-            // Fall back to current_balance behavior
+            // Fall back to the balance as of today
           }
         }
         
         // Determine the balance to use for alert logic
-        // Priority: actual_statement_balance > calculated statement balance > current_balance
+        // Priority: actual_statement_balance > calculated statement balance > balance as of today
         // _Requirements: 7.4, 7.5, 7.6_
         let balanceForAlerts;
         let statementBalance;
@@ -106,8 +121,8 @@ class ReminderService {
           balanceForAlerts = statementInfo.statementBalance;
           statementBalance = statementInfo.statementBalance;
         } else {
-          // Fall back to current_balance for backward compatibility
-          balanceForAlerts = card.current_balance || 0;
+          // No statement (no billing cycle day): the balance as of today
+          balanceForAlerts = currentBalance;
           statementBalance = null;
         }
         
@@ -132,9 +147,9 @@ class ReminderService {
           id: card.id,
           display_name: card.display_name,
           full_name: card.full_name,
-          // Always include current_balance for utilization tracking
+          // Balance as of today, for utilization
           // _Requirements: 5.5_
-          current_balance: card.current_balance || 0,
+          current_balance: currentBalance,
           // Statement balance (actual if available, otherwise calculated)
           statement_balance: statementBalance,
           // Required payment amount (authoritative balance for alerts)

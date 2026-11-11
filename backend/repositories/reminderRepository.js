@@ -16,7 +16,6 @@ class ReminderRepository {
           id,
           display_name,
           full_name,
-          current_balance,
           credit_limit,
           payment_due_day,
           billing_cycle_day,

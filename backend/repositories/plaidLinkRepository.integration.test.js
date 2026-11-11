@@ -5,6 +5,7 @@
  */
 
 const { createIsolatedTestDb, cleanupIsolatedTestDb } = require('../test/dbIsolation');
+const { sqlHelpers, insertItem } = require('../test/plaidFixtures');
 
 jest.mock('../database/db', () => ({
   ...jest.requireActual('../database/db'),
@@ -20,12 +21,7 @@ const CREDIT_CARD = 4;
 let db;
 let accountId;
 
-const run = (sql, params = []) => new Promise((resolve, reject) => {
-  db.run(sql, params, function (err) { return err ? reject(err) : resolve(this.lastID); });
-});
-const get = (sql, params = []) => new Promise((resolve, reject) => {
-  db.get(sql, params, (err, row) => (err ? reject(err) : resolve(row)));
-});
+const { run, get } = sqlHelpers(() => db);
 
 const stage = (transactionId, status = 'new') => run(
   `INSERT INTO plaid_transactions (transaction_id, plaid_account_id, amount, date, name, status)
@@ -51,7 +47,7 @@ beforeEach(async () => {
     'fixed_expenses', 'income_sources', 'credit_card_payments']) {
     await run(`DELETE FROM ${table}`);
   }
-  const itemId = await run("INSERT INTO plaid_items (item_id, institution_name, access_token_enc, environment) VALUES ('i-1', 'Bank', 'v1:x:y:z', 'sandbox')");
+  const itemId = await insertItem(run, { itemId: 'i-1', institutionName: 'Bank' });
   accountId = await run("INSERT INTO plaid_accounts (plaid_item_id, account_id, name, payment_method_id) VALUES (?, 'a-1', 'Chequing', 1)", [itemId]);
   fixedId = await run("INSERT INTO fixed_expenses (year, month, name, amount, payment_type) VALUES (2026, 11, 'Rent', 50, 'Debit')");
   incomeId = await run("INSERT INTO income_sources (year, month, name, amount, category) VALUES (2026, 11, 'Salary', 50, 'Salary')");

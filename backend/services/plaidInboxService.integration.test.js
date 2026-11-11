@@ -4,6 +4,7 @@
  */
 
 const { createIsolatedTestDb, cleanupIsolatedTestDb } = require('../test/dbIsolation');
+const { sqlHelpers, insertItem } = require('../test/plaidFixtures');
 
 jest.mock('../database/db', () => ({
   ...jest.requireActual('../database/db'),
@@ -28,12 +29,7 @@ let debitAccountId;
 let cardAccountId;
 let unmappedAccountId;
 
-const run = (sql, params = []) => new Promise((resolve, reject) => {
-  db.run(sql, params, function (err) { return err ? reject(err) : resolve(this.lastID); });
-});
-const get = (sql, params = []) => new Promise((resolve, reject) => {
-  db.get(sql, params, (err, row) => (err ? reject(err) : resolve(row)));
-});
+const { run, get } = sqlHelpers(() => db);
 
 const stage = (transactionId, { accountId = debitAccountId, amount = 25.5, date = '2026-10-12', authorizedDate = '2026-10-10', name = 'SQ *COFFEE SHOP', merchantName = 'Coffee Shop', pending = 0 } = {}) =>
   run(
@@ -64,7 +60,7 @@ beforeEach(async () => {
   await run('DELETE FROM expenses');
   await run('DELETE FROM fixed_expenses');
   await run('DELETE FROM income_sources');
-  const itemId = await run("INSERT INTO plaid_items (item_id, institution_name, access_token_enc, environment) VALUES ('item-1', 'Test Bank', 'v1:x:y:z', 'sandbox')");
+  const itemId = await insertItem(run);
   debitAccountId = await run("INSERT INTO plaid_accounts (plaid_item_id, account_id, name, payment_method_id) VALUES (?, 'acc-debit', 'Chequing', ?)", [itemId, DEBIT]);
   cardAccountId = await run("INSERT INTO plaid_accounts (plaid_item_id, account_id, name, payment_method_id) VALUES (?, 'acc-card', 'Visa', ?)", [itemId, CREDIT_CARD]);
   unmappedAccountId = await run("INSERT INTO plaid_accounts (plaid_item_id, account_id, name) VALUES (?, 'acc-savings', 'Savings')", [itemId]);
@@ -220,20 +216,32 @@ describe('plaidInboxService', () => {
       await expect(plaidReviewService.addAsExpense(id, { type: 'Other' })).rejects.toMatchObject({ statusCode: 400 });
     });
 
-    test('undoes the expense when a sync changed the bank row meanwhile', async () => {
+    test('rolls the expense back when a sync changed the bank row meanwhile', async () => {
       const plaidRepository = require('../repositories/plaidRepository');
-      const id = await stage('t1');
+      const id = await stage('t1', { accountId: cardAccountId });
+      const balanceBefore = (await get('SELECT current_balance FROM payment_methods WHERE id = ?', [CREDIT_CARD])).current_balance;
       jest.spyOn(plaidRepository, 'resolveTransaction').mockResolvedValueOnce(false);
 
       await expect(plaidReviewService.addAsExpense(id, { type: 'Dining Out' })).rejects.toMatchObject({ statusCode: 409 });
 
       expect((await get('SELECT COUNT(*) AS n FROM expenses')).n).toBe(0);
+      expect((await get('SELECT current_balance FROM payment_methods WHERE id = ?', [CREDIT_CARD])).current_balance).toBe(balanceBefore);
+      expect(activityLogService.logEvent).not.toHaveBeenCalledWith('expense_added', expect.anything(), expect.anything(), expect.anything(), expect.anything());
       expect(activityLogService.logEvent).not.toHaveBeenCalledWith('plaid_transaction_updated', expect.anything(), expect.anything(), expect.anything(), expect.objectContaining({ action: 'add' }));
+    });
+
+    test('logs the added expense once it is committed', async () => {
+      const id = await stage('t1');
+
+      const { expense } = await plaidReviewService.addAsExpense(id, { type: 'Dining Out' });
+
+      expect(activityLogService.logEvent).toHaveBeenCalledWith('expense_added', 'expense', expense.id, expect.any(String), expect.objectContaining({ amount: 25.5 }));
+      expect((await get('SELECT expense_id FROM plaid_transactions WHERE id = ?', [id])).expense_id).toBe(expense.id);
     });
 
     test('a database error is a server error, not bad input', async () => {
       const id = await stage('t1');
-      jest.spyOn(expenseService, 'createExpense').mockRejectedValueOnce(Object.assign(new Error('SQLITE_BUSY: database is locked'), { code: 'SQLITE_BUSY' }));
+      jest.spyOn(expenseService, 'createExpenseInTransaction').mockRejectedValueOnce(Object.assign(new Error('SQLITE_BUSY: database is locked'), { code: 'SQLITE_BUSY' }));
 
       const err = await plaidReviewService.addAsExpense(id, { type: 'Dining Out' }).catch(e => e);
 

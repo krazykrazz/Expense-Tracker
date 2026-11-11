@@ -1,5 +1,5 @@
 const plaidConfig = require('../config/plaid');
-const plaidRepository = require('../repositories/plaidRepository');
+const plaidFileImportRepository = require('../repositories/plaidFileImportRepository');
 const activityLogService = require('./activityLogService');
 const plaidSettlementService = require('./plaidSettlementService');
 const { parseBankFile } = require('../utils/bankFileImport');
@@ -11,7 +11,7 @@ const { runWithTabId } = require('../utils/requestContext');
 const DEFAULT_DAYS_BACK = 30;
 const TYPE_LABELS = { credit: 'credit card', depository: 'bank', investment: 'investment', loan: 'loan' };
 
-const fail = (message, statusCode) => Object.assign(new Error(message), { statusCode });
+const { fail } = require('../utils/httpError');
 
 /**
  * Bank file import: a fallback for when Plaid can't fetch from a bank. A CSV exported from the bank's website
@@ -27,7 +27,7 @@ class PlaidFileImportService {
    * @returns {Promise<object>} counts: total, beforeFrom, alreadyFromBank, unchanged, updated, added, pendingAdded, settled
    */
   async importFile(accountId, { csv, fromDate, dryRun = false } = {}) {
-    const account = await plaidRepository.findAccountForImport(parseInt(accountId, 10));
+    const account = await plaidFileImportRepository.findAccountForImport(parseInt(accountId, 10));
     if (!account) throw fail('Bank account not found', 404);
     const { environment } = plaidConfig.getPlaidConfig();
     if (account.environment !== environment) {
@@ -50,10 +50,10 @@ class PlaidFileImportService {
       throw fail(`This file is for ${numbers}, not ${account.name} ••${account.mask}.`, 400);
     }
 
-    const defaultFromDate = (await plaidRepository.findFirstPlaidDate(account.id)) || shiftDate(getTodayString(), -DEFAULT_DAYS_BACK);
+    const defaultFromDate = (await plaidFileImportRepository.findFirstPlaidDate(account.id)) || shiftDate(getTodayString(), -DEFAULT_DAYS_BACK);
     const from = fromDate || defaultFromDate;
     const rows = file.rows.filter(row => row.date >= from);
-    const { settlements, ...counts } = await plaidRepository.applyFileImport(account.id, rows, { fromDate: from, dateKind: file.dateKind, dryRun });
+    const { settlements, ...counts } = await plaidFileImportRepository.applyFileImport(account.id, rows, { fromDate: from, dateKind: file.dateKind, dryRun });
 
     const result = {
       format: file.format,

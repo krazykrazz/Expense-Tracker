@@ -7,6 +7,8 @@ const expenseService = require('./expenseService');
 const fixedExpenseService = require('./fixedExpenseService');
 const incomeService = require('./incomeService');
 const logger = require('../config/logger');
+const dbHelper = require('../utils/dbHelper');
+const { getDatabase } = require('../database/db');
 const { toCents, transactionDate, isFixedCandidate, isDeposit, isIncomeCandidate } = require('../utils/plaidMatching');
 const { INCOME_CATEGORIES } = require('../utils/constants');
 const {
@@ -40,26 +42,30 @@ class PlaidReviewService {
       // charge has no posting date yet; it is set when it settles)
       const postedDate = !txn.pending && txn.paymentMethodType === 'credit_card' && txn.date > date ? txn.date : null;
 
-      let created;
-      try {
-        created = await expenseService.createExpense({
-          date,
-          posted_date: postedDate,
-          place: place || null,
-          notes: typeof input.notes === 'string' && input.notes.trim() ? input.notes.trim() : null,
-          amount: round2(txn.amount),
-          type: input.type,
-          payment_method_id: txn.paymentMethodId
-        }, 0, tabId);
-      } catch (err) {
-        throw asInputError(err);
-      }
-
-      if (!(await plaidRepository.resolveTransaction(id, 'added', created.id))) {
-        // A sync changed or removed the row meanwhile: undo, so no expense exists without its bank row
-        await expenseService.deleteExpense(created.id, tabId);
-        throw fail('This bank transaction changed while it was being added. Refresh the Inbox and try again.', 409);
-      }
+      // The expense and its bank link commit together: if a sync changed the row meanwhile, the expense
+      // (and its card balance update) rolls back, so no expense exists without its bank row
+      const added = await dbHelper.runInTransaction(async (tx) => {
+        let result;
+        try {
+          result = await expenseService.createExpenseInTransaction({
+            date,
+            posted_date: postedDate,
+            place: place || null,
+            notes: typeof input.notes === 'string' && input.notes.trim() ? input.notes.trim() : null,
+            amount: round2(txn.amount),
+            type: input.type,
+            payment_method_id: txn.paymentMethodId
+          }, await getDatabase(), tabId);
+        } catch (err) {
+          throw asInputError(err);
+        }
+        if (!(await plaidRepository.resolveTransaction(id, 'added', result.expense.id, tx))) {
+          throw fail('This bank transaction changed while it was being added. Refresh the Inbox and try again.', 409);
+        }
+        return result;
+      });
+      const created = added.expense;
+      await added.logCreated();
       await logReview(txn, 'add', `Added bank transaction ${describeTxn(txn)} as an expense`, { expenseId: created.id });
       return { transaction: await plaidRepository.findTransactionById(id), expense: created };
     });

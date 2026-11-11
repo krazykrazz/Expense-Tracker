@@ -2,8 +2,6 @@ const creditCardPaymentRepository = require('../repositories/creditCardPaymentRe
 const paymentMethodRepository = require('../repositories/paymentMethodRepository');
 const activityLogService = require('./activityLogService');
 const { runInTransaction } = require('../utils/dbHelper');
-const { calculateEffectiveBalance } = require('../utils/effectiveBalanceUtil');
-const { getTodayString } = require('../utils/dateUtils');
 const logger = require('../config/logger');
 
 /**
@@ -11,64 +9,6 @@ const logger = require('../config/logger');
  * Handles validation, business logic, and orchestration for credit card payment operations
  */
 class CreditCardPaymentService {
-  async _calculateCurrentBalanceInTransaction(tx, paymentMethodId, todayStr) {
-    const anchorCycle = await tx.get(
-      `SELECT * FROM credit_card_billing_cycles
-       WHERE payment_method_id = ?
-       ORDER BY cycle_end_date DESC
-       LIMIT 1`,
-      [paymentMethodId]
-    );
-
-    if (!anchorCycle || !anchorCycle.cycle_end_date) {
-      const expenseTotalRow = await tx.get(
-        `SELECT COALESCE(SUM(COALESCE(original_cost, amount)), 0) as total
-         FROM expenses
-         WHERE payment_method_id = ?
-           AND COALESCE(posted_date, date) <= ?`,
-        [paymentMethodId, todayStr]
-      );
-
-      const paymentTotalRow = await tx.get(
-        `SELECT COALESCE(SUM(amount), 0) as total
-         FROM credit_card_payments
-         WHERE payment_method_id = ?
-           AND payment_date <= ?`,
-        [paymentMethodId, todayStr]
-      );
-
-      return Math.max(
-        0,
-        Math.round(((expenseTotalRow?.total || 0) - (paymentTotalRow?.total || 0)) * 100) / 100
-      );
-    }
-
-    const { effectiveBalance } = calculateEffectiveBalance(anchorCycle);
-
-    const expenseDeltaRow = await tx.get(
-      `SELECT COALESCE(SUM(COALESCE(original_cost, amount)), 0) as total
-       FROM expenses
-       WHERE payment_method_id = ?
-         AND COALESCE(posted_date, date) > ?
-         AND COALESCE(posted_date, date) <= ?`,
-      [paymentMethodId, anchorCycle.cycle_end_date, todayStr]
-    );
-
-    const paymentDeltaRow = await tx.get(
-      `SELECT COALESCE(SUM(amount), 0) as total
-       FROM credit_card_payments
-       WHERE payment_method_id = ?
-         AND payment_date > ?
-         AND payment_date <= ?`,
-      [paymentMethodId, anchorCycle.cycle_end_date, todayStr]
-    );
-
-    return Math.max(
-      0,
-      Math.round((effectiveBalance + (expenseDeltaRow?.total || 0) - (paymentDeltaRow?.total || 0)) * 100) / 100
-    );
-  }
-
   /**
    * Validate payment data
    * @param {Object} data - Payment data to validate
@@ -126,11 +66,11 @@ class CreditCardPaymentService {
   }
 
   /**
-   * Record a payment and update the credit card balance
+   * Record a payment. Balances are computed from payments and expenses when shown, so nothing else is written.
    * @param {Object} data - Payment data { payment_method_id, amount, payment_date, notes }
    * @param {Object} [options]
-   * @param {Function} [options.withinTransaction] - `async (tx, payment) => {}` run after the payment and balance
-   *   are written, in the same transaction. Throwing rolls the payment back (used to link bank transactions).
+   * @param {Function} [options.withinTransaction] - `async (tx, payment) => {}` run after the payment is written,
+   *   in the same transaction. Throwing rolls the payment back (used to link bank transactions).
    * @returns {Promise<Object>} Created payment record
    */
   async recordPayment(data, options = {}) {
@@ -150,22 +90,10 @@ class CreditCardPaymentService {
       throw new Error('Payments can only be recorded for credit card payment methods');
     }
 
-    // Create payment record and update balance atomically (BUG-004 fix)
     const payment = await runInTransaction(async (tx) => {
       const insertResult = await tx.run(
         `INSERT INTO credit_card_payments (payment_method_id, amount, payment_date, notes) VALUES (?, ?, ?, ?)`,
         [data.payment_method_id, data.amount, data.payment_date, data.notes ? data.notes.trim() : null]
-      );
-
-      const newBalance = await this._calculateCurrentBalanceInTransaction(
-        tx,
-        data.payment_method_id,
-        getTodayString()
-      );
-
-      await tx.run(
-        'UPDATE payment_methods SET current_balance = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-        [newBalance, data.payment_method_id]
       );
 
       const created = {
@@ -307,7 +235,7 @@ class CreditCardPaymentService {
   }
 
   /**
-   * Delete a payment record and recompute the card's balance in the same transaction. Bank transactions
+   * Delete a payment record. Bank transactions
    * linked to it return to the Import Inbox (trigger plaid_transactions_unlink_on_card_payment_delete).
    * @param {number} paymentId - Payment ID
    * @returns {Promise<boolean>} True if deleted
@@ -323,22 +251,9 @@ class CreditCardPaymentService {
       return false;
     }
 
-    // Delete payment and reverse balance atomically (BUG-004 fix)
     const deleted = await runInTransaction(async (tx) => {
       const result = await tx.run('DELETE FROM credit_card_payments WHERE id = ?', [paymentId]);
-      if (result.changes === 0) return false;
-
-      const newBalance = await this._calculateCurrentBalanceInTransaction(
-        tx,
-        payment.payment_method_id,
-        getTodayString()
-      );
-
-      await tx.run(
-        'UPDATE payment_methods SET current_balance = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-        [newBalance, payment.payment_method_id]
-      );
-      return true;
+      return result.changes > 0;
     });
 
     if (deleted) {

@@ -358,7 +358,7 @@ Configurable payment methods with credit card support.
 | full_name | TEXT | Full descriptive name |
 | account_details | TEXT | Optional account details |
 | credit_limit | REAL | Credit limit (credit cards only; CHECK NULL or > 0) |
-| current_balance | REAL DEFAULT 0 | Current balance (credit cards only; CHECK >= 0) |
+| current_balance | REAL DEFAULT 0 | Unused: card balances are computed from expenses and payments (kept for old databases; CHECK >= 0) |
 | payment_due_day | INTEGER | Day of month payment is due (CHECK NULL or 1-31) |
 | billing_cycle_start | INTEGER | Day billing cycle starts (CHECK NULL or 1-31) |
 | billing_cycle_end | INTEGER | Day billing cycle ends (CHECK NULL or 1-31) |

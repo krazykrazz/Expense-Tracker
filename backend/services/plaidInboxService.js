@@ -1,4 +1,5 @@
 const plaidRepository = require('../repositories/plaidRepository');
+const plaidLinkRepository = require('../repositories/plaidLinkRepository');
 const expenseRepository = require('../repositories/expenseRepository');
 const categorySuggestionService = require('./categorySuggestionService');
 const plaidCardPaymentService = require('./plaidCardPaymentService');
@@ -130,8 +131,8 @@ class PlaidInboxService {
 
     const monthIdxs = deposits.map(row => monthIndexOf(row.date));
     const [sources, learned] = await Promise.all([
-      plaidRepository.findUnlinkedIncomeSources(Math.min(...monthIdxs) - 1, Math.max(...monthIdxs) + 1),
-      plaidRepository.findLearnedIncomeNames()
+      plaidLinkRepository.findUnlinkedIncomeSources(Math.min(...monthIdxs) - 1, Math.max(...monthIdxs) + 1),
+      plaidLinkRepository.findLearnedIncomeNames()
     ]);
 
     for (const row of deposits) {
@@ -162,7 +163,7 @@ class PlaidInboxService {
 
     // The landing window can reach into the previous or next month
     const monthIdxs = charges.map(row => monthIndexOf(row.date));
-    const fixedExpenses = await plaidRepository.findUnlinkedFixedExpenses(
+    const fixedExpenses = await plaidLinkRepository.findUnlinkedFixedExpenses(
       [...new Set(charges.map(row => row.paymentMethodId))],
       Math.min(...monthIdxs) - 1,
       Math.max(...monthIdxs) + 1

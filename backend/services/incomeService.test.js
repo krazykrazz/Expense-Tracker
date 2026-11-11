@@ -1,11 +1,11 @@
 const incomeService = require('./incomeService');
 const incomeRepository = require('../repositories/incomeRepository');
-const plaidRepository = require('../repositories/plaidRepository');
+const plaidLinkRepository = require('../repositories/plaidLinkRepository');
 const { validateYearMonth } = require('../utils/validators');
 
 // Mock dependencies
 jest.mock('../repositories/incomeRepository');
-jest.mock('../repositories/plaidRepository');
+jest.mock('../repositories/plaidLinkRepository');
 jest.mock('../utils/validators');
 
 describe('incomeService', () => {
@@ -13,7 +13,7 @@ describe('incomeService', () => {
     jest.clearAllMocks();
     // Default validator mock to not throw
     validateYearMonth.mockImplementation(() => {});
-    plaidRepository.findConfirmationsForIncomeSources.mockResolvedValue(new Map());
+    plaidLinkRepository.findConfirmationsForIncomeSources.mockResolvedValue(new Map());
   });
 
   describe('getMonthlyIncome', () => {
@@ -23,7 +23,7 @@ describe('incomeService', () => {
         { id: 2, name: 'Freelance', amount: 1500, year: 2024, month: 11 }
       ];
       const confirmation = { landedDate: '2024-11-14', amount: 5000, plannedAmount: 5000, name: 'PAYROLL' };
-      plaidRepository.findConfirmationsForIncomeSources.mockResolvedValue(new Map([[1, confirmation]]));
+      plaidLinkRepository.findConfirmationsForIncomeSources.mockResolvedValue(new Map([[1, confirmation]]));
       const mockByCategory = { Salary: 5000, Other: 1500 };
       incomeRepository.getIncomeSources.mockResolvedValue(mockSources);
       incomeRepository.getTotalMonthlyGross.mockResolvedValue(6500);
@@ -39,7 +39,7 @@ describe('incomeService', () => {
         total: 6500,
         byCategory: mockByCategory
       });
-      expect(plaidRepository.findConfirmationsForIncomeSources).toHaveBeenCalledWith([1, 2]);
+      expect(plaidLinkRepository.findConfirmationsForIncomeSources).toHaveBeenCalledWith([1, 2]);
       expect(validateYearMonth).toHaveBeenCalledWith(2024, 11);
       expect(incomeRepository.getIncomeSources).toHaveBeenCalledWith(2024, 11);
       expect(incomeRepository.getTotalMonthlyGross).toHaveBeenCalledWith(2024, 11);

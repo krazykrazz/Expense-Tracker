@@ -1,7 +1,7 @@
 const fixedExpenseRepository = require('../repositories/fixedExpenseRepository');
 const paymentMethodRepository = require('../repositories/paymentMethodRepository');
 const loanRepository = require('../repositories/loanRepository');
-const plaidRepository = require('../repositories/plaidRepository');
+const plaidLinkRepository = require('../repositories/plaidLinkRepository');
 const activityLogService = require('./activityLogService');
 const { validateYearMonth } = require('../utils/validators');
 const { previousMonth, logMonthCopy } = require('../utils/monthlyRows');
@@ -232,7 +232,7 @@ class FixedExpenseService {
    * the bank amount, the amount planned before it was confirmed, and how many days after the due date it landed.
    */
   async _withBankConfirmations(items) {
-    const confirmations = await plaidRepository.findConfirmationsForFixedExpenses(items.map(item => item.id));
+    const confirmations = await plaidLinkRepository.findConfirmationsForFixedExpenses(items.map(item => item.id));
     return items.map(item => {
       const confirmation = confirmations.get(item.id);
       if (!confirmation) return { ...item, bankConfirmation: null };

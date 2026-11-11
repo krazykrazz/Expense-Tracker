@@ -16,7 +16,7 @@ const fail = (message, statusCode) => Object.assign(new Error(message), { status
 /**
  * Bank file import: a fallback for when Plaid can't fetch from a bank. A CSV exported from the bank's website
  * is merged into the same staged rows as Plaid's, so the Inbox, pending/settled handling and the card balance
- * check all work unchanged, and Plaid takes the rows over when it catches up (plaidRepository._findFileRow).
+ * check all work unchanged, and Plaid takes the rows over when it catches up (plaidSyncRepository._takeOverFileRow).
  */
 class PlaidFileImportService {
   /**

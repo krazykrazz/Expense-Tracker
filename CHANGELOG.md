@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.25.4] - 2026-11-11
+
+### Plaid 2.4 refactors R2 to R8: atomic add as expense, card balances always computed, shared helpers, smaller Plaid modules
+
 ## [1.25.3] - 2026-11-11
 
 ### Receipt indicator refreshes after upload, dependency updates (plaid 51 via legacy entry point)

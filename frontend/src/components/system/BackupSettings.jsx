@@ -1215,6 +1215,13 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v1.25.4</div>
+                <div className="changelog-date">November 11, 2026</div>
+                <ul className="changelog-items">
+                  <li>Plaid 2.4 refactors R2 to R8: atomic add as expense, card balances always computed, shared helpers, smaller Plaid modules</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v1.25.3</div>
                 <div className="changelog-date">November 11, 2026</div>
                 <ul className="changelog-items">

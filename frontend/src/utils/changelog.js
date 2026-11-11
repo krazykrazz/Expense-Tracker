@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.25.4',
+    date: 'November 11, 2026',
+    added: [],
+    changed: ['Plaid 2.4 refactors R2 to R8: atomic add as expense, card balances always computed, shared helpers, smaller Plaid modules'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.25.3',
     date: 'November 11, 2026',
     added: [],

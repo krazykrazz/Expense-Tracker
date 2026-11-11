@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.25.3] - 2026-11-11
+
+### Receipt indicator refreshes after upload, dependency updates (plaid 51 via legacy entry point)
+
 ## [1.25.2] - 2026-11-10
 
 ### Balance check explains recent WS charges that are probably still pending

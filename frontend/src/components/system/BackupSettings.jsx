@@ -1215,6 +1215,13 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v1.25.3</div>
+                <div className="changelog-date">November 11, 2026</div>
+                <ul className="changelog-items">
+                  <li>Receipt indicator refreshes after upload, dependency updates (plaid 51 via legacy entry point)</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v1.25.2</div>
                 <div className="changelog-date">November 10, 2026</div>
                 <ul className="changelog-items">

@@ -452,6 +452,16 @@ const SystemModal = () => {
           <div className="changelog">
             <div className="changelog-entry">
               <div className="changelog-version">
+                v1.25.3
+                {isCurrentVersion('v1.25.3') && <span className="current-version-badge">Current Version</span>}
+              </div>
+              <div className="changelog-date">November 11, 2026</div>
+              <ul className="changelog-items">
+                <li>Receipt indicator refreshes after upload, dependency updates (plaid 51 via legacy entry point)</li>
+              </ul>
+            </div>
+            <div className="changelog-entry">
+              <div className="changelog-version">
                 v1.25.2
                 {isCurrentVersion('v1.25.2') && <span className="current-version-badge">Current Version</span>}
               </div>

@@ -372,55 +372,6 @@ class PaymentMethodRepository {
   }
 
   /**
-   * Update credit card balance (increment or decrement)
-   * @param {number} id - Payment method ID
-   * @param {number} amount - Amount to add (positive) or subtract (negative)
-   * @returns {Promise<Object|null>} Updated payment method or null if not found
-   */
-  async updateBalance(id, amount, dbConnection = null) {
-    const db = dbConnection || await getDatabase();
-    
-    return new Promise((resolve, reject) => {
-      // First get current balance to ensure we don't go negative
-      db.get('SELECT * FROM payment_methods WHERE id = ?', [id], (err, row) => {
-        if (err) {
-          logger.error('Failed to get payment method for balance update:', err);
-          reject(err);
-          return;
-        }
-        
-        if (!row) {
-          resolve(null);
-          return;
-        }
-        
-        const newBalance = Math.max(0, (row.current_balance || 0) + amount);
-        
-        const sql = `
-          UPDATE payment_methods 
-          SET current_balance = ?, updated_at = CURRENT_TIMESTAMP
-          WHERE id = ?
-        `;
-        
-        db.run(sql, [newBalance, id], function(err) {
-          if (err) {
-            logger.error('Failed to update payment method balance:', err);
-            reject(err);
-            return;
-          }
-          
-          logger.debug('Updated payment method balance:', { id, oldBalance: row.current_balance, newBalance, change: amount });
-          
-          resolve({
-            ...row,
-            current_balance: newBalance
-          });
-        });
-      });
-    });
-  }
-
-  /**
    * Get all payment methods with expense counts in a single optimized query
    * Reduces N+1 query problem by fetching all data in one query
    * @param {string} todayStr - Today's date in YYYY-MM-DD format for balance calculation

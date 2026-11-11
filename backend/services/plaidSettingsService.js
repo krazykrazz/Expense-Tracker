@@ -14,7 +14,7 @@ const CREDENTIAL_PATTERN = /^[A-Za-z0-9]{8,64}$/;
 const SECRET_UNREADABLE = 'The saved Plaid secret cannot be decrypted because the encryption key changed '
   + '(for example after restoring a backup on another machine). Re-enter the secret.';
 
-const fail = (message, statusCode) => Object.assign(new Error(message), { statusCode });
+const { fail } = require('../utils/httpError');
 const hint = (value) => (value ? `••••${value.slice(-4)}` : null);
 const label = (environment) => (environment === 'production' ? 'Production' : 'Sandbox');
 

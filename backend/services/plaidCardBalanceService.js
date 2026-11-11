@@ -1,5 +1,5 @@
 const plaidConfig = require('../config/plaid');
-const plaidRepository = require('../repositories/plaidRepository');
+const plaidBalanceCheckRepository = require('../repositories/plaidBalanceCheckRepository');
 const paymentMethodRepository = require('../repositories/paymentMethodRepository');
 const paymentMethodBalanceService = require('./paymentMethodBalanceService');
 const billingCycleRepository = require('../repositories/billingCycleRepository');
@@ -7,119 +7,10 @@ const { calculateEffectiveBalance } = require('../utils/effectiveBalanceUtil');
 const paymentMethodService = require('./paymentMethodService');
 const { getTodayString } = require('../utils/dateUtils');
 const { isBankDataStale } = require('../utils/plaidFreshness');
-
-/** Bank and tracker items on either side within this many days, same amount, are the same transaction. */
-const PAIR_DAYS = 5;
-
-const round2 = (n) => Math.round(n * 100) / 100;
-const cents = (n) => Math.round(n * 100);
-const dayNumber = (dateStr) => Date.UTC(+dateStr.slice(0, 4), +dateStr.slice(5, 7) - 1, +dateStr.slice(8, 10)) / 86400000;
-
-/**
- * What the bank says is owed on one card account.
- * - `limit − available` when the bank sends both: includes pending charges (CIBC).
- * - otherwise `current`, which may leave out pending charges (Wealthsimple).
- */
-function bankOwed(account) {
-  if (account.currentBalance == null && account.availableBalance == null) return null;
-  if (account.creditLimit != null && account.availableBalance != null) {
-    return { owed: round2(account.creditLimit - account.availableBalance), includesPending: true };
-  }
-  if (account.currentBalance == null) return null;
-  return { owed: round2(account.currentBalance), includesPending: false };
-}
-
-/**
- * Pair bank rows with tracker entries for the same money (signed effect on the balance equal to the cent,
- * dates within PAIR_DAYS), then one tracker entry with two bank rows that add up to it. Paired items cancel
- * out; what's left explains the difference.
- * @returns {{bankOnly: Array, trackerOnly: Array, pairs: Array<{bank: object, tracker: object}>,
- *   splits: Array<{bank: object[], tracker: object}>}}
- */
-function pairUp(bankItems, trackerItems) {
-  const unusedTracker = [...trackerItems];
-  const bankOnly = [];
-  const pairs = [];
-  for (const bank of bankItems) {
-    let best = -1;
-    let bestGap = Infinity;
-    unusedTracker.forEach((tracker, index) => {
-      if (cents(tracker.effect) !== cents(bank.effect)) return;
-      const gap = Math.abs(dayNumber(tracker.date) - dayNumber(bank.date));
-      if (gap <= PAIR_DAYS && gap < bestGap) {
-        best = index;
-        bestGap = gap;
-      }
-    });
-    if (best === -1) {
-      bankOnly.push(bank);
-    } else {
-      pairs.push({ bank, tracker: unusedTracker[best] });
-      unusedTracker.splice(best, 1);
-    }
-  }
-
-  // One order charged in two parts (Amazon ships separately): two bank rows adding up to one tracker entry
-  const splits = [];
-  for (let t = unusedTracker.length - 1; t >= 0; t--) {
-    const tracker = unusedTracker[t];
-    const near = bankOnly.filter(bank => Math.abs(dayNumber(bank.date) - dayNumber(tracker.date)) <= PAIR_DAYS);
-    let found = null;
-    for (let i = 0; i < near.length && !found; i++) {
-      for (let j = i + 1; j < near.length && !found; j++) {
-        if (cents(near[i].effect) + cents(near[j].effect) === cents(tracker.effect)) found = [near[i], near[j]];
-      }
-    }
-    if (found) {
-      splits.push({ bank: found, tracker });
-      unusedTracker.splice(t, 1);
-      for (const bank of found) bankOnly.splice(bankOnly.indexOf(bank), 1);
-    }
-  }
-  return { bankOnly, trackerOnly: unusedTracker, pairs, splits };
-}
-
-/** Most pending charges considered at once (subsets are enumerated). */
-const MAX_SETTLING_ROWS = 12;
-/** How far back a charge Plaid sent as posted may still be pending at a bank that doesn't say (Wealthsimple). */
-const LIKELY_PENDING_DAYS = 7;
-
-/**
- * The one choice of items whose effects add up to `target` cents, as a bit mask; null when none or several fit.
- */
-function uniqueSubset(items, target) {
-  let match = null;
-  for (let mask = 0; mask < (1 << items.length); mask++) {
-    let sum = 0;
-    for (let i = 0; i < items.length; i++) {
-      if (mask & (1 << i)) sum += cents(items[i].effect);
-    }
-    if (sum !== target) continue;
-    if (match !== null) return null;
-    match = mask;
-  }
-  return match;
-}
-
-/**
- * Which charges kept pending ("settling") the bank's balance shows have posted, for a bank whose balance
- * leaves pending charges out and that doesn't tell Plaid which charges are pending (Wealthsimple). The
- * difference must be explained to the cent by exactly one choice of charges still pending; everything else
- * is then in the bank's balance, i.e. posted. Anything less certain (several choices fit, or none: a tip or
- * fee changed the total) settles nothing. `likely_pending` causes are guesses made from the same difference,
- * so they don't count here.
- * @param {{difference: number, causes: Array<{type: string, effect: number}>}} card
- * @returns {Array<object>} the settling causes that posted (empty when unsure)
- */
-function postedFromBalance(card) {
-  const settling = card.causes.filter(cause => cause.type === 'settling');
-  if (settling.length === 0 || settling.length > MAX_SETTLING_ROWS) return [];
-  const otherEffects = card.causes.filter(cause => cause.type !== 'settling' && cause.type !== 'likely_pending')
-    .reduce((sum, cause) => sum + cents(cause.effect), 0);
-  const match = uniqueSubset(settling, cents(card.difference) - otherEffects);
-  if (match === null) return [];
-  return settling.filter((_, i) => !(match & (1 << i)));
-}
+const { round2, toCents: cents } = require('../utils/money');
+const {
+  dayNumber, bankOwed, pairUp, MAX_SETTLING_ROWS, LIKELY_PENDING_DAYS, uniqueSubset, postedFromBalance
+} = require('../utils/plaidCardBalanceMath');
 
 /**
  * Credit card balance check: the bank's balance (from the last sync) against the tracker's balance as of
@@ -131,7 +22,7 @@ class PlaidCardBalanceService {
    */
   async getCardBalances() {
     const { environment } = plaidConfig.getPlaidConfig();
-    const accounts = await plaidRepository.findMappedCardAccounts(environment);
+    const accounts = await plaidBalanceCheckRepository.findMappedCardAccounts(environment);
     const byCard = new Map();
     for (const account of accounts) {
       const list = byCard.get(account.paymentMethodId) || [];
@@ -158,7 +49,7 @@ class PlaidCardBalanceService {
 
     const [tracker, future] = await Promise.all([
       paymentMethodBalanceService.calculateCurrentBalance(paymentMethodId),
-      plaidRepository.sumFutureCardActivity(paymentMethodId, today)
+      plaidBalanceCheckRepository.sumFutureCardActivity(paymentMethodId, today)
     ]);
 
     const difference = bank ? round2(bank.owed - tracker) : null;
@@ -238,7 +129,7 @@ class PlaidCardBalanceService {
   async _explain(paymentMethodId, accounts, bank, tracker, today) {
     const includesPending = bank ? bank.includesPending : true;
     const [{ rows, firstDate }, anchorEnd] = await Promise.all([
-      plaidRepository.findBalanceCheckRows(accounts.map(a => a.id)),
+      plaidBalanceCheckRepository.findBalanceCheckRows(accounts.map(a => a.id)),
       this._statementAnchorEnd(paymentMethodId)
     ]);
     const afterAnchor = (postedDate) => !anchorEnd || postedDate > anchorEnd;
@@ -276,7 +167,7 @@ class PlaidCardBalanceService {
 
     let trackerItems = [];
     if (firstDate) {
-      const { expenses, payments } = await plaidRepository.findUnlinkedCardActivity(paymentMethodId, firstDate, today);
+      const { expenses, payments } = await plaidBalanceCheckRepository.findUnlinkedCardActivity(paymentMethodId, firstDate, today);
       trackerItems = [
         ...expenses.map(e => ({ kind: 'expense', id: e.id, date: e.date, postedDate: e.postedDate, name: e.place, amount: e.amount, effect: e.amount })),
         ...payments.map(p => ({ kind: 'payment', id: p.id, date: p.date, postedDate: p.postedDate, name: 'Payment', amount: p.amount, effect: -p.amount }))
@@ -336,7 +227,7 @@ class PlaidCardBalanceService {
     const leftover = cents(bank.owed - tracker) - causes.reduce((sum, cause) => sum + cents(cause.effect), 0);
     if (leftover >= 0) return [];
     const fromDate = new Date((dayNumber(today) - LIKELY_PENDING_DAYS) * 86400000).toISOString().slice(0, 10);
-    const rows = await plaidRepository.findRecentLinkedCharges(accounts.map(a => a.id), fromDate);
+    const rows = await plaidBalanceCheckRepository.findRecentLinkedCharges(accounts.map(a => a.id), fromDate);
     const candidates = rows
       .filter(row => row.amount > 0 && row.date <= today && row.expensePostedDate <= today && afterAnchor(row.postedDate))
       .slice(0, MAX_SETTLING_ROWS)
@@ -382,7 +273,7 @@ class PlaidCardBalanceService {
       if (!card.bank || card.bank.includesPending || card.bankError) continue;
       const posted = postedFromBalance(card);
       if (posted.length === 0) continue;
-      const settled = await plaidRepository.markSettled(posted.map(cause => cause.transactionId));
+      const settled = await plaidBalanceCheckRepository.markSettled(posted.map(cause => cause.transactionId));
       for (const cause of posted.filter(c => settled.includes(c.transactionId))) {
         settlements.push({
           plaidTransactionId: cause.transactionId, expenseId: cause.expenseId, settled: true,

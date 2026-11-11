@@ -7,6 +7,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { createIsolatedTestDb, cleanupIsolatedTestDb } = require('../test/dbIsolation');
+const { sqlHelpers, insertItem, plaidError } = require('../test/plaidFixtures');
 
 const mockSecretsDir = { current: null };
 jest.mock('../config/paths', () => ({
@@ -34,16 +35,8 @@ const OTHER_SECRET = 'ffffffffffffffffffffffff9999';
 let db;
 let tmpRoot;
 
-const run = (sql, params = []) => new Promise((resolve, reject) => {
-  db.run(sql, params, function (err) { return err ? reject(err) : resolve(this.lastID); });
-});
-const get = (sql, params = []) => new Promise((resolve, reject) => {
-  db.get(sql, params, (err, row) => (err ? reject(err) : resolve(row)));
-});
-const addItem = (environment) => run(
-  "INSERT INTO plaid_items (item_id, institution_name, access_token_enc, environment) VALUES (?, 'Bank', 'v1:a:b:c', ?)",
-  [`item-${environment}-${Math.random()}`, environment]
-);
+const { run, get } = sqlHelpers(() => db);
+const addItem = (environment) => insertItem(run, { itemId: `item-${environment}-${Math.random()}`, institutionName: 'Bank', environment });
 const save = (input = {}) => plaidSettingsService.saveSettings({ clientId: CLIENT_ID, secret: SECRET, environment: 'sandbox', ...input });
 
 beforeAll(async () => {
@@ -208,8 +201,8 @@ describe('plaidSettingsService', () => {
     });
 
     test('returns Plaid\'s rejection as a message, not an error', async () => {
-      const rejection = Object.assign(new Error('Request failed'), {
-        response: { data: { error_code: 'INVALID_API_KEYS', error_message: 'invalid client_id or secret provided' } },
+      // The axios error carries the request headers, secret included: the message must not leak them
+      const rejection = Object.assign(plaidError('INVALID_API_KEYS', 'invalid client_id or secret provided'), {
         config: { headers: { 'PLAID-SECRET': SECRET } }
       });
       plaidConfig.createPlaidClient.mockReturnValue({ linkTokenCreate: jest.fn().mockRejectedValue(rejection) });

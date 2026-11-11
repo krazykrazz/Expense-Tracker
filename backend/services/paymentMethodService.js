@@ -49,7 +49,8 @@ class PaymentMethodService {
       full_name: data.full_name ? data.full_name.trim() : null,
       account_details: data.account_details ? data.account_details.trim() : null,
       credit_limit: data.credit_limit || null,
-      current_balance: data.current_balance || 0,
+      // Card balances are computed from expenses and payments; the stored column is no longer used
+      current_balance: 0,
       payment_due_day: data.payment_due_day || null,
       billing_cycle_day: data.billing_cycle_day || null,
       billing_cycle_start: data.billing_cycle_start || null,
@@ -109,7 +110,7 @@ class PaymentMethodService {
       full_name: data.full_name ? data.full_name.trim() : null,
       account_details: data.account_details ? data.account_details.trim() : null,
       credit_limit: data.credit_limit || null,
-      current_balance: data.current_balance !== undefined ? data.current_balance : existing.current_balance,
+      current_balance: existing.current_balance,
       payment_due_day: data.payment_due_day !== undefined ? data.payment_due_day : existing.payment_due_day,
       billing_cycle_day: data.billing_cycle_day !== undefined ? data.billing_cycle_day : existing.billing_cycle_day,
       billing_cycle_start: data.billing_cycle_start || null,
@@ -338,7 +339,7 @@ class PaymentMethodService {
           const { expense_total_to_date, payment_total_to_date, ...cleanPm } = pm;
           withCounts.push({
             ...cleanPm,
-            current_balance: pm.current_balance,
+            current_balance: pm.type === 'credit_card' ? null : pm.current_balance,
             utilization_percentage: null,
             expense_count: 0,
             total_expense_count: pm.total_expense_count

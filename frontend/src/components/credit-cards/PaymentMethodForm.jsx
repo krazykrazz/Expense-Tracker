@@ -24,7 +24,6 @@ const PaymentMethodForm = ({ isOpen, method, onSave, onCancel }) => {
     full_name: '',
     account_details: '',
     credit_limit: '',
-    current_balance: '',
     payment_due_day: '',
     billing_cycle_day: '',
     billing_cycle_start: '',
@@ -45,7 +44,6 @@ const PaymentMethodForm = ({ isOpen, method, onSave, onCancel }) => {
         full_name: method.full_name || '',
         account_details: method.account_details || '',
         credit_limit: method.credit_limit ? method.credit_limit.toString() : '',
-        current_balance: method.current_balance ? method.current_balance.toString() : '',
         payment_due_day: method.payment_due_day ? method.payment_due_day.toString() : '',
         billing_cycle_day: method.billing_cycle_day ? method.billing_cycle_day.toString() : '',
         billing_cycle_start: method.billing_cycle_start ? method.billing_cycle_start.toString() : '',
@@ -59,7 +57,6 @@ const PaymentMethodForm = ({ isOpen, method, onSave, onCancel }) => {
         full_name: '',
         account_details: '',
         credit_limit: '',
-        current_balance: '',
         payment_due_day: '',
         billing_cycle_day: '',
         billing_cycle_start: '',
@@ -133,14 +130,6 @@ const PaymentMethodForm = ({ isOpen, method, onSave, onCancel }) => {
         const limit = parseFloat(formData.credit_limit);
         if (isNaN(limit) || limit <= 0) {
           errors.credit_limit = 'Credit limit must be a positive number';
-        }
-      }
-      
-      // Current balance validation (optional but must be non-negative if provided)
-      if (formData.current_balance) {
-        const balance = parseFloat(formData.current_balance);
-        if (isNaN(balance) || balance < 0) {
-          errors.current_balance = 'Balance cannot be negative';
         }
       }
       
@@ -219,10 +208,6 @@ const PaymentMethodForm = ({ isOpen, method, onSave, onCancel }) => {
         }
         if (formData.credit_limit) {
           payload.credit_limit = parseFloat(formData.credit_limit);
-        }
-        // Only set initial balance for new credit cards
-        if (!isEditing && formData.current_balance) {
-          payload.current_balance = parseFloat(formData.current_balance);
         }
         if (formData.payment_due_day) {
           payload.payment_due_day = parseInt(formData.payment_due_day, 10);
@@ -394,26 +379,6 @@ const PaymentMethodForm = ({ isOpen, method, onSave, onCancel }) => {
                     <span className="validation-error">{validationErrors.credit_limit}</span>
                   )}
                 </div>
-
-                {!isEditing && (
-                  <div className="form-group">
-                    <label htmlFor="current_balance">Initial Balance</label>
-                    <input
-                      type="number"
-                      id="current_balance"
-                      value={formData.current_balance}
-                      onChange={(e) => handleChange('current_balance', e.target.value)}
-                      placeholder="0.00"
-                      step="0.01"
-                      min="0"
-                      disabled={loading}
-                      className={validationErrors.current_balance ? 'input-error' : ''}
-                    />
-                    {validationErrors.current_balance && (
-                      <span className="validation-error">{validationErrors.current_balance}</span>
-                    )}
-                  </div>
-                )}
               </div>
 
               <div className="form-group">

@@ -57,13 +57,6 @@ class PaymentMethodValidationService {
         }
       }
 
-      // Validate current_balance if provided
-      if (data.current_balance !== undefined && data.current_balance !== null) {
-        if (typeof data.current_balance !== 'number' || data.current_balance < 0) {
-          errors.push('Balance cannot be negative');
-        }
-      }
-
       // Validate billing_cycle_day - REQUIRED for new credit cards
       if (data.billing_cycle_day === undefined || data.billing_cycle_day === null) {
         if (!isUpdate) {

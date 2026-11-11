@@ -4,19 +4,16 @@ const expenseRepository = require('../repositories/expenseRepository');
 const categorySuggestionService = require('./categorySuggestionService');
 const plaidCardPaymentService = require('./plaidCardPaymentService');
 const {
-  MATCH_WINDOW_DAYS, toCents, shiftDate, transactionDate, findMatchCandidates,
-  fixedExpectedDate, findFixedCandidates, isDeposit, findIncomeCandidates
+  MATCH_WINDOW_DAYS, PENDING_AMOUNT_TOLERANCE, toCents, shiftDate, transactionDate, findMatchCandidates,
+  fixedExpectedDate, findFixedCandidates, isDeposit, findIncomeCandidates, monthWindow, descriptionKey
 } = require('../utils/plaidMatching');
 const { isFileRow } = require('../utils/bankFileImport');
 const { buildLearnedPlaces, buildPlaceIndex, suggestPlace } = require('../utils/placeSuggestion');
 const { fail, defaultPlace, incomeDescription } = require('./plaidInboxSupport');
 
 const INBOX_STATUSES = ['new', 'ignored'];
-/** A dropped pending charge may reappear as a posted row up to this many days later, within this share of its amount. */
+/** A dropped pending charge may reappear as a posted row up to this many days later (within PENDING_AMOUNT_TOLERANCE). */
 const SETTLE_WINDOW_DAYS = 10;
-const SETTLE_AMOUNT_TOLERANCE = 0.25;
-
-const monthIndexOf = (date) => Number(date.slice(0, 4)) * 12 + Number(date.slice(5, 7)) - 1;
 
 /**
  * Import Inbox listing: staged bank transactions waiting for review, each with what it could be matched to and
@@ -115,7 +112,7 @@ class PlaidInboxService {
       settledCandidates: posted
         .filter(p => p.plaidAccountId === row.plaidAccountId && p.date >= row.date
           && p.date <= shiftDate(row.date, SETTLE_WINDOW_DAYS)
-          && Math.abs(p.amount - row.amount) <= Math.abs(row.amount) * SETTLE_AMOUNT_TOLERANCE)
+          && Math.abs(p.amount - row.amount) <= Math.abs(row.amount) * PENDING_AMOUNT_TOLERANCE)
         .map(p => ({ id: p.id, date: p.date, place: defaultPlace(p), amount: p.amount }))
     }));
   }
@@ -129,14 +126,15 @@ class PlaidInboxService {
     const deposits = rows.filter(isDeposit);
     if (deposits.length === 0) return result;
 
-    const monthIdxs = deposits.map(row => monthIndexOf(row.date));
+    // Income near a month boundary can be confirmed by a deposit in the neighbouring month
+    const [fromMonth, toMonth] = monthWindow(deposits.map(row => row.date), 1);
     const [sources, learned] = await Promise.all([
-      plaidLinkRepository.findUnlinkedIncomeSources(Math.min(...monthIdxs) - 1, Math.max(...monthIdxs) + 1),
+      plaidLinkRepository.findUnlinkedIncomeSources(fromMonth, toMonth),
       plaidLinkRepository.findLearnedIncomeNames()
     ]);
 
     for (const row of deposits) {
-      const learnedEntries = learned.get(incomeDescription(row).toLowerCase()) || [];
+      const learnedEntries = learned.get(descriptionKey(row)) || [];
       const learnedNames = new Set(learnedEntries.map(entry => entry.name.toLowerCase()));
       const candidates = findIncomeCandidates(row, sources, learnedNames).map(source => ({
         id: source.id,
@@ -162,11 +160,11 @@ class PlaidInboxService {
     if (charges.length === 0) return result;
 
     // The landing window can reach into the previous or next month
-    const monthIdxs = charges.map(row => monthIndexOf(row.date));
+    const [fromMonth, toMonth] = monthWindow(charges.map(row => row.date), 1);
     const fixedExpenses = await plaidLinkRepository.findUnlinkedFixedExpenses(
       [...new Set(charges.map(row => row.paymentMethodId))],
-      Math.min(...monthIdxs) - 1,
-      Math.max(...monthIdxs) + 1
+      fromMonth,
+      toMonth
     );
 
     for (const row of charges) {

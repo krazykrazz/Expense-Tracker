@@ -4,6 +4,7 @@
 
 const crypto = require('crypto');
 const { createIsolatedTestDb, cleanupIsolatedTestDb } = require('../test/dbIsolation');
+const { sqlHelpers, insertItem, account, txn, page, plaidError } = require('../test/plaidFixtures');
 
 jest.mock('../database/db');
 jest.mock('./activityLogService');
@@ -23,25 +24,7 @@ const savedEnv = {};
 let db;
 let client;
 
-const run = (sql, params = []) => new Promise((resolve, reject) => {
-  db.run(sql, params, function (err) { return err ? reject(err) : resolve(this.lastID); });
-});
-const all = (sql, params = []) => new Promise((resolve, reject) => {
-  db.all(sql, params, (err, rows) => (err ? reject(err) : resolve(rows)));
-});
-const get = (sql, params = []) => new Promise((resolve, reject) => {
-  db.get(sql, params, (err, row) => (err ? reject(err) : resolve(row)));
-});
-
-const account = (id, extra = {}) => ({ account_id: id, name: `Account ${id}`, mask: '1234', type: 'depository', subtype: 'checking', ...extra });
-const txn = (id, extra = {}) => ({
-  transaction_id: id, account_id: 'acc-1', amount: 12.34, iso_currency_code: 'CAD',
-  date: '2026-10-10', authorized_date: '2026-10-09', name: `RAW ${id}`, merchant_name: `Merchant ${id}`, pending: false, ...extra
-});
-const page = ({ added = [], modified = [], removed = [], next_cursor = 'c1', has_more = false, accounts = [account('acc-1')] } = {}) => ({
-  data: { added, modified, removed, next_cursor, has_more, accounts, transactions_update_status: 'HISTORICAL_UPDATE_COMPLETE' }
-});
-const plaidError = (code) => Object.assign(new Error('Request failed'), { response: { data: { error_code: code, error_message: code } } });
+const { run, all, get } = sqlHelpers(() => db);
 
 async function connect(name = 'Test Bank') {
   client.itemPublicTokenExchange.mockResolvedValueOnce({ data: { access_token: `access-${name}`, item_id: `item-${name}` } });
@@ -109,7 +92,7 @@ describe('plaidService', () => {
     });
 
     test('toReview counts what the Inbox lists: new rows on mapped accounts and dropped pending charges, nothing else', async () => {
-      const itemId = await run("INSERT INTO plaid_items (item_id, institution_name, access_token_enc, environment) VALUES ('i-1', 'Bank', 'v1:x:y:z', 'sandbox')");
+      const itemId = await insertItem(run, { itemId: 'i-1', institutionName: 'Bank' });
       const mapped = await run("INSERT INTO plaid_accounts (plaid_item_id, account_id, name, type, payment_method_id) VALUES (?, 'a-mapped', 'Chequing', 'depository', 4)", [itemId]);
       const unmapped = await run("INSERT INTO plaid_accounts (plaid_item_id, account_id, name, type) VALUES (?, 'a-unmapped', 'Savings', 'depository')", [itemId]);
       const stage = (id, accountId, { status = 'new', pending = 0, removed = false } = {}) => run(
@@ -895,7 +878,7 @@ describe('plaidService', () => {
   });
 
   describe('automatic sync', () => {
-    beforeEach(() => plaidService._lastAttemptAt.clear());
+    beforeEach(() => require('./plaidSyncService')._lastAttemptAt.clear());
 
     const setSynced = (id, minutesAgo) => run(
       "UPDATE plaid_items SET last_synced_at = strftime('%Y-%m-%d %H:%M:%S', 'now', ?) WHERE id = ?",

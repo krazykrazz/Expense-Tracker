@@ -18,7 +18,7 @@ Frontend: `frontend/src/components/financial/FinancialOverviewModal.jsx`, `front
 |------|--------|
 | `cash` | Display name |
 | `cheque`, `debit` | Display name, optional account details |
-| `credit_card` | Display name, full name (required), account details, credit limit, initial balance (create only), payment due day (required), statement closing day (`billing_cycle_day`, required), optional legacy billing cycle start/end days |
+| `credit_card` | Display name, full name (required), account details, credit limit, payment due day (required), statement closing day (`billing_cycle_day`, required), optional legacy billing cycle start/end days |
 
 `billing_cycle_day` and `payment_due_day` are required for new credit cards and cannot be cleared once set (`paymentMethodValidationService`). The type cannot be changed after creation.
 
@@ -57,7 +57,7 @@ Implemented in `backend/services/paymentMethodBalanceService.js`. All expense su
 
 Anchoring means a user-entered statement balance resets the running total, so older untracked charges or credits don't keep skewing the current balance.
 
-Balances are computed on read (`GET /api/payment-methods`, `/:id/credit-card-detail`). The stored `payment_methods.current_balance` column is adjusted incrementally on expense create/update/delete, and reset to the anchored value when a payment is recorded or deleted and by `POST /api/payment-methods/:id/recalculate-balance`.
+Balances are always computed (`GET /api/payment-methods`, `/:id/credit-card-detail`, payment reminders). The stored `payment_methods.current_balance` column is no longer maintained or read (since 2.4 R7 of the Plaid spec): it used to be adjusted on every expense, future-dated ones included, so it drifted from the balance shown. `POST /api/payment-methods/:id/recalculate-balance` returns the balance as of today without storing it.
 
 ## Database Schema
 
@@ -71,7 +71,7 @@ Balances are computed on read (`GET /api/payment-methods`, `/:id/credit-card-det
 | full_name | TEXT | Full descriptive name |
 | account_details | TEXT | Optional account details |
 | credit_limit | REAL | Credit limit (credit cards only, > 0) |
-| current_balance | REAL | Stored balance (credit cards only, ≥ 0); see above |
+| current_balance | REAL | Unused (kept for old databases); balances are computed, see above |
 | payment_due_day | INTEGER | Day of month payment is due (1-31) |
 | billing_cycle_day | INTEGER | Day of month statement closes (1-31) |
 | billing_cycle_start | INTEGER | Legacy cycle start day (optional) |
@@ -133,7 +133,7 @@ All routes are under `/api/payment-methods`.
 | PUT | `/:id` | Update payment method |
 | DELETE | `/:id` | Delete (only if no expenses and not the last active method) |
 | PATCH | `/:id/active` | Set active/inactive |
-| POST | `/:id/recalculate-balance` | Recompute and store anchored current balance |
+| POST | `/:id/recalculate-balance` | Return the anchored current balance (not stored) |
 | GET | `/:id/statement-balance` | Statement balance details |
 | GET | `/:id/billing-cycles` | Legacy billing cycle details |
 | GET | `/:id/credit-card-detail` | Combined detail payload (card, payments, statement balance, current cycle status, billing cycles) |
@@ -168,7 +168,7 @@ A new database is seeded (`backend/database/schema.js`) with: Cash (`cash`), Deb
 
 1. Click **💼 Financial** in the month selector
 2. In the Payment Methods section, click **+ Add**
-3. Select the type and fill in Display Name; for credit cards also Full Name, Payment Due Day and Statement Closing Day (Credit Limit and Initial Balance are optional)
+3. Select the type and fill in Display Name; for credit cards also Full Name, Payment Due Day and Statement Closing Day (Credit Limit is optional)
 4. Click **Create**
 
 ### Logging a Credit Card Payment

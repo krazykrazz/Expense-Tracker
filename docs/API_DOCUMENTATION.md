@@ -107,7 +107,7 @@ Request/response details for the plan and allocation endpoints: [Budget Plan End
 | PUT | `/api/payment-methods/:id` | Update a payment method |
 | DELETE | `/api/payment-methods/:id` | Delete a payment method |
 | PATCH | `/api/payment-methods/:id/active` | Activate/deactivate |
-| POST | `/api/payment-methods/:id/recalculate-balance` | Recalculate credit card balance |
+| POST | `/api/payment-methods/:id/recalculate-balance` | Credit card balance as of today (computed, not stored) |
 | GET | `/api/payment-methods/:id/statement-balance` | Calculated statement balance |
 | GET | `/api/payment-methods/:id/credit-card-detail` | Unified credit card detail. A payment recorded from, or linked to, bank transactions in the Import Inbox carries `bankLinks: [{ side: 'card'\|'funding', date, name, amount, accountName, accountMask }]` |
 | GET | `/api/payment-methods/:id/payments` | Credit card payment history |
@@ -1504,7 +1504,7 @@ The expense API accepts either `payment_method_id` (preferred) or `method` (disp
 
 ## Credit Card Balance Tracking
 
-- **Current balance** is anchored to the latest billing cycle record: its effective balance (actual if entered, else calculated), plus expenses with effective date (`COALESCE(posted_date, date)`) after the cycle end up to today, minus payments in the same window. Without any billing cycle record it falls back to all expenses minus all payments up to today. Computed on read by `GET /api/payment-methods` and `/:id/credit-card-detail`; `POST /:id/recalculate-balance` stores the recomputed value.
+- **Current balance** is anchored to the latest billing cycle record: its effective balance (actual if entered, else calculated), plus expenses with effective date (`COALESCE(posted_date, date)`) after the cycle end up to today, minus payments in the same window. Without any billing cycle record it falls back to all expenses minus all payments up to today. Computed on read by `GET /api/payment-methods`, `/:id/credit-card-detail` and the payment reminders; `POST /:id/recalculate-balance` returns it. The stored `payment_methods.current_balance` column is no longer maintained.
 - **Utilization**: `current_balance / credit_limit × 100`; warning at ≥ 30%, danger at ≥ 70%.
 - **Due date**: `days_until_due` from `payment_due_day`; payment reminders appear when due within 7 days and the statement isn't paid.
 
@@ -1779,7 +1779,7 @@ The reminder endpoint now includes statement balance information:
 
 - **Show Reminder**: When `statement_balance > 0` AND `days_until_due` is between 0 and 7
 - **Suppress Reminder**: When `statement_balance <= 0` (statement paid in full)
-- **Backward Compatibility**: Cards without `billing_cycle_day` use `current_balance` for alerts
+- **No statement**: Cards without `billing_cycle_day` use the balance as of today (as on the Financial page) for alerts
 
 ### Required Fields for New Credit Cards
 

@@ -4,6 +4,7 @@
  */
 
 const { createIsolatedTestDb, cleanupIsolatedTestDb } = require('../test/dbIsolation');
+const { sqlHelpers, insertItem } = require('../test/plaidFixtures');
 
 jest.mock('../database/db', () => ({
   ...jest.requireActual('../database/db'),
@@ -30,12 +31,7 @@ let db;
 let itemId;
 let cardAccountId;
 
-const run = (sql, params = []) => new Promise((resolve, reject) => {
-  db.run(sql, params, function (err) { return err ? reject(err) : resolve(this.lastID); });
-});
-const get = (sql, params = []) => new Promise((resolve, reject) => {
-  db.get(sql, params, (err, row) => (err ? reject(err) : resolve(row)));
-});
+const { run, get } = sqlHelpers(() => db);
 
 const setBank = ({ current = null, available = null, limit = null } = {}) =>
   run(
@@ -80,7 +76,7 @@ beforeEach(async () => {
   await run('DELETE FROM credit_card_payments');
   await run('DELETE FROM credit_card_billing_cycles');
   await run('UPDATE payment_methods SET credit_limit = NULL WHERE id = ?', [CREDIT_CARD]);
-  itemId = await run("INSERT INTO plaid_items (item_id, institution_name, access_token_enc, environment) VALUES ('item-1', 'Test Bank', 'v1:x:y:z', 'sandbox')");
+  itemId = await insertItem(run);
   cardAccountId = await run("INSERT INTO plaid_accounts (plaid_item_id, account_id, name, mask, type, payment_method_id) VALUES (?, 'acc-card', 'Visa', '4242', 'credit', ?)", [itemId, CREDIT_CARD]);
 });
 

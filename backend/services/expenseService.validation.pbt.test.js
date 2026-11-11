@@ -58,12 +58,8 @@ describe('ExpenseService - Validation Logic PBT', () => {
     ['_createSingleExpense', 1],
     ['_resolvePaymentMethod', 1],
     ['_processReimbursement', 1],
-    ['_updateCreditCardBalanceOnCreate', 3],
-    ['_updateCreditCardBalanceOnDelete', 3],
     ['_calculateFutureDate', 2],
     ['_validateFutureMonths', 1],
-    ['_isFutureDate', 1],
-    ['_getEffectivePostingDate', 1],
     ['_validatePeopleExist', 1],
 
     // ─── Aggregation methods (delegated to expenseAggregationService) ───

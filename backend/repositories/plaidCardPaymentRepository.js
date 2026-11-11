@@ -1,7 +1,7 @@
 const dbHelper = require('../utils/dbHelper');
 const { linkTransaction } = require('./plaidLinkRepository');
 
-const fail = (message, statusCode) => Object.assign(new Error(message), { statusCode });
+const { fail } = require('../utils/httpError');
 
 const PAYMENT_SELECT = `SELECT p.id, p.payment_method_id AS paymentMethodId, pm.display_name AS paymentMethodName, p.amount,
               p.payment_date AS date, p.notes,

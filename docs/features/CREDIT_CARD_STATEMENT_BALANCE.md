@@ -72,7 +72,7 @@ Statement Balance =
 **Alert Logic:**
 - If statement balance > 0 AND due date within 7 days → Show reminder with amount
 - If statement balance ≤ 0 → Suppress reminder (statement paid)
-- If no billing cycle configured → Fall back to current_balance (backward compatibility)
+- If no billing cycle configured → use the balance as of today (as on the Financial page)
 - When the statement balance was entered from the real statement, the reminder's amount is that balance **less payments made since the statement closed**, so a payment recorded by hand or from the bank (Import Inbox) clears or reduces the reminder. An overpayment shows as $0.
 
 ### 4. Enhanced Reminder Display
@@ -328,7 +328,7 @@ db.run(`
 ```
 
 **Impact:**
-- Existing credit cards without billing cycles continue using current_balance
+- Existing credit cards without billing cycles use the balance as of today
 - Cards with billing_cycle_end get migrated to billing_cycle_day
 - Backward compatible with old reminder logic
 

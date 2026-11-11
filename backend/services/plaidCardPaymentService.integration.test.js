@@ -5,6 +5,7 @@
  */
 
 const { createIsolatedTestDb, cleanupIsolatedTestDb } = require('../test/dbIsolation');
+const { sqlHelpers, insertItem } = require('../test/plaidFixtures');
 
 jest.mock('../database/db', () => ({
   ...jest.requireActual('../database/db'),
@@ -19,7 +20,7 @@ const plaidReviewService = require('./plaidReviewService');
 const plaidCardPaymentService = require('./plaidCardPaymentService');
 const creditCardPaymentService = require('./creditCardPaymentService');
 const plaidCardPaymentRepository = require('../repositories/plaidCardPaymentRepository');
-const plaidRepository = require('../repositories/plaidRepository');
+const plaidBalanceCheckRepository = require('../repositories/plaidBalanceCheckRepository');
 
 const DEBIT = 2;
 const WS_VISA = 4;
@@ -31,15 +32,7 @@ let chequingAccountId;
 let visaAccountId;
 let cibcAccountId;
 
-const run = (sql, params = []) => new Promise((resolve, reject) => {
-  db.run(sql, params, function (err) { return err ? reject(err) : resolve(this.lastID); });
-});
-const get = (sql, params = []) => new Promise((resolve, reject) => {
-  db.get(sql, params, (err, row) => (err ? reject(err) : resolve(row)));
-});
-const all = (sql, params = []) => new Promise((resolve, reject) => {
-  db.all(sql, params, (err, rows) => (err ? reject(err) : resolve(rows)));
-});
+const { run, get, all } = sqlHelpers(() => db);
 
 const stage = (transactionId, { accountId, amount, date, name, merchantName = null, pending = 0, pfcDetailed = null }) =>
   run(
@@ -90,7 +83,7 @@ beforeEach(async () => {
   await run('DELETE FROM plaid_transactions');
   await run('DELETE FROM plaid_accounts');
   await run('DELETE FROM plaid_items');
-  const itemId = await run("INSERT INTO plaid_items (item_id, institution_name, access_token_enc, environment) VALUES ('item-1', 'Test Bank', 'v1:x:y:z', 'sandbox')");
+  const itemId = await insertItem(run);
   chequingAccountId = await run("INSERT INTO plaid_accounts (plaid_item_id, account_id, name, mask, type, payment_method_id) VALUES (?, 'acc-chq', 'Chequing', '5070', 'depository', ?)", [itemId, DEBIT]);
   visaAccountId = await run("INSERT INTO plaid_accounts (plaid_item_id, account_id, name, mask, type, payment_method_id) VALUES (?, 'acc-visa', 'Visa', 'KL54', 'credit', ?)", [itemId, WS_VISA]);
   cibcAccountId = await run("INSERT INTO plaid_accounts (plaid_item_id, account_id, name, mask, type, payment_method_id) VALUES (?, 'acc-cibc', 'Mastercard', '4148', 'credit', ?)", [itemId, cibcMc]);
@@ -439,7 +432,7 @@ describe('plaidCardPaymentService', () => {
       await stageVisaCredit();
       const { payment } = await plaidCardPaymentService.act(await idOf('visa-credit'), {});
 
-      const { payments: leftOver } = await plaidRepository.findUnlinkedCardActivity(WS_VISA, '2026-10-01', '2026-11-30');
+      const { payments: leftOver } = await plaidBalanceCheckRepository.findUnlinkedCardActivity(WS_VISA, '2026-10-01', '2026-11-30');
 
       expect(leftOver.map(p => p.id)).toEqual([byHand]);
       expect(leftOver.map(p => p.id)).not.toContain(payment.id);
@@ -452,7 +445,7 @@ describe('plaidCardPaymentService', () => {
       })();
       await run('UPDATE credit_card_payments SET payment_method_id = ? WHERE id = ?', [WS_VISA, payment.id]);
 
-      const { payments: tracked } = await plaidRepository.findUnlinkedCardActivity(WS_VISA, '2026-10-01', '2026-11-30');
+      const { payments: tracked } = await plaidBalanceCheckRepository.findUnlinkedCardActivity(WS_VISA, '2026-10-01', '2026-11-30');
 
       expect(tracked.map(p => p.id)).toEqual([payment.id]);
     });

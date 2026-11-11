@@ -1,10 +1,9 @@
 const dbHelper = require('../utils/dbHelper');
 const plaidRepository = require('./plaidRepository');
 const { FILE_ID_PREFIX, SAME_TXN_DAYS, mergePlaidIntoFileRow, sameTransaction } = require('../utils/bankFileImport');
+const { PENDING_AMOUNT_TOLERANCE } = require('../utils/plaidMatching');
 const { STAGED_COLUMNS, pfcValues, PFC_SET_FIELDS } = require('./plaidSql');
 
-/** A settled charge on a reconnected bank may differ from its kept pending version by up to this share. */
-const REATTACH_AMOUNT_TOLERANCE = 0.25;
 /** The row a transaction id identifies, as the handlers need it. */
 const EXISTING_COLUMNS = 'id, status, amount, pending, expense_id AS expenseId';
 /** Columns a Plaid transaction sets; a purchase date and merchant name another source supplied are kept when Plaid sends none. */
@@ -285,7 +284,7 @@ class PlaidSyncRepository {
          AND ABS(amount - ?) <= ABS(amount) * ?
          AND (COALESCE(name, '') = COALESCE(?, '') OR (merchant_name IS NOT NULL AND merchant_name = ?))
        ORDER BY ABS(amount - ?), id LIMIT 1`,
-      [...excluded, purchaseDate, txn.amount, REATTACH_AMOUNT_TOLERANCE, txn.name ?? null, txn.merchant_name ?? null, txn.amount]
+      [...excluded, purchaseDate, txn.amount, PENDING_AMOUNT_TOLERANCE, txn.name ?? null, txn.merchant_name ?? null, txn.amount]
     )) || null;
   }
 }

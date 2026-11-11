@@ -1,4 +1,5 @@
 const dbHelper = require('../utils/dbHelper');
+const { linkTransaction } = require('./plaidLinkRepository');
 
 const fail = (message, statusCode) => Object.assign(new Error(message), { statusCode });
 
@@ -61,22 +62,16 @@ class PlaidCardPaymentRepository {
    */
   async link(tx, transactionId, paymentId, side) {
     const apply = async (conn) => {
-      const { changes } = await conn.run(
-        "UPDATE plaid_transactions SET status = 'matched', expense_id = NULL WHERE id = ? AND status = 'new'",
-        [transactionId]
-      );
-      if (changes === 0) throw fail('Bank transaction was already reviewed', 409);
+      let linked;
       try {
-        await conn.run(
-          'INSERT INTO plaid_card_payment_links (plaid_transaction_id, credit_card_payment_id, side) VALUES (?, ?, ?)',
-          [transactionId, paymentId, side]
-        );
+        linked = await linkTransaction(conn, 'cardPayment', transactionId, [paymentId, side]);
       } catch (err) {
         if (err.message && err.message.includes('UNIQUE constraint failed')) {
           throw fail(`That payment already has a bank transaction on the ${side === 'card' ? 'card' : 'paying account'} side`, 409);
         }
         throw err;
       }
+      if (!linked) throw fail('Bank transaction was already reviewed', 409);
     };
     return tx ? apply(tx) : dbHelper.runInTransaction(apply);
   }

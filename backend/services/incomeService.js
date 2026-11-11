@@ -1,5 +1,5 @@
 const incomeRepository = require('../repositories/incomeRepository');
-const plaidRepository = require('../repositories/plaidRepository');
+const plaidLinkRepository = require('../repositories/plaidLinkRepository');
 const { validateYearMonth } = require('../utils/validators');
 const { previousMonth } = require('../utils/monthlyRows');
 const { INCOME_CATEGORIES } = require('../utils/constants');
@@ -105,7 +105,7 @@ class IncomeService {
 
   /** Attach `bankConfirmation` (Import Inbox deposit: when it landed, the bank amount, the amount expected). */
   async _withBankConfirmations(sources) {
-    const confirmations = await plaidRepository.findConfirmationsForIncomeSources(sources.map(source => source.id));
+    const confirmations = await plaidLinkRepository.findConfirmationsForIncomeSources(sources.map(source => source.id));
     return sources.map(source => ({ ...source, bankConfirmation: confirmations.get(source.id) ?? null }));
   }
 

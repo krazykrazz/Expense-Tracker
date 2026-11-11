@@ -1,4 +1,5 @@
 const plaidRepository = require('../repositories/plaidRepository');
+const plaidLinkRepository = require('../repositories/plaidLinkRepository');
 const expenseRepository = require('../repositories/expenseRepository');
 const fixedExpenseRepository = require('../repositories/fixedExpenseRepository');
 const incomeRepository = require('../repositories/incomeRepository');
@@ -124,7 +125,7 @@ class PlaidReviewService {
     return exclusive(id, async () => {
       const txn = await requireNew(id, { settled: true });
       const parsedId = parseInt(fixedExpenseId, 10);
-      const fixed = Number.isNaN(parsedId) ? null : await plaidRepository.findFixedExpenseForMatching(parsedId);
+      const fixed = Number.isNaN(parsedId) ? null : await plaidLinkRepository.findFixedExpenseForMatching(parsedId);
       if (!fixed) {
         throw fail('Fixed expense not found', 404);
       }
@@ -138,7 +139,7 @@ class PlaidReviewService {
       const landedDate = txn.date;
       const plannedAmount = fixed.amount;
       try {
-        if (!(await plaidRepository.linkFixedExpense(id, fixed.id, landedDate, plannedAmount))) {
+        if (!(await plaidLinkRepository.linkFixedExpense(id, fixed.id, landedDate, plannedAmount))) {
           throw fail('Bank transaction was already reviewed', 409);
         }
       } catch (err) {
@@ -156,7 +157,7 @@ class PlaidReviewService {
           updated = true;
         } catch (err) {
           // Keep link and amount consistent: undo the link if the amount could not be updated
-          await plaidRepository.unlinkFixedExpense(id);
+          await plaidLinkRepository.unlinkFixedExpense(id);
           logger.warn('Updating fixed expense amount from bank transaction failed', { fixedExpenseId: fixed.id, error: err.message });
           throw fail(`Could not update the fixed expense amount: ${err.message}`, asInputError(err).statusCode || 500);
         }
@@ -181,7 +182,7 @@ class PlaidReviewService {
     return exclusive(id, async () => {
       const txn = await requireNew(id, { settled: true });
       const parsedId = parseInt(incomeSourceId, 10);
-      const source = Number.isNaN(parsedId) ? null : await plaidRepository.findIncomeSourceForMatching(parsedId);
+      const source = Number.isNaN(parsedId) ? null : await plaidLinkRepository.findIncomeSourceForMatching(parsedId);
       if (!source) {
         throw fail('Income source not found', 404);
       }
@@ -196,7 +197,7 @@ class PlaidReviewService {
       const plannedAmount = source.amount;
       const depositAmount = round2(Math.abs(txn.amount));
       try {
-        if (!(await plaidRepository.linkIncomeSource(id, source.id, landedDate, plannedAmount))) {
+        if (!(await plaidLinkRepository.linkIncomeSource(id, source.id, landedDate, plannedAmount))) {
           throw fail('Bank transaction was already reviewed', 409);
         }
       } catch (err) {
@@ -213,7 +214,7 @@ class PlaidReviewService {
           await incomeService.updateIncomeSource(source.id, { ...current, amount: depositAmount }, tabId);
           updated = true;
         } catch (err) {
-          await plaidRepository.unlinkIncomeSource(id);
+          await plaidLinkRepository.unlinkIncomeSource(id);
           logger.warn('Updating income amount from bank deposit failed', { incomeSourceId: source.id, error: err.message });
           throw fail(`Could not update the income amount: ${err.message}`, asInputError(err).statusCode || 500);
         }
@@ -258,7 +259,7 @@ class PlaidReviewService {
         throw asInputError(err);
       }
 
-      if (!(await plaidRepository.linkIncomeSource(id, created.id, txn.date, null, 'added'))) {
+      if (!(await plaidLinkRepository.linkIncomeSource(id, created.id, txn.date, null, 'added'))) {
         await incomeService.deleteIncomeSource(created.id, tabId);
         throw fail('Bank transaction was already reviewed', 409);
       }

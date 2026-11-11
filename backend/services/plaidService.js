@@ -1,6 +1,7 @@
 const { Products } = require('plaid/legacy');
 const plaidConfig = require('../config/plaid');
 const plaidRepository = require('../repositories/plaidRepository');
+const plaidSyncRepository = require('../repositories/plaidSyncRepository');
 const paymentMethodRepository = require('../repositories/paymentMethodRepository');
 const settingsRepository = require('../repositories/settingsRepository');
 const activityLogService = require('./activityLogService');
@@ -368,7 +369,7 @@ class PlaidService {
       for (let attempt = 0; ; attempt++) {
         try {
           const batch = await this._fetchAllPages(accessToken, item.syncCursor);
-          const { settlements, ...counts } = await plaidRepository.applySyncBatch(id, batch);
+          const { settlements, ...counts } = await plaidSyncRepository.applySyncBatch(id, batch);
           const balancesFresh = await this._refreshBalances(id, accessToken);
           await this._refreshHealth(id, accessToken);
           const balanceChanges = await this._balanceChanges(id, balancesBefore);

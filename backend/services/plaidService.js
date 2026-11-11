@@ -1,4 +1,4 @@
-const { Products } = require('plaid');
+const { Products } = require('plaid/legacy');
 const plaidConfig = require('../config/plaid');
 const plaidRepository = require('../repositories/plaidRepository');
 const paymentMethodRepository = require('../repositories/paymentMethodRepository');

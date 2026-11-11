@@ -1,7 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { Configuration, PlaidApi, PlaidEnvironments } = require('plaid');
+// plaid 51 ships a rewritten SDK; the previous one (used here) stays available as `plaid/legacy`
+const { Configuration, PlaidApi, PlaidEnvironments } = require('plaid/legacy');
 const logger = require('./logger');
 
 const VALID_ENVIRONMENTS = ['sandbox', 'production'];

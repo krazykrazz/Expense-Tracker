@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.25.3',
+    date: 'November 11, 2026',
+    added: [],
+    changed: ['Receipt indicator refreshes after upload, dependency updates (plaid 51 via legacy entry point)'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.25.2',
     date: 'November 10, 2026',
     added: [],

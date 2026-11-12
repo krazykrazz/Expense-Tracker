@@ -86,13 +86,15 @@ const EquityChart = ({ loanId, estimatedPropertyValue, currentBalance }) => {
       }))
     : [];
 
-  // Calculate scales
-  const maxEquity = chartData.length > 0 
-    ? Math.max(...chartData.map(d => d.equity.equityAmount), currentEquity.equityAmount)
-    : currentEquity.equityAmount;
-  const minEquity = chartData.length > 0
-    ? Math.min(...chartData.map(d => d.equity.equityAmount), 0)
-    : 0;
+  // Calculate scales: fit the axis to the data so month-to-month equity growth is visible
+  const equityValues = chartData.length > 0
+    ? [...chartData.map(d => d.equity.equityAmount), currentEquity.equityAmount]
+    : [currentEquity.equityAmount];
+  const dataMax = Math.max(...equityValues);
+  const dataMin = Math.min(...equityValues);
+  const axisPad = Math.max((dataMax - dataMin) * 0.25, Math.abs(dataMax) * 0.02, 1);
+  const maxEquity = dataMax + axisPad;
+  const minEquity = dataMin < 0 ? dataMin - axisPad : Math.max(0, dataMin - axisPad);
   const equityRange = maxEquity - minEquity || 1;
 
   // Generate path for equity line

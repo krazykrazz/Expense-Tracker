@@ -20,24 +20,6 @@ describe('Config Endpoint Cleanup - Canonical endpoint URL equivalence', () => {
     );
   });
 
-  it('LOAN_PAYMENTS produces /api/loans/{id}/payments', () => {
-    fc.assert(
-      fc.property(idArb, (id) => {
-        expect(API_ENDPOINTS.LOAN_PAYMENTS(id)).toMatch(new RegExp(`/api/loans/${id}/payments$`));
-      }),
-      { numRuns: 100 }
-    );
-  });
-
-  it('LOAN_PAYMENT produces /api/loans/{id}/payments/{paymentId}', () => {
-    fc.assert(
-      fc.property(idArb, idArb, (id, paymentId) => {
-        expect(API_ENDPOINTS.LOAN_PAYMENT(id, paymentId)).toMatch(new RegExp(`/api/loans/${id}/payments/${paymentId}$`));
-      }),
-      { numRuns: 100 }
-    );
-  });
-
   it('LOAN_SCENARIO produces /api/loans/{id}/insights/scenario', () => {
     fc.assert(
       fc.property(idArb, (id) => {

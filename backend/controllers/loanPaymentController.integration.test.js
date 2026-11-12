@@ -44,13 +44,6 @@ describe('Loan Payment API Integration Tests', () => {
     });
 
     await new Promise((resolve, reject) => {
-      db.run('DELETE FROM mortgage_payments', (err) => {
-        if (err) reject(err);
-        else resolve();
-      });
-    });
-
-    await new Promise((resolve, reject) => {
       db.run('DELETE FROM loans', (err) => {
         if (err) reject(err);
         else resolve();

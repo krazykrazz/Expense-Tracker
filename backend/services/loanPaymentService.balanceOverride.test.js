@@ -62,9 +62,11 @@ describe('LoanPaymentService - Balance Override', () => {
     loanPaymentRepository.create.mockResolvedValue({ id: 100, ...validPaymentData, loan_id: 1 });
     activityLogService.logEvent.mockResolvedValue(undefined);
     loanBalanceService.createOrUpdateBalance.mockResolvedValue({ id: 10 });
-    balanceCalculationService.calculateBalance.mockResolvedValue({ currentBalance: 495000 });
+    balanceCalculationService.recomputeMortgageSnapshots.mockResolvedValue(495000);
     balanceCalculationService.resolveRateAtDate.mockReturnValue(5.0);
     loanBalanceRepository.getBalanceHistory.mockResolvedValue([]);
+    // The rebuilt (pre-override) snapshot for the payment month
+    loanBalanceRepository.findByLoanAndMonth.mockResolvedValue({ remaining_balance: 495000, source: 'auto' });
   });
 
   afterEach(() => {
@@ -210,13 +212,16 @@ describe('LoanPaymentService - Balance Override', () => {
     });
 
     test('activity log metadata includes all required fields', async () => {
-      balanceCalculationService.calculateBalance.mockResolvedValue({ currentBalance: 498000 });
+      loanBalanceRepository.findByLoanAndMonth.mockResolvedValue({ remaining_balance: 498000, source: 'auto' });
 
       await loanPaymentService.createPayment(1, {
         ...validPaymentData,
         payment_date: '2025-03-20',
         balanceOverride: 490000
       });
+
+      // calculatedValue is read from the rebuilt snapshot of the payment month
+      expect(loanBalanceRepository.findByLoanAndMonth).toHaveBeenCalledWith(1, 2025, 3);
 
       const overrideCalls = activityLogService.logEvent.mock.calls.filter(
         call => call[0] === 'balance_override_applied'
@@ -247,30 +252,19 @@ describe('LoanPaymentService - Balance Override', () => {
     });
   });
 
-  // --- Auto-snapshot tests (no override provided) ---
+  // --- Snapshot rebuild tests (no override provided) ---
 
-  describe('mortgage auto-snapshot on createPayment', () => {
+  describe('mortgage snapshot rebuild on createPayment', () => {
     beforeEach(() => {
       loanRepository.findById.mockResolvedValue(baseMortgage);
     });
 
-    test('auto-creates snapshot from calculated balance when no override provided', async () => {
-      balanceCalculationService.calculateBalance.mockResolvedValue({
-        currentBalance: 497500,
-        interestAware: true
-      });
-
+    test('rebuilds generated snapshots from the payment date when no override provided', async () => {
       await loanPaymentService.createPayment(1, validPaymentData);
 
-      // Snapshot created with calculated balance
-      expect(loanBalanceService.createOrUpdateBalance).toHaveBeenCalledWith(
-        expect.objectContaining({
-          loan_id: 1,
-          year: 2025,
-          month: 1,
-          remaining_balance: 497500
-        })
-      );
+      expect(balanceCalculationService.recomputeMortgageSnapshots).toHaveBeenCalledWith(baseMortgage, '2025-01-15');
+      // No manual snapshot is written
+      expect(loanBalanceService.createOrUpdateBalance).not.toHaveBeenCalled();
 
       // No override event logged
       const overrideCalls = activityLogService.logEvent.mock.calls.filter(
@@ -279,32 +273,22 @@ describe('LoanPaymentService - Balance Override', () => {
       expect(overrideCalls).toHaveLength(0);
     });
 
-    test('skips auto-snapshot when calculation is not interest-aware', async () => {
-      balanceCalculationService.calculateBalance.mockResolvedValue({
-        currentBalance: 497500,
-        interestAware: false
-      });
+    test('payment is still created when the rebuild fails', async () => {
+      balanceCalculationService.recomputeMortgageSnapshots.mockRejectedValue(new Error('calc error'));
 
-      await loanPaymentService.createPayment(1, validPaymentData);
-
-      expect(loanBalanceService.createOrUpdateBalance).not.toHaveBeenCalled();
-    });
-
-    test('skips auto-snapshot when calculateBalance fails', async () => {
-      balanceCalculationService.calculateBalance.mockRejectedValue(new Error('calc error'));
-
-      // Should not throw — auto-snapshot failure is non-fatal
+      // Should not throw — rebuild failure is non-fatal
       const result = await loanPaymentService.createPayment(1, validPaymentData);
       expect(result).toHaveProperty('id');
       expect(loanBalanceService.createOrUpdateBalance).not.toHaveBeenCalled();
     });
 
-    test('does not auto-snapshot for non-mortgage loans', async () => {
+    test('does not rebuild snapshots for non-mortgage loans', async () => {
       loanRepository.findById.mockResolvedValue(baseLoan);
       loanPaymentRepository.create.mockResolvedValue({ id: 101, ...validPaymentData, loan_id: 2 });
 
       await loanPaymentService.createPayment(2, validPaymentData);
 
+      expect(balanceCalculationService.recomputeMortgageSnapshots).not.toHaveBeenCalled();
       expect(loanBalanceService.createOrUpdateBalance).not.toHaveBeenCalled();
     });
   });
@@ -359,28 +343,18 @@ describe('LoanPaymentService - Balance Override', () => {
       }));
     });
 
-    test('auto-creates snapshot from calculated balance when no override provided on update', async () => {
-      balanceCalculationService.calculateBalance.mockResolvedValue({
-        currentBalance: 492000,
-        interestAware: true
-      });
-
+    test('rebuilds generated snapshots from the earlier of the old and new dates on update', async () => {
       await loanPaymentService.updatePayment(100, {
         ...validPaymentData,
+        payment_date: '2025-03-10',
         amount: 2600
       });
 
       expect(loanPaymentRepository.update).toHaveBeenCalledTimes(1);
+      expect(balanceCalculationService.recomputeMortgageSnapshots).toHaveBeenCalledWith(baseMortgage, '2025-01-15');
+      expect(loanBalanceService.createOrUpdateBalance).not.toHaveBeenCalled();
 
-      // Auto-snapshot should be created with calculated balance
-      expect(loanBalanceService.createOrUpdateBalance).toHaveBeenCalledWith(
-        expect.objectContaining({
-          loan_id: 1,
-          remaining_balance: 492000
-        })
-      );
-
-      // No override event logged (auto-snapshot is silent)
+      // No override event logged
       const overrideCalls = activityLogService.logEvent.mock.calls.filter(
         call => call[0] === 'balance_override_applied'
       );

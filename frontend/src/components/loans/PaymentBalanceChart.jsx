@@ -14,7 +14,8 @@ import { formatCurrency, formatDate } from '../../utils/formatters';
 const PaymentBalanceChart = ({ 
   payments = [], 
   initialBalance = 0,
-  loanName = 'Loan'
+  loanName = 'Loan',
+  serverHistory = null
 }) => {
   const [hoveredPoint, setHoveredPoint] = useState(null);
 
@@ -31,19 +32,28 @@ const PaymentBalanceChart = ({
   }
 
   // Prepare chart data - sort payments chronologically (oldest first)
+  // Parse as local dates: 'YYYY-MM-DD' alone is UTC and shows the previous day west of UTC
+  const toLocalDate = (isoDate) => new Date(`${isoDate}T00:00:00`);
   const sortedPayments = [...payments].sort((a, b) => 
-    new Date(a.payment_date) - new Date(b.payment_date)
+    toLocalDate(a.payment_date) - toLocalDate(b.payment_date)
   );
+
+  // Interest-aware balances (mortgages) when provided, otherwise initial balance minus payments
+  const serverBalanceById = serverHistory
+    ? new Map(serverHistory.map(entry => [entry.id, entry.runningBalance]))
+    : null;
 
   // Calculate running balance and cumulative payments for each point
   let cumulativePayments = 0;
   const chartData = sortedPayments.map((payment, index) => {
     cumulativePayments += payment.amount;
-    const runningBalance = Math.max(0, initialBalance - cumulativePayments);
+    const runningBalance = serverBalanceById && serverBalanceById.has(payment.id)
+      ? serverBalanceById.get(payment.id)
+      : Math.max(0, initialBalance - cumulativePayments);
     
     return {
       ...payment,
-      date: new Date(payment.payment_date),
+      date: toLocalDate(payment.payment_date),
       runningBalance,
       cumulativePayments,
       index
@@ -127,9 +137,8 @@ const PaymentBalanceChart = ({
   };
 
   // Calculate percentage paid off
-  const totalPaid = chartData.length > 0 ? chartData[chartData.length - 1].cumulativePayments : 0;
-  const percentagePaid = initialBalance > 0 ? (totalPaid / initialBalance) * 100 : 0;
-  const currentBalance = initialBalance - totalPaid;
+  const currentBalance = chartData.length > 0 ? chartData[chartData.length - 1].runningBalance : initialBalance;
+  const percentagePaid = initialBalance > 0 ? ((initialBalance - currentBalance) / initialBalance) * 100 : 0;
 
   return (
     <div className="payment-balance-chart-section">

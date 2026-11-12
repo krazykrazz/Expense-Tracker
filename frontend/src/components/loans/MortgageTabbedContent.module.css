@@ -194,15 +194,6 @@
   gap: var(--spacing-6);
 }
 
-.chartPlaceholder {
-  padding: var(--spacing-5);
-  background: var(--bg-muted);
-  border-radius: var(--radius-md);
-  color: var(--text-tertiary);
-  font-size: var(--text-base);
-  text-align: center;
-}
-
 /* ── Projections panel ─────────────────────────────────────────────────────── */
 .projectionsPanel {
   display: flex;
@@ -351,6 +342,40 @@
 .rateHistoryValue {
   font-weight: var(--font-semibold);
   color: var(--text-primary);
+}
+
+.rateChart {
+  padding: var(--spacing-4);
+  background: var(--bg-muted);
+  border-radius: var(--radius-md);
+}
+
+.rateChartSvg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.rateChartGrid {
+  stroke: var(--border-default);
+  stroke-dasharray: 3 3;
+}
+
+.rateChartLine {
+  fill: none;
+  stroke: var(--color-primary);
+  stroke-width: 2.5;
+}
+
+.rateChartDot {
+  fill: var(--color-primary);
+  stroke: var(--bg-muted);
+  stroke-width: 2;
+}
+
+.rateChartLabel {
+  fill: var(--text-tertiary);
+  font-size: 11px;
 }
 
 /* ── Payments panel ────────────────────────────────────────────────────────── */

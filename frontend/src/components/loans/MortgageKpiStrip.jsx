@@ -33,13 +33,19 @@ function fmt(value) {
 /**
  * MortgageKpiStrip — compact always-visible strip of 7 key mortgage metrics.
  */
-function MortgageKpiStrip({ loanData, calculatedBalanceData, insights, insightsLoading, paymentDueDay }) {
+const PAYMENT_SOURCE_LABELS = {
+  linked_fixed_expense: 'from fixed expense',
+  calculated: 'calculated minimum'
+};
+
+function MortgageKpiStrip({ loanData, currentRate, calculatedBalanceData, insights, insightsLoading, paymentDueDay }) {
   // 1. Current Balance
   const rawBalance = calculatedBalanceData?.currentBalance ?? loanData?.initial_balance ?? null;
   const currentBalanceDisplay = rawBalance != null ? fmt(rawBalance) : '—';
 
   // 2. Interest Rate
-  const rateDisplay = loanData?.currentRate != null ? loanData.currentRate + '%' : '—';
+  const rate = currentRate ?? loanData?.currentRate;
+  const rateDisplay = rate != null ? rate + '%' : '—';
   const rateType = loanData?.rate_type;
   const rateBadgeLabel = rateType === 'variable' ? 'Variable' : rateType === 'fixed' ? 'Fixed' : null;
 
@@ -54,9 +60,10 @@ function MortgageKpiStrip({ loanData, calculatedBalanceData, insights, insightsL
     ? insights?.currentStatus?.currentPayment
     : null;
   const monthlyPaymentDisplay = monthlyPaymentRaw != null ? fmt(monthlyPaymentRaw) : '—';
-  const paymentSource = (!insightsLoading && insights)
-    ? (insights?.currentStatus?.paymentSource || null)
+  const paymentSourceKey = (!insightsLoading && insights)
+    ? (insights?.dataStatus?.paymentSource || insights?.currentStatus?.paymentSource || null)
     : null;
+  const paymentSource = paymentSourceKey ? (PAYMENT_SOURCE_LABELS[paymentSourceKey] || null) : null;
 
   // 5. Next Payment Date
   let nextPaymentDisplay = '—';

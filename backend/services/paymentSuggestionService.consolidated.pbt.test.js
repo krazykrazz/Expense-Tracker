@@ -10,7 +10,7 @@
  * **Validates: Payment suggestion calculation logic**
  * 
  * @invariant Payment Suggestion Logic: Loan payment suggestions are calculated as the
- * average of historical payments, mortgages use configured payment amounts, and loans
+ * average of historical payments, mortgages use the linked fixed expense amount, and loans
  * without payment history return null suggestions.
  */
 
@@ -80,17 +80,21 @@ function createTestDatabase() {
             return;
           }
 
-          // Create mortgage_payments table (for tracking payment amounts over time)
+          // Fixed expenses linked to a mortgage are its configured monthly payment
           db.run(`
-            CREATE TABLE mortgage_payments (
+            CREATE TABLE fixed_expenses (
               id INTEGER PRIMARY KEY AUTOINCREMENT,
-              loan_id INTEGER NOT NULL,
-              payment_amount REAL NOT NULL CHECK(payment_amount > 0),
-              effective_date TEXT NOT NULL,
-              notes TEXT,
+              year INTEGER NOT NULL,
+              month INTEGER NOT NULL,
+              name TEXT NOT NULL,
+              amount REAL NOT NULL CHECK(amount >= 0),
+              category TEXT NOT NULL DEFAULT 'Housing',
+              payment_type TEXT NOT NULL DEFAULT 'Debit',
+              payment_method_id INTEGER,
+              payment_due_day INTEGER,
+              linked_loan_id INTEGER REFERENCES loans(id) ON DELETE SET NULL,
               created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-              updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-              FOREIGN KEY (loan_id) REFERENCES loans(id) ON DELETE CASCADE
+              updated_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
           `, (err) => {
             if (err) {
@@ -117,7 +121,21 @@ function createTestDatabase() {
               }
 
               // Create indexes
-              db.run(`CREATE INDEX idx_mortgage_payments_loan_id ON mortgage_payments(loan_id)`, (err) => {
+              db.run(`
+                CREATE TABLE loan_balances (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  loan_id INTEGER NOT NULL,
+                  year INTEGER NOT NULL,
+                  month INTEGER NOT NULL,
+                  remaining_balance REAL NOT NULL CHECK(remaining_balance >= 0),
+                  rate REAL NOT NULL CHECK(rate >= 0),
+                  source TEXT NOT NULL DEFAULT 'manual' CHECK(source IN ('manual', 'auto')),
+                  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                  updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                  FOREIGN KEY (loan_id) REFERENCES loans(id) ON DELETE CASCADE,
+                  UNIQUE(loan_id, year, month)
+                )
+              `, (err) => {
                 if (err) {
                   reject(err);
                   return;
@@ -222,26 +240,20 @@ function insertMortgage(db, mortgage) {
   });
 }
 
-// Helper to insert a mortgage payment entry (payment amount configuration)
-function insertMortgagePayment(db, mortgageId, paymentAmount, effectiveDate, notes = null) {
+// Helper to link a fixed expense to a mortgage (its configured monthly payment)
+function insertLinkedFixedExpense(db, mortgageId, amount, year, month) {
   return new Promise((resolve, reject) => {
     const sql = `
-      INSERT INTO mortgage_payments (loan_id, payment_amount, effective_date, notes)
-      VALUES (?, ?, ?, ?)
+      INSERT INTO fixed_expenses (year, month, name, amount, linked_loan_id)
+      VALUES (?, ?, 'Mortgage', ?, ?)
     `;
 
-    db.run(sql, [mortgageId, paymentAmount, effectiveDate, notes], function(err) {
+    db.run(sql, [year, month, amount, mortgageId], function(err) {
       if (err) {
         reject(err);
         return;
       }
-      resolve({
-        id: this.lastID,
-        loan_id: mortgageId,
-        payment_amount: paymentAmount,
-        effective_date: effectiveDate,
-        notes
-      });
+      resolve({ id: this.lastID, year, month, amount, linked_loan_id: mortgageId });
     });
   });
 }
@@ -279,15 +291,10 @@ const paymentDateArb = fc.record({
   return `${year}-${monthStr}-${dayStr}`;
 });
 
-// Arbitrary for an effective date (past date)
-const effectiveDateArb = fc.record({
+// Arbitrary for a past month of a linked fixed expense
+const expenseMonthArb = fc.record({
   year: fc.integer({ min: 2020, max: 2024 }),
-  month: fc.integer({ min: 1, max: 12 }),
-  day: fc.integer({ min: 1, max: 28 })
-}).map(({ year, month, day }) => {
-  const monthStr = month.toString().padStart(2, '0');
-  const dayStr = day.toString().padStart(2, '0');
-  return `${year}-${monthStr}-${dayStr}`;
+  month: fc.integer({ min: 1, max: 12 })
 });
 
 // Arbitrary for a list of payment amounts (for calculating average)
@@ -550,7 +557,7 @@ test('Loan with no payment history should return null suggestion', async () => {
       );
     });
 
-    test('Mortgage with no configured payment should return null suggestion', async () => {
+    test('Mortgage with no linked payment should return null suggestion', async () => {
       await fc.assert(
         fc.asyncProperty(
           mortgageArb,
@@ -707,13 +714,13 @@ test('Loan with no payment history should return null suggestion', async () => {
   // ============================================================================
   // Mortgage Payment Suggestion Tests (from paymentSuggestionService.mortgage.pbt.test.js)
   // ============================================================================
-test('Mortgage with configured payment should return that amount with source monthly_payment', async () => {
+test('Mortgage with a linked fixed expense should return that amount with source monthly_payment', async () => {
       await fc.assert(
         fc.asyncProperty(
           mortgageArb,
           paymentAmountArb,
-          effectiveDateArb,
-          async (mortgage, paymentAmount, effectiveDate) => {
+          expenseMonthArb,
+          async (mortgage, paymentAmount, expenseMonth) => {
             // Create fresh database for each test
             mockDb = await createTestDatabase();
             
@@ -728,17 +735,17 @@ test('Mortgage with configured payment should return that amount with source mon
             // Create a mortgage
             const createdMortgage = await insertMortgage(mockDb, mortgage);
 
-            // Configure a monthly payment amount
-            await insertMortgagePayment(mockDb, createdMortgage.id, paymentAmount, effectiveDate);
+            // Link a fixed expense as the mortgage's monthly payment
+            await insertLinkedFixedExpense(mockDb, createdMortgage.id, paymentAmount, expenseMonth.year, expenseMonth.month);
 
             // Get the suggestion
             const suggestion = await paymentSuggestionService.getSuggestion(createdMortgage.id);
 
-            // Verify the suggestion matches the configured payment
+            // Verify the suggestion matches the linked payment
             expect(suggestion.suggestedAmount).toBeCloseTo(paymentAmount, 2);
             expect(suggestion.source).toBe('monthly_payment');
             expect(suggestion.confidence).toBe('high');
-            expect(suggestion.message).toContain('monthly payment');
+            expect(suggestion.message).toContain('linked fixed expense');
 
             // Clean up
             await closeDatabase(mockDb);
@@ -751,16 +758,17 @@ test('Mortgage with configured payment should return that amount with source mon
       );
     });
 
-    test('Mortgage with multiple payment entries should return the most recent one', async () => {
+    test('Mortgage with multiple linked fixed expenses should return the most recent one', async () => {
       await fc.assert(
         fc.asyncProperty(
           mortgageArb,
-          fc.array(
+          fc.uniqueArray(
             fc.record({
               amount: paymentAmountArb,
-              date: effectiveDateArb
+              year: fc.integer({ min: 2020, max: 2024 }),
+              month: fc.integer({ min: 1, max: 12 })
             }),
-            { minLength: 2, maxLength: 5 }
+            { minLength: 2, maxLength: 5, selector: e => e.year * 12 + e.month }
           ),
           async (mortgage, paymentEntries) => {
             // Create fresh database for each test
@@ -778,14 +786,14 @@ test('Mortgage with configured payment should return that amount with source mon
             const createdMortgage = await insertMortgage(mockDb, mortgage);
 
             // Sort entries by date to find the most recent
-            const sortedEntries = [...paymentEntries].sort((a, b) => 
-              b.date.localeCompare(a.date)
+            const sortedEntries = [...paymentEntries].sort((a, b) =>
+              (b.year * 12 + b.month) - (a.year * 12 + a.month)
             );
             const mostRecentEntry = sortedEntries[0];
 
-            // Insert all payment entries
+            // Link all monthly fixed expenses
             for (const entry of paymentEntries) {
-              await insertMortgagePayment(mockDb, createdMortgage.id, entry.amount, entry.date);
+              await insertLinkedFixedExpense(mockDb, createdMortgage.id, entry.amount, entry.year, entry.month);
             }
 
             // Get the suggestion
@@ -807,7 +815,7 @@ test('Mortgage with configured payment should return that amount with source mon
       );
     });
 
-    test('Mortgage without configured payment should return null with source none', async () => {
+    test('Mortgage without linked payment, rate or history should return null with source none', async () => {
       await fc.assert(
         fc.asyncProperty(
           mortgageArb,
@@ -843,5 +851,37 @@ test('Mortgage with configured payment should return that amount with source mon
         ),
         dbPbtOptions()
       );
+    });
+
+    test('Mortgage without a linked payment uses amortization_period as years for the calculated payment', async () => {
+      mockDb = await createTestDatabase();
+      jest.resetModules();
+      jest.mock('../database/db', () => ({
+        getDatabase: jest.fn(() => Promise.resolve(mockDb))
+      }));
+      const paymentSuggestionService = require('./paymentSuggestionService');
+      const mortgageService = require('./mortgageService');
+
+      const now = new Date();
+      const startDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+      const loanId = await new Promise((resolve, reject) => {
+        mockDb.run(
+          `INSERT INTO loans (name, initial_balance, start_date, loan_type, amortization_period, term_length, rate_type, fixed_interest_rate)
+           VALUES ('M', 300000, ?, 'mortgage', 25, 5, 'fixed', 5)`,
+          [startDate],
+          function(err) { err ? reject(err) : resolve(this.lastID); }
+        );
+      });
+
+      const suggestion = await paymentSuggestionService.getSuggestion(loanId);
+
+      // 25 years = 300 months left from a start this month
+      const expected = Math.round(mortgageService.calculatePaymentAmount({
+        balance: 300000, rate: 5, remainingMonths: 300, paymentFrequency: 'monthly', rateType: 'fixed'
+      }) * 100) / 100;
+      expect(suggestion.source).toBe('calculated_amortization');
+      expect(suggestion.suggestedAmount).toBeCloseTo(expected, 2);
+      // Treating 25 as months would suggest a payment above $12,000
+      expect(suggestion.suggestedAmount).toBeLessThan(2000);
     });
 });

@@ -67,8 +67,7 @@ const EXPECTED_TABLES = {
   income_sources: ['id', 'year', 'month', 'name', 'amount', 'category', 'created_at', 'updated_at'],
   fixed_expenses: ['id', 'year', 'month', 'name', 'amount', 'category', 'payment_type', 'payment_method_id', 'payment_due_day', 'linked_loan_id', 'created_at', 'updated_at'],
   loans: ['id', 'name', 'initial_balance', 'start_date', 'notes', 'loan_type', 'is_paid_off', 'estimated_months_left', 'amortization_period', 'term_length', 'renewal_date', 'rate_type', 'payment_frequency', 'estimated_property_value', 'fixed_interest_rate', 'created_at', 'updated_at'],
-  loan_balances: ['id', 'loan_id', 'year', 'month', 'remaining_balance', 'rate', 'created_at', 'updated_at'],
-  mortgage_payments: ['id', 'loan_id', 'payment_amount', 'effective_date', 'notes', 'created_at', 'updated_at'],
+  loan_balances: ['id', 'loan_id', 'year', 'month', 'remaining_balance', 'rate', 'source', 'created_at', 'updated_at'],
   loan_payments: ['id', 'loan_id', 'amount', 'payment_date', 'notes', 'created_at', 'updated_at'],
   budgets: ['id', 'year', 'month', 'category', 'limit', 'created_at', 'updated_at'],
   budget_allocations: ['id', 'year', 'month', 'name', 'amount', 'investment_id', 'created_at', 'updated_at'],
@@ -127,12 +126,12 @@ describe('Feature: migration-consolidation, Property 1: Schema completeness', ()
     );
   }, 120000);
 
-  test('Schema creates exactly 33 tables', async () => {
+  test('Schema creates exactly 32 tables', async () => {
     const db = await openDb();
     try {
       await applySchema(db);
       const tables = await all(db, "SELECT name FROM sqlite_master WHERE type='table' AND name != 'sqlite_sequence' ORDER BY name");
-      expect(tables.length).toBe(33);
+      expect(tables.length).toBe(32);
       const names = tables.map(t => t.name).sort();
       expect(names).toEqual(TABLE_NAMES.sort());
     } finally {

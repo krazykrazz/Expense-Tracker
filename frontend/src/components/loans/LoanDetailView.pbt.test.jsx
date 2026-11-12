@@ -16,7 +16,7 @@ import LoanDetailView from './LoanDetailView';
 // Mock all API modules
 vi.mock('../../services/loanApi', () => ({ updateLoan: vi.fn(), markPaidOff: vi.fn() }));
 vi.mock('../../services/loanBalanceApi', () => ({ getBalanceHistory: vi.fn().mockResolvedValue([]), createOrUpdateBalance: vi.fn(), deleteBalance: vi.fn() }));
-vi.mock('../../services/loanPaymentApi', () => ({ getPayments: vi.fn().mockResolvedValue([]), deletePayment: vi.fn(), getCalculatedBalance: vi.fn().mockResolvedValue(null) }));
+vi.mock('../../services/loanPaymentApi', () => ({ getPayments: vi.fn().mockResolvedValue([]), deletePayment: vi.fn(), getCalculatedBalance: vi.fn().mockResolvedValue(null), getBalanceHistory: vi.fn().mockResolvedValue([]) }));
 vi.mock('../../services/fixedExpenseApi', () => ({ getFixedExpensesByLoan: vi.fn().mockResolvedValue([]) }));
 vi.mock('../../utils/fetchProvider', () => ({ authAwareFetch: vi.fn().mockResolvedValue({ ok: true, json: vi.fn().mockResolvedValue({}) }) }));
 vi.mock('../../config', () => ({ API_ENDPOINTS: { LOAN_INSIGHTS: (id) => `/api/loans/${id}/insights`, LOAN_PAYMENT: (id, pid) => `/api/loans/${id}/payments/${pid}`, LOAN_RATE: (id) => `/api/loans/${id}/rate`, LOAN_SCENARIO: (id) => `/api/loans/${id}/insights/scenario` } }));

@@ -28,8 +28,13 @@ const paymentAmountArb = fc.option(
   { nil: null }
 );
 
+const PAYMENT_SOURCE_LABELS = {
+  linked_fixed_expense: 'from fixed expense',
+  calculated: 'calculated minimum'
+};
+
 const paymentSourceArb = fc.option(
-  fc.string({ minLength: 1, maxLength: 20 }),
+  fc.constantFrom('linked_fixed_expense', 'calculated'),
   { nil: null }
 );
 
@@ -403,7 +408,7 @@ describe('Property 4: Monthly Payment Source Label', () => {
 
           if (shouldHaveSubLabel) {
             expect(subLabel).not.toBeNull();
-            expect(subLabel.textContent).toBe(paymentSource);
+            expect(subLabel.textContent).toBe(PAYMENT_SOURCE_LABELS[paymentSource]);
           } else {
             expect(subLabel).toBeNull();
           }

@@ -68,6 +68,7 @@ function createTestDatabase() {
           month INTEGER NOT NULL,
           remaining_balance REAL NOT NULL CHECK(remaining_balance >= 0),
           rate REAL NOT NULL CHECK(rate >= 0),
+          source TEXT NOT NULL DEFAULT 'manual' CHECK(source IN ('manual', 'auto')),
           created_at TEXT DEFAULT CURRENT_TIMESTAMP,
           updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY (loan_id) REFERENCES loans(id) ON DELETE CASCADE,

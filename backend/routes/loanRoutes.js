@@ -30,18 +30,6 @@ router.put('/:id/property-value', loanController.updatePropertyValue);
 // GET /api/loans/:id/insights - Get mortgage insights
 router.get('/:id/insights', loanController.getMortgageInsights);
 
-// GET /api/loans/:id/payments - Get mortgage payment history
-router.get('/:id/payments', loanController.getMortgagePayments);
-
-// POST /api/loans/:id/payments - Create a mortgage payment entry
-router.post('/:id/payments', loanController.createMortgagePayment);
-
-// PUT /api/loans/:id/payments/:paymentId - Update a mortgage payment entry
-router.put('/:id/payments/:paymentId', loanController.updateMortgagePayment);
-
-// DELETE /api/loans/:id/payments/:paymentId - Delete a mortgage payment entry
-router.delete('/:id/payments/:paymentId', loanController.deleteMortgagePayment);
-
 // POST /api/loans/:id/insights/scenario - Calculate what-if scenario
 router.post('/:id/insights/scenario', loanController.calculateScenario);
 

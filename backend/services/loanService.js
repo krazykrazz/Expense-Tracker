@@ -3,6 +3,8 @@ const loanBalanceRepository = require('../repositories/loanBalanceRepository');
 const mortgageService = require('./mortgageService');
 const { validateNumber, validateString } = require('../utils/validators');
 const activityLogService = require('./activityLogService');
+const balanceCalculationService = require('./balanceCalculationService');
+const logger = require('../config/logger');
 
 class LoanService {
   /**
@@ -275,7 +277,8 @@ class LoanService {
       }
     }
     
-    if (data.renewal_date !== undefined && data.renewal_date !== null) {
+    // An unchanged renewal date may already be in the past (overdue renewal) and must not block other edits
+    if (data.renewal_date !== undefined && data.renewal_date !== null && data.renewal_date !== existingLoan.renewal_date) {
       const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
       if (!dateRegex.test(data.renewal_date)) {
         throw new Error('Renewal date must be in YYYY-MM-DD format');
@@ -444,9 +447,21 @@ class LoanService {
    */
   async getAllLoans() {
     const loans = await loanRepository.getAllWithCurrentBalances();
+
+    // Mortgage balances come from the interest-aware engine (the latest snapshot can be a month behind)
+    const withBalances = await Promise.all(loans.map(async (loan) => {
+      if (loan.loan_type !== 'mortgage') return loan;
+      try {
+        const calc = await balanceCalculationService.calculateBalance(loan.id);
+        return { ...loan, currentBalance: calc.currentBalance };
+      } catch (err) {
+        logger.warn('Failed to calculate mortgage balance for loan list', { loanId: loan.id, error: err.message });
+        return loan;
+      }
+    }));
     
     // Convert is_paid_off to boolean for easier frontend handling
-    return loans.map(loan => ({
+    return withBalances.map(loan => ({
       ...loan,
       isPaidOff: loan.is_paid_off === 1
     }));

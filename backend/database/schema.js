@@ -454,6 +454,24 @@ const TABLE_STATEMENTS = [
     FOREIGN KEY (credit_card_payment_id) REFERENCES credit_card_payments(id) ON DELETE CASCADE
   )`,
 
+  // plaid_insurance_links — a bank deposit (insurer payout) reimbursing one or more insurance claims, with the
+  // amount it paid each. Several claims per deposit and several deposits per claim. previous_* is the claim's
+  // state before the bank (out-of-pocket, claim status, people amounts as JSON [{personId, amount}]); the
+  // claim's earliest remaining link holds the snapshot that undo restores.
+  `CREATE TABLE IF NOT EXISTS plaid_insurance_links (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    plaid_transaction_id INTEGER NOT NULL,
+    expense_id INTEGER NOT NULL,
+    amount REAL NOT NULL CHECK(amount > 0),
+    previous_amount REAL NOT NULL,
+    previous_status TEXT,
+    previous_people TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (plaid_transaction_id, expense_id),
+    FOREIGN KEY (plaid_transaction_id) REFERENCES plaid_transactions(id) ON DELETE CASCADE,
+    FOREIGN KEY (expense_id) REFERENCES expenses(id) ON DELETE CASCADE
+  )`,
+
   // users — authentication user accounts
   `CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -538,6 +556,19 @@ const TRIGGER_STATEMENTS = [
    BEGIN
      UPDATE plaid_transactions SET status = 'new'
      WHERE id IN (SELECT plaid_transaction_id FROM plaid_card_payment_links WHERE credit_card_payment_id = OLD.id);
+   END`,
+
+  // And for insurance claims: an insurer deposit returns to the Import Inbox once it reimburses no other claim
+  // (the claim's link rows are removed by ON DELETE CASCADE)
+  `CREATE TRIGGER IF NOT EXISTS plaid_transactions_unlink_on_insurance_claim_delete
+   BEFORE DELETE ON expenses
+   BEGIN
+     UPDATE plaid_transactions SET status = 'new'
+     WHERE id IN (SELECT plaid_transaction_id FROM plaid_insurance_links WHERE expense_id = OLD.id)
+       AND NOT EXISTS (
+         SELECT 1 FROM plaid_insurance_links other
+         WHERE other.plaid_transaction_id = plaid_transactions.id AND other.expense_id != OLD.id
+       );
    END`
 ];
 
@@ -639,6 +670,7 @@ const INDEX_STATEMENTS = [
   'CREATE INDEX IF NOT EXISTS idx_plaid_accounts_item ON plaid_accounts(plaid_item_id)',
   'CREATE INDEX IF NOT EXISTS idx_plaid_transactions_status_date ON plaid_transactions(status, date)',
   'CREATE INDEX IF NOT EXISTS idx_plaid_transactions_account ON plaid_transactions(plaid_account_id)',
+  'CREATE INDEX IF NOT EXISTS idx_plaid_insurance_links_expense ON plaid_insurance_links(expense_id)',
   // One bank transaction per expense (also blocks matching an expense twice)
   'CREATE UNIQUE INDEX IF NOT EXISTS idx_plaid_transactions_expense ON plaid_transactions(expense_id) WHERE expense_id IS NOT NULL'
 ];

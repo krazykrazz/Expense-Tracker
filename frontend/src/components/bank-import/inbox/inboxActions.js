@@ -1,6 +1,7 @@
 import {
   addInboxTransaction, matchInboxTransaction, matchInboxTransactionToFixed, matchInboxTransactionToIncome,
-  addInboxTransactionAsIncome, cardPaymentInboxTransaction, ignoreInboxTransaction, unignoreInboxTransaction
+  addInboxTransactionAsIncome, cardPaymentInboxTransaction, ignoreInboxTransaction, unignoreInboxTransaction,
+  applyInsuranceToInboxTransaction
 } from '../../../services/plaidApi';
 
 /**
@@ -17,6 +18,7 @@ export const INBOX_ACTIONS = {
   'match-income': { run: (id, payload) => matchInboxTransactionToIncome(id, payload), changesData: true },
   'add-income': { run: (id, fields) => addInboxTransactionAsIncome(id, fields), changesData: true },
   'card-payment': { run: (id, body) => cardPaymentInboxTransaction(id, body), changesData: true },
+  insurance: { run: (id, claims) => applyInsuranceToInboxTransaction(id, claims), changesData: true },
   ignore: { run: (id) => ignoreInboxTransaction(id), changesData: false },
   unignore: { run: (id) => unignoreInboxTransaction(id), changesData: false }
 };

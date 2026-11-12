@@ -861,6 +861,36 @@
   line-height: var(--leading-normal);
 }
 
+/* Deposits applied from Bank Import, each with Undo */
+.insurance-bank-reimbursements {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  margin-bottom: var(--spacing-2);
+}
+
+.insurance-bank-reimbursements .insurance-status-note {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-2);
+}
+
+.insurance-bank-reimbursements button {
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font-size: var(--text-xs);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.insurance-bank-reimbursements button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
 /* Responsive adjustments for insurance section */
 @media (max-width: 768px) {
   .insurance-field-row {

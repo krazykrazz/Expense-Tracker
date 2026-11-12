@@ -10,6 +10,7 @@ jest.mock('../services/plaidInboxService');
 jest.mock('../services/plaidReviewService');
 jest.mock('../services/plaidSettlementService');
 jest.mock('../services/plaidCardPaymentService');
+jest.mock('../services/plaidInsuranceService');
 jest.mock('../services/plaidSettingsService');
 jest.mock('../services/plaidSyncSchedulerService');
 jest.mock('../services/plaidCardBalanceService');
@@ -21,6 +22,7 @@ const plaidInboxService = require('../services/plaidInboxService');
 const plaidReviewService = require('../services/plaidReviewService');
 const plaidSettlementService = require('../services/plaidSettlementService');
 const plaidCardPaymentService = require('../services/plaidCardPaymentService');
+const plaidInsuranceService = require('../services/plaidInsuranceService');
 const plaidCardBalanceService = require('../services/plaidCardBalanceService');
 const plaidFileImportService = require('../services/plaidFileImportService');
 const plaidSettingsService = require('../services/plaidSettingsService');
@@ -57,6 +59,7 @@ describe('plaid routes', () => {
     ['get', '/api/plaid/inbox'],
     ['post', '/api/plaid/inbox/1/ignore'],
     ['post', '/api/plaid/inbox/1/card-payment'],
+    ['get', '/api/plaid/inbox/1/insurance-candidates'],
   ])('%s %s returns 503 when disabled', async (method, url) => {
     isEnabled.mockReturnValue(false);
 
@@ -304,6 +307,24 @@ describe('plaid routes', () => {
 
     expect(res.status).toBe(200);
     expect(plaidSettlementService.resolveCancelled).toHaveBeenCalledWith(3, { action: 'link', postedId: 9 }, 'tab-4');
+  });
+
+  test('insurance endpoints pass the row, includePaid, claims and tab id, and reject a non-integer id', async () => {
+    plaidInsuranceService.candidates.mockResolvedValue({ candidates: [] });
+    plaidInsuranceService.apply.mockResolvedValue({ claims: [] });
+    plaidInsuranceService.unlink.mockRejectedValue(Object.assign(new Error('not applied'), { statusCode: 404 }));
+    const claims = [{ expenseId: 8, amount: 105.3 }];
+
+    const listed = await request(app).get('/api/plaid/inbox/3/insurance-candidates?includePaid=true');
+    const applied = await request(app).post('/api/plaid/inbox/3/insurance').set('X-Tab-ID', 'tab-5').send({ claims });
+    const undone = await request(app).delete('/api/plaid/inbox/3/insurance').set('X-Tab-ID', 'tab-5');
+    const invalid = await request(app).post('/api/plaid/inbox/3x/insurance').send({ claims });
+
+    expect([listed.status, applied.status, undone.status, invalid.status]).toEqual([200, 200, 404, 400]);
+    expect(plaidInsuranceService.candidates).toHaveBeenCalledWith(3, { includePaid: true });
+    expect(plaidInsuranceService.apply).toHaveBeenCalledTimes(1);
+    expect(plaidInsuranceService.apply).toHaveBeenCalledWith(3, claims, 'tab-5');
+    expect(plaidInsuranceService.unlink).toHaveBeenCalledWith(3, 'tab-5');
   });
 
   test('DELETE /items/:id returns 204', async () => {

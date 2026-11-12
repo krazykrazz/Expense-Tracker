@@ -1414,7 +1414,7 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
                     value={editFormData.amount}
                     onChange={handleEditChange}
                     step="0.01"
-                    min="0.01"
+                    min="0"
                     required
                   />
                 </div>

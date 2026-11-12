@@ -69,7 +69,8 @@ const PersonAllocationModal = ({
       // For insurance expenses, validate both original and out-of-pocket allocations
       const isValidOriginal = Math.abs(totalOriginal - allocationBase) < 0.01;
       const isValidAmount = Math.abs(total - expenseAmount) < 0.01;
-      const allPositive = allocations.every(a => a.amount > 0 && a.originalAmount > 0);
+      // A person's out-of-pocket may be $0.00 when insurance covered their share in full; their original cost can't
+      const allPositive = allocations.every(a => a.amount >= 0 && a.originalAmount > 0);
       const amountsValid = allocations.every(a => (a.amount || 0) <= (a.originalAmount || 0));
       
       setIsValid(isValidOriginal && isValidAmount && allPositive && amountsValid);
@@ -85,7 +86,7 @@ const PersonAllocationModal = ({
         setError(`Total out-of-pocket allocated ($${total.toFixed(2)}) is less than expense amount ($${expenseAmount.toFixed(2)})`);
       } else if (!amountsValid) {
         setError('Out-of-pocket amount cannot exceed original cost for any person');
-      } else if (allocations.some(a => (a.amount <= 0 || a.originalAmount <= 0)) && (total > 0 || totalOriginal > 0)) {
+      } else if (allocations.some(a => (a.amount < 0 || a.originalAmount <= 0)) && (total > 0 || totalOriginal > 0)) {
         setError('All amounts must be greater than zero');
       } else {
         setError('');

@@ -187,6 +187,8 @@ export const API_ENDPOINTS = {
   PLAID_CARD_USE_BANK_LIMIT: (paymentMethodId) => `${API_BASE_URL}/api/plaid/card-balances/${paymentMethodId}/use-bank-limit`,
   PLAID_INBOX: (status = 'new') => `${API_BASE_URL}/api/plaid/inbox?status=${encodeURIComponent(status)}`,
   PLAID_INBOX_ACTION: (id, action) => `${API_BASE_URL}/api/plaid/inbox/${id}/${action}`,
+  PLAID_INBOX_INSURANCE_CANDIDATES: (id, includePaid = false) =>
+    `${API_BASE_URL}/api/plaid/inbox/${id}/insurance-candidates${includePaid ? '?includePaid=true' : ''}`,
 
   // Auth
   AUTH_STATUS: `${API_BASE_URL}/api/auth/status`,

@@ -71,9 +71,11 @@ The Medical Insurance Tracking feature enables users to track insurance eligibil
 
 When a claim is paid:
 1. Update the claim status to "Paid"
-2. Enter the actual out-of-pocket amount you paid
+2. Enter the actual out-of-pocket amount you paid ($0.00 when insurance covered it in full)
 3. The system calculates: Reimbursement = Original Cost - Out-of-Pocket
 4. View reimbursement amounts in the Tax Deductible report
+
+With Bank Import, apply the insurer's deposit instead: **Apply to insurance** on the deposit in the Inbox marks the claims Paid and sets their out-of-pocket (and each person's share) from what was reimbursed, and the expense shows "Reimbursed $X on <date> (bank)" with **Undo**. One deposit can pay several claims. See [Plaid Bank Import](PLAID_INTEGRATION.md#insurance-reimbursements-close-the-claim).
 
 ### Viewing Insurance Summary
 
@@ -185,11 +187,11 @@ PATCH /api/expenses/123/insurance-status
 
 1. **Insurance fields only for Tax - Medical**: Insurance eligibility, claim status, and original cost are only valid for expenses with type "Tax - Medical"
 
-2. **Amount validation**: Out-of-pocket amount (amount field) cannot exceed original cost
+2. **Amount validation**: Out-of-pocket amount (amount field) cannot exceed original cost. It may be $0.00 when the claim was reimbursed in full (any expense with an original cost); without an original cost an expense must be above $0
 
 3. **Claim status values**: Must be one of: "not_claimed", "in_progress", "paid", "denied", or null
 
-4. **Person allocation validation**: Per-person out-of-pocket amounts cannot exceed their original cost allocations
+4. **Person allocation validation**: Per-person out-of-pocket amounts cannot exceed their original cost allocations, and may be $0.00 for a person whose share was covered in full
 
 ## Backward Compatibility
 

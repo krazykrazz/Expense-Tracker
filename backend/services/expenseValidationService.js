@@ -11,7 +11,9 @@ class ExpenseValidationService {
     if (expense.date && !this.isValidDate(expense.date)) errors.push('Date must be a valid date in YYYY-MM-DD format');
     if (expense.amount !== undefined && expense.amount !== null) {
       const amount = parseFloat(expense.amount);
-      if (isNaN(amount) || amount <= 0) errors.push('Amount must be a positive number');
+      // A reimbursed expense (it has an original cost) may be fully covered: $0.00 out of pocket
+      const reimbursed = expense.original_cost !== undefined && expense.original_cost !== null && parseFloat(expense.original_cost) > 0;
+      if (isNaN(amount) || amount < 0 || (amount === 0 && !reimbursed)) errors.push('Amount must be a positive number');
       if (!/^\d+(\.\d{1,2})?$/.test(expense.amount.toString())) errors.push('Amount must have at most 2 decimal places');
     }
     // Normalize legacy category names (e.g., "Vehicle Maintenance" → "Automotive")
@@ -83,7 +85,9 @@ class ExpenseValidationService {
       if (!alloc.personId || typeof alloc.personId !== 'number' || alloc.personId <= 0) throw new Error('Each allocation must have a valid personId');
       if (alloc.amount === undefined || alloc.amount === null) throw new Error('Each allocation must have an amount');
       const amt = parseFloat(alloc.amount);
-      if (isNaN(amt) || amt <= 0) throw new Error('Each allocation amount must be a positive number');
+      // A person whose share was reimbursed in full (they have an original amount) may owe $0.00
+      const hasOriginal = alloc.originalAmount !== undefined && alloc.originalAmount !== null && parseFloat(alloc.originalAmount) > 0;
+      if (isNaN(amt) || amt < 0 || (amt === 0 && !hasOriginal)) throw new Error('Each allocation amount must be a positive number');
       if (!/^\d+(\.\d{1,2})?$/.test(alloc.amount.toString())) throw new Error('Allocation amounts must have at most 2 decimal places');
     }
     const pids = allocations.map(a => a.personId);

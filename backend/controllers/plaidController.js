@@ -4,12 +4,14 @@ const plaidInboxService = require('../services/plaidInboxService');
 const plaidReviewService = require('../services/plaidReviewService');
 const plaidSettlementService = require('../services/plaidSettlementService');
 const plaidCardPaymentService = require('../services/plaidCardPaymentService');
+const plaidInsuranceService = require('../services/plaidInsuranceService');
 const plaidCardBalanceService = require('../services/plaidCardBalanceService');
 const plaidCycleCheckService = require('../services/plaidCycleCheckService');
 const plaidFileImportService = require('../services/plaidFileImportService');
 const plaidSettingsService = require('../services/plaidSettingsService');
 const plaidSyncSchedulerService = require('../services/plaidSyncSchedulerService');
 const { runWithTabId } = require('../utils/requestContext');
+const { fail } = require('../utils/httpError');
 
 const tabIdOf = (req) => req.headers['x-tab-id'] ?? null;
 const idParam = (req) => parseInt(req.params.id, 10);
@@ -227,6 +229,36 @@ const resolveCancelled = asyncHandler(async (req, res) => {
   res.json(await plaidSettlementService.resolveCancelled(idParam(req), { action, postedId }, tabIdOf(req)));
 });
 
+/**
+ * The :id of an inbox row, which must be a positive integer.
+ * @throws 400 otherwise
+ */
+const inboxIdParam = (req) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    throw fail('Bank transaction id must be a positive integer', 400);
+  }
+  return id;
+};
+
+/** GET /api/plaid/inbox/:id/insurance-candidates?includePaid=true — insurance claims a deposit can reimburse */
+const getInsuranceCandidates = asyncHandler(async (req, res) => {
+  res.json(await plaidInsuranceService.candidates(inboxIdParam(req), { includePaid: req.query.includePaid === 'true' }));
+});
+
+/**
+ * POST /api/plaid/inbox/:id/insurance
+ * Body: { claims: [{ expenseId, amount }] } — amounts add up to the deposit
+ */
+const applyInsurance = asyncHandler(async (req, res) => {
+  res.json(await plaidInsuranceService.apply(inboxIdParam(req), (req.body || {}).claims, tabIdOf(req)));
+});
+
+/** DELETE /api/plaid/inbox/:id/insurance — undo: the deposit returns to the Inbox and the claims are recomputed */
+const unlinkInsurance = asyncHandler(async (req, res) => {
+  res.json(await plaidInsuranceService.unlink(inboxIdParam(req), tabIdOf(req)));
+});
+
 /** POST /api/plaid/inbox/:id/ignore */
 const ignore = asyncHandler(async (req, res) => {
   res.json(await plaidReviewService.ignore(idParam(req)));
@@ -264,6 +296,9 @@ module.exports = {
   matchToIncome,
   addAsIncome,
   cardPayment,
+  getInsuranceCandidates,
+  applyInsurance,
+  unlinkInsurance,
   resolveCancelled,
   ignore,
   unignore

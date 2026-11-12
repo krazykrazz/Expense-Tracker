@@ -5,6 +5,7 @@ import {
 import { formatDate } from '../../../utils/formatters';
 import AddExpenseForm from './AddExpenseForm';
 import AddIncomeForm from './AddIncomeForm';
+import InsuranceClaimsPicker from './InsuranceClaimsPicker';
 import MatchPicker from './MatchPicker';
 import { EXPECTED_CURRENCY, formatSigned, isCloseFixed, isCloseIncome } from './inboxFormat';
 
@@ -53,6 +54,9 @@ const InboxRow = ({ txn, filter, expanded, onExpand, onAction, busy, error, unco
           )}
           {filter === 'new' && !txn.canAdd && !txn.cardPayment?.kind && <span className="inbox-badge">{txn.isDeposit ? 'Deposit' : 'Refund / credit'}</span>}
           {filter === 'new' && <CardPaymentBadge txn={txn} />}
+          {filter === 'new' && txn.insurance?.suggested && (
+            <span className="inbox-badge match" title="Looks like an insurance payout: apply it to the claims it reimburses">Insurance</span>
+          )}
           {filter === 'new' && closeIncome.length > 0 && (
             <span className="inbox-badge match" title="Matches expected income: confirm it to record when it landed">
               Income: {closeIncome[0].name}
@@ -71,6 +75,15 @@ const InboxRow = ({ txn, filter, expanded, onExpand, onAction, busy, error, unco
               {txn.canAdd && <button className="bank-import-secondary" onClick={() => toggle('add')} disabled={busy}>Add</button>}
               {hasCandidates && <button className="bank-import-secondary" onClick={() => toggle('match')} disabled={busy}>Match</button>}
               {txn.isDeposit && <button className="bank-import-secondary" onClick={() => toggle('add-income')} disabled={busy}>Add income</button>}
+              {txn.isDeposit && !txn.pending && (
+                <button
+                  className={txn.insurance?.suggested ? 'bank-import-primary' : 'bank-import-secondary'}
+                  onClick={() => toggle('insurance')}
+                  disabled={busy}
+                >
+                  Apply to insurance
+                </button>
+              )}
               <CardPaymentButtons txn={txn} unconnectedCards={unconnectedCards} expanded={expanded} onExpand={onExpand} busy={busy} />
               <button className="bank-import-secondary" onClick={() => onAction('ignore')} disabled={busy}>Ignore</button>
             </>
@@ -96,6 +109,9 @@ const InboxRow = ({ txn, filter, expanded, onExpand, onAction, busy, error, unco
       )}
       {isOpen('add-income') && (
         <AddIncomeForm txn={txn} busy={busy} onCancel={() => onExpand(null)} onSubmit={(fields) => onAction('add-income', fields)} />
+      )}
+      {isOpen('insurance') && (
+        <InsuranceClaimsPicker txn={txn} busy={busy} onCancel={() => onExpand(null)} onApply={(claims) => onAction('insurance', claims)} />
       )}
       {isOpen('match') && (
         <MatchPicker

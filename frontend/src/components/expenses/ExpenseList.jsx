@@ -1135,6 +1135,7 @@ const ExpenseList = memo(({
                           claimStatus={expense.claim_status}
                           originalCost={expense.original_cost}
                           outOfPocket={expense.amount}
+                          reimbursements={expense.insuranceReimbursements}
                           size="small"
                           onClick={(event) => handleInsuranceIndicatorClick(event, expense.id)}
                         />
@@ -1354,6 +1355,7 @@ const ExpenseList = memo(({
               expense={expenseToEdit}
               people={people}
               onExpenseAdded={handleExpenseUpdated}
+              onClose={handleCancelEdit}
             />
           </div>
         </div>

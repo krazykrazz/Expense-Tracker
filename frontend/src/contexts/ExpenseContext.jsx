@@ -158,10 +158,14 @@ export function ExpenseProvider({ children }) {
   }, []);
 
   const handleExpenseUpdated = useCallback((updatedExpense) => {
-    // Update responses don't carry the bank link (an edit never changes it); keep it so the
-    // bank-confirmed indicator, including "amount differs", stays visible after an edit
+    // Update responses don't carry the bank link or insurer deposits (an edit never changes them); keep them so the
+    // bank-confirmed indicator, including "amount differs", and the claim's reimbursements stay visible after an edit
     setExpenses(prev => prev.map(e => (e.id === updatedExpense.id
-      ? { ...updatedExpense, bankLink: updatedExpense.bankLink ?? e.bankLink ?? null }
+      ? {
+        ...updatedExpense,
+        bankLink: updatedExpense.bankLink ?? e.bankLink ?? null,
+        ...(e.insuranceReimbursements && !updatedExpense.insuranceReimbursements ? { insuranceReimbursements: e.insuranceReimbursements } : {})
+      }
       : e)));
     setRefreshTrigger(prev => prev + 1);
     setBudgetAlertRefreshTrigger(prev => prev + 1);

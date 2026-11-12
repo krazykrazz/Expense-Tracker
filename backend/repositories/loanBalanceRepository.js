@@ -32,8 +32,8 @@ class LoanBalanceRepository {
     
     return new Promise((resolve, reject) => {
       const sql = `
-        INSERT INTO loan_balances (loan_id, year, month, remaining_balance, rate)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO loan_balances (loan_id, year, month, remaining_balance, rate, source)
+        VALUES (?, ?, ?, ?, ?, ?)
       `;
       
       const params = [
@@ -41,7 +41,8 @@ class LoanBalanceRepository {
         balanceEntry.year,
         balanceEntry.month,
         balanceEntry.remaining_balance,
-        balanceEntry.rate
+        balanceEntry.rate,
+        balanceEntry.source || 'manual'
       ];
       
       db.run(sql, params, function(err) {
@@ -122,7 +123,7 @@ class LoanBalanceRepository {
     return new Promise((resolve, reject) => {
       const sql = `
         UPDATE loan_balances 
-        SET year = ?, month = ?, remaining_balance = ?, rate = ?, updated_at = CURRENT_TIMESTAMP
+        SET year = ?, month = ?, remaining_balance = ?, rate = ?, source = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `;
       
@@ -131,6 +132,7 @@ class LoanBalanceRepository {
         balanceEntry.month,
         balanceEntry.remaining_balance,
         balanceEntry.rate,
+        balanceEntry.source || 'manual',
         id
       ];
       
@@ -186,12 +188,13 @@ class LoanBalanceRepository {
     
     return new Promise((resolve, reject) => {
       const sql = `
-        INSERT INTO loan_balances (loan_id, year, month, remaining_balance, rate)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO loan_balances (loan_id, year, month, remaining_balance, rate, source)
+        VALUES (?, ?, ?, ?, ?, ?)
         ON CONFLICT(loan_id, year, month) 
         DO UPDATE SET 
           remaining_balance = excluded.remaining_balance,
           rate = excluded.rate,
+          source = excluded.source,
           updated_at = CURRENT_TIMESTAMP
       `;
       
@@ -200,7 +203,8 @@ class LoanBalanceRepository {
         balanceEntry.year,
         balanceEntry.month,
         balanceEntry.remaining_balance,
-        balanceEntry.rate
+        balanceEntry.rate,
+        balanceEntry.source || 'manual'
       ];
       
       db.run(sql, params, function(err) {
@@ -269,6 +273,64 @@ class LoanBalanceRepository {
           return;
         }
         resolve(rows || []);
+      });
+    });
+  }
+
+  /**
+   * Write a generated ('auto') snapshot. Never overwrites a user-entered ('manual') snapshot.
+   * @param {Object} entry - { loan_id, year, month, remaining_balance, rate }
+   * @returns {Promise<void>}
+   */
+  async upsertAuto(entry) {
+    const db = await getDatabase();
+
+    return new Promise((resolve, reject) => {
+      const sql = `
+        INSERT INTO loan_balances (loan_id, year, month, remaining_balance, rate, source)
+        VALUES (?, ?, ?, ?, ?, 'auto')
+        ON CONFLICT(loan_id, year, month)
+        DO UPDATE SET
+          remaining_balance = excluded.remaining_balance,
+          rate = excluded.rate,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE loan_balances.source = 'auto'
+          AND (loan_balances.remaining_balance != excluded.remaining_balance
+            OR loan_balances.rate != excluded.rate)
+      `;
+
+      db.run(sql, [entry.loan_id, entry.year, entry.month, entry.remaining_balance, entry.rate], (err) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve();
+      });
+    });
+  }
+
+  /**
+   * Delete generated ('auto') snapshots after a month (e.g. left over from deleted payments)
+   * @param {number} loanId - Loan ID
+   * @param {number} year - Year of the last month to keep
+   * @param {number} month - Last month to keep (1-12)
+   * @returns {Promise<number>} Number of rows deleted
+   */
+  async deleteAutoAfter(loanId, year, month) {
+    const db = await getDatabase();
+
+    return new Promise((resolve, reject) => {
+      const sql = `
+        DELETE FROM loan_balances
+        WHERE loan_id = ? AND source = 'auto' AND (year * 12 + month) > ?
+      `;
+
+      db.run(sql, [loanId, year * 12 + month], function(err) {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve(this.changes);
       });
     });
   }

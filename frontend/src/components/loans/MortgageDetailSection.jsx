@@ -59,8 +59,7 @@ const calculateRenewalStatus = (renewalDate) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   
-  const renewal = new Date(renewalDate);
-  renewal.setHours(0, 0, 0, 0);
+  const renewal = new Date(`${renewalDate}T00:00:00`);
 
   const isPastDue = renewal < today;
   const diffTime = renewal.getTime() - today.getTime();
@@ -71,7 +70,7 @@ const calculateRenewalStatus = (renewalDate) => {
   return { isApproaching, monthsUntilRenewal, isPastDue };
 };
 
-const MortgageDetailSection = ({ mortgage, onUpdatePropertyValue }) => {
+const MortgageDetailSection = ({ mortgage }) => {
   const [renewalStatus, setRenewalStatus] = useState({
     isApproaching: false,
     monthsUntilRenewal: null,
@@ -147,7 +146,7 @@ const MortgageDetailSection = ({ mortgage, onUpdatePropertyValue }) => {
             <span className="mortgage-value">{formatPaymentFrequency(mortgage.payment_frequency)}</span>
           </div>
           
-          {mortgage.estimated_property_value && (
+          {mortgage.estimated_property_value > 0 && (
             <div className="mortgage-summary-item">
               <span className="mortgage-label">Estimated Property Value</span>
               <span className="mortgage-value property-value">

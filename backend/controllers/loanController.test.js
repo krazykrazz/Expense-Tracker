@@ -2,8 +2,8 @@ const loanController = require('./loanController');
 const loanService = require('../services/loanService');
 const mortgageService = require('../services/mortgageService');
 const mortgageInsightsService = require('../services/mortgageInsightsService');
-const mortgagePaymentService = require('../services/mortgagePaymentService');
 const loanBalanceService = require('../services/loanBalanceService');
+const balanceCalculationService = require('../services/balanceCalculationService');
 const loanRepository = require('../repositories/loanRepository');
 const loanBalanceRepository = require('../repositories/loanBalanceRepository');
 
@@ -11,8 +11,8 @@ const loanBalanceRepository = require('../repositories/loanBalanceRepository');
 jest.mock('../services/loanService');
 jest.mock('../services/mortgageService');
 jest.mock('../services/mortgageInsightsService');
-jest.mock('../services/mortgagePaymentService');
 jest.mock('../services/loanBalanceService');
+jest.mock('../services/balanceCalculationService');
 jest.mock('../repositories/loanRepository');
 jest.mock('../repositories/loanBalanceRepository');
 
@@ -475,6 +475,45 @@ describe('loanController', () => {
 
       expect(res.status).toHaveBeenCalledWith(500);
       expect(res.json).toHaveBeenCalledWith({ error: 'Update failed' });
+    });
+  });
+
+  describe('updatePropertyValue', () => {
+    const mockMortgage = { id: 1, name: 'Home', loan_type: 'mortgage', fixed_interest_rate: null };
+
+    beforeEach(() => {
+      loanRepository.findById.mockResolvedValue(mockMortgage);
+      loanService.updateMortgage.mockResolvedValue({ ...mockMortgage, estimated_property_value: 500000 });
+      // Calculated (interest-aware) balance differs from the latest stored snapshot
+      balanceCalculationService.calculateBalance.mockResolvedValue({ currentBalance: 301234.56 });
+      loanRepository.getCurrentBalance.mockResolvedValue({ remaining_balance: 290000, rate: 5 });
+      mortgageService.calculateEquity.mockReturnValue({ equityAmount: 198765.44, equityPercentage: 39.75 });
+    });
+
+    it.each([
+      ['estimated_property_value'],
+      ['estimatedPropertyValue']
+    ])('accepts %s and computes equity from the calculated balance', async (field) => {
+      req.params.id = '1';
+      req.body = { [field]: 500000 };
+
+      await loanController.updatePropertyValue(req, res);
+
+      expect(loanService.updateMortgage).toHaveBeenCalledWith(1, { name: 'Home', estimated_property_value: 500000 });
+      expect(balanceCalculationService.calculateBalance).toHaveBeenCalledWith(1);
+      expect(mortgageService.calculateEquity).toHaveBeenCalledWith(500000, 301234.56);
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ currentBalance: 301234.56 }));
+    });
+
+    it('should return 400 when no property value is provided', async () => {
+      req.params.id = '1';
+      req.body = {};
+
+      await loanController.updatePropertyValue(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(loanService.updateMortgage).not.toHaveBeenCalled();
     });
   });
 });

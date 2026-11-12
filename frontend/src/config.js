@@ -31,8 +31,6 @@ export const API_ENDPOINTS = {
   LOAN_EQUITY_HISTORY: (id) => `${API_BASE_URL}/api/loans/${id}/equity-history`,
   LOAN_PROPERTY_VALUE: (id) => `${API_BASE_URL}/api/loans/${id}/property-value`,
   LOAN_INSIGHTS: (id) => `${API_BASE_URL}/api/loans/${id}/insights`,
-  LOAN_PAYMENTS: (id) => `${API_BASE_URL}/api/loans/${id}/payments`,
-  LOAN_PAYMENT: (id, paymentId) => `${API_BASE_URL}/api/loans/${id}/payments/${paymentId}`,
   LOAN_SCENARIO: (id) => `${API_BASE_URL}/api/loans/${id}/insights/scenario`,
   LOAN_RATE: (id) => `${API_BASE_URL}/api/loans/${id}/rate`,
   

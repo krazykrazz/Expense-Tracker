@@ -2,9 +2,29 @@ const loanBalanceRepository = require('../repositories/loanBalanceRepository');
 const loanRepository = require('../repositories/loanRepository');
 const loanPaymentRepository = require('../repositories/loanPaymentRepository');
 const activityLogService = require('./activityLogService');
+const balanceCalculationService = require('./balanceCalculationService');
 const { validateNumber, validateYearMonth } = require('../utils/validators');
+const logger = require('../config/logger');
+
+const monthStart = (year, month) => `${year}-${String(month).padStart(2, '0')}-01`;
+const nextMonthStart = (year, month) => (month === 12 ? monthStart(year + 1, 1) : monthStart(year, month + 1));
 
 class LoanBalanceService {
+  /**
+   * Rebuild a mortgage's generated snapshots after its balance history changed.
+   * No-op for other loan types; failures are logged, never thrown.
+   * @param {number} loanId - Loan ID
+   * @param {string} fromDate - First affected date (YYYY-MM-DD)
+   * @returns {Promise<void>}
+   */
+  async recomputeMortgage(loanId, fromDate) {
+    try {
+      await balanceCalculationService.recomputeMortgageSnapshots(loanId, fromDate);
+    } catch (err) {
+      logger.warn('Failed to recompute mortgage balances after snapshot change', { loanId, error: err.message });
+    }
+  }
+
   /**
    * Validate balance entry data
    * @param {Object} entry - Balance entry data to validate
@@ -64,6 +84,9 @@ class LoanBalanceService {
     
     // Recalculate estimated months left
     await this.recalculateEstimatedMonths(data.loan_id);
+
+    // A user-entered mortgage balance anchors the months after it
+    await this.recomputeMortgage(data.loan_id, nextMonthStart(data.year, data.month));
     
     return result;
   }
@@ -76,6 +99,7 @@ class LoanBalanceService {
    */
   async updateBalance(id, data) {
     this.validateBalanceEntry(data);
+    const previous = await loanBalanceRepository.findById(id);
     
     const balanceData = {
       year: data.year,
@@ -105,6 +129,15 @@ class LoanBalanceService {
     // Recalculate estimated months left
     if (result) {
       await this.recalculateEstimatedMonths(data.loan_id);
+
+      // Same month: the edited anchor drives the months after it. Moved: rebuild from the
+      // earlier month, since the old month lost its anchor.
+      const newIndex = data.year * 12 + data.month;
+      const oldIndex = previous ? previous.year * 12 + previous.month : newIndex;
+      const fromDate = oldIndex === newIndex
+        ? nextMonthStart(data.year, data.month)
+        : (oldIndex < newIndex ? monthStart(previous.year, previous.month) : monthStart(data.year, data.month));
+      await this.recomputeMortgage(data.loan_id, fromDate);
     }
     
     return result;
@@ -136,6 +169,10 @@ class LoanBalanceService {
     // Recalculate estimated months left after deletion
     if (result && loanId) {
       await this.recalculateEstimatedMonths(loanId);
+    }
+
+    if (result && existingBalance) {
+      await this.recomputeMortgage(existingBalance.loan_id, monthStart(existingBalance.year, existingBalance.month));
     }
     
     return result;
@@ -401,90 +438,70 @@ class LoanBalanceService {
   }
 
   /**
-   * Update just the interest rate for the current month's balance entry
-   * Creates a new entry if one doesn't exist for the current month
-   * Useful for variable rate mortgages where rate can change mid-month
+   * Update the interest rate from the current month on (variable-rate mortgages).
+   * Sets the rate on the current month's snapshot (creating one at the calculated balance
+   * when none exists), then rebuilds the mortgage's generated snapshots from this month.
    * @param {number} loanId - Loan ID
    * @param {number} newRate - New interest rate (percentage)
-   * @returns {Promise<Object>} Updated or created balance entry
+   * @returns {Promise<Object>} The current month's balance entry
    */
   async updateCurrentRate(loanId, newRate) {
-    // Validate inputs
     validateNumber(loanId, 'Loan ID');
     validateNumber(newRate, 'Interest rate', { min: 0, max: 100 });
 
-    // Get current date using UTC methods
     const now = new Date();
-    const currentYear = now.getUTCFullYear();
-    const currentMonth = now.getUTCMonth() + 1;
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
 
-    // Check if there's an existing balance entry for this month
     const existingEntry = await loanBalanceRepository.findByLoanAndMonth(loanId, currentYear, currentMonth);
-
-    // Capture previous rate for activity logging
-    const previousRate = existingEntry ? existingEntry.rate : null;
+    let previousRate;
 
     if (existingEntry) {
-      // Update the existing entry's rate only
-      const result = await loanBalanceRepository.update(existingEntry.id, {
+      previousRate = existingEntry.rate;
+      await loanBalanceRepository.update(existingEntry.id, {
         year: existingEntry.year,
         month: existingEntry.month,
         remaining_balance: existingEntry.remaining_balance,
-        rate: newRate
+        rate: newRate,
+        source: existingEntry.source
       });
-
-      // Activity logging (fire-and-forget)
-      activityLogService.logEvent(
-        'loan_rate_updated',
-        'loan',
-        loanId,
-        `Updated loan #${loanId} rate from ${previousRate}% to ${newRate}%`,
-        { loanId, newRate, previousRate }
-      );
-
-      return result;
-    }
-
-    // No entry for current month - need to create one
-    // Get the most recent balance to use as the current balance
-    const balanceHistory = await loanBalanceRepository.findByLoan(loanId);
-    let currentBalance;
-    // Capture previous rate from most recent balance if no entry for current month
-    const prevRateFromHistory = balanceHistory.length > 0 ? balanceHistory[0].rate : null;
-
-    if (balanceHistory.length > 0) {
-      // Use the most recent balance (sorted DESC by year, month)
-      currentBalance = balanceHistory[0].remaining_balance;
     } else {
-      // No balance history - use initial balance from loan
       const loan = await loanRepository.findById(loanId);
       if (!loan) {
         throw new Error('Loan not found');
       }
-      currentBalance = loan.initial_balance;
+      const balanceHistory = await loanBalanceRepository.findByLoan(loanId);
+      previousRate = balanceHistory.length > 0 ? balanceHistory[0].rate : null;
+
+      const calc = await balanceCalculationService.calculateBalance(loanId);
+      await loanBalanceRepository.create({
+        loan_id: loanId,
+        year: currentYear,
+        month: currentMonth,
+        remaining_balance: calc.currentBalance,
+        rate: newRate,
+        source: loan.loan_type === 'mortgage' ? 'auto' : 'manual'
+      });
     }
 
-    // Create new balance entry with the new rate
-    const result = await loanBalanceRepository.create({
-      loan_id: loanId,
-      year: currentYear,
-      month: currentMonth,
-      remaining_balance: currentBalance,
-      rate: newRate
-    });
+    const startOfMonth = monthStart(currentYear, currentMonth);
+    if (existingEntry && existingEntry.source !== 'auto') {
+      // A user-entered balance stays; only the following months change
+      await this.recomputeMortgage(loanId, nextMonthStart(currentYear, currentMonth));
+    } else {
+      await this.recomputeMortgage(loanId, startOfMonth);
+    }
 
-    // Activity logging (fire-and-forget)
-    activityLogService.logEvent(
+    await activityLogService.logEvent(
       'loan_rate_updated',
       'loan',
       loanId,
-      `Updated loan #${loanId} rate from ${prevRateFromHistory}% to ${newRate}%`,
-      { loanId, newRate, previousRate: prevRateFromHistory }
+      `Updated loan #${loanId} rate from ${previousRate}% to ${newRate}%`,
+      { loanId, newRate, previousRate }
     );
 
-    return result;
+    return loanBalanceRepository.findByLoanAndMonth(loanId, currentYear, currentMonth);
   }
-
 }
 
 module.exports = new LoanBalanceService();

@@ -5,7 +5,7 @@
  * calculations for equity, amortization schedules, and renewal status.
  */
 
-const { validateNumber, validateString } = require('../utils/validators');
+const { periodicRate } = require('../utils/interestCalculation');
 
 class MortgageService {
   /**
@@ -159,58 +159,83 @@ class MortgageService {
   }
 
   /**
+   * Months of amortization left, counted from the mortgage start date.
+   * @param {Object} loan - { amortization_period (years), start_date (YYYY-MM-DD) }
+   * @param {Date} [asOf=new Date()] - Date to count to
+   * @returns {number|null} Remaining months (at least 1), or null without an amortization period
+   */
+  getRemainingAmortizationMonths(loan, asOf = new Date()) {
+    if (!loan || !loan.amortization_period || loan.amortization_period <= 0) {
+      return null;
+    }
+    const totalMonths = loan.amortization_period * 12;
+    if (!loan.start_date) {
+      return totalMonths;
+    }
+    const [startYear, startMonth] = loan.start_date.split('-').map(Number);
+    const elapsed = (asOf.getFullYear() - startYear) * 12 + (asOf.getMonth() + 1 - startMonth);
+    return Math.max(1, totalMonths - Math.max(0, elapsed));
+  }
+
+  /**
    * Calculate payment amount based on frequency
-   * @param {Object} params - { balance, rate, amortizationYears, paymentFrequency }
+   * @param {Object} params - { balance, rate, amortizationYears, paymentFrequency, rateType, remainingMonths }
+   * @param {number} [params.remainingMonths] - Months left to amortize; overrides amortizationYears
+   * @param {string} [params.rateType] - 'fixed' uses Canadian semi-annual compounding
    * @returns {number} Payment amount per period
    */
   calculatePaymentAmount(params) {
-    const { balance, rate, amortizationYears, paymentFrequency } = params;
+    const { balance, rate, amortizationYears, paymentFrequency, rateType = null, remainingMonths = null } = params;
 
     // Handle edge cases
     if (!balance || balance <= 0) return 0;
-    if (!amortizationYears || amortizationYears <= 0) return 0;
+    const months = remainingMonths || (amortizationYears > 0 ? amortizationYears * 12 : 0);
+    if (!months || months <= 0) return 0;
+
+    // Accelerated bi-weekly is half the monthly payment, paid 26 times a year
+    if (paymentFrequency === 'accelerated_bi-weekly') {
+      return this.calculatePaymentAmount({ ...params, paymentFrequency: 'monthly', remainingMonths: months }) / 2;
+    }
 
     const paymentsPerYear = this.getPaymentsPerYear(paymentFrequency);
-    const totalPayments = amortizationYears * paymentsPerYear;
+    const totalPayments = Math.max(1, Math.round(months / 12 * paymentsPerYear));
+    const r = periodicRate(rate, paymentsPerYear, rateType);
 
-    // Handle zero interest rate
-    if (!rate || rate <= 0) {
+    if (r <= 0) {
       return balance / totalPayments;
     }
 
-    // Convert annual rate to per-period rate
-    const periodicRate = rate / 100 / paymentsPerYear;
-
     // Standard mortgage payment formula: M = P * [r(1+r)^n] / [(1+r)^n - 1]
-    const compoundFactor = Math.pow(1 + periodicRate, totalPayments);
-    const payment = balance * (periodicRate * compoundFactor) / (compoundFactor - 1);
+    const compoundFactor = Math.pow(1 + r, totalPayments);
+    return balance * (r * compoundFactor) / (compoundFactor - 1);
+  }
 
-    // For accelerated bi-weekly, the payment is calculated as monthly payment / 2
-    // but paid 26 times per year instead of 24, resulting in faster payoff
-    if (paymentFrequency === 'accelerated_bi-weekly') {
-      // Calculate what the monthly payment would be
-      const monthlyRate = rate / 100 / 12;
-      const monthlyPayments = amortizationYears * 12;
-      const monthlyCompound = Math.pow(1 + monthlyRate, monthlyPayments);
-      const monthlyPayment = balance * (monthlyRate * monthlyCompound) / (monthlyCompound - 1);
-      // Accelerated bi-weekly is half the monthly payment
-      return monthlyPayment / 2;
-    }
-
-    return payment;
+  /**
+   * Date of the next payment on or after today for a due day of the month
+   * @param {number} dueDay - Day of month the payment is due (1-31)
+   * @param {Date} [asOf=new Date()] - Reference date
+   * @returns {Date} Local date of the next payment (day clamped to month length)
+   */
+  getNextPaymentDate(dueDay, asOf = new Date()) {
+    const clamped = (year, month) => new Date(year, month, Math.min(dueDay, new Date(year, month + 1, 0).getDate()));
+    const today = new Date(asOf.getFullYear(), asOf.getMonth(), asOf.getDate());
+    const candidate = clamped(today.getFullYear(), today.getMonth());
+    return candidate >= today ? candidate : clamped(today.getFullYear(), today.getMonth() + 1);
   }
 
   /**
    * Generate amortization schedule
-   * @param {Object} params - { balance, rate, amortizationYears, paymentFrequency }
+   * @param {Object} params - { balance, rate, amortizationYears, paymentFrequency, rateType, remainingMonths, firstPaymentDate }
+   * @param {Date} [params.firstPaymentDate] - Date of the first scheduled payment (defaults to one period from today)
    * @returns {Array} Array of payment periods with principal/interest breakdown
    */
   generateAmortizationSchedule(params) {
-    const { balance, rate, amortizationYears, paymentFrequency } = params;
+    const { balance, rate, amortizationYears, paymentFrequency, rateType = null, remainingMonths = null, firstPaymentDate = null } = params;
 
     // Handle edge cases
     if (!balance || balance <= 0) return [];
-    if (!amortizationYears || amortizationYears <= 0) return [];
+    const months = remainingMonths || (amortizationYears > 0 ? amortizationYears * 12 : 0);
+    if (!months || months <= 0) return [];
 
     const schedule = [];
     const paymentsPerYear = this.getPaymentsPerYear(paymentFrequency);
@@ -223,32 +248,42 @@ class MortgageService {
     let cumulativePrincipal = 0;
     let cumulativeInterest = 0;
     
-    // Calculate periodic rate
-    const periodicRate = (rate && rate > 0) ? rate / 100 / paymentsPerYear : 0;
-    
-    // Calculate days between payments for date projection
-    const daysPerPeriod = paymentFrequency === 'monthly' ? 30 : 14;
-    const startDate = new Date();
+    const r = periodicRate(rate, paymentsPerYear, rateType);
+    const isMonthly = paymentFrequency !== 'bi-weekly' && paymentFrequency !== 'accelerated_bi-weekly';
+
+    let start = firstPaymentDate ? new Date(firstPaymentDate) : null;
+    if (!start) {
+      start = new Date();
+      if (isMonthly) start.setMonth(start.getMonth() + 1);
+      else start.setDate(start.getDate() + 14);
+    }
+    const dueDay = start.getDate();
+    const dateForPeriod = (index) => {
+      if (isMonthly) {
+        const y = start.getFullYear();
+        const m = start.getMonth() + index;
+        return new Date(y, m, Math.min(dueDay, new Date(y, m + 1, 0).getDate()));
+      }
+      return new Date(start.getFullYear(), start.getMonth(), start.getDate() + index * 14);
+    };
+    const toIso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     
     let period = 1;
-    const maxPeriods = amortizationYears * paymentsPerYear;
+    // Accelerated payments finish early; cap generously to avoid runaway loops
+    const maxPeriods = Math.round(months / 12 * paymentsPerYear) + paymentsPerYear;
 
     while (remainingBalance > 0.01 && period <= maxPeriods) {
-      // Calculate interest for this period
-      const interest = remainingBalance * periodicRate;
+      const interest = remainingBalance * r;
       
-      // Calculate principal (payment minus interest)
       // For the last payment, principal is the remaining balance
       let principal = payment - interest;
       let actualPayment = payment;
       
-      // Handle final payment
       if (principal >= remainingBalance) {
         principal = remainingBalance;
         actualPayment = principal + interest;
       }
 
-      // Update cumulative totals
       cumulativePrincipal += principal;
       cumulativeInterest += interest;
       remainingBalance -= principal;
@@ -258,13 +293,9 @@ class MortgageService {
         remainingBalance = 0;
       }
 
-      // Calculate projected date
-      const paymentDate = new Date(startDate);
-      paymentDate.setDate(paymentDate.getDate() + (period * daysPerPeriod));
-
       schedule.push({
         period,
-        date: paymentDate.toISOString().split('T')[0],
+        date: toIso(dateForPeriod(period - 1)),
         payment: Math.round(actualPayment * 100) / 100,
         principal: Math.round(principal * 100) / 100,
         interest: Math.round(interest * 100) / 100,

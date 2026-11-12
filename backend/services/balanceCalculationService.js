@@ -18,6 +18,18 @@ const loanBalanceRepository = require('../repositories/loanBalanceRepository');
 const { calculateMonthlyInterest } = require('../utils/interestCalculation');
 const logger = require('../config/logger');
 
+const roundCents = (value) => Math.round(value * 100) / 100;
+const monthIndex = (year, month) => year * 12 + (month - 1);
+const dateIndex = (isoDate) => {
+  const [year, month] = isoDate.split('-').map(Number);
+  return monthIndex(year, month);
+};
+const currentIndex = () => {
+  const now = new Date();
+  return monthIndex(now.getFullYear(), now.getMonth() + 1);
+};
+const indexToYearMonth = (index) => ({ year: Math.floor(index / 12), month: (index % 12) + 1 });
+
 class BalanceCalculationService {
   /**
    * Calculate current balance for a loan using anchor-based approach.
@@ -126,204 +138,195 @@ class BalanceCalculationService {
   }
 
   /**
-   * Calculate mortgage balance using interest accrual engine.
-   *
-   * Walks forward month-by-month from an anchor point, adding monthly interest
-   * and subtracting payments in each month. Uses balance snapshots for anchor
-   * and rate resolution.
-   *
-   * @param {Object} loan - Full loan object (already fetched)
-   * @returns {Promise<Object>} { currentBalance, totalInterestAccrued, anchorBased, interestAware, loanId, initialBalance, totalPayments, calculatedBalance, actualBalance, paymentCount, lastPaymentDate, hasDiscrepancy }
-   *
-   * Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 9.2, 9.4
+   * Prepare the inputs shared by every mortgage walk.
+   * @param {Object} loan - Loan record
+   * @returns {Promise<Object>} { snapshots, payments, snapshotByIndex, paymentsByIndex, rateChangeIndexes, startIndex, rateType }
+   * @private
    */
-  async calculateMortgageBalance(loan, options = {}) {
-    // Get snapshots chronologically (ASC) and payments chronologically
+  async _loadMortgageData(loan) {
     const snapshots = await loanBalanceRepository.getBalanceHistory(loan.id);
     const paymentsDesc = await loanPaymentRepository.findByLoanOrdered(loan.id);
-    const payments = [...paymentsDesc].reverse(); // chronological order
+    const payments = [...paymentsDesc].reverse();
 
-    // Gather reporting data
+    const snapshotByIndex = new Map();
+    // Months whose snapshot rate differs from the snapshot before it: a recorded rate change
+    const rateChangeIndexes = new Set();
+    let previousRate = null;
+    for (const snap of snapshots) {
+      const index = monthIndex(snap.year, snap.month);
+      snapshotByIndex.set(index, snap);
+      if (previousRate !== null && snap.rate !== previousRate) {
+        rateChangeIndexes.add(index);
+      }
+      previousRate = snap.rate;
+    }
+
+    const paymentsByIndex = new Map();
+    for (const payment of payments) {
+      const index = dateIndex(payment.payment_date);
+      if (!paymentsByIndex.has(index)) paymentsByIndex.set(index, []);
+      paymentsByIndex.get(index).push(payment);
+    }
+
+    const startIndex = loan.start_date ? dateIndex(loan.start_date) : currentIndex();
+
+    return {
+      snapshots,
+      payments,
+      snapshotByIndex,
+      paymentsByIndex,
+      rateChangeIndexes,
+      startIndex,
+      rateType: loan.rate_type || null
+    };
+  }
+
+  /**
+   * Rate in effect at a month when no snapshot gives one: the latest earlier snapshot rate,
+   * then the earliest snapshot rate, then the loan's fixed rate.
+   * @private
+   */
+  _fallbackRate(loan, snapshots, index) {
+    let rate = null;
+    for (const snap of snapshots) {
+      if (monthIndex(snap.year, snap.month) <= index) rate = snap.rate;
+    }
+    if (rate == null && snapshots.length > 0) rate = snapshots[0].rate;
+    if (rate == null && loan.fixed_interest_rate) rate = loan.fixed_interest_rate;
+    return rate;
+  }
+
+  /**
+   * Calculate mortgage balance using interest accrual engine.
+   *
+   * Anchors on the latest snapshot on or before the target month (or initial_balance at
+   * start_date), then walks forward month by month: add the month's interest, subtract
+   * the month's payments. Payments in the anchor month are already reflected in the anchor.
+   *
+   * @param {Object} loan - Full loan object (already fetched)
+   * @param {Object} [options] - { targetDate: 'YYYY-MM-DD' } (defaults to today)
+   * @returns {Promise<Object>} { currentBalance, totalInterestAccrued, anchorBased, interestAware, loanId, initialBalance, totalPayments, calculatedBalance, actualBalance, paymentCount, lastPaymentDate, hasDiscrepancy }
+   */
+  async calculateMortgageBalance(loan, options = {}) {
+    const data = await this._loadMortgageData(loan);
+    const { snapshots, payments, paymentsByIndex } = data;
+
     const totalPayments = payments.reduce((sum, p) => sum + p.amount, 0);
     const paymentCount = payments.length;
     const lastPaymentDate = payments.length > 0 ? payments[payments.length - 1].payment_date : null;
     const calculatedBalance = Math.max(0, loan.initial_balance - totalPayments);
     const latestSnapshot = snapshots.length > 0 ? snapshots[snapshots.length - 1] : null;
     const actualBalance = latestSnapshot ? latestSnapshot.remaining_balance : null;
+    const hasDiscrepancy = actualBalance !== null && Math.abs(actualBalance - calculatedBalance) > 0.01;
 
-    // Determine anchor: most recent snapshot or initial_balance at start_date
-    let anchorBalance;
-    let anchorYear;
-    let anchorMonth;
-    let anchorBased = false;
+    const targetIndex = options.targetDate ? dateIndex(options.targetDate) : currentIndex();
 
-    if (latestSnapshot) {
-      anchorBalance = latestSnapshot.remaining_balance;
-      anchorYear = latestSnapshot.year;
-      anchorMonth = latestSnapshot.month;
-      anchorBased = true;
-    } else {
-      anchorBalance = loan.initial_balance;
-      // Parse start_date (YYYY-MM-DD format)
-      if (loan.start_date) {
-        const parts = loan.start_date.split('-');
-        anchorYear = parseInt(parts[0], 10);
-        anchorMonth = parseInt(parts[1], 10);
-      } else {
-        // No start_date available, use current date as fallback
-        const now = new Date();
-        anchorYear = now.getFullYear();
-        anchorMonth = now.getMonth() + 1;
-      }
-    }
-
-    // Resolve interest rate at anchor point
-    let rate = this.resolveRateAtDate(snapshots, anchorYear, anchorMonth);
-
-    // If no rate from snapshots, check loan's fixed_interest_rate
-    if (rate == null && loan.fixed_interest_rate) {
-      rate = loan.fixed_interest_rate;
-    }
-
-    // If still no rate, fall back to naive calculation (interestAware: false)
-    if (rate == null) {
-      logger.debug('No interest rate available for mortgage, falling back to naive calculation', { loanId: loan.id });
-      const hasDiscrepancy = actualBalance !== null &&
-                            Math.abs(actualBalance - calculatedBalance) > 0.01;
-      return {
-        loanId: loan.id,
-        initialBalance: loan.initial_balance,
-        totalPayments,
-        currentBalance: anchorBased
-          ? Math.max(0, anchorBalance - payments
-              .filter(p => {
-                const d = p.payment_date.split('-');
-                const py = parseInt(d[0], 10);
-                const pm = parseInt(d[1], 10);
-                return py > anchorYear || (py === anchorYear && pm > anchorMonth);
-              })
-              .reduce((s, p) => s + p.amount, 0))
-          : calculatedBalance,
-        calculatedBalance,
-        actualBalance,
-        paymentCount,
-        lastPaymentDate,
-        hasDiscrepancy,
-        anchorBased,
-        totalInterestAccrued: 0,
-        interestAware: false
-      };
-    }
-
-    // Walk forward month-by-month from anchor to target date (or current date)
-    let targetYear, targetMonth;
-    if (options.targetDate) {
-      const parts = options.targetDate.split('-');
-      targetYear = parseInt(parts[0], 10);
-      targetMonth = parseInt(parts[1], 10);
-    } else {
-      const now = new Date();
-      targetYear = now.getFullYear();
-      targetMonth = now.getMonth() + 1;
-    }
-
-    const currentYear = targetYear;
-    const currentMonth = targetMonth;
-
-    let balance = anchorBalance;
-    let totalInterestAccrued = 0;
-    let walkYear = anchorYear;
-    let walkMonth = anchorMonth;
-
-    // Build a map of payments by year-month for quick lookup
-    const paymentsByMonth = {};
-    for (const payment of payments) {
-      const parts = payment.payment_date.split('-');
-      const py = parseInt(parts[0], 10);
-      const pm = parseInt(parts[1], 10);
-      const key = `${py}-${pm}`;
-      if (!paymentsByMonth[key]) {
-        paymentsByMonth[key] = [];
-      }
-      paymentsByMonth[key].push(payment);
-    }
-
-    // Build a map of snapshots by year-month for rate updates
-    const snapshotsByMonth = {};
+    let anchor = null;
     for (const snap of snapshots) {
-      const key = `${snap.year}-${snap.month}`;
-      snapshotsByMonth[key] = snap;
+      if (monthIndex(snap.year, snap.month) <= targetIndex) anchor = snap;
     }
+    const anchorBased = anchor !== null;
+    const anchorIndex = anchorBased ? monthIndex(anchor.year, anchor.month) : data.startIndex;
+    let balance = anchorBased ? anchor.remaining_balance : loan.initial_balance;
+    let rate = anchorBased ? anchor.rate : this._fallbackRate(loan, snapshots, anchorIndex);
+    const interestAware = rate != null;
 
-    // Advance one month at a time
-    // Start from the month AFTER the anchor (anchor month is the starting point)
-    walkMonth++;
-    if (walkMonth > 12) {
-      walkMonth = 1;
-      walkYear++;
+    let totalInterestAccrued = 0;
+    for (let i = anchorIndex + 1; i <= targetIndex; i++) {
+      const interest = interestAware ? calculateMonthlyInterest(balance, rate, data.rateType) : 0;
+      const paid = (paymentsByIndex.get(i) || []).reduce((sum, p) => sum + p.amount, 0);
+      totalInterestAccrued += interest;
+      balance = Math.max(0, balance + interest - paid);
     }
-
-    while (walkYear < currentYear || (walkYear === currentYear && walkMonth <= currentMonth)) {
-      // Check if a snapshot in this month provides a new rate
-      const monthKey = `${walkYear}-${walkMonth}`;
-      const snap = snapshotsByMonth[monthKey];
-      if (snap && snap.rate != null) {
-        rate = snap.rate;
-      }
-
-      // Accrue monthly interest
-      const monthlyInterest = calculateMonthlyInterest(balance, rate);
-      balance += monthlyInterest;
-      totalInterestAccrued += monthlyInterest;
-
-      // Subtract payments in this month
-      const monthPayments = paymentsByMonth[monthKey];
-      if (monthPayments) {
-        for (const p of monthPayments) {
-          balance -= p.amount;
-        }
-      }
-
-      // Clamp balance >= 0
-      balance = Math.max(0, balance);
-
-      // Advance to next month
-      walkMonth++;
-      if (walkMonth > 12) {
-        walkMonth = 1;
-        walkYear++;
-      }
-    }
-
-    // Also subtract any payments in the anchor month that are after the anchor
-    // (if anchor is a snapshot, payments in that same month should already be accounted for
-    //  by the snapshot balance, so we only subtract payments in months AFTER the anchor)
-    // Note: payments in the anchor month are NOT subtracted because the anchor balance
-    // already reflects the state at that month.
-
-    // Round to 2 decimal places
-    balance = Math.round(balance * 100) / 100;
-    totalInterestAccrued = Math.round(totalInterestAccrued * 100) / 100;
-
-    const hasDiscrepancy = actualBalance !== null &&
-                          Math.abs(actualBalance - calculatedBalance) > 0.01;
 
     return {
       loanId: loan.id,
       initialBalance: loan.initial_balance,
       totalPayments,
-      currentBalance: balance,
+      // Without a rate or anchor every payment simply reduces the initial balance
+      currentBalance: !interestAware && !anchorBased ? calculatedBalance : roundCents(balance),
       calculatedBalance,
       actualBalance,
       paymentCount,
       lastPaymentDate,
       hasDiscrepancy,
       anchorBased,
-      totalInterestAccrued,
-      interestAware: true
+      totalInterestAccrued: roundCents(totalInterestAccrued),
+      interestAware
     };
   }
 
+  /**
+   * Rebuild the generated ('auto') monthly snapshots of a mortgage from a month onward.
+   *
+   * Starts from the snapshot before `fromDate`'s month (or initial_balance at start_date)
+   * and walks to the later of the current month and the last payment month. Each month
+   * accrues interest at the rate in effect and subtracts that month's payments.
+   * User-entered ('manual') snapshots are kept and re-anchor the walk. Recorded rate
+   * changes are kept. Auto snapshots past the end of the walk are removed.
+   *
+   * Call after any change to a mortgage's payments, rate or balance snapshots.
+   * @param {Object|number} loanOrId - Loan record or ID (no-op for non-mortgages)
+   * @param {string} fromDate - First affected date (YYYY-MM-DD); only its month matters
+   * @returns {Promise<number|null>} Balance at the end of the walk, or null when skipped
+   */
+  async recomputeMortgageSnapshots(loanOrId, fromDate) {
+    const loan = typeof loanOrId === 'object' ? loanOrId : await loanRepository.findById(loanOrId);
+    if (!loan || loan.loan_type !== 'mortgage') {
+      return null;
+    }
+
+    const data = await this._loadMortgageData(loan);
+    const { snapshots, snapshotByIndex, paymentsByIndex, rateChangeIndexes, startIndex } = data;
+
+    const fromIndex = Math.max(dateIndex(fromDate), startIndex);
+    let base = null;
+    for (const snap of snapshots) {
+      if (monthIndex(snap.year, snap.month) < fromIndex) base = snap;
+    }
+
+    let balance;
+    let rate;
+    let begin;
+    if (base) {
+      balance = base.remaining_balance;
+      rate = base.rate;
+      // Walk every month after the base snapshot so months without one still accrue interest
+      begin = monthIndex(base.year, base.month) + 1;
+    } else {
+      balance = loan.initial_balance;
+      rate = this._fallbackRate(loan, snapshots, startIndex) ?? 0;
+      // The start month's own snapshot (if any) anchors it; otherwise initial_balance does
+      begin = snapshotByIndex.has(startIndex) ? startIndex : startIndex + 1;
+    }
+
+    const lastPaymentIndex = Math.max(-Infinity, ...paymentsByIndex.keys());
+    const endIndex = Math.max(currentIndex(), lastPaymentIndex, begin - 1);
+
+    for (let i = begin; i <= endIndex; i++) {
+      const snap = snapshotByIndex.get(i);
+      if (snap && snap.source !== 'auto') {
+        balance = snap.remaining_balance;
+        rate = snap.rate;
+        continue;
+      }
+      if (snap && rateChangeIndexes.has(i)) {
+        rate = snap.rate;
+      }
+      const interest = calculateMonthlyInterest(balance, rate, data.rateType);
+      const paid = (paymentsByIndex.get(i) || []).reduce((sum, p) => sum + p.amount, 0);
+      balance = roundCents(Math.max(0, balance + interest - paid));
+
+      const { year, month } = indexToYearMonth(i);
+      await loanBalanceRepository.upsertAuto({ loan_id: loan.id, year, month, remaining_balance: balance, rate });
+    }
+
+    const end = indexToYearMonth(endIndex);
+    await loanBalanceRepository.deleteAutoAfter(loan.id, end.year, end.month);
+
+    logger.debug('Recomputed mortgage snapshots', { loanId: loan.id, fromDate, balance });
+    return balance;
+  }
 
   /**
    * Get balance history with running totals
@@ -366,7 +369,7 @@ class BalanceCalculationService {
 
     // For mortgages, use interest-aware calculation
     if (loan.loan_type === 'mortgage') {
-      return this._getMortgageBalanceHistory(loan, chronologicalPayments);
+      return this._getMortgageBalanceHistory(loan);
     }
 
     // Non-mortgage: existing naive subtraction logic
@@ -390,156 +393,76 @@ class BalanceCalculationService {
 
   /**
    * Compute interest-aware balance history for a mortgage.
-   * 
-   * Walks payments chronologically from the anchor point, accruing interest
-   * month-by-month and subtracting payments. Returns interestAccrued and
-   * principalPaid per entry.
-   * 
+   *
+   * Walks every month from the start: a month's closing balance is its snapshot when one
+   * exists (snapshots are authoritative), otherwise opening balance + interest − payments.
+   * The month's interest is (closing − opening + payments); earlier payments in the month
+   * absorb it first. The last payment of a month lands on the month's closing balance.
+   *
    * @param {Object} loan - Full loan object
-   * @param {Array} chronologicalPayments - Payments sorted oldest-first
-   * @returns {Promise<Array>} History entries with interestAccrued and principalPaid
+   * @returns {Promise<Array>} History entries (newest first) with interestAccrued and principalPaid
    * @private
    */
-  async _getMortgageBalanceHistory(loan, chronologicalPayments) {
-    const snapshots = await loanBalanceRepository.getBalanceHistory(loan.id);
-
-    // Determine anchor (same logic as calculateMortgageBalance)
-    let anchorBalance;
-    let anchorYear;
-    let anchorMonth;
-
-    const latestSnapshot = snapshots.length > 0 ? snapshots[snapshots.length - 1] : null;
-
-    if (latestSnapshot) {
-      anchorBalance = latestSnapshot.remaining_balance;
-      anchorYear = latestSnapshot.year;
-      anchorMonth = latestSnapshot.month;
-    } else {
-      anchorBalance = loan.initial_balance;
-      if (loan.start_date) {
-        const parts = loan.start_date.split('-');
-        anchorYear = parseInt(parts[0], 10);
-        anchorMonth = parseInt(parts[1], 10);
-      } else {
-        const now = new Date();
-        anchorYear = now.getFullYear();
-        anchorMonth = now.getMonth() + 1;
-      }
+  async _getMortgageBalanceHistory(loan) {
+    const data = await this._loadMortgageData(loan);
+    const { snapshots, payments, snapshotByIndex, paymentsByIndex, startIndex } = data;
+    if (payments.length === 0) {
+      return [];
     }
 
-    // Resolve rate at anchor
-    let rate = this.resolveRateAtDate(snapshots, anchorYear, anchorMonth);
-    if (rate == null && loan.fixed_interest_rate) {
-      rate = loan.fixed_interest_rate;
-    }
-
-    // If no rate available, fall back to naive calculation with zero interest
-    if (rate == null) {
-      logger.debug('No interest rate for mortgage balance history, using naive calculation', { loanId: loan.id });
-      let runningBalance = loan.initial_balance;
-      const history = chronologicalPayments.map(payment => {
-        runningBalance = runningBalance - payment.amount;
-        return {
-          id: payment.id,
-          date: payment.payment_date,
-          payment: payment.amount,
-          notes: payment.notes,
-          runningBalance: Math.max(0, runningBalance),
-          interestAccrued: 0,
-          principalPaid: payment.amount
-        };
-      });
-      return history.reverse();
-    }
-
-    // Build snapshot map for rate updates
-    const snapshotsByMonth = {};
-    for (const snap of snapshots) {
-      snapshotsByMonth[`${snap.year}-${snap.month}`] = snap;
-    }
-
-    // Group payments by year-month
-    const paymentsByMonth = {};
-    for (const payment of chronologicalPayments) {
-      const parts = payment.payment_date.split('-');
-      const key = `${parseInt(parts[0], 10)}-${parseInt(parts[1], 10)}`;
-      if (!paymentsByMonth[key]) {
-        paymentsByMonth[key] = [];
-      }
-      paymentsByMonth[key].push(payment);
-    }
-
-    // Find the last payment month to know when to stop walking
-    let endYear = anchorYear;
-    let endMonth = anchorMonth;
-    if (chronologicalPayments.length > 0) {
-      const lastPmt = chronologicalPayments[chronologicalPayments.length - 1];
-      const parts = lastPmt.payment_date.split('-');
-      endYear = parseInt(parts[0], 10);
-      endMonth = parseInt(parts[1], 10);
-    }
-
-    // Walk month-by-month from anchor, building history entries in a single pass
-    let balance = anchorBalance;
-    let walkYear = anchorYear;
-    let walkMonth = anchorMonth;
-
-    // Advance past anchor month
-    walkMonth++;
-    if (walkMonth > 12) {
-      walkMonth = 1;
-      walkYear++;
-    }
+    const startSnapshot = snapshotByIndex.get(startIndex);
+    let balance = startSnapshot ? startSnapshot.remaining_balance : loan.initial_balance;
+    let rate = startSnapshot ? startSnapshot.rate : this._fallbackRate(loan, snapshots, startIndex);
 
     const history = [];
+    const entry = (payment, runningBalance, interestAccrued, principalPaid) => ({
+      id: payment.id,
+      date: payment.payment_date,
+      payment: payment.amount,
+      notes: payment.notes,
+      runningBalance: roundCents(Math.max(0, runningBalance)),
+      interestAccrued: roundCents(interestAccrued),
+      principalPaid: roundCents(principalPaid)
+    });
 
-    while (walkYear < endYear || (walkYear === endYear && walkMonth <= endMonth)) {
-      const monthKey = `${walkYear}-${walkMonth}`;
-
-      // Check for rate update from snapshot
-      const snap = snapshotsByMonth[monthKey];
-      if (snap && snap.rate != null) {
-        rate = snap.rate;
-      }
-
-      // Accrue monthly interest
-      const monthlyInterest = calculateMonthlyInterest(balance, rate);
-      balance += monthlyInterest;
-
-      // Process payments in this month
-      const monthPayments = paymentsByMonth[monthKey];
-      if (monthPayments) {
-        let interestRemainingThisMonth = Math.round(monthlyInterest * 100) / 100;
-        for (const payment of monthPayments) {
-          // First payment absorbs the month's interest; subsequent payments are all principal
-          const interestAccrued = interestRemainingThisMonth;
-          interestRemainingThisMonth = 0;
-          const principalPaid = Math.round(Math.max(0, payment.amount - interestAccrued) * 100) / 100;
-
-          balance -= payment.amount;
-          balance = Math.max(0, balance);
-
-          history.push({
-            id: payment.id,
-            date: payment.payment_date,
-            payment: payment.amount,
-            notes: payment.notes,
-            runningBalance: Math.round(balance * 100) / 100,
-            interestAccrued,
-            principalPaid
-          });
-        }
-      }
-
-      // Advance to next month
-      walkMonth++;
-      if (walkMonth > 12) {
-        walkMonth = 1;
-        walkYear++;
+    // Payments on or before the start month are already reflected in the opening balance
+    for (const payment of payments) {
+      if (dateIndex(payment.payment_date) <= startIndex) {
+        history.push(entry(payment, balance, 0, payment.amount));
       }
     }
 
-    // Return in reverse chronological order (newest first)
+    const lastIndex = dateIndex(payments[payments.length - 1].payment_date);
+    for (let i = startIndex + 1; i <= lastIndex; i++) {
+      const snap = snapshotByIndex.get(i);
+      if (snap) rate = snap.rate;
+      const monthPayments = paymentsByIndex.get(i) || [];
+      const paid = monthPayments.reduce((sum, p) => sum + p.amount, 0);
+
+      let closing;
+      let interest;
+      if (snap) {
+        closing = snap.remaining_balance;
+        interest = closing - balance + paid;
+      } else {
+        interest = rate != null ? calculateMonthlyInterest(balance, rate, data.rateType) : 0;
+        closing = Math.max(0, balance + interest - paid);
+      }
+
+      let running = balance + interest;
+      let interestLeft = Math.max(0, interest);
+      monthPayments.forEach((payment, idx) => {
+        const absorbed = Math.min(interestLeft, payment.amount);
+        interestLeft -= absorbed;
+        running -= payment.amount;
+        const after = idx === monthPayments.length - 1 ? closing : running;
+        history.push(entry(payment, after, absorbed, payment.amount - absorbed));
+      });
+
+      balance = closing;
+    }
+
+    // Newest first for display
     return history.reverse();
   }
 }

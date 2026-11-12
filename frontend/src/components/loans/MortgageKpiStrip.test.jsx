@@ -15,7 +15,7 @@ const fullCalcBalance = { currentBalance: 380000 };
 const fullInsights = {
   currentStatus: {
     currentPayment: 2200,
-    paymentSource: 'Calculated',
+    paymentSource: 'calculated',
     interestBreakdown: { daily: 54.79 }
   },
   projections: {
@@ -80,7 +80,7 @@ describe('MortgageKpiStrip', () => {
 
     const small = container.querySelector('small');
     expect(small).toBeInTheDocument();
-    expect(small.textContent).toBe('Calculated');
+    expect(small.textContent).toBe('calculated minimum');
   });
 
   it('payment source sub-label absent when paymentSource is null', () => {

@@ -13,7 +13,23 @@ import MigrationUtility from './MigrationUtility';
 import PayoffProjectionInsights from './PayoffProjectionInsights';
 import ScenarioAnalysisInsights from './ScenarioAnalysisInsights';
 
-import { formatCurrency } from '../../utils/formatters';
+import { formatCurrency, formatDate } from '../../utils/formatters';
+
+/**
+ * Rate changes from balance snapshots, oldest first: one entry per month the rate changed.
+ * @param {Array} balanceHistory - Snapshots ({ year, month, rate }) in any order
+ * @returns {Array<{year: number, month: number, rate: number}>}
+ */
+function buildRateHistory(balanceHistory) {
+  const sorted = [...(balanceHistory || [])].sort((a, b) => (a.year - b.year) || (a.month - b.month));
+  const history = [];
+  for (const entry of sorted) {
+    if (history.length === 0 || history[history.length - 1].rate !== entry.rate) {
+      history.push({ year: entry.year, month: entry.month, rate: entry.rate });
+    }
+  }
+  return history;
+}
 
 const TABS = [
   { id: 'overview', label: 'Overview' },
@@ -34,6 +50,7 @@ function MortgageTabbedContent({
   insightsLoading,
   payments,
   balanceHistory,
+  paymentBalanceHistory,
   linkedFixedExpenses,
   totalPayments,
   currentBalance,
@@ -44,7 +61,6 @@ function MortgageTabbedContent({
   showPaymentForm,
   editingPayment,
   showMigrationUtility,
-  onEditPayment,
   onEditRate,
   onCalculateScenario,
   onShowPaymentForm,
@@ -157,6 +173,7 @@ function MortgageTabbedContent({
             loanData={loanData}
             payments={payments}
             balanceHistory={balanceHistory}
+            paymentBalanceHistory={paymentBalanceHistory}
             currentBalance={currentBalance}
             currentRate={currentRate}
           />
@@ -165,7 +182,6 @@ function MortgageTabbedContent({
           <ProjectionsPanel
             insights={insights}
             insightsLoading={insightsLoading}
-            linkedFixedExpenses={linkedFixedExpenses}
             onCalculateScenario={onCalculateScenario}
           />
         )}
@@ -176,6 +192,7 @@ function MortgageTabbedContent({
             calculatedBalanceData={calculatedBalanceData}
             payments={payments}
             balanceHistory={balanceHistory}
+            paymentBalanceHistory={paymentBalanceHistory}
             loadingPayments={loadingPayments}
             showPaymentForm={showPaymentForm}
             editingPayment={editingPayment}
@@ -243,22 +260,7 @@ function OverviewPanel({
     setRateError(null);
   };
 
-  // Build rate history from balance entries (unique rate changes)
-  const rateHistory = [];
-  if (balanceHistory?.length > 0) {
-    let lastRate = null;
-    // balanceHistory is sorted DESC (newest first), iterate in reverse for chronological order
-    const sorted = [...balanceHistory].sort((a, b) => {
-      if (a.year !== b.year) return a.year - b.year;
-      return a.month - b.month;
-    });
-    for (const entry of sorted) {
-      if (entry.rate !== lastRate) {
-        rateHistory.push({ year: entry.year, month: entry.month, rate: entry.rate });
-        lastRate = entry.rate;
-      }
-    }
-  }
+  const rateHistory = buildRateHistory(balanceHistory);
 
   return (
     <div className={styles.overviewPanel}>
@@ -314,7 +316,7 @@ function OverviewPanel({
               className={styles.rateHistoryToggle}
               onClick={() => setShowRateHistory(!showRateHistory)}
             >
-              {showRateHistory ? '▾' : '▸'} Rate History ({rateHistory.length} changes)
+              {showRateHistory ? '▾' : '▸'} Rate History ({rateHistory.length - 1} change{rateHistory.length === 2 ? '' : 's'})
             </button>
             {showRateHistory && (
               <ul className={styles.rateHistoryList}>
@@ -370,7 +372,7 @@ function OverviewPanel({
 
           <div className={styles.summaryItem}>
             <dt>Last Payment</dt>
-            <dd>{calculatedBalanceData?.lastPaymentDate ?? '—'}</dd>
+            <dd>{calculatedBalanceData?.lastPaymentDate ? formatDate(calculatedBalanceData.lastPaymentDate) : '—'}</dd>
           </div>
         </dl>
       </div>
@@ -390,7 +392,8 @@ function OverviewPanel({
 
 // ─── Charts Tab ──────────────────────────────────────────────────────────────
 
-function ChartsPanel({ loanData, payments, balanceHistory, currentBalance, currentRate }) {
+function ChartsPanel({ loanData, payments, balanceHistory, paymentBalanceHistory, currentBalance, currentRate }) {
+  const rateHistory = buildRateHistory(balanceHistory);
   return (
     <div className={styles.chartsPanel}>
       {/* Requirement 5.1 — EquityChart when property value is set */}
@@ -413,24 +416,83 @@ function ChartsPanel({ loanData, payments, balanceHistory, currentBalance, curre
       {payments?.length > 0 && (
         <PaymentBalanceChart
           payments={payments}
-          initialBalance={currentBalance}
+          initialBalance={loanData?.initial_balance}
+          serverHistory={paymentBalanceHistory}
           loanName={loanData?.name}
         />
       )}
 
       {/* Requirement 5.4 — Rate History Chart for variable rate with balance history */}
-      {loanData?.rate_type === 'variable' && balanceHistory?.length > 0 && (
-        <div data-testid="rate-history-chart" className={styles.chartPlaceholder}>
-          Rate History (variable rate)
-        </div>
+      {loanData?.rate_type === 'variable' && rateHistory.length > 0 && (
+        <RateHistoryChart rateHistory={rateHistory} currentRate={currentRate} />
       )}
+    </div>
+  );
+}
+
+/**
+ * Step chart of a variable rate over time, extended to the current month.
+ */
+function RateHistoryChart({ rateHistory, currentRate }) {
+  const now = new Date();
+  const points = [...rateHistory];
+  const last = points[points.length - 1];
+  if (currentRate > 0 && currentRate !== last.rate) {
+    points.push({ year: now.getFullYear(), month: now.getMonth() + 1, rate: currentRate });
+  }
+  const index = (p) => p.year * 12 + (p.month - 1);
+  const startIndex = index(points[0]);
+  const endIndex = Math.max(index(points[points.length - 1]), now.getFullYear() * 12 + now.getMonth());
+  const span = Math.max(1, endIndex - startIndex);
+
+  const rates = points.map(p => p.rate);
+  const minRate = Math.min(...rates);
+  const maxRate = Math.max(...rates);
+  const padRate = Math.max(0.25, (maxRate - minRate) * 0.2);
+  const low = Math.max(0, minRate - padRate);
+  const high = maxRate + padRate;
+
+  const width = 600;
+  const height = 180;
+  const pad = { top: 16, right: 20, bottom: 30, left: 50 };
+  const x = (i) => pad.left + ((i - startIndex) / span) * (width - pad.left - pad.right);
+  const y = (rate) => pad.top + (1 - (rate - low) / (high - low)) * (height - pad.top - pad.bottom);
+
+  let path = `M ${x(index(points[0]))} ${y(points[0].rate)}`;
+  for (let i = 1; i < points.length; i++) {
+    path += ` H ${x(index(points[i]))} V ${y(points[i].rate)}`;
+  }
+  path += ` H ${x(endIndex)}`;
+
+  const label = (p) => new Date(p.year, p.month - 1).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+
+  return (
+    <div data-testid="rate-history-chart" className={styles.rateChart}>
+      <h4 className={styles.sectionHeading}>Rate History</h4>
+      <svg viewBox={`0 0 ${width} ${height}`} className={styles.rateChartSvg} role="img" aria-label="Interest rate over time">
+        {[low, (low + high) / 2, high].map((rate) => (
+          <g key={rate}>
+            <line x1={pad.left} x2={width - pad.right} y1={y(rate)} y2={y(rate)} className={styles.rateChartGrid} />
+            <text x={pad.left - 8} y={y(rate) + 4} textAnchor="end" className={styles.rateChartLabel}>{rate.toFixed(2)}%</text>
+          </g>
+        ))}
+        <path d={path} className={styles.rateChartLine} />
+        {points.map((p) => (
+          <g key={`${p.year}-${p.month}`}>
+            <circle cx={x(index(p))} cy={y(p.rate)} r="4" className={styles.rateChartDot}>
+              <title>{`${label(p)}: ${p.rate}%`}</title>
+            </circle>
+            <text x={x(index(p))} y={height - 10} textAnchor="middle" className={styles.rateChartLabel}>{label(p)}</text>
+          </g>
+        ))}
+      </svg>
     </div>
   );
 }
 
 // ─── Projections Tab ─────────────────────────────────────────────────────────
 
-function ProjectionsPanel({ insights, insightsLoading, linkedFixedExpenses, onCalculateScenario }) {
+function ProjectionsPanel({ insights, insightsLoading, onCalculateScenario }) {
   // Requirement 6.4 — insufficient balance data message
   if (insights?.dataStatus?.hasBalanceData === false) {
     return (
@@ -440,20 +502,15 @@ function ProjectionsPanel({ insights, insightsLoading, linkedFixedExpenses, onCa
     );
   }
 
-  // Show note if linked fixed expense amount differs from projection payment
-  const linkedPaymentAmount = linkedFixedExpenses?.length > 0 ? linkedFixedExpenses[0].amount : null;
-  const projectionPayment = insights?.currentStatus?.currentPayment;
-  const hasMismatch = linkedPaymentAmount != null && projectionPayment != null
-    && Math.abs(linkedPaymentAmount - projectionPayment) > 0.01;
+  const usesCalculatedPayment = insights?.dataStatus?.paymentSource === 'calculated';
 
   return (
     <div className={styles.projectionsPanel}>
-      {/* Payment source note */}
-      {hasMismatch && (
+      {usesCalculatedPayment && (
         <div className={styles.paymentMismatchNote}>
-          <strong>Note:</strong> Your linked fixed expense is {formatCurrency(linkedPaymentAmount)}/mo 
-          but projections use {formatCurrency(projectionPayment)}/mo 
-          (from payment records). Update your mortgage payment record to align projections with your actual payment.
+          <strong>Note:</strong> No fixed expense is linked to this mortgage, so projections use the
+          calculated minimum payment of {formatCurrency(insights.currentStatus.currentPayment)}/mo.
+          Link your mortgage payment fixed expense to project your actual payment.
         </div>
       )}
       {/* Requirement 6.1 */}
@@ -479,6 +536,7 @@ function PaymentsPanel({
   calculatedBalanceData,
   payments,
   balanceHistory,
+  paymentBalanceHistory,
   loadingPayments,
   showPaymentForm,
   editingPayment,
@@ -522,11 +580,9 @@ function PaymentsPanel({
       {/* Requirement 7.3 — Payment history */}
       <LoanPaymentHistory
         payments={payments}
-        initialBalance={
-          calculatedBalanceData?.hasDiscrepancy
-            ? currentBalance + (calculatedBalanceData.totalPayments || 0)
-            : loanData?.initial_balance
-        }
+        initialBalance={loanData?.initial_balance}
+        serverHistory={paymentBalanceHistory}
+        currentBalance={currentBalance}
         loading={loadingPayments}
         onEdit={onEditPaymentEntry}
         onDelete={onDeletePayment}

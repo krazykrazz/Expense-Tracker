@@ -869,6 +869,51 @@ describe('FinancialOverviewModal', () => {
     });
   });
 
+  describe('Mortgages', () => {
+    const mortgage = {
+      id: 7, name: 'House', loan_type: 'mortgage', currentBalance: 300000, currentRate: 4.5,
+      start_date: '2020-01-01', is_paid_off: false, initial_balance: 400000,
+      amortization_period: 25, term_length: 5, renewal_date: '2025-01-01',
+      rate_type: 'fixed', payment_frequency: 'monthly', estimated_property_value: 500000
+    };
+
+    it('edits the property value and omits an unchanged renewal date', async () => {
+      loanApi.getAllLoans.mockResolvedValue([mortgage]);
+      loanApi.updateLoan.mockResolvedValue({});
+      render(<FinancialOverviewModal {...defaultProps} />);
+
+      fireEvent.click(await screen.findByTitle('Edit House'));
+
+      const propertyInput = screen.getByLabelText('Estimated Property Value');
+      expect(propertyInput).toHaveValue(500000);
+      expect(screen.getByLabelText(/Amortization Period/)).toBeDisabled();
+      expect(screen.getByLabelText(/Renewal Date/)).not.toBeDisabled();
+
+      fireEvent.change(propertyInput, { target: { value: '650000' } });
+      fireEvent.click(screen.getByText('Update Loan'));
+
+      await waitFor(() => expect(loanApi.updateLoan).toHaveBeenCalledTimes(1));
+      const [id, data] = loanApi.updateLoan.mock.calls[0];
+      expect(id).toBe(7);
+      expect(data.estimated_property_value).toBe(650000);
+      expect(data).not.toHaveProperty('renewal_date');
+    });
+
+    it('includes active mortgage property value in assets and net worth', async () => {
+      loanApi.getAllLoans.mockResolvedValue([
+        mortgage,
+        { ...mortgage, id: 8, name: 'Old House', is_paid_off: true, currentBalance: 0, estimated_property_value: 999999 }
+      ]);
+      render(<FinancialOverviewModal {...defaultProps} />);
+
+      // Assets: 25000 investments + 500000 property; liabilities: 300000
+      await waitFor(() => {
+        expect(screen.getByTestId('assets-value')).toHaveTextContent('$525000.00');
+        expect(screen.getByTestId('net-worth-value')).toHaveTextContent('$225000.00');
+      });
+    });
+  });
+
   // Note: Credit Card Edit Flow (Req 1.4) is thoroughly tested in CreditCardDetailView.test.jsx
   // The unit tests verify that:
   // - Edit button calls onEdit with credit card data

@@ -8,9 +8,9 @@
 const loanRepository = require('../repositories/loanRepository');
 const loanBalanceRepository = require('../repositories/loanBalanceRepository');
 const fixedExpenseRepository = require('../repositories/fixedExpenseRepository');
-const mortgagePaymentService = require('./mortgagePaymentService');
 const mortgageService = require('./mortgageService');
-const { calculateMonthlyInterest } = require('../utils/interestCalculation');
+const balanceCalculationService = require('./balanceCalculationService');
+const { calculateMonthlyInterest, periodicRate } = require('../utils/interestCalculation');
 const logger = require('../config/logger');
 
 class MortgageInsightsService {
@@ -80,15 +80,15 @@ class MortgageInsightsService {
   /**
    * Project payoff date based on payment amount
    * Uses iterative calculation to determine months until balance reaches zero
-   * @param {Object} params - { balance, rate, paymentAmount, paymentFrequency }
+   * @param {Object} params - { balance, rate, paymentAmount, rateType }
    * @param {number} params.balance - Current mortgage balance
    * @param {number} params.rate - Annual interest rate (percentage)
    * @param {number} params.paymentAmount - Payment amount per period
-   * @param {string} [params.paymentFrequency='monthly'] - Payment frequency
+   * @param {string} [params.rateType] - 'fixed' uses Canadian semi-annual compounding
    * @returns {Object} { payoffDate, totalMonths, totalInterest, totalPaid, isUnderpayment }
    */
   projectPayoff(params) {
-    const { balance, rate, paymentAmount, paymentFrequency = 'monthly' } = params;
+    const { balance, rate, paymentAmount, rateType = null } = params;
 
     // Handle edge cases: invalid inputs
     if (!balance || balance <= 0 || !isFinite(balance)) {
@@ -126,8 +126,8 @@ class MortgageInsightsService {
       };
     }
 
-    // Calculate monthly interest rate
-    const monthlyRate = rate / 100 / 12;
+    // Payments are monthly amounts (the linked fixed expense), so the projection steps monthly
+    const monthlyRate = periodicRate(rate, 12, rateType);
     
     // Check for underpayment: payment must cover at least the interest
     const firstMonthInterest = balance * monthlyRate;
@@ -183,23 +183,23 @@ class MortgageInsightsService {
 
   /**
    * Compare two payment scenarios (current payment vs minimum payment)
-   * @param {Object} params - { balance, rate, currentPayment, minimumPayment, paymentFrequency }
+   * @param {Object} params - { balance, rate, currentPayment, minimumPayment, rateType }
    * @param {number} params.balance - Current mortgage balance
    * @param {number} params.rate - Annual interest rate (percentage)
    * @param {number} params.currentPayment - Current payment amount
    * @param {number} params.minimumPayment - Minimum required payment amount
-   * @param {string} [params.paymentFrequency='monthly'] - Payment frequency
+   * @param {string} [params.rateType] - 'fixed' uses Canadian semi-annual compounding
    * @returns {Object} { currentScenario, minimumScenario, comparison, isUnderpayment }
    */
   comparePaymentScenarios(params) {
-    const { balance, rate, currentPayment, minimumPayment, paymentFrequency = 'monthly' } = params;
+    const { balance, rate, currentPayment, minimumPayment, rateType = null } = params;
 
     // Calculate current payment scenario
     const currentScenario = this.projectPayoff({
       balance,
       rate,
       paymentAmount: currentPayment,
-      paymentFrequency
+      rateType
     });
 
     // Calculate minimum payment scenario
@@ -207,7 +207,7 @@ class MortgageInsightsService {
       balance,
       rate,
       paymentAmount: minimumPayment,
-      paymentFrequency
+      rateType
     });
 
     // Check for underpayment condition
@@ -249,16 +249,16 @@ class MortgageInsightsService {
 
   /**
    * Calculate what-if scenario for extra payment
-   * @param {Object} params - { balance, rate, currentPayment, extraPayment, paymentFrequency }
+   * @param {Object} params - { balance, rate, currentPayment, extraPayment, rateType }
    * @param {number} params.balance - Current mortgage balance
    * @param {number} params.rate - Annual interest rate (percentage)
    * @param {number} params.currentPayment - Current payment amount
    * @param {number} params.extraPayment - Extra payment amount to add
-   * @param {string} [params.paymentFrequency='monthly'] - Payment frequency
+   * @param {string} [params.rateType] - 'fixed' uses Canadian semi-annual compounding
    * @returns {Object} { newPayoffDate, monthsSaved, interestSaved, newTotalInterest, originalTotalInterest, extraPayment, newPayment }
    */
   calculateExtraPaymentScenario(params) {
-    const { balance, rate, currentPayment, extraPayment, paymentFrequency = 'monthly' } = params;
+    const { balance, rate, currentPayment, extraPayment, rateType = null } = params;
 
     // Validate extra payment
     if (!extraPayment || extraPayment <= 0 || !isFinite(extraPayment)) {
@@ -267,7 +267,7 @@ class MortgageInsightsService {
         balance,
         rate,
         paymentAmount: currentPayment,
-        paymentFrequency
+        rateType
       });
 
       return {
@@ -286,7 +286,7 @@ class MortgageInsightsService {
       balance,
       rate,
       paymentAmount: currentPayment,
-      paymentFrequency
+      rateType
     });
 
     // Calculate new scenario (with extra payment)
@@ -295,7 +295,7 @@ class MortgageInsightsService {
       balance,
       rate,
       paymentAmount: newPayment,
-      paymentFrequency
+      rateType
     });
 
     // Handle underpayment scenarios
@@ -328,6 +328,20 @@ class MortgageInsightsService {
   }
 
   /**
+   * The linked fixed expense amount in effect now: the latest month up to the current one
+   * (fixed expenses for future months are planned, not paid yet).
+   * @param {number} mortgageId - Mortgage loan ID
+   * @param {Date} [asOf=new Date()] - Reference date
+   * @returns {Promise<Object|null>} Fixed expense row or null
+   */
+  async getCurrentLinkedPayment(mortgageId, asOf = new Date()) {
+    const linkedExpenses = await fixedExpenseRepository.getFixedExpensesByLoanId(mortgageId);
+    const nowIndex = asOf.getFullYear() * 12 + asOf.getMonth();
+    const current = (linkedExpenses || []).find(e => e.year * 12 + (e.month - 1) <= nowIndex);
+    return current || (linkedExpenses && linkedExpenses.length > 0 ? linkedExpenses[linkedExpenses.length - 1] : null);
+  }
+
+  /**
    * Get all insights for a mortgage
    * Aggregates all insight calculations into a single response
    * @param {number} mortgageId - Mortgage loan ID
@@ -349,46 +363,35 @@ class MortgageInsightsService {
       throw new Error('Insights are only available for mortgages');
     }
 
-    // Fetch balance history to get current balance and rate
+    // Current balance from the interest-aware engine; rate from the latest snapshot
     const balanceHistory = await loanBalanceRepository.findByLoan(mortgageId);
-    
-    // Get the most recent balance entry (sorted DESC by year, month)
     const currentBalanceEntry = balanceHistory.length > 0 ? balanceHistory[0] : null;
-    
-    // Determine current balance and rate
-    const balance = currentBalanceEntry 
-      ? currentBalanceEntry.remaining_balance 
-      : mortgage.initial_balance;
-    const rate = currentBalanceEntry ? currentBalanceEntry.rate : 0;
+    const calc = await balanceCalculationService.calculateBalance(mortgageId);
+    const balance = calc.currentBalance;
+    const rate = currentBalanceEntry ? currentBalanceEntry.rate : (mortgage.fixed_interest_rate || 0);
     const rateType = mortgage.rate_type || 'fixed';
 
-    // Fetch current payment from mortgage_payments (or use minimum as default)
-    const currentPaymentEntry = await mortgagePaymentService.getCurrentPayment(mortgageId);
-    
-    // Calculate minimum payment using mortgageService
+    // Minimum payment amortizes the balance over the months left in the amortization period
+    const remainingMonths = mortgageService.getRemainingAmortizationMonths(mortgage);
     const minimumPayment = mortgageService.calculatePaymentAmount({
       balance,
       rate,
       amortizationYears: mortgage.amortization_period || 25,
-      paymentFrequency: mortgage.payment_frequency || 'monthly'
+      remainingMonths,
+      paymentFrequency: 'monthly',
+      rateType
     });
 
-    // Use current payment if set, otherwise check linked fixed expense, then fall back to minimum
+    // The linked fixed expense (latest month up to the current one) is the actual payment
+    const linkedExpense = await this.getCurrentLinkedPayment(mortgageId);
     let currentPayment;
-    let paymentSource = 'calculated';
-    if (currentPaymentEntry) {
-      currentPayment = currentPaymentEntry.payment_amount;
-      paymentSource = 'mortgage_payment';
+    let paymentSource;
+    if (linkedExpense) {
+      currentPayment = linkedExpense.amount;
+      paymentSource = 'linked_fixed_expense';
     } else {
-      // Check for linked fixed expense amount as a better fallback than calculated minimum
-      const linkedExpenses = await fixedExpenseRepository.getFixedExpensesByLoanId(mortgageId);
-      if (linkedExpenses && linkedExpenses.length > 0) {
-        currentPayment = linkedExpenses[0].amount;
-        paymentSource = 'linked_fixed_expense';
-      } else {
-        currentPayment = minimumPayment;
-        paymentSource = 'calculated';
-      }
+      currentPayment = minimumPayment;
+      paymentSource = 'calculated';
     }
 
     // Calculate interest breakdown
@@ -402,14 +405,14 @@ class MortgageInsightsService {
         rate,
         currentPayment,
         minimumPayment,
-        paymentFrequency: mortgage.payment_frequency || 'monthly'
+        rateType
       });
     }
 
     // Build data status
     const dataStatus = {
       hasBalanceData: balanceHistory.length > 0,
-      hasPaymentData: currentPaymentEntry !== null,
+      hasPaymentData: linkedExpense !== null,
       paymentSource,
       lastUpdated: currentBalanceEntry 
         ? `${currentBalanceEntry.year}-${String(currentBalanceEntry.month).padStart(2, '0')}`
@@ -426,6 +429,8 @@ class MortgageInsightsService {
         rateType,
         currentPayment,
         minimumPayment: Math.round(minimumPayment * 100) / 100,
+        remainingAmortizationMonths: remainingMonths,
+        paymentSource,
         interestBreakdown
       },
       projections,

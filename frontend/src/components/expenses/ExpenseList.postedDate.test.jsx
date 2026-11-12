@@ -100,6 +100,16 @@ describe('posted date in the expense list', () => {
     expect(screen.getAllByTestId('pending-turnover')).toHaveLength(1);
     expect(marker.closest('tr')).toBe(rowOf('Cafe'));
   });
+  it('treats a probably pending charge (not in the bank balance yet) like a pending one', async () => {
+    const link = { status: 'added', name: 'Tire', rawName: 'TIRE', date: '2026-10-14', amount: 9, pending: false, probablyPending: true };
+    renderList([expense({ id: 1, place: 'Tire', date: '2026-10-14', posted_date: '2026-10-14', bankLink: link })]);
+
+    expect(await screen.findByTestId('pending-turnover')).toHaveTextContent('→ next?');
+    const pill = within(rowOf('Tire')).getByText(/CIBC MC/).closest('.method-pill');
+    expect(pill).toHaveClass('bank-pill-pending');
+    expect(pill.getAttribute('title')).toMatch(/^Probably pending at bank: Tire/);
+    expect(pill.getAttribute('title')).toMatch(/Posted Oct 14, 2026$/);
+  });
   it('shows only the later-statement marker for a pending charge whose posted date is already on the next statement', async () => {
     const pendingLink = { status: 'matched', name: 'Cafe', rawName: 'CAFE', date: '2026-10-14', amount: 9, pending: true };
     renderList([expense({ id: 1, place: 'Cafe', date: '2026-10-14', posted_date: '2026-10-16', bankLink: pendingLink })]);

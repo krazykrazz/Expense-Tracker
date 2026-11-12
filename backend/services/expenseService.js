@@ -3,7 +3,9 @@ const expensePeopleRepository = require('../repositories/expensePeopleRepository
 const peopleRepository = require('../repositories/peopleRepository');
 const paymentMethodRepository = require('../repositories/paymentMethodRepository');
 const plaidRepository = require('../repositories/plaidRepository');
-const { calculateWeek } = require('../utils/dateUtils');
+const { calculateWeek, getTodayString } = require('../utils/dateUtils');
+const { dayNumber, LIKELY_PENDING_DAYS } = require('../utils/plaidCardBalanceMath');
+const logger = require('../config/logger');
 const expenseValidationService = require('./expenseValidationService');
 const expenseInsuranceService = require('./expenseInsuranceService');
 const expensePeopleService = require('./expensePeopleService');
@@ -396,6 +398,7 @@ class ExpenseService {
     const bankLinks = expenses.length > 0
       ? await plaidRepository.findLinksForExpenses(expenses.map(e => e.id))
       : new Map();
+    await this._markProbablyPending(bankLinks);
 
     return expenses.map(expense => {
       const bankLink = bankLinks.get(expense.id) ?? null;
@@ -404,6 +407,28 @@ class ExpenseService {
       }
       return { ...expense, bankLink };
     });
+  }
+
+  /**
+   * Charges sent to Plaid as posted by a bank that never flags pending ones (Wealthsimple) but that its card
+   * balance doesn't include yet get `probablyPending` on their bank link, so the list shows them as pending
+   * until a later balance includes them (plaidCardBalanceService.probablyPendingIds). Only recent settled links
+   * can be; never fails the list.
+   * @param {Map<number, object>} bankLinks from plaidRepository.findLinksForExpenses (changed in place)
+   */
+  async _markProbablyPending(bankLinks) {
+    const fromDate = new Date((dayNumber(getTodayString()) - LIKELY_PENDING_DAYS) * 86400000).toISOString().slice(0, 10);
+    const candidates = [...bankLinks.values()].filter(link => !link.pending && !link.removed && link.date >= fromDate);
+    if (candidates.length === 0) return;
+    try {
+      // Required here: plaidCardBalanceService depends on payment method services that depend on this one
+      const ids = await require('./plaidCardBalanceService').probablyPendingIds();
+      for (const link of candidates) {
+        if (ids.has(link.bankTransactionId)) link.probablyPending = true;
+      }
+    } catch (err) {
+      logger.warn('Could not check which bank charges are probably still pending', { error: err.message });
+    }
   }
 
   /**

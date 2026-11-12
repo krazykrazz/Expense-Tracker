@@ -219,7 +219,7 @@ Expenses that were added from, or matched to, a bank transaction colour their **
 | Colour | Meaning |
 |--------|---------|
 | Green | Settled at the bank, amount equal |
-| Yellow | Still pending at the bank; updates when it settles (or, if its bank was disconnected, once it is connected again) |
+| Yellow | Still pending at the bank; updates when it settles (or, if its bank was disconnected, once it is connected again). On a bank that doesn't report pending charges (Wealthsimple), also a recent charge its card balance doesn't include yet ("Probably pending at bank", the balance check's *probably still pending*); it turns green once a sync brings a balance that includes it |
 | Red-orange | Needs attention: the amount differs from the bank, or the bank dropped the pending charge (review in the inbox) |
 
 - Hovering the pill shows the bank's description, date and amount, and whether the expense was added from or matched to the bank. Screen readers hear the state ("(confirmed by bank)", "(pending at bank)", …) after the method name.
@@ -302,7 +302,7 @@ What a bank sends Plaid varies. As measured on the first two connected banks:
 | | CIBC (credit card) | Wealthsimple (chequing, card) |
 |---|---|---|
 | Purchase date | Yes: expenses get the day you spent | No: expenses get the posting date (usually 1-2 days later); change it in the Add form if needed |
-| Pending charges | Marked pending: yellow pill, green when settled | Sent as already settled: green pill at once |
+| Pending charges | Marked pending: yellow pill, green when settled | Sent as already settled. A recent card charge the card balance doesn't include yet shows yellow ("Probably pending"), green once the balance includes it |
 | Balance includes pending charges | Yes (via available credit) | No: the balance lags new charges |
 | Login | Username and password (no OAuth) | Username and password (no OAuth) |
 | Card payment wording | Credit on the card: "PAYMENT THANK YOU/PAIEMEN T MERCI" | Credit on the card: "Credit Card Payment - From: Cash". On chequing the debit reads "Credit Card Payment", or "CIBC MASTERCARD - Bill payment" for a CIBC payment |

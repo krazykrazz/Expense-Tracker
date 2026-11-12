@@ -196,7 +196,7 @@ Charges still **Pending** at the bank can be added right away; the expense updat
 An expense that came from (or was matched to) the bank colours its payment method pill. Hover it for the bank details:
 
 - **Green**: confirmed by the bank.
-- **Yellow**: still pending at the bank.
+- **Yellow**: still pending at the bank. For Wealthsimple, which never says a charge is pending, it means the charge isn't in the card balance yet ("Probably pending"); it turns green once the balance includes it.
 - **Red-orange**: needs a look, because the amount differs from the bank or the bank dropped the charge.
 
 Payment methods linked to a bank account show a small green bank icon on the Financial page. A linked debit or cheque account also shows the bank's own balance there (**Bank $700.52 · as of 12:10 pm**; hover for details). It is dimmed and marked *may be out of date* when the bank needs a login, isn't updating, or the balance is over 12 hours old.

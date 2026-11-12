@@ -4,15 +4,15 @@ const toCents = (amount) => Math.round(Number(amount) * 100);
 
 /**
  * @returns {'confirmed'|'differs'|'pending'|'cancelled'|null} how an expense compares to its linked bank
- * transaction: still pending at the bank, a pending charge the bank dropped (review in Bank Import), or
- * settled and equal / different. Reimbursed expenses are charged their original cost, so that is what the
- * bank saw.
+ * transaction: still pending at the bank (or probably: a bank that doesn't flag pending charges hasn't put it
+ * in its card balance yet), a pending charge the bank dropped (review in Bank Import), or settled and equal /
+ * different. Reimbursed expenses are charged their original cost, so that is what the bank saw.
  */
 export const bankLinkState = (expense) => {
   const link = expense && expense.bankLink;
   if (!link) return null;
   if (link.pending && link.removed) return 'cancelled';
-  if (link.pending) return 'pending';
+  if (link.pending || link.probablyPending) return 'pending';
   const charged = expense.original_cost ?? expense.amount;
   return toCents(charged) === toCents(link.amount) ? 'confirmed' : 'differs';
 };
@@ -27,6 +27,13 @@ export const bankLinkTitle = (expense) => {
   const amountLine = `${formatDate(bankLink.date)} · ${formatCurrency(bankLink.amount)}`;
   if (state === 'cancelled') {
     return [`Pending charge dropped by the bank: ${name}`, amountLine, 'Review it in Bank Import → Inbox'].join('\n');
+  }
+  if (state === 'pending' && !bankLink.pending) {
+    return [
+      `Probably pending at bank: ${name}`,
+      amountLine,
+      `${origin}; not in the bank's card balance yet (this bank doesn't report pending charges). Confirmed once its balance includes it`
+    ].join('\n');
   }
   if (state === 'pending') {
     const settleLine = bankLink.disconnected

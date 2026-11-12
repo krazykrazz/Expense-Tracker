@@ -3,6 +3,7 @@ import { API_ENDPOINTS } from '../config';
 import { useFilterContext } from './FilterContext';
 import { authAwareFetch } from '../utils/fetchProvider';
 import { getTodayLocalDate } from '../utils/formatters';
+import { useSyncEvent } from '../hooks/useSyncEvent';
 
 const ExpenseContext = createContext(null);
 
@@ -175,6 +176,9 @@ export function ExpenseProvider({ children }) {
     setRefreshTrigger(prev => prev + 1);
     setBudgetAlertRefreshTrigger(prev => prev + 1);
   }, []);
+
+  // A bank sync can change an expense's bank state (pending, settled, probably pending), so reload the rows
+  useSyncEvent('plaid', () => setRefreshTrigger(prev => prev + 1));
 
   const clearError = useCallback(() => {
     setError(null);

@@ -1076,8 +1076,10 @@ const ExpenseList = memo(({
               const typeHue = getCategoryHue(expense.type);
               const methodIcon = PAYMENT_TYPE_ICONS[expense.payment_method_type ?? paymentMethodMap.get(expense.method)?.type];
               const bankPill = bankPillProps(bankLinkState(expense), bankLinkTitle(expense));
+              // Pending at the bank, or probably: not in a balance of a bank that doesn't flag pending charges
+              const bankPending = Boolean(expense.bankLink && (expense.bankLink.pending || expense.bankLink.probablyPending));
               // The posted date goes in the pill's hover text; only a later statement gets a marker (see PostedTurnoverMarker)
-              const postedTitle = postedDateTitle(expense, Boolean(expense.bankLink && !expense.bankLink.pending));
+              const postedTitle = postedDateTitle(expense, Boolean(expense.bankLink) && !bankPending);
               const pillTitle = [bankPill.attrs.title, postedTitle].filter(Boolean).join('\n') || undefined;
               const billingCycleDay = paymentMethodMap.get(expense.method)?.billing_cycle_day ?? null;
               return (
@@ -1182,7 +1184,7 @@ const ExpenseList = memo(({
                   <PostedTurnoverMarker expense={expense} billingCycleDay={billingCycleDay} />
                   {/* A posted date already on a later statement answers the question the pending marker asks */}
                   {!laterStatement(expense, billingCycleDay) && (
-                    <PendingTurnoverMarker date={expense.date} pending={Boolean(expense.bankLink?.pending)} billingCycleDay={billingCycleDay} />
+                    <PendingTurnoverMarker date={expense.date} pending={bankPending} billingCycleDay={billingCycleDay} />
                   )}
                 </td>
                 <td>

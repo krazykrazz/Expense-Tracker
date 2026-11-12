@@ -285,7 +285,7 @@ Every route except `/status` and `/settings` returns `503` until Plaid is config
 | POST | `/api/plaid/inbox/:id/ignore` | Ignore a transaction (409 if already reviewed) |
 | POST | `/api/plaid/inbox/:id/unignore` | Return an ignored transaction to the inbox |
 
-`GET /api/expenses` adds a `bankLink` field to each expense: `{ status: 'added'|'matched', name, rawName, date, amount }`, or `null` when it is not linked to a bank transaction. `GET /api/fixed-expenses/:year/:month` adds `bankConfirmation` to each item: `{ landedDate, amount, plannedAmount, name, expectedDate, daysFromDue }`, or `null`.
+`GET /api/expenses` adds a `bankLink` field to each expense: `{ bankTransactionId, status: 'added'|'matched', name, rawName, date, amount, pending, removed, disconnected, probablyPending? }`, or `null` when it is not linked to a bank transaction. `probablyPending: true` marks a recent charge that a bank which doesn't report pending charges (Wealthsimple) sent as posted but its card balance doesn't include yet (the balance check's `likely_pending`). `GET /api/fixed-expenses/:year/:month` adds `bankConfirmation` to each item: `{ landedDate, amount, plannedAmount, name, expectedDate, daysFromDue }`, or `null`.
 
 ---
 

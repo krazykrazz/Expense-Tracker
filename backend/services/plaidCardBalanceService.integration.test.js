@@ -17,12 +17,14 @@ jest.mock('../utils/dateUtils', () => ({
 }));
 jest.mock('../config/plaid', () => ({
   ...jest.requireActual('../config/plaid'),
-  getPlaidConfig: jest.fn(() => ({ environment: 'sandbox' }))
+  getPlaidConfig: jest.fn(() => ({ environment: 'sandbox' })),
+  isEnabled: jest.fn(() => true)
 }));
 
 const { getDatabase } = require('../database/db');
 const activityLogService = require('./activityLogService');
 const plaidCardBalanceService = require('./plaidCardBalanceService');
+const expenseService = require('./expenseService');
 const { bankOwed, pairUp, postedFromBalance } = plaidCardBalanceService._internal;
 
 const CREDIT_CARD = 4;
@@ -134,6 +136,41 @@ describe('plaidCardBalanceService', () => {
     expect(card.causes).toEqual([
       expect.objectContaining({ type: 'likely_pending', expenseId: tire, name: 'CANADIAN TIRE', amount: 30.5, effect: -30.5 })
     ]);
+  });
+
+  test('the expense list shows a likely_pending charge as probably pending until the bank\'s balance includes it', async () => {
+    const tire = await addExpense('2026-11-03', 30.5, 'Canadian Tire');
+    const tireRow = await stage('t-tire', { amount: 30.5, date: '2026-11-03', status: 'added', expenseId: tire, name: 'CANADIAN TIRE' });
+    const lunch = await addExpense('2026-11-02', 12, 'Lunch');
+    await stage('t-lunch', { amount: 12, date: '2026-11-02', status: 'added', expenseId: lunch });
+    const links = async () => Object.fromEntries((await expenseService.getExpenses({})).map(e => [e.id, e.bankLink]));
+
+    await setBank({ current: 12 });
+    expect(await plaidCardBalanceService.probablyPendingIds()).toEqual(new Set([tireRow]));
+    let byExpense = await links();
+    expect(byExpense[tire]).toMatchObject({ pending: false, probablyPending: true });
+    expect(byExpense[lunch].probablyPending).toBeUndefined();
+
+    // Settled at the bank: its balance now includes it
+    await setBank({ current: 42.5 });
+    byExpense = await links();
+    expect(byExpense[tire].probablyPending).toBeUndefined();
+  });
+
+  test('probablyPendingIds is empty when Plaid is off, and a failing check leaves the expense list as is', async () => {
+    const plaidConfig = require('../config/plaid');
+    const tire = await addExpense('2026-11-03', 30.5, 'Canadian Tire');
+    await stage('t-tire', { amount: 30.5, date: '2026-11-03', status: 'added', expenseId: tire });
+    await setBank({ current: 0 });
+
+    plaidConfig.isEnabled.mockReturnValueOnce(false);
+    expect(await plaidCardBalanceService.probablyPendingIds()).toEqual(new Set());
+
+    const spy = jest.spyOn(plaidCardBalanceService, 'getCardBalances').mockRejectedValueOnce(new Error('boom'));
+    const expense = (await expenseService.getExpenses({})).find(e => e.id === tire);
+    spy.mockRestore();
+    expect(expense.bankLink).toMatchObject({ pending: false });
+    expect(expense.bankLink.probablyPending).toBeUndefined();
   });
 
   test('likely_pending: nothing when several recent charges could explain it, or only older ones', async () => {

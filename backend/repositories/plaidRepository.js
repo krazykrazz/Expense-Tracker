@@ -278,7 +278,7 @@ class PlaidRepository {
 
   /**
    * Bank links for the given expense ids.
-   * @returns {Promise<Map<number, {status: string, name: string, date: string, amount: number}>>}
+   * @returns {Promise<Map<number, {bankTransactionId: number, status: string, name: string, date: string, amount: number}>>}
    */
   async findLinksForExpenses(expenseIds) {
     const links = new Map();
@@ -286,7 +286,7 @@ class PlaidRepository {
     for (let i = 0; i < expenseIds.length; i += CHUNK) {
       const chunk = expenseIds.slice(i, i + CHUNK);
       const rows = await dbHelper.queryAll(
-        `SELECT expense_id AS expenseId, status, COALESCE(merchant_name, name) AS name, name AS rawName,
+        `SELECT id AS bankTransactionId, expense_id AS expenseId, status, COALESCE(merchant_name, name) AS name, name AS rawName,
                 COALESCE(authorized_date, date) AS date, amount, pending, removed_at IS NOT NULL AS removed,
                 plaid_account_id IS NULL AS disconnected
          FROM plaid_transactions

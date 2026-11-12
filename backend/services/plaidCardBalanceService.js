@@ -241,6 +241,20 @@ class PlaidCardBalanceService {
   }
 
   /**
+   * Bank rows the balance check lists as probably still pending (`likely_pending`): charges a bank that leaves
+   * pending charges out of its balance sent to Plaid as posted (Wealthsimple), not yet in that balance. The
+   * expense list shows them as pending until a later balance includes them. Empty when Plaid is off.
+   * @returns {Promise<Set<number>>} plaid_transactions ids
+   */
+  async probablyPendingIds() {
+    if (!plaidConfig.isEnabled()) return new Set();
+    const { cards } = await this.getCardBalances();
+    return new Set(cards.flatMap(card => card.causes
+      .filter(cause => cause.type === 'likely_pending')
+      .map(cause => cause.transactionId)));
+  }
+
+  /**
    * Set a card's credit limit to the one the bank reports (the user chose to). Logged as payment_method_updated.
    */
   async applyBankCreditLimit(paymentMethodId) {

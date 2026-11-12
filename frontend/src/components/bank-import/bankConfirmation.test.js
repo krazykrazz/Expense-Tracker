@@ -39,6 +39,16 @@ describe('expense bank link', () => {
     expect(bankPillProps('cancelled', 't').className).toBe(' bank-pill-cancelled');
   });
 
+  it('a charge the bank sent as posted but its card balance leaves out is probably pending', () => {
+    const probably = { amount: 30.5, bankLink: link({ status: 'added', amount: 30.5, pending: false, removed: false, probablyPending: true }) };
+
+    expect(bankLinkState(probably)).toBe('pending');
+    expect(bankLinkTitle(probably)).toBe(
+      "Probably pending at bank: Coffee Shop\nOct 10, 2026 · $30.50\nAdded from bank; not in the bank's card balance yet (this bank doesn't report pending charges). Confirmed once its balance includes it"
+    );
+    expect(bankLinkState({ ...probably, bankLink: { ...probably.bankLink, probablyPending: undefined } })).toBe('confirmed');
+  });
+
   it('a pending charge from a disconnected bank says it will not update until reconnected', () => {
     const orphan = { amount: 25.5, bankLink: link({ status: 'added', pending: true, removed: false, disconnected: true }) };
 

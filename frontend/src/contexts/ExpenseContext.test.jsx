@@ -387,6 +387,19 @@ describe('ExpenseContext Unit Tests', () => {
     });
   });
 
+  it('reloads the expenses after a bank sync (their bank state may have changed)', async () => {
+    globalThis.fetch = vi.fn().mockImplementation(async () => ({ ok: true, json: async () => [], text: async () => '[]' }));
+    const { result } = renderHook(() => useExpenseContext(), { wrapper: createWrapper() });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    const before = result.current.refreshTrigger;
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent('syncEvent', { detail: { entityType: 'plaid' } }));
+    });
+
+    await waitFor(() => expect(result.current.refreshTrigger).toBe(before + 1));
+  });
+
   it('increments budgetAlertRefreshTrigger when expensesUpdated event fires', async () => {
     const { result } = renderHook(() => useExpenseContext(), {
       wrapper: createWrapper(),

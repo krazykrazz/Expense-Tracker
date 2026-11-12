@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.26.0] - 2026-11-12
+
+### Mortgage balances rebuilt from payments with interest per payment, mortgage editing, net worth includes the house, chart and projection fixes
+
 ## [1.25.4] - 2026-11-11
 
 ### Plaid 2.4 refactors R2 to R8: atomic add as expense, card balances always computed, shared helpers, smaller Plaid modules

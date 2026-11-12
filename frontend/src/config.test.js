@@ -14,8 +14,6 @@ describe('Config Endpoint Cleanup - Alias absence and canonical presence', () =>
 
   const canonicalNames = [
     'LOAN_INSIGHTS',
-    'LOAN_PAYMENTS',
-    'LOAN_PAYMENT',
     'LOAN_SCENARIO',
     'LOAN_RATE',
     'INVOICES_FOR_EXPENSE',

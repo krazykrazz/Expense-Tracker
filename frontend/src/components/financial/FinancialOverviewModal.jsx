@@ -31,15 +31,24 @@ const logger = createLogger('FinancialOverviewModal');
 
 // ─── NetWorthSummary ──────────────────────────────────────────────────────────
 
-const NetWorthSummary = ({ totalInvestments, totalDebt }) => {
-  const netWorth = totalInvestments - totalDebt;
+// Sum of estimated property values for active (not paid off) mortgages
+const sumActivePropertyValue = (loans) => (loans || [])
+  .filter(l => !l.is_paid_off && l.loan_type === 'mortgage')
+  .reduce((sum, l) => sum + (Number(l.estimated_property_value) || 0), 0);
+
+const NetWorthSummary = ({ totalInvestments, totalDebt, totalPropertyValue = 0 }) => {
+  const totalAssets = totalInvestments + totalPropertyValue;
+  const netWorth = totalAssets - totalDebt;
   const isPositive = netWorth >= 0;
+  const assetsTitle = totalPropertyValue > 0
+    ? `Investments ${formatCurrency(totalInvestments)} + property value ${formatCurrency(totalPropertyValue)}`
+    : 'Investments plus estimated property value of active mortgages';
 
   return (
     <div className="financial-net-worth-summary">
-      <div className="financial-net-worth-item">
+      <div className="financial-net-worth-item" title={assetsTitle}>
         <span className="financial-net-worth-label">Assets</span>
-        <span className="financial-net-worth-value positive">{formatCurrency(totalInvestments)}</span>
+        <span data-testid="assets-value" className="financial-net-worth-value positive">{formatCurrency(totalAssets)}</span>
       </div>
       <div className="financial-net-worth-item">
         <span className="financial-net-worth-label">Liabilities</span>
@@ -403,7 +412,7 @@ const PaymentMethodsSection = ({ paymentMethods, loading, onPaymentRecorded, onV
 
 // ─── LoansSection ─────────────────────────────────────────────────────────────
 
-const LoansSection = ({ year, month, onUpdate, highlightIds = [], onTotalDebtChange }) => {
+const LoansSection = ({ year, month, onUpdate, highlightIds = [], onTotalDebtChange, onTotalPropertyValueChange }) => {
   const [loans, setLoans] = useState([]);
   const [activeTab, setActiveTab] = useState('active');
   const [loading, setLoading] = useState(false);
@@ -422,6 +431,7 @@ const LoansSection = ({ year, month, onUpdate, highlightIds = [], onTotalDebtCha
     rate_type: 'fixed', payment_frequency: 'monthly', estimated_property_value: ''
   });
   const [validationErrors, setValidationErrors] = useState({});
+  const [originalRenewalDate, setOriginalRenewalDate] = useState('');
 
   const fetchLoans = useCallback(async () => {
     setLoading(true);
@@ -435,13 +445,14 @@ const LoansSection = ({ year, month, onUpdate, highlightIds = [], onTotalDebtCha
         .filter(l => !l.is_paid_off)
         .reduce((sum, l) => sum + (l.currentBalance || 0), 0);
       if (onTotalDebtChange) onTotalDebtChange(totalDebt);
+      if (onTotalPropertyValueChange) onTotalPropertyValueChange(sumActivePropertyValue(loanList));
     } catch (err) {
       setError(err.message || 'Unable to load loans.');
       logger.error('Error fetching loans:', err);
     } finally {
       setLoading(false);
     }
-  }, [onTotalDebtChange]);
+  }, [onTotalDebtChange, onTotalPropertyValueChange]);
 
   const fetchFixedExpenseCounts = async (loansList) => {
     const counts = {};
@@ -468,6 +479,15 @@ const LoansSection = ({ year, month, onUpdate, highlightIds = [], onTotalDebtCha
       rate_type: 'fixed', payment_frequency: 'monthly', estimated_property_value: ''
     });
     setValidationErrors({});
+    setOriginalRenewalDate('');
+  };
+
+  const validatePropertyValue = (errors) => {
+    if (formData.estimated_property_value !== '') {
+      const v = parseFloat(formData.estimated_property_value);
+      if (isNaN(v)) errors.estimated_property_value = 'Must be a valid number';
+      else if (v <= 0) errors.estimated_property_value = 'Must be greater than zero';
+    }
   };
 
   const validateForm = () => {
@@ -490,6 +510,7 @@ const LoansSection = ({ year, month, onUpdate, highlightIds = [], onTotalDebtCha
       if (!formData.renewal_date) errors.renewal_date = 'Required';
       if (!['fixed', 'variable'].includes(formData.rate_type)) errors.rate_type = 'Invalid';
       if (!['monthly', 'bi-weekly', 'accelerated_bi-weekly'].includes(formData.payment_frequency)) errors.payment_frequency = 'Invalid';
+      validatePropertyValue(errors);
     }
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
@@ -530,15 +551,23 @@ const LoansSection = ({ year, month, onUpdate, highlightIds = [], onTotalDebtCha
 
   const handleUpdateLoan = async () => {
     setError(null);
+    const errors = {};
     const nameError = validateName(formData.name);
-    if (nameError) { setValidationErrors({ name: nameError }); setError('Please fix validation errors.'); return; }
+    if (nameError) errors.name = nameError;
+    if (formData.loan_type === 'mortgage') {
+      if (!formData.renewal_date && originalRenewalDate) errors.renewal_date = 'Required';
+      validatePropertyValue(errors);
+    }
+    setValidationErrors(errors);
+    if (Object.keys(errors).length > 0) { setError('Please fix validation errors.'); return; }
     setLoading(true);
     try {
       const updateData = { name: formData.name.trim(), notes: formData.notes.trim() || null };
       if (formData.loan_type === 'loan') updateData.fixed_interest_rate = formData.fixed_interest_rate !== '' ? parseFloat(formData.fixed_interest_rate) : null;
       if (formData.loan_type === 'mortgage') {
-        updateData.renewal_date = formData.renewal_date || null;
-        updateData.estimated_property_value = formData.estimated_property_value ? parseFloat(formData.estimated_property_value) : null;
+        // Backend rejects past renewal dates, so only resend it when the user changed it
+        if (formData.renewal_date !== originalRenewalDate) updateData.renewal_date = formData.renewal_date;
+        updateData.estimated_property_value = formData.estimated_property_value !== '' ? parseFloat(formData.estimated_property_value) : null;
       }
       await updateLoan(editingLoanId, updateData);
       await fetchLoans();
@@ -585,8 +614,9 @@ const LoansSection = ({ year, month, onUpdate, highlightIds = [], onTotalDebtCha
       term_length: loan.term_length ? loan.term_length.toString() : '',
       renewal_date: loan.renewal_date || '', rate_type: loan.rate_type || 'fixed',
       payment_frequency: loan.payment_frequency || 'monthly',
-      estimated_property_value: loan.estimated_property_value ? loan.estimated_property_value.toString() : ''
+      estimated_property_value: loan.estimated_property_value != null ? loan.estimated_property_value.toString() : ''
     });
+    setOriginalRenewalDate(loan.renewal_date || '');
     setEditingLoanId(loan.id);
     setShowAddForm(true);
     setValidationErrors({});
@@ -712,6 +742,47 @@ const LoansSection = ({ year, month, onUpdate, highlightIds = [], onTotalDebtCha
                       <input type="number" value={formData.fixed_interest_rate} onChange={(e) => setFormData({ ...formData, fixed_interest_rate: e.target.value })} placeholder="e.g., 5.25" step="0.01" min="0" className={`form-input ${validationErrors.fixed_interest_rate ? 'input-error' : ''}`} disabled={loading} />
                       {validationErrors.fixed_interest_rate && <span className="validation-error">{validationErrors.fixed_interest_rate}</span>}
                     </div>
+                  )}
+                  {formData.loan_type === 'mortgage' && (
+                    <>
+                      <div className="loans-input-group">
+                        <label htmlFor="loan-amortization-period">Amortization Period (years) * {editingLoanId && '(cannot be changed)'}</label>
+                        <input id="loan-amortization-period" type="number" value={formData.amortization_period} onChange={(e) => setFormData({ ...formData, amortization_period: e.target.value })} placeholder="e.g., 25" step="1" min="1" max="40" className={`form-input ${validationErrors.amortization_period ? 'input-error' : ''}`} disabled={loading || !!editingLoanId} />
+                        {validationErrors.amortization_period && <span className="validation-error">{validationErrors.amortization_period}</span>}
+                      </div>
+                      <div className="loans-input-group">
+                        <label htmlFor="loan-term-length">Term Length (years) * {editingLoanId && '(cannot be changed)'}</label>
+                        <input id="loan-term-length" type="number" value={formData.term_length} onChange={(e) => setFormData({ ...formData, term_length: e.target.value })} placeholder="e.g., 5" step="1" min="1" max="10" className={`form-input ${validationErrors.term_length ? 'input-error' : ''}`} disabled={loading || !!editingLoanId} />
+                        {validationErrors.term_length && <span className="validation-error">{validationErrors.term_length}</span>}
+                      </div>
+                      <div className="loans-input-group">
+                        <label htmlFor="loan-renewal-date">Renewal Date *</label>
+                        <input id="loan-renewal-date" type="date" value={formData.renewal_date} onChange={(e) => setFormData({ ...formData, renewal_date: e.target.value })} className={`form-input ${validationErrors.renewal_date ? 'input-error' : ''}`} disabled={loading} />
+                        {validationErrors.renewal_date && <span className="validation-error">{validationErrors.renewal_date}</span>}
+                      </div>
+                      <div className="loans-input-group">
+                        <label htmlFor="loan-rate-type">Rate Type * {editingLoanId && '(cannot be changed)'}</label>
+                        <select id="loan-rate-type" value={formData.rate_type} onChange={(e) => setFormData({ ...formData, rate_type: e.target.value })} className={`form-input ${validationErrors.rate_type ? 'input-error' : ''}`} disabled={loading || !!editingLoanId}>
+                          <option value="fixed">Fixed</option>
+                          <option value="variable">Variable</option>
+                        </select>
+                        {validationErrors.rate_type && <span className="validation-error">{validationErrors.rate_type}</span>}
+                      </div>
+                      <div className="loans-input-group">
+                        <label htmlFor="loan-payment-frequency">Payment Frequency * {editingLoanId && '(cannot be changed)'}</label>
+                        <select id="loan-payment-frequency" value={formData.payment_frequency} onChange={(e) => setFormData({ ...formData, payment_frequency: e.target.value })} className={`form-input ${validationErrors.payment_frequency ? 'input-error' : ''}`} disabled={loading || !!editingLoanId}>
+                          <option value="monthly">Monthly</option>
+                          <option value="bi-weekly">Bi-weekly</option>
+                          <option value="accelerated_bi-weekly">Accelerated Bi-weekly</option>
+                        </select>
+                        {validationErrors.payment_frequency && <span className="validation-error">{validationErrors.payment_frequency}</span>}
+                      </div>
+                      <div className="loans-input-group">
+                        <label htmlFor="loan-property-value">Estimated Property Value</label>
+                        <input id="loan-property-value" type="number" value={formData.estimated_property_value} onChange={(e) => setFormData({ ...formData, estimated_property_value: e.target.value })} placeholder="Optional" step="0.01" min="0" className={`form-input ${validationErrors.estimated_property_value ? 'input-error' : ''}`} disabled={loading} />
+                        {validationErrors.estimated_property_value && <span className="validation-error">{validationErrors.estimated_property_value}</span>}
+                      </div>
+                    </>
                   )}
                   <div className="loans-input-group">
                     <label>Notes</label>
@@ -1010,6 +1081,7 @@ const FinancialOverviewModal = ({
 }) => {
   const [totalInvestments, setTotalInvestments] = useState(_testNetWorth ? _testNetWorth.totalInvestments : 0);
   const [totalDebt, setTotalDebt] = useState(_testNetWorth ? _testNetWorth.totalDebt : 0);
+  const [totalPropertyValue, setTotalPropertyValue] = useState(_testNetWorth?.totalPropertyValue ?? 0);
   const [highlightLoanIds, setHighlightLoanIds] = useState([]);
   const [highlightInvestmentIds, setHighlightInvestmentIds] = useState([]);
   const [creditCardMethods, setCreditCardMethods] = useState([]);
@@ -1047,6 +1119,7 @@ const FinancialOverviewModal = ({
         if (!_testNetWorth) {
           setTotalDebt(debt);
           setTotalInvestments(assets);
+          setTotalPropertyValue(sumActivePropertyValue(loansData));
         }
       } catch (err) {
         logger.error('Error fetching totals in FinancialOverviewModal:', err);
@@ -1117,7 +1190,7 @@ const FinancialOverviewModal = ({
             <h2>💼 Financial Overview</h2>
             <button className="financial-modal-close" onClick={handleClose} aria-label="Close">✕</button>
           </div>
-          <NetWorthSummary totalInvestments={totalInvestments} totalDebt={totalDebt} />
+          <NetWorthSummary totalInvestments={totalInvestments} totalDebt={totalDebt} totalPropertyValue={totalPropertyValue} />
         </div>
 
         <div className="financial-unified-content">
@@ -1143,6 +1216,7 @@ const FinancialOverviewModal = ({
             onUpdate={onUpdate}
             highlightIds={highlightLoanIds}
             onTotalDebtChange={setTotalDebt}
+            onTotalPropertyValueChange={setTotalPropertyValue}
           />
 
           <InvestmentsSection

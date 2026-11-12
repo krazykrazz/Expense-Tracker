@@ -49,7 +49,7 @@ describe('Consolidated Schema – Unit Tests', () => {
 
   const EXPECTED_TABLES = [
     'schema_migrations', 'expenses', 'monthly_gross', 'income_sources',
-    'fixed_expenses', 'loans', 'loan_balances', 'mortgage_payments',
+    'fixed_expenses', 'loans', 'loan_balances',
     'loan_payments', 'budgets', 'budget_allocations', 'investments', 'investment_values',
     'people', 'expense_people', 'expense_invoices', 'place_names',
     'reminders', 'dismissed_anomalies', 'anomaly_suppression_rules',
@@ -59,14 +59,14 @@ describe('Consolidated Schema – Unit Tests', () => {
     'plaid_card_payment_links'
   ];
 
-  test('creates exactly 33 tables', async () => {
+  test('creates exactly 32 tables', async () => {
     const rows = await dbAll(
       db,
       "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
     );
     const tableNames = rows.map(r => r.name).sort();
     expect(tableNames).toEqual([...EXPECTED_TABLES].sort());
-    expect(tableNames).toHaveLength(33);
+    expect(tableNames).toHaveLength(32);
   });
 
   test('plaid_transactions allows one bank transaction per expense', async () => {

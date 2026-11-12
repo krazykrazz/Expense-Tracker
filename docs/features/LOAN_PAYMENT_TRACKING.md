@@ -22,36 +22,36 @@ Lines of credit continue to use balance-based tracking due to their variable usa
 - Last payment date display
 
 ### Interest-Aware Balance Calculation (Mortgages)
-- Mortgage balances use interest accrual: `(previous_balance + monthly_interest) - payment_amount`
-- Monthly interest is calculated as `balance × (rate / 100) / 12`
-- The system walks forward month-by-month from the most recent balance snapshot (anchor), accruing interest and subtracting payments
-- If a balance snapshot exists, it becomes the anchor; otherwise the initial balance at the start date is used
-- Interest rate is resolved from the most recent `loan_balances` entry with a non-null rate on or before each month
+- Each month: `closing_balance = opening_balance + monthly_interest - payments in that month` (floored at zero, rounded to cents)
+- Monthly interest uses the rate in effect that month: `balance × (rate / 100) / 12` for variable rates; fixed rates use Canadian semi-annual compounding, `balance × ((1 + rate/200)^(1/6) − 1)`
+- Month-end balances are stored as snapshots in `loan_balances`. User-entered ones are `source = 'manual'`; ones the engine generates are `source = 'auto'`
+- The current balance walks forward from the latest snapshot on or before the current month (or the initial balance at the start date)
+- Interest rate comes from the snapshots (a snapshot's rate applies from its month on), falling back to `fixed_interest_rate`
 - If no interest rate is available, falls back to naive subtraction (`initial_balance - sum(payments)`)
-- Shared interest calculation utility (`backend/utils/interestCalculation.js`) provides the canonical formula used by both the accrual engine and `MortgageInsightsService`
+- Shared interest calculation utility (`backend/utils/interestCalculation.js`) provides the canonical formula used by the accrual engine, amortization schedule and `MortgageInsightsService`
+
+### Rebuilding Balances (Mortgages)
+- Creating, editing or deleting a payment (including auto-logged ones), updating the rate, or adding/editing/deleting a balance entry rebuilds the `auto` snapshots from the affected month through the current month (`balanceCalculationService.recomputeMortgageSnapshots`)
+- Editing a payment rebuilds from the earlier of its old and new dates; deleting one rebuilds from its date, so the balance always reflects the current payment list
+- `manual` snapshots are never overwritten: the walk takes their balance as that month's closing balance and continues from it
+- Generated snapshots past the end of the walk (e.g. from a deleted future payment) are removed
+- Non-fatal: if the rebuild fails, the payment change still succeeds (failure is logged as a warning)
 
 ### Balance Override (Mortgages)
-- When recording a mortgage payment, users can optionally provide an "Override Balance" value
-- This creates a balance snapshot in the `loan_balances` table that becomes the new anchor for future calculations
+- When recording a mortgage payment, users can optionally provide an "Override Balance" value (the balance from the lender's statement)
+- This stores a `manual` balance snapshot for the payment's month that anchors every later month
 - Useful for correcting drift between the app's calculated balance and the actual mortgage statement balance
 - Override must be a non-negative number; negative values are rejected with a validation error
 - A `balance_override_applied` activity log event is created with metadata including the override value, the calculated value that was replaced, and the mortgage name
 - Override is silently ignored for non-mortgage loans
 
-### Auto-Balance Snapshot (Mortgages)
-- When a mortgage payment is created or updated **without** a balance override, the service automatically calculates the new balance and creates a balance snapshot
-- This keeps the anchor fresh so future interest accrual calculations start from an up-to-date position
-- Only triggers when the mortgage is `interestAware` (i.e., the engine has a rate to work with)
-- Non-fatal: if the auto-snapshot fails, the payment still succeeds (failure is logged as a warning)
-- Resolves the interest rate from the most recent `loan_balances` entry, falling back to `fixed_interest_rate`, then 0
-
-### Total Interest Accrued Display
-- The LoanDetailView Payment Tracking summary shows a "Total Interest Accrued" line for mortgages
-- Only displayed when `interestAware` is true and `totalInterestAccrued > 0`
-- Rendered in red to visually distinguish interest cost from principal payments
+### Payment History (Mortgages)
+- `GET /api/loans/:loanId/payment-balance-history` walks every month from the start date: a month's closing balance is its snapshot when one exists, otherwise opening balance + interest − payments
+- Each payment gets `runningBalance`, `interestAccrued` and `principalPaid`; the month's interest is absorbed by its first payment(s)
+- The mortgage Payments tab shows these as Interest, Principal and Balance After columns, and the Charts tab's Balance Over Time uses the same balances
 
 ### Payment Suggestions
-- **Mortgages**: Suggests the monthly_payment amount from loan settings
+- **Mortgages**: Suggests the linked fixed expense amount (latest month up to the current one); without one, the payment that amortizes the current balance over the remaining amortization period
 - **Traditional Loans**: Suggests average of previous payment amounts
 - **No History**: Returns null with guidance message
 
@@ -85,11 +85,11 @@ Lines of credit continue to use balance-based tracking due to their variable usa
    - Payment amount
    - Running balance after payment
    - Optional notes
-3. For mortgages, the LoanPaymentHistory component renders the same as other loan types, showing actual payment transactions with interest-aware running balances
+3. For mortgages, the Payments tab shows each payment with its interest, principal and the interest-aware balance after it
 
 ### Using Payment Suggestions
 1. When adding a payment, click "Use Suggested Amount"
-2. For mortgages: Uses monthly payment from loan settings
+2. For mortgages: Uses the linked fixed expense amount (or the calculated amortization payment)
 3. For loans: Uses average of previous payments
 4. Adjust amount if needed before saving
 
@@ -116,11 +116,11 @@ Lines of credit continue to use balance-based tracking due to their variable usa
 ## API Endpoints
 
 ### Loan Payments
-- `POST /api/loans/:loanId/payments` - Create a payment entry
-- `GET /api/loans/:loanId/payments` - Get all payments for a loan
-- `GET /api/loans/:loanId/payments/:id` - Get a specific payment
-- `PUT /api/loans/:loanId/payments/:id` - Update a payment entry
-- `DELETE /api/loans/:loanId/payments/:id` - Delete a payment entry
+- `POST /api/loans/:loanId/loan-payments` - Create a payment entry
+- `GET /api/loans/:loanId/loan-payments` - Get all payments for a loan
+- `GET /api/loans/:loanId/loan-payments/:id` - Get a specific payment
+- `PUT /api/loans/:loanId/loan-payments/:id` - Update a payment entry
+- `DELETE /api/loans/:loanId/loan-payments/:id` - Delete a payment entry
 
 ### Balance Calculation
 - `GET /api/loans/:loanId/calculated-balance` - Get calculated balance
@@ -168,7 +168,7 @@ linked_loan_id INTEGER REFERENCES loans(id) ON DELETE SET NULL
 
 ### Create Payment
 ```json
-POST /api/loans/1/payments
+POST /api/loans/1/loan-payments
 {
   "amount": 500.00,
   "payment_date": "2026-01-15",

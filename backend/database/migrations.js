@@ -271,6 +271,43 @@ const MIGRATIONS = [
       }
       logger.info('Added personal finance category columns to plaid_transactions');
     }
+  },
+  {
+    // Distinguish user-entered balance snapshots (authoritative anchors) from ones the mortgage
+    // balance engine generated after a payment. Existing mortgage snapshots written in the same
+    // second as a payment in that month were generated, so they are marked 'auto'.
+    name: 'loan_balances_source_v1',
+    async apply(db) {
+      try {
+        await runSql(db, "ALTER TABLE loan_balances ADD COLUMN source TEXT NOT NULL DEFAULT 'manual' CHECK(source IN ('manual', 'auto'))");
+      } catch (err) {
+        if (!err.message.includes('duplicate column name')) throw err;
+      }
+      await runSql(db, `
+        UPDATE loan_balances SET source = 'auto'
+        WHERE loan_id IN (SELECT id FROM loans WHERE loan_type = 'mortgage')
+          AND EXISTS (
+            SELECT 1 FROM loan_payments lp
+            WHERE lp.loan_id = loan_balances.loan_id
+              AND CAST(substr(lp.payment_date, 1, 4) AS INTEGER) = loan_balances.year
+              AND CAST(substr(lp.payment_date, 6, 2) AS INTEGER) = loan_balances.month
+              AND (loan_balances.created_at IN (lp.created_at, lp.updated_at)
+                OR loan_balances.updated_at IN (lp.created_at, lp.updated_at))
+          )
+      `);
+      logger.info('Added source column to loan_balances');
+    }
+  },
+  {
+    // The configured-payment table was only reachable from an unused UI; the linked fixed
+    // expense is the mortgage's payment amount.
+    name: 'drop_mortgage_payments_v1',
+    async apply(db) {
+      await runSql(db, 'DROP INDEX IF EXISTS idx_mortgage_payments_loan_id');
+      await runSql(db, 'DROP INDEX IF EXISTS idx_mortgage_payments_loan_effective_date');
+      await runSql(db, 'DROP TABLE IF EXISTS mortgage_payments');
+      logger.info('Dropped mortgage_payments table');
+    }
   }
 ];
 

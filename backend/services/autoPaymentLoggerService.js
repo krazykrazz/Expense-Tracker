@@ -75,7 +75,7 @@ class AutoPaymentLoggerService {
     // Keep the mortgage interest-aware engine anchored to fresh data, matching the
     // behavior of manually-logged payments (loanPaymentService.createPayment).
     // Best-effort: never blocks the payment. No-op for non-mortgage loans.
-    await loanPaymentService.autoSnapshotMortgageBalance(loan, paymentDate);
+    await loanPaymentService.recomputeMortgageBalances(loan, paymentDate);
 
     logger.info('Auto-logged loan payment from fixed expense:', {
       paymentId: payment.id,

@@ -1,4 +1,30 @@
-const { calculateMonthlyInterest } = require('./interestCalculation');
+const { calculateMonthlyInterest, periodicRate } = require('./interestCalculation');
+
+describe('periodicRate', () => {
+  it('uses semi-annual compounding for fixed rates: 5% fixed monthly = 1.025^(1/6) - 1', () => {
+    expect(periodicRate(5, 12, 'fixed')).toBeCloseTo(Math.pow(1.025, 1 / 6) - 1, 12);
+    expect(periodicRate(5, 12, 'fixed')).toBeLessThan(0.05 / 12);
+  });
+
+  it('uses the nominal rate for variable rates and when no rate type is given', () => {
+    expect(periodicRate(5, 12, 'variable')).toBeCloseTo(0.05 / 12, 12);
+    expect(periodicRate(5, 26)).toBeCloseTo(0.05 / 26, 12);
+  });
+
+  it('returns 0 for a missing or non-positive rate', () => {
+    expect(periodicRate(0, 12, 'fixed')).toBe(0);
+    expect(periodicRate(null, 12)).toBe(0);
+  });
+
+  it('applies to calculateMonthlyInterest when a fixed rate type is passed', () => {
+    expect(calculateMonthlyInterest(500000, 5, 'fixed')).toBe(round2(500000 * (Math.pow(1.025, 1 / 6) - 1)));
+    expect(calculateMonthlyInterest(500000, 5, 'fixed')).toBeLessThan(calculateMonthlyInterest(500000, 5));
+  });
+});
+
+function round2(v) {
+  return Math.round(v * 100) / 100;
+}
 
 describe('calculateMonthlyInterest', () => {
   describe('zero and invalid inputs', () => {

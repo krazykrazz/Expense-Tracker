@@ -3,7 +3,7 @@
  * 
  * Provides smart payment suggestions for loans and mortgages.
  * - For mortgages (priority order):
- *   1. Configured monthly payment from mortgage_payments table
+ *   1. Linked fixed expense amount (latest month up to the current one)
  *   2. Calculated amortization payment from interest-aware balance + rate + remaining term
  *   3. Interest-only minimum payment from balance + rate (no amortization data)
  *   4. Average of previous payments (fallback)
@@ -16,8 +16,10 @@
 const loanRepository = require('../repositories/loanRepository');
 const loanPaymentRepository = require('../repositories/loanPaymentRepository');
 const loanBalanceRepository = require('../repositories/loanBalanceRepository');
-const mortgagePaymentService = require('./mortgagePaymentService');
 const balanceCalculationService = require('./balanceCalculationService');
+const mortgageService = require('./mortgageService');
+const mortgageInsightsService = require('./mortgageInsightsService');
+const { periodicRate } = require('../utils/interestCalculation');
 const logger = require('../config/logger');
 
 class PaymentSuggestionService {
@@ -55,23 +57,21 @@ class PaymentSuggestionService {
 
   /**
    * Get payment suggestion for a mortgage
-   * Returns the configured monthly payment amount from mortgage_payments table.
-   * Falls back to a calculated suggestion using the interest-aware balance,
-   * rate, and remaining amortization period when no configured payment exists.
+   * Returns the linked fixed expense amount. Falls back to a calculated suggestion using the
+   * interest-aware balance, rate, and remaining amortization period.
    * @param {number} mortgageId - Mortgage loan ID
    * @param {Object} loan - Loan record from DB
    * @returns {Promise<Object>} Suggestion object
    */
   async getMortgageSuggestion(mortgageId, loan) {
-    // Priority 1: configured monthly payment from mortgage_payments table
-    const currentPayment = await mortgagePaymentService.getCurrentPayment(mortgageId);
-
-    if (currentPayment && currentPayment.payment_amount > 0) {
+    // Priority 1: the linked fixed expense is the mortgage's payment
+    const linkedExpense = await mortgageInsightsService.getCurrentLinkedPayment(mortgageId);
+    if (linkedExpense && linkedExpense.amount > 0) {
       return {
-        suggestedAmount: currentPayment.payment_amount,
+        suggestedAmount: linkedExpense.amount,
         source: 'monthly_payment',
         confidence: 'high',
-        message: 'Based on your configured monthly payment'
+        message: 'Based on your linked fixed expense'
       };
     }
 
@@ -82,40 +82,23 @@ class PaymentSuggestionService {
       if (calcResult.interestAware && calcResult.currentBalance > 0) {
         const balance = calcResult.currentBalance;
 
-        // Resolve the current rate
-        let annualRate = null;
-        if (loan.fixed_interest_rate) {
+        const snapshots = await loanBalanceRepository.getBalanceHistory(mortgageId);
+        let annualRate = snapshots.length > 0 ? snapshots[snapshots.length - 1].rate : null;
+        if (annualRate == null && loan.fixed_interest_rate) {
           annualRate = loan.fixed_interest_rate;
-        }
-        // If no fixed rate, try to get from the latest snapshot via calcResult
-        if (annualRate == null) {
-          const snapshots = await loanBalanceRepository.getBalanceHistory(mortgageId);
-          if (snapshots.length > 0) {
-            annualRate = snapshots[snapshots.length - 1].rate;
-          }
         }
 
         if (annualRate != null && annualRate > 0) {
-          // Determine remaining months
-          let remainingMonths = null;
-          if (loan.amortization_period) {
-            // amortization_period is in months; subtract elapsed months
-            const startDate = loan.start_date ? new Date(loan.start_date) : null;
-            if (startDate) {
-              const now = new Date();
-              const elapsedMonths = (now.getFullYear() - startDate.getFullYear()) * 12
-                + (now.getMonth() - startDate.getMonth());
-              remainingMonths = Math.max(1, loan.amortization_period - elapsedMonths);
-            } else {
-              remainingMonths = loan.amortization_period;
-            }
-          }
+          const remainingMonths = mortgageService.getRemainingAmortizationMonths(loan);
 
-          if (remainingMonths && remainingMonths > 0) {
-            // Standard amortization formula: M = P * [r(1+r)^n] / [(1+r)^n - 1]
-            const monthlyRate = (annualRate / 100) / 12;
-            const factor = Math.pow(1 + monthlyRate, remainingMonths);
-            const payment = balance * (monthlyRate * factor) / (factor - 1);
+          if (remainingMonths) {
+            const payment = mortgageService.calculatePaymentAmount({
+              balance,
+              rate: annualRate,
+              remainingMonths,
+              paymentFrequency: 'monthly',
+              rateType: loan.rate_type
+            });
             const rounded = Math.round(payment * 100) / 100;
 
             if (isFinite(rounded) && rounded > 0) {
@@ -129,8 +112,7 @@ class PaymentSuggestionService {
           }
 
           // If no amortization period, suggest interest-only as a minimum
-          const monthlyRate = (annualRate / 100) / 12;
-          const interestOnly = Math.round(balance * monthlyRate * 100) / 100;
+          const interestOnly = Math.round(balance * periodicRate(annualRate, 12, loan.rate_type) * 100) / 100;
 
           if (interestOnly > 0) {
             return {

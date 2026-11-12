@@ -21,7 +21,9 @@ const LoanPaymentHistory = ({
   onEdit = () => {},
   onDelete = () => {},
   disabled = false,
-  hideRunningBalance = false
+  hideRunningBalance = false,
+  serverHistory = null,
+  currentBalance: currentBalanceOverride = null
 }) => {
   const [deletingId, setDeletingId] = useState(null);
 
@@ -36,6 +38,20 @@ const LoanPaymentHistory = ({
   const calculateRunningBalances = () => {
     if (!payments || payments.length === 0) {
       return [];
+    }
+
+    // Mortgages: balances come from the server's interest-aware history
+    if (serverHistory) {
+      const byId = new Map(serverHistory.map(entry => [entry.id, entry]));
+      return payments.map(payment => {
+        const entry = byId.get(payment.id);
+        return {
+          ...payment,
+          runningBalance: entry ? entry.runningBalance : null,
+          interestAccrued: entry ? entry.interestAccrued : null,
+          principalPaid: entry ? entry.principalPaid : null
+        };
+      });
     }
 
     // Reverse to chronological order for calculation
@@ -85,7 +101,11 @@ const LoanPaymentHistory = ({
 
   // Calculate totals
   const totalPayments = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
-  const currentBalance = Math.max(0, initialBalance - totalPayments);
+  const currentBalance = currentBalanceOverride != null
+    ? currentBalanceOverride
+    : Math.max(0, initialBalance - totalPayments);
+  const showSplit = !!serverHistory && !hideRunningBalance;
+  const formatOptional = (value) => (value == null ? '—' : formatCurrency(value));
 
   if (loading && payments.length === 0) {
     return (
@@ -127,6 +147,8 @@ const LoanPaymentHistory = ({
               <tr>
                 <th>Date</th>
                 <th className="amount-col">Amount</th>
+                {showSplit && <th className="amount-col">Interest</th>}
+                {showSplit && <th className="amount-col">Principal</th>}
                 {!hideRunningBalance && <th className="balance-col">Balance After</th>}
                 <th className="notes-col">Notes</th>
                 <th className="actions-col">Actions</th>
@@ -149,10 +171,16 @@ const LoanPaymentHistory = ({
                         -{formatCurrency(payment.amount)}
                       </span>
                     </td>
+                    {showSplit && (
+                    <td className="amount-cell">{formatOptional(payment.interestAccrued)}</td>
+                    )}
+                    {showSplit && (
+                    <td className="amount-cell">{formatOptional(payment.principalPaid)}</td>
+                    )}
                     {!hideRunningBalance && (
                     <td className="balance-cell">
                       <span className="running-balance">
-                        {formatCurrency(payment.runningBalance)}
+                        {formatOptional(payment.runningBalance)}
                       </span>
                     </td>
                     )}

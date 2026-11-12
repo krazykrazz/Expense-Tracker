@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import './LoanDetailView.css';
 import { updateLoan, markPaidOff } from '../../services/loanApi';
 import { getBalanceHistory, createOrUpdateBalance, deleteBalance } from '../../services/loanBalanceApi';
-import { getPayments, deletePayment, getCalculatedBalance } from '../../services/loanPaymentApi';
+import { getPayments, deletePayment, getCalculatedBalance, getBalanceHistory as getPaymentBalanceHistory } from '../../services/loanPaymentApi';
 import { getFixedExpensesByLoan } from '../../services/fixedExpenseApi';
 import { validateName, validateAmount } from '../../utils/validation';
 import { formatCurrency, formatDate, formatMonthYear } from '../../utils/formatters';
@@ -11,6 +11,7 @@ import { authAwareFetch } from '../../utils/fetchProvider';
 import { API_ENDPOINTS } from '../../config';
 import MortgageKpiStrip from './MortgageKpiStrip';
 import MortgageTabbedContent from './MortgageTabbedContent';
+import MortgageEditForm from './MortgageEditForm';
 import LoanPaymentForm from './LoanPaymentForm';
 import LoanPaymentHistory from './LoanPaymentHistory';
 import PaymentBalanceChart from './PaymentBalanceChart';
@@ -54,6 +55,8 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
   // Payment tracking state (for loans and mortgages)
   const [payments, setPayments] = useState([]);
   const [calculatedBalanceData, setCalculatedBalanceData] = useState(null);
+  // Mortgages: per-payment balance/interest/principal from the server
+  const [paymentBalanceHistory, setPaymentBalanceHistory] = useState(null);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [editingPayment, setEditingPayment] = useState(null);
   const [loadingPayments, setLoadingPayments] = useState(false);
@@ -135,13 +138,16 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
 
     try {
       // Fetch payments and calculated balance in parallel
-      const [paymentsData, balanceData] = await Promise.all([
+      const isMortgage = loan.loan_type === 'mortgage';
+      const [paymentsData, balanceData, historyData] = await Promise.all([
         getPayments(loan.id),
-        getCalculatedBalance(loan.id)
+        getCalculatedBalance(loan.id),
+        isMortgage ? getPaymentBalanceHistory(loan.id) : Promise.resolve(null)
       ]);
       
       setPayments(paymentsData || []);
       setCalculatedBalanceData(balanceData);
+      setPaymentBalanceHistory(isMortgage ? (historyData || []) : null);
     } catch (err) {
       const errorMessage = err.message || 'Failed to load payment data';
       setError(errorMessage);
@@ -216,27 +222,23 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
     }
   }, [loanData?.id]);
 
+  // Reload everything derived from a mortgage's payments, rate and snapshots, and let the parent
+  // list refresh. Payment and rate changes rebuild the balances from the affected month on.
+  const refreshMortgageData = useCallback(async () => {
+    await Promise.all([fetchPaymentData(), fetchBalanceHistory(), fetchMortgageInsights()]);
+    if (onUpdate) {
+      onUpdate();
+    }
+  // fetchPaymentData/fetchBalanceHistory read the current `loan` prop on each render
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchMortgageInsights, onUpdate, loan]);
+
   // Fetch mortgage insights when modal opens for a mortgage - Requirement 2.1
   useEffect(() => {
     if (isOpen && loanData?.loan_type === 'mortgage') {
       fetchMortgageInsights();
     }
   }, [isOpen, loanData?.id, loanData?.loan_type, fetchMortgageInsights]);
-
-  // Handle mortgage payment edit - calls PUT /api/loans/:id/payments/:paymentId then re-fetches insights
-  // Requirement 2.4, 2.5 — named handleMortgageEditPayment to avoid collision with existing handleEditPayment
-  const handleMortgageEditPayment = useCallback(async (paymentId, paymentData) => {
-    const response = await authAwareFetch(API_ENDPOINTS.LOAN_PAYMENT(loanData.id, paymentId), {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(paymentData)
-    });
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(errorText || 'Failed to update payment');
-    }
-    await fetchMortgageInsights();
-  }, [loanData?.id, fetchMortgageInsights]);
 
   // Handle mortgage rate update - calls PUT /api/loans/:id/rate then re-fetches insights
   // Requirement 2.4, 2.5
@@ -250,8 +252,9 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
       const errorText = await response.text();
       throw new Error(errorText || 'Failed to update rate');
     }
-    await fetchMortgageInsights();
-  }, [loanData?.id, fetchMortgageInsights]);
+    // The rate change rebuilds this month's balance onward
+    await refreshMortgageData();
+  }, [loanData?.id, refreshMortgageData]);
 
   // Handle mortgage scenario calculation - calls POST /api/loans/:id/insights/scenario then re-fetches insights
   // Requirement 2.4, 2.5
@@ -265,10 +268,8 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
       const errorText = await response.text();
       throw new Error(errorText || 'Failed to calculate scenario');
     }
-    const result = await response.json();
-    await fetchMortgageInsights();
-    return result;
-  }, [loanData?.id, fetchMortgageInsights]);
+    return response.json();
+  }, [loanData?.id]);
 
   // Calculate derived values
   // For payment-tracked loans, use calculated balance from payments
@@ -287,7 +288,10 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
   const paydownPercentage = loanData?.initial_balance > 0 
     ? (totalPaidDown / loanData.initial_balance) * 100 
     : 0;
-  const currentRate = loanData?.currentRate || 0;
+  // Mortgages: the latest snapshot holds the current rate (kept fresh after rate updates)
+  const currentRate = (loanData?.loan_type === 'mortgage' && balanceHistory.length > 0
+    ? balanceHistory[0].rate
+    : loanData?.currentRate) || 0;
   
   // Check if loan has a fixed interest rate
   const hasFixedRate = loanData?.fixed_interest_rate !== null && loanData?.fixed_interest_rate !== undefined;
@@ -309,7 +313,9 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
     setIsEditingLoan(true);
     setLoanFormData({
       name: loanData.name,
-      notes: loanData.notes || ''
+      notes: loanData.notes || '',
+      estimated_property_value: loanData.estimated_property_value != null ? String(loanData.estimated_property_value) : '',
+      renewal_date: loanData.renewal_date || ''
     });
     setValidationErrors({});
     clearMessages();
@@ -326,19 +332,46 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
       return;
     }
 
+    const updates = {
+      name: loanFormData.name.trim(),
+      notes: loanFormData.notes.trim() || null
+    };
+
+    if (loanData.loan_type === 'mortgage') {
+      const errors = {};
+      const rawValue = String(loanFormData.estimated_property_value ?? '').trim();
+      const propertyValue = rawValue === '' ? null : Number(rawValue);
+      if (propertyValue !== null && (!Number.isFinite(propertyValue) || propertyValue <= 0)) {
+        errors.estimated_property_value = 'Enter a value greater than zero, or leave it blank';
+      }
+      // An unchanged renewal date is not resent, so an overdue one doesn't block other edits
+      if (loanFormData.renewal_date !== (loanData.renewal_date || '')) {
+        if (!loanFormData.renewal_date) {
+          errors.renewal_date = 'Renewal date is required';
+        } else {
+          updates.renewal_date = loanFormData.renewal_date;
+        }
+      }
+      if (Object.keys(errors).length > 0) {
+        setValidationErrors(errors);
+        setError('Please fix the validation errors before saving.');
+        return;
+      }
+      updates.estimated_property_value = propertyValue;
+    }
+
     setLoading(true);
 
     try {
-      await updateLoan(loanData.id, {
-        name: loanFormData.name.trim(),
-        notes: loanFormData.notes.trim() || null
-      });
+      const updated = await updateLoan(loanData.id, updates);
       
       // Update local state
       setLoanData({
         ...loanData,
-        name: loanFormData.name.trim(),
-        notes: loanFormData.notes.trim() || null
+        ...updates,
+        ...(updated && typeof updated === 'object' ? updated : {}),
+        currentBalance: loanData.currentBalance,
+        currentRate: loanData.currentRate
       });
       
       setIsEditingLoan(false);
@@ -619,6 +652,11 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
     setEditingPayment(null);
     showSuccess(editingPayment ? 'Payment updated successfully' : 'Payment recorded successfully');
     
+    if (loanData?.loan_type === 'mortgage') {
+      await refreshMortgageData();
+      return;
+    }
+
     // Refresh payment data
     await fetchPaymentData();
     
@@ -645,12 +683,13 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
       await deletePayment(loanData.id, paymentId);
       showSuccess('Payment deleted successfully');
       
-      // Refresh payment data
-      await fetchPaymentData();
-      
-      // Notify parent to refresh
-      if (onUpdate) {
-        onUpdate();
+      if (loanData.loan_type === 'mortgage') {
+        await refreshMortgageData();
+      } else {
+        await fetchPaymentData();
+        if (onUpdate) {
+          onUpdate();
+        }
       }
     } catch (err) {
       const errorMessage = err.message || 'Failed to delete payment';
@@ -678,6 +717,11 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
   const handleMigrationComplete = async (result) => {
     showSuccess(`Migration complete: ${result.summary.totalConverted} payment(s) created`);
     
+    if (loanData?.loan_type === 'mortgage') {
+      await refreshMortgageData();
+      return;
+    }
+
     // Refresh payment data to show newly created payments
     await fetchPaymentData();
     
@@ -732,8 +776,19 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
         <div className="loan-detail-content">
           {loanData.loan_type === 'mortgage' ? (
             <>
+              {isEditingLoan && (
+                <MortgageEditForm
+                  formData={loanFormData}
+                  onChange={setLoanFormData}
+                  validationErrors={validationErrors}
+                  loading={loading}
+                  onSave={handleSaveLoanDetails}
+                  onCancel={handleCancelEditLoan}
+                />
+              )}
               <MortgageKpiStrip
                 loanData={loanData}
+                currentRate={currentRate}
                 calculatedBalanceData={calculatedBalanceData}
                 insights={mortgageInsights}
                 insightsLoading={insightsLoading}
@@ -746,6 +801,7 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
                 insightsLoading={insightsLoading}
                 payments={payments}
                 balanceHistory={balanceHistory}
+                paymentBalanceHistory={paymentBalanceHistory}
                 linkedFixedExpenses={linkedFixedExpenses}
                 totalPayments={totalPayments}
                 currentBalance={currentBalance}
@@ -756,7 +812,6 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
                 showPaymentForm={showPaymentForm}
                 editingPayment={editingPayment}
                 showMigrationUtility={showMigrationUtility}
-                onEditPayment={handleMortgageEditPayment}
                 onEditRate={handleEditRate}
                 onCalculateScenario={handleCalculateScenario}
                 onShowPaymentForm={handleShowPaymentForm}

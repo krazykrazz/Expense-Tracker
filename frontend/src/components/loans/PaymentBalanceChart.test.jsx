@@ -166,8 +166,8 @@ describe('PaymentBalanceChart', () => {
       
       const { container } = render(<PaymentBalanceChart payments={largePayments} initialBalance={10000} />);
       
-      // Should show 100% or more paid off
-      expect(screen.getByText('120.0%')).toBeInTheDocument();
+      // Paid off is capped at 100% once the balance reaches zero
+      expect(screen.getByText('100.0%')).toBeInTheDocument();
       // Remaining balance should be $0 - use specific selector for summary value
       const summaryValue = container.querySelector('.chart-summary-stat:nth-child(2) .chart-summary-value');
       expect(summaryValue.textContent).toBe('$0.00');

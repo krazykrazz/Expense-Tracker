@@ -31,7 +31,7 @@ The Investment Tracking feature enables users to monitor their investment portfo
 - **Line Graphs**: Visual charts showing investment performance over time
 
 ### Portfolio Overview
-- **Total Portfolio Value**: Sum of all investment current values, shown in the Net Worth summary of the Financial Overview modal
+- **Total Portfolio Value**: Sum of all investment current values, shown in the Net Worth summary of the Financial Overview modal (where Assets also include the estimated property value of active mortgages)
 - **Summary Integration**: `GET /api/expenses/summary` includes `investments` and `totalInvestmentValue`
 - **Current Values**: Most recent value entry shown as current value
 - **Initial Value Fallback**: Shows initial value when no value entries exist

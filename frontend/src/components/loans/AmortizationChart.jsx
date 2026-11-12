@@ -49,7 +49,7 @@ const AmortizationChart = ({ loanId, currentBalance, currentRate }) => {
     const yearlyData = {};
     
     data.forEach(entry => {
-      const year = new Date(entry.date).getFullYear();
+      const year = Number(entry.date.slice(0, 4));
       if (!yearlyData[year]) {
         yearlyData[year] = {
           year,
@@ -85,7 +85,7 @@ const AmortizationChart = ({ loanId, currentBalance, currentRate }) => {
     const yearlyData = {};
     
     data.forEach(entry => {
-      const year = new Date(entry.date).getFullYear();
+      const year = Number(entry.date.slice(0, 4));
       if (!yearlyData[year]) {
         yearlyData[year] = {
           year,
@@ -279,7 +279,7 @@ const AmortizationChart = ({ loanId, currentBalance, currentRate }) => {
             <div className="amortization-stat">
               <span className="amortization-stat-label">Est. Payoff</span>
               <span className="amortization-stat-value">
-                {new Date(summary.estimatedPayoffDate).toLocaleDateString('en-US', {
+                {new Date(`${summary.estimatedPayoffDate}T00:00:00`).toLocaleDateString('en-US', {
                   month: 'short',
                   year: 'numeric'
                 })}

@@ -3,9 +3,9 @@
  * 
  * These tests verify the complete mortgage insights flow including:
  * - Insights display for mortgages with balance data
- * - Payment tracking (create, update, view history)
+ * - Current payment taken from the linked fixed expense
  * - Scenario calculations with various extra payment amounts
- * - Default payment fallback when no payment set
+ * - Default (calculated minimum) payment fallback when no fixed expense is linked
  * - Edge cases and error handling
  * 
  * Requirements: 1.5, 2.1, 2.4, 3.1, 3.5, 4.1, 4.6, 5.2, 6.5, 8.5
@@ -13,24 +13,36 @@
 
 const { getDatabase } = require('../database/db');
 const mortgageInsightsService = require('./mortgageInsightsService');
-const mortgagePaymentService = require('./mortgagePaymentService');
+const mortgageService = require('./mortgageService');
 const loanService = require('./loanService');
 const loanRepository = require('../repositories/loanRepository');
 const loanBalanceRepository = require('../repositories/loanBalanceRepository');
-const mortgagePaymentRepository = require('../repositories/mortgagePaymentRepository');
 
 describe('Mortgage Insights - End-to-End Integration Tests', () => {
   let db;
   const createdMortgageIds = [];
+
+  // Snapshots are taken in the current month so the calculated balance equals the snapshot
+  const now = new Date();
+  const CURRENT_YEAR = now.getFullYear();
+  const CURRENT_MONTH = now.getMonth() + 1;
+
+  const run = (sql, params = []) => new Promise((resolve, reject) => {
+    db.run(sql, params, function(err) {
+      if (err) reject(err);
+      else resolve(this);
+    });
+  });
 
   beforeAll(async () => {
     db = await getDatabase();
   });
 
   afterEach(async () => {
-    // Clean up created mortgages (cascade will delete payments and balances)
+    // Clean up created mortgages (cascade deletes balances and payments; linked expenses removed explicitly)
     for (const id of createdMortgageIds) {
       try {
+        await run('DELETE FROM fixed_expenses WHERE linked_loan_id = ?', [id]);
         await loanRepository.delete(id);
       } catch (e) {
         // Ignore errors
@@ -68,16 +80,26 @@ describe('Mortgage Insights - End-to-End Integration Tests', () => {
   }
 
   /**
-   * Helper function to add balance entry for a mortgage
+   * Helper function to add a current-month balance entry for a mortgage
    */
-  async function addBalanceEntry(mortgageId, year, month, balance, rate) {
+  async function addCurrentBalanceEntry(mortgageId, balance, rate) {
     return await loanBalanceRepository.create({
       loan_id: mortgageId,
-      year,
-      month,
+      year: CURRENT_YEAR,
+      month: CURRENT_MONTH,
       remaining_balance: balance,
       rate
     });
+  }
+
+  /**
+   * Helper function to link a fixed expense (the mortgage's monthly payment) for a month
+   */
+  async function linkFixedExpense(mortgageId, amount, year = CURRENT_YEAR, month = CURRENT_MONTH) {
+    await run(
+      'INSERT INTO fixed_expenses (year, month, name, amount, category, payment_type, linked_loan_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [year, month, 'Mortgage Payment', amount, 'Housing', 'Debit', mortgageId]
+    );
   }
 
   /**
@@ -94,7 +116,7 @@ describe('Mortgage Insights - End-to-End Integration Tests', () => {
       });
 
       // Add balance entry with rate
-      await addBalanceEntry(mortgage.id, 2025, 1, 395000, 5.5);
+      await addCurrentBalanceEntry(mortgage.id, 395000, 5.5);
 
       // Get insights
       const insights = await mortgageInsightsService.getMortgageInsights(mortgage.id);
@@ -105,6 +127,11 @@ describe('Mortgage Insights - End-to-End Integration Tests', () => {
       expect(insights.currentStatus.rate).toBe(5.5);
       expect(insights.currentStatus.rateType).toBe('fixed');
 
+      // Remaining amortization counts down from the start date (25 years = 300 months)
+      const expectedRemaining = mortgageService.getRemainingAmortizationMonths(mortgage);
+      expect(insights.currentStatus.remainingAmortizationMonths).toBe(expectedRemaining);
+      expect(expectedRemaining).toBeLessThan(300);
+
       // Verify interest breakdown is calculated
       expect(insights.currentStatus.interestBreakdown).toBeDefined();
       expect(insights.currentStatus.interestBreakdown.daily).toBeGreaterThan(0);
@@ -112,8 +139,15 @@ describe('Mortgage Insights - End-to-End Integration Tests', () => {
       expect(insights.currentStatus.interestBreakdown.monthly).toBeGreaterThan(0);
       expect(insights.currentStatus.interestBreakdown.annual).toBeGreaterThan(0);
 
-      // Verify minimum payment is calculated
-      expect(insights.currentStatus.minimumPayment).toBeGreaterThan(0);
+      // Minimum payment amortizes the balance over the remaining months at the fixed (semi-annual) rate
+      const expectedMinimum = mortgageService.calculatePaymentAmount({
+        balance: 395000,
+        rate: 5.5,
+        remainingMonths: expectedRemaining,
+        paymentFrequency: 'monthly',
+        rateType: 'fixed'
+      });
+      expect(insights.currentStatus.minimumPayment).toBeCloseTo(expectedMinimum, 2);
 
       // Verify projections are available
       expect(insights.projections).toBeDefined();
@@ -124,67 +158,27 @@ describe('Mortgage Insights - End-to-End Integration Tests', () => {
       expect(insights.dataStatus.hasBalanceData).toBe(true);
     });
 
-    test('should track payment creation, update, and history', async () => {
-      // Create mortgage with balance
+    test('should use the latest linked fixed expense up to the current month as the current payment', async () => {
       const mortgage = await createTestMortgage({
-        name: 'Payment Tracking Mortgage'
+        name: 'Linked Payment Mortgage'
       });
-      await addBalanceEntry(mortgage.id, 2025, 1, 290000, 5.0);
+      await addCurrentBalanceEntry(mortgage.id, 290000, 5.0);
 
-      // Create first payment entry
-      const payment1 = await mortgagePaymentService.setPaymentAmount(
-        mortgage.id,
-        2000,
-        '2025-01-01',
-        'Initial payment amount'
-      );
+      // Older month, current month, and a planned future month
+      const prev = new Date(CURRENT_YEAR, CURRENT_MONTH - 2, 1);
+      const next = new Date(CURRENT_YEAR, CURRENT_MONTH, 1);
+      await linkFixedExpense(mortgage.id, 2000, prev.getFullYear(), prev.getMonth() + 1);
+      await linkFixedExpense(mortgage.id, 2200);
+      await linkFixedExpense(mortgage.id, 9999, next.getFullYear(), next.getMonth() + 1);
 
-      expect(payment1.id).toBeDefined();
-      expect(payment1.payment_amount).toBe(2000);
-      expect(payment1.effective_date).toBe('2025-01-01');
-      expect(payment1.notes).toBe('Initial payment amount');
+      const linked = await mortgageInsightsService.getCurrentLinkedPayment(mortgage.id);
+      expect(linked.amount).toBe(2200);
 
-      // Create second payment entry (payment increase)
-      const payment2 = await mortgagePaymentService.setPaymentAmount(
-        mortgage.id,
-        2200,
-        '2025-02-01',
-        'Increased payment'
-      );
-
-      expect(payment2.payment_amount).toBe(2200);
-      expect(payment2.effective_date).toBe('2025-02-01');
-
-      // View payment history
-      const history = await mortgagePaymentService.getPaymentHistory(mortgage.id);
-
-      expect(history.length).toBe(2);
-      // History should be in chronological order (oldest first)
-      expect(history[0].effective_date).toBe('2025-01-01');
-      expect(history[1].effective_date).toBe('2025-02-01');
-
-      // Get current payment (most recent)
-      const currentPayment = await mortgagePaymentService.getCurrentPayment(mortgage.id);
-
-      expect(currentPayment.payment_amount).toBe(2200);
-      expect(currentPayment.effective_date).toBe('2025-02-01');
-
-      // Update existing payment
-      const updated = await mortgagePaymentService.updatePayment(
-        payment1.id,
-        2100,
-        '2025-01-15',
-        'Updated initial payment'
-      );
-
-      expect(updated.payment_amount).toBe(2100);
-      expect(updated.effective_date).toBe('2025-01-15');
-      expect(updated.notes).toBe('Updated initial payment');
-
-      // Verify history reflects update
-      const updatedHistory = await mortgagePaymentService.getPaymentHistory(mortgage.id);
-      const updatedPayment = updatedHistory.find(p => p.id === payment1.id);
-      expect(updatedPayment.payment_amount).toBe(2100);
+      const insights = await mortgageInsightsService.getMortgageInsights(mortgage.id);
+      expect(insights.currentStatus.currentPayment).toBe(2200);
+      expect(insights.currentStatus.paymentSource).toBe('linked_fixed_expense');
+      expect(insights.dataStatus.paymentSource).toBe('linked_fixed_expense');
+      expect(insights.dataStatus.hasPaymentData).toBe(true);
     });
 
     test('should calculate scenario with various extra payment amounts', async () => {
@@ -193,18 +187,14 @@ describe('Mortgage Insights - End-to-End Integration Tests', () => {
         name: 'Scenario Test Mortgage',
         initial_balance: 350000
       });
-      await addBalanceEntry(mortgage.id, 2025, 1, 340000, 5.25);
+      await addCurrentBalanceEntry(mortgage.id, 340000, 5.25);
 
       // Set current payment
-      await mortgagePaymentService.setPaymentAmount(
-        mortgage.id,
-        2000,
-        '2025-01-01'
-      );
+      await linkFixedExpense(mortgage.id, 2000);
 
       // Get base insights
       const baseInsights = await mortgageInsightsService.getMortgageInsights(mortgage.id);
-      const basePayoffMonths = baseInsights.projections.currentScenario.totalMonths;
+      expect(baseInsights.projections.currentScenario.totalMonths).toBeGreaterThan(0);
 
       // Test various extra payment amounts
       const extraAmounts = [100, 250, 500, 1000];
@@ -214,7 +204,8 @@ describe('Mortgage Insights - End-to-End Integration Tests', () => {
           balance: 340000,
           rate: 5.25,
           currentPayment: 2000,
-          extraPayment: extraAmount
+          extraPayment: extraAmount,
+          rateType: 'fixed'
         });
 
         // Verify extra payment benefits
@@ -230,7 +221,8 @@ describe('Mortgage Insights - End-to-End Integration Tests', () => {
             balance: 340000,
             rate: 5.25,
             currentPayment: 2000,
-            extraPayment: extraAmount - 100
+            extraPayment: extraAmount - 100,
+            rateType: 'fixed'
           });
           expect(scenario.monthsSaved).toBeGreaterThan(smallerScenario.monthsSaved);
           expect(scenario.interestSaved).toBeGreaterThan(smallerScenario.interestSaved);
@@ -238,17 +230,17 @@ describe('Mortgage Insights - End-to-End Integration Tests', () => {
       }
     });
 
-    test('should use minimum payment as default when no payment set', async () => {
-      // Create mortgage with balance but no payment entry
+    test('should use minimum payment as default when no fixed expense is linked', async () => {
+      // Create mortgage with balance but no linked fixed expense
       const mortgage = await createTestMortgage({
         name: 'Default Payment Mortgage',
         initial_balance: 280000,
         amortization_period: 25
       });
-      await addBalanceEntry(mortgage.id, 2025, 1, 275000, 4.75);
+      await addCurrentBalanceEntry(mortgage.id, 275000, 4.75);
 
-      // Verify no payment entry exists
-      const currentPayment = await mortgagePaymentService.getCurrentPayment(mortgage.id);
+      // Verify no linked payment exists
+      const currentPayment = await mortgageInsightsService.getCurrentLinkedPayment(mortgage.id);
       expect(currentPayment).toBeNull();
 
       // Get insights - should use minimum payment as default
@@ -257,6 +249,7 @@ describe('Mortgage Insights - End-to-End Integration Tests', () => {
       // Current payment should equal minimum payment (default fallback)
       // Use toBeCloseTo for floating point comparison
       expect(insights.currentStatus.currentPayment).toBeCloseTo(insights.currentStatus.minimumPayment, 2);
+      expect(insights.currentStatus.paymentSource).toBe('calculated');
       expect(insights.dataStatus.hasPaymentData).toBe(false);
 
       // Projections should still work with default payment
@@ -273,19 +266,15 @@ describe('Mortgage Insights - End-to-End Integration Tests', () => {
         initial_balance: 320000,
         amortization_period: 25
       });
-      await addBalanceEntry(mortgage.id, 2025, 1, 315000, 5.0);
+      await addCurrentBalanceEntry(mortgage.id, 315000, 5.0);
 
       // Get insights to find minimum payment
       const initialInsights = await mortgageInsightsService.getMortgageInsights(mortgage.id);
       const minimumPayment = initialInsights.currentStatus.minimumPayment;
 
-      // Set payment higher than minimum
+      // Link a payment higher than minimum
       const higherPayment = minimumPayment + 500;
-      await mortgagePaymentService.setPaymentAmount(
-        mortgage.id,
-        higherPayment,
-        '2025-01-01'
-      );
+      await linkFixedExpense(mortgage.id, higherPayment);
 
       // Get updated insights
       const insights = await mortgageInsightsService.getMortgageInsights(mortgage.id);
@@ -336,7 +325,11 @@ describe('Mortgage Insights - End-to-End Integration Tests', () => {
       });
 
       // Add balance entry with zero balance
-      await addBalanceEntry(mortgage.id, 2025, 1, 0, 5.0);
+      await addCurrentBalanceEntry(mortgage.id, 0, 5.0);
+
+      const insights = await mortgageInsightsService.getMortgageInsights(mortgage.id);
+      expect(insights.currentStatus.balance).toBe(0);
+      expect(insights.projections).toBeNull();
 
       // Calculate interest breakdown directly
       const interestBreakdown = mortgageInsightsService.calculateInterestBreakdown(0, 5.0);
@@ -368,19 +361,15 @@ describe('Mortgage Insights - End-to-End Integration Tests', () => {
         initial_balance: 400000,
         amortization_period: 25
       });
-      await addBalanceEntry(mortgage.id, 2025, 1, 395000, 6.0);
+      await addCurrentBalanceEntry(mortgage.id, 395000, 6.0);
 
       // Get minimum payment
       const initialInsights = await mortgageInsightsService.getMortgageInsights(mortgage.id);
       const minimumPayment = initialInsights.currentStatus.minimumPayment;
 
-      // Set payment lower than minimum
+      // Link a payment lower than minimum
       const underpayment = minimumPayment - 500;
-      await mortgagePaymentService.setPaymentAmount(
-        mortgage.id,
-        underpayment,
-        '2025-01-01'
-      );
+      await linkFixedExpense(mortgage.id, underpayment);
 
       // Get updated insights
       const insights = await mortgageInsightsService.getMortgageInsights(mortgage.id);
@@ -401,46 +390,6 @@ describe('Mortgage Insights - End-to-End Integration Tests', () => {
 
       expect(comparison.isUnderpayment).toBe(true);
       expect(comparison.currentScenario.isUnderpayment).toBe(true);
-    });
-
-    test('should cascade delete payments when mortgage is deleted', async () => {
-      // Calculate a future renewal date
-      const renewalDate = new Date();
-      renewalDate.setFullYear(renewalDate.getFullYear() + 5);
-      const renewalDateStr = renewalDate.toISOString().split('T')[0];
-
-      // Create mortgage
-      const mortgage = await loanService.createMortgage({
-        name: 'Cascade Delete Mortgage',
-        initial_balance: 250000,
-        start_date: '2024-01-01',
-        loan_type: 'mortgage',
-        amortization_period: 25,
-        term_length: 5,
-        renewal_date: renewalDateStr,
-        payment_frequency: 'monthly',
-        rate_type: 'fixed'
-      });
-      // Don't add to createdMortgageIds - we'll delete manually
-
-      // Add balance entry
-      await addBalanceEntry(mortgage.id, 2025, 1, 245000, 5.0);
-
-      // Create multiple payment entries
-      await mortgagePaymentService.setPaymentAmount(mortgage.id, 1800, '2025-01-01');
-      await mortgagePaymentService.setPaymentAmount(mortgage.id, 1900, '2025-02-01');
-      await mortgagePaymentService.setPaymentAmount(mortgage.id, 2000, '2025-03-01');
-
-      // Verify payments exist
-      const paymentsBefore = await mortgagePaymentService.getPaymentHistory(mortgage.id);
-      expect(paymentsBefore.length).toBe(3);
-
-      // Delete the mortgage
-      await loanRepository.delete(mortgage.id);
-
-      // Verify payments are cascade deleted
-      const paymentsAfter = await mortgagePaymentRepository.findByMortgage(mortgage.id);
-      expect(paymentsAfter.length).toBe(0);
     });
 
     test('should reject insights for non-mortgage loan types', async () => {
@@ -465,60 +414,13 @@ describe('Mortgage Insights - End-to-End Integration Tests', () => {
       ).rejects.toThrow('Mortgage not found');
     });
 
-    test('should validate payment amount is positive', async () => {
-      const mortgage = await createTestMortgage({
-        name: 'Validation Test Mortgage'
-      });
-
-      // Negative payment should fail
-      await expect(
-        mortgagePaymentService.setPaymentAmount(mortgage.id, -100, '2025-01-01')
-      ).rejects.toThrow('Payment amount must be a positive number');
-
-      // Zero payment should fail
-      await expect(
-        mortgagePaymentService.setPaymentAmount(mortgage.id, 0, '2025-01-01')
-      ).rejects.toThrow('Payment amount must be a positive number');
-    });
-
-    test('should validate effective date format', async () => {
-      const mortgage = await createTestMortgage({
-        name: 'Date Validation Mortgage'
-      });
-
-      // Invalid date format should fail
-      await expect(
-        mortgagePaymentService.setPaymentAmount(mortgage.id, 1500, '01-15-2025')
-      ).rejects.toThrow('Effective date must be in YYYY-MM-DD format');
-
-      // Invalid date should fail
-      await expect(
-        mortgagePaymentService.setPaymentAmount(mortgage.id, 1500, '2025-13-45')
-      ).rejects.toThrow();
-    });
-
-    test('should reject future effective dates', async () => {
-      const mortgage = await createTestMortgage({
-        name: 'Future Date Mortgage'
-      });
-
-      // Future date should fail
-      const futureDate = new Date();
-      futureDate.setFullYear(futureDate.getFullYear() + 1);
-      const futureDateStr = futureDate.toISOString().split('T')[0];
-
-      await expect(
-        mortgagePaymentService.setPaymentAmount(mortgage.id, 1500, futureDateStr)
-      ).rejects.toThrow('Effective date cannot be in the future');
-    });
-
     test('should handle variable rate mortgage display', async () => {
       // Create variable rate mortgage
       const mortgage = await createTestMortgage({
         name: 'Variable Rate Mortgage',
         rate_type: 'variable'
       });
-      await addBalanceEntry(mortgage.id, 2025, 1, 290000, 5.5);
+      await addCurrentBalanceEntry(mortgage.id, 290000, 5.5);
 
       const insights = await mortgageInsightsService.getMortgageInsights(mortgage.id);
 
@@ -553,31 +455,6 @@ describe('Mortgage Insights - End-to-End Integration Tests', () => {
       expect(scenario.extraPayment).toBe(0);
       expect(scenario.monthsSaved).toBe(0);
       expect(scenario.interestSaved).toBe(0);
-    });
-
-    test('should handle payment deletion', async () => {
-      const mortgage = await createTestMortgage({
-        name: 'Delete Payment Mortgage'
-      });
-
-      // Create payment
-      const payment = await mortgagePaymentService.setPaymentAmount(
-        mortgage.id,
-        1800,
-        '2025-01-01'
-      );
-
-      // Verify payment exists
-      const paymentBefore = await mortgagePaymentService.getPaymentById(payment.id);
-      expect(paymentBefore).toBeDefined();
-
-      // Delete payment
-      const deleted = await mortgagePaymentService.deletePayment(payment.id);
-      expect(deleted).toBe(true);
-
-      // Verify payment is gone
-      const paymentAfter = await mortgagePaymentService.getPaymentById(payment.id);
-      expect(paymentAfter).toBeNull();
     });
   });
 });

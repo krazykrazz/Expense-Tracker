@@ -21,7 +21,8 @@ vi.mock('../../services/loanBalanceApi', () => ({
 vi.mock('../../services/loanPaymentApi', () => ({
   getPayments: vi.fn(),
   deletePayment: vi.fn(),
-  getCalculatedBalance: vi.fn()
+  getCalculatedBalance: vi.fn(),
+  getBalanceHistory: vi.fn().mockResolvedValue([])
 }));
 
 vi.mock('../../services/fixedExpenseApi', () => ({

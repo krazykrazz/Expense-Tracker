@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import LoanDetailView from './LoanDetailView';
 import * as loanBalanceApi from '../../services/loanBalanceApi';
 import * as loanPaymentApi from '../../services/loanPaymentApi';
 import * as fixedExpenseApi from '../../services/fixedExpenseApi';
+import * as loanApi from '../../services/loanApi';
 
 // Mock the APIs
 vi.mock('../../services/loanApi', () => ({
@@ -20,7 +21,8 @@ vi.mock('../../services/loanBalanceApi', () => ({
 vi.mock('../../services/loanPaymentApi', () => ({
   getPayments: vi.fn(),
   deletePayment: vi.fn(),
-  getCalculatedBalance: vi.fn()
+  getCalculatedBalance: vi.fn(),
+  getBalanceHistory: vi.fn().mockResolvedValue([])
 }));
 
 vi.mock('../../services/fixedExpenseApi', () => ({
@@ -270,5 +272,73 @@ describe('LoanDetailView — LoanPaymentHistory rendering', () => {
 
     // Projections tab exists (replaces MortgageInsightsPanel)
     expect(screen.getByRole('tab', { name: 'Projections' })).toBeInTheDocument();
+  });
+});
+
+describe('LoanDetailView — mortgage editing and balances', () => {
+  const mortgage = {
+    id: 1,
+    name: 'Home Mortgage',
+    initial_balance: 500000,
+    start_date: '2020-01-15',
+    loan_type: 'mortgage',
+    is_paid_off: 0,
+    currentBalance: 495000,
+    currentRate: 5,
+    fixed_interest_rate: null,
+    notes: null,
+    rate_type: 'variable',
+    amortization_period: 25,
+    term_length: 5,
+    renewal_date: '2020-06-01',
+    payment_frequency: 'monthly',
+    estimated_property_value: 700000
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear?.();
+    loanBalanceApi.getBalanceHistory.mockResolvedValue([]);
+    loanPaymentApi.getPayments.mockResolvedValue([
+      { id: 2, amount: 2500, payment_date: '2025-02-01', notes: null },
+      { id: 1, amount: 2500, payment_date: '2025-01-01', notes: null }
+    ]);
+    loanPaymentApi.getCalculatedBalance.mockResolvedValue({
+      loanId: 1, initialBalance: 500000, totalPayments: 5000, currentBalance: 497000.5,
+      paymentCount: 2, lastPaymentDate: '2025-02-01'
+    });
+    loanPaymentApi.getBalanceHistory.mockResolvedValue([
+      { id: 2, date: '2025-02-01', payment: 2500, runningBalance: 497000.5, interestAccrued: 2000.25, principalPaid: 499.75 },
+      { id: 1, date: '2025-01-01', payment: 2500, runningBalance: 497500.25, interestAccrued: 2083.33, principalPaid: 416.67 }
+    ]);
+    fixedExpenseApi.getFixedExpensesByLoan.mockResolvedValue([]);
+    loanApi.updateLoan.mockResolvedValue({});
+  });
+
+  it('Edit Loan Details opens the mortgage form and saves the property value without resending an overdue renewal date', async () => {
+    render(<LoanDetailView loan={mortgage} isOpen={true} onClose={vi.fn()} onUpdate={vi.fn()} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Loan Details' }));
+    const valueInput = await screen.findByLabelText('Estimated Property Value');
+    expect(valueInput).toHaveValue(700000);
+
+    fireEvent.change(valueInput, { target: { value: '850000' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(loanApi.updateLoan).toHaveBeenCalledTimes(1));
+    const [id, payload] = loanApi.updateLoan.mock.calls[0];
+    expect(id).toBe(1);
+    expect(payload).toEqual({ name: 'Home Mortgage', notes: null, estimated_property_value: 850000 });
+  });
+
+  it('Payments tab shows the server balance after each payment with its interest and principal', async () => {
+    render(<LoanDetailView loan={mortgage} isOpen={true} onClose={vi.fn()} onUpdate={vi.fn()} />);
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Payments' }));
+
+    await waitFor(() => expect(screen.getByText('$497,500.25')).toBeInTheDocument());
+    expect(screen.getByRole('columnheader', { name: 'Interest' })).toBeInTheDocument();
+    expect(screen.getByText('$2,083.33')).toBeInTheDocument();
+    expect(screen.getByText('$416.67')).toBeInTheDocument();
   });
 });

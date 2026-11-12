@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.26.0',
+    date: 'November 12, 2026',
+    added: [],
+    changed: ['Mortgage balances rebuilt from payments with interest per payment, mortgage editing, net worth includes the house, chart and projection fixes'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.25.4',
     date: 'November 11, 2026',
     added: [],

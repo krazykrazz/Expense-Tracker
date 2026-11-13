@@ -452,6 +452,16 @@ const SystemModal = () => {
           <div className="changelog">
             <div className="changelog-entry">
               <div className="changelog-version">
+                v1.27.0
+                {isCurrentVersion('v1.27.0') && <span className="current-version-badge">Current Version</span>}
+              </div>
+              <div className="changelog-date">November 13, 2026</div>
+              <ul className="changelog-items">
+                <li>Insurance reimbursements from the bank: apply an insurer deposit to one or more claims with per-person shares and undo; zero out-of-pocket for fully reimbursed expenses; Wealthsimple charges not yet in the card balance show as probably pending</li>
+              </ul>
+            </div>
+            <div className="changelog-entry">
+              <div className="changelog-version">
                 v1.26.0
                 {isCurrentVersion('v1.26.0') && <span className="current-version-badge">Current Version</span>}
               </div>

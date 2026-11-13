@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.27.0] - 2026-11-13
+
+### Insurance reimbursements from the bank: apply an insurer deposit to one or more claims with per-person shares and undo; zero out-of-pocket for fully reimbursed expenses; Wealthsimple charges not yet in the card balance show as probably pending
+
 ## [1.26.0] - 2026-11-12
 
 ### Mortgage balances rebuilt from payments with interest per payment, mortgage editing, net worth includes the house, chart and projection fixes

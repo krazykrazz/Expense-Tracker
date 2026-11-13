@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.27.0',
+    date: 'November 13, 2026',
+    added: [],
+    changed: ['Insurance reimbursements from the bank: apply an insurer deposit to one or more claims with per-person shares and undo; zero out-of-pocket for fully reimbursed expenses; Wealthsimple charges not yet in the card balance show as probably pending'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.26.0',
     date: 'November 12, 2026',
     added: [],

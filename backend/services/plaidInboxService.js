@@ -3,6 +3,7 @@ const plaidLinkRepository = require('../repositories/plaidLinkRepository');
 const expenseRepository = require('../repositories/expenseRepository');
 const categorySuggestionService = require('./categorySuggestionService');
 const plaidCardPaymentService = require('./plaidCardPaymentService');
+const plaidInsuranceService = require('./plaidInsuranceService');
 const {
   MATCH_WINDOW_DAYS, PENDING_AMOUNT_TOLERANCE, toCents, shiftDate, transactionDate, findMatchCandidates,
   fixedExpectedDate, findFixedCandidates, isDeposit, findIncomeCandidates, monthWindow, descriptionKey
@@ -38,12 +39,13 @@ class PlaidInboxService {
     const isNew = status === 'new';
     const placeByRow = isNew ? await this._suggestPlaces(rows) : new Map();
     const placeOf = (row) => placeByRow.get(row.id) || defaultPlace(row);
-    const [candidatesByRow, fixedByRow, incomeByRow, suggestions, cardPayments] = await Promise.all([
+    const [candidatesByRow, fixedByRow, incomeByRow, suggestions, cardPayments, insuranceByRow] = await Promise.all([
       isNew ? this._matchCandidates(rows) : new Map(),
       isNew ? this._fixedCandidates(rows) : new Map(),
       isNew ? this._incomeCandidates(rows) : new Map(),
       isNew ? this._suggestCategories([...new Set(rows.flatMap(row => [placeOf(row), defaultPlace(row)]))]) : new Map(),
-      isNew ? plaidCardPaymentService.describeRows(rows) : { byRow: new Map(), unconnectedCards: [] }
+      isNew ? plaidCardPaymentService.describeRows(rows) : { byRow: new Map(), unconnectedCards: [] },
+      isNew ? plaidInsuranceService.describeDeposits(rows) : new Map()
     ]);
 
     const transactions = rows.map(row => {
@@ -75,7 +77,9 @@ class PlaidInboxService {
         fixedCandidates: fixedByRow.get(row.id) ?? [],
         incomeCandidates: income ? income.candidates : [],
         incomeSuggestion: income ? income.suggestion : null,
-        cardPayment: cardPayments.byRow.get(row.id) ?? null
+        cardPayment: cardPayments.byRow.get(row.id) ?? null,
+        // Deposits only: whether "Apply to insurance claims" is the primary action (spec 3.7)
+        insurance: insuranceByRow.get(row.id) ?? null
       };
     });
 

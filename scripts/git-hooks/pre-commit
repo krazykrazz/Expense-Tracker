@@ -4,6 +4,11 @@
 # Get current branch
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
 
+# Merging main into a branch brings main's released version along: that isn't a bump made on this branch
+if [ -f "$(git rev-parse --git-dir)/MERGE_HEAD" ]; then
+    exit 0
+fi
+
 # Check if we're on a feature or hotfix branch
 if [[ $BRANCH == feature/* ]] || [[ $BRANCH == hotfix/* ]]; then
     # Check if any version files are being modified

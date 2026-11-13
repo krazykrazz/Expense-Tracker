@@ -93,7 +93,7 @@ Hover over the (?) icons to see tooltips explaining when and why to use each fie
 Track reimbursements from employers or other sources on any non-medical expense:
 
 1. Create or edit an expense
-2. Enter what you paid out of pocket as the **Amount**
+2. Enter what you paid out of pocket as the **Amount** ($0.00 when you were reimbursed in full)
 3. Expand **Reimbursement** and enter the **Original Cost** (the full amount charged)
 4. The form previews Charged / Reimbursed / Net once both values are set
 
@@ -183,6 +183,7 @@ Click the bank icon → **Inbox**. A small number on the icon says how many rows
 - **Add**: creates an expense, with the place, date and a suggested category filled in. The place is the one you used before for the same bank description, or an existing place it starts with (e.g. "Sobeys" for "SOBEYS #4123").
 - **Match**: links it to an expense you already logged, a planned **fixed expense** (records when it actually landed) or expected **income** (for deposits).
 - **Add income**: records an unplanned deposit as income.
+- **Apply to insurance** (on a deposit): an insurer paying medical claims. Tick the claims it pays (an exact match is pre-selected), check the amounts add up to the deposit, and apply: the claims become Paid with their out-of-pocket and each person's share updated. The expense shows the reimbursement, with **Undo** in its edit form.
 - **Record payment** (on a credit to a credit card): records it as a payment on that card. When you paid it from a bank account that is also connected, tick **Also mark the … debit as this payment** and one click settles both rows. If you already logged that payment by hand, **Match** it instead.
 - **Link to card payment** (on the debit that paid a card): ties it to the payment already recorded, so the money isn't counted twice. If the card's credit hasn't arrived yet, wait for it and record it there. For a card that isn't connected to a bank, use **Record payment to…** on the debit.
 - **Ignore**: hides it (the **Ignored** filter has **Undo ignore**).
@@ -357,9 +358,10 @@ Click **"💵 Budgets"** and select the **📊 History** tab to analyze budget p
 
 1. Expand **Insurance Tracking** and check **"Eligible for Insurance Reimbursement"** on a medical expense
 2. Enter the **Original Cost** (full expense amount before reimbursement)
-3. The **Amount** field represents what you actually paid after reimbursement
+3. The **Amount** field represents what you actually paid after reimbursement ($0.00 when covered in full)
 4. Set **Claim Status**: Not Claimed, In Progress, Paid, or Denied
 5. Click the status indicator in the expense list to quickly change status
+6. With Bank Import, use **Apply to insurance** on the insurer's deposit instead of updating the claim by hand (see [Reviewing Transactions](#reviewing-transactions))
 
 ### Invoice Attachments
 

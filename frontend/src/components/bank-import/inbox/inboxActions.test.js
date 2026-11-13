@@ -9,6 +9,7 @@ vi.mock('../../../services/plaidApi', () => ({
   matchInboxTransactionToIncome: vi.fn(),
   addInboxTransactionAsIncome: vi.fn(),
   cardPaymentInboxTransaction: vi.fn(),
+  applyInsuranceToInboxTransaction: vi.fn(),
   ignoreInboxTransaction: vi.fn(),
   unignoreInboxTransaction: vi.fn()
 }));
@@ -22,7 +23,8 @@ describe('INBOX_ACTIONS', () => {
     ['match-fixed', 'matchInboxTransactionToFixed', 9],
     ['match-income', 'matchInboxTransactionToIncome', { incomeSourceId: 3, updateAmount: true }],
     ['add-income', 'addInboxTransactionAsIncome', { name: 'Gift', category: 'Gifts' }],
-    ['card-payment', 'cardPaymentInboxTransaction', { alsoLinkId: 11 }]
+    ['card-payment', 'cardPaymentInboxTransaction', { alsoLinkId: 11 }],
+    ['insurance', 'applyInsuranceToInboxTransaction', [{ expenseId: 5, amount: 105.3 }]]
   ])('%s calls %s with the row and payload, and changes other screens', async (action, api, payload) => {
     await INBOX_ACTIONS[action].run(7, payload);
 
@@ -39,7 +41,7 @@ describe('INBOX_ACTIONS', () => {
 
   it('has exactly the actions the Inbox row offers', () => {
     expect(Object.keys(INBOX_ACTIONS).sort()).toEqual(
-      ['add', 'add-income', 'card-payment', 'ignore', 'match', 'match-fixed', 'match-income', 'unignore']
+      ['add', 'add-income', 'card-payment', 'ignore', 'insurance', 'match', 'match-fixed', 'match-income', 'unignore']
     );
   });
 });

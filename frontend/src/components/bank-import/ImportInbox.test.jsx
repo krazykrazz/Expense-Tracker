@@ -11,6 +11,8 @@ vi.mock('../../services/plaidApi', () => ({
   matchInboxTransactionToIncome: vi.fn(),
   addInboxTransactionAsIncome: vi.fn(),
   cardPaymentInboxTransaction: vi.fn(),
+  getInsuranceCandidates: vi.fn(),
+  applyInsuranceToInboxTransaction: vi.fn(),
   resolveCancelledPending: vi.fn(),
   ignoreInboxTransaction: vi.fn(),
   unignoreInboxTransaction: vi.fn(),
@@ -240,6 +242,91 @@ describe('ImportInbox', () => {
       fireEvent.click(within(document.querySelector('.inbox-add-form')).getByRole('button', { name: 'Add income' }));
 
       await waitFor(() => expect(plaidApi.addInboxTransactionAsIncome).toHaveBeenCalledWith(1, { name: 'JAT - Direct deposit', category: 'Salary' }));
+    });
+  });
+
+  describe('insurance reimbursements', () => {
+    // The DSF deposit of 2026-11-12 and the claim it pays
+    const dsf = (overrides = {}) => txn({
+      place: 'DSF - Direct deposit', rawName: 'DSF - Direct deposit', date: '2026-11-12', postedDate: '2026-11-12',
+      amount: -105.3, canAdd: false, isDeposit: true, incomeCandidates: [], insurance: { suggested: true }, ...overrides
+    });
+    const claim = (overrides = {}) => ({
+      expenseId: 25378, date: '2026-11-10', place: 'Carp Chiro', claimStatus: 'in_progress', originalCost: 117, outOfPocket: 11.7,
+      reimbursed: 0, expectedPayout: 105.3, rank: 'exact',
+      people: [{ personId: 1, name: 'Amara', originalAmount: 61, amount: 6.1 }, { personId: 2, name: 'Joliet', originalAmount: 56, amount: 5.6 }],
+      ...overrides
+    });
+    const other = claim({ expenseId: 4877, date: '2026-10-02', place: 'The Wren Centre', claimStatus: 'not_claimed', originalCost: 180, outOfPocket: 18, expectedPayout: 162, rank: null, people: [] });
+
+    it('suggests the insurance action, pre-selects the exact claim with its preview, and applies it', async () => {
+      plaidApi.getInbox
+        .mockResolvedValueOnce({ transactions: [dsf()], hiddenUnmapped: 0 })
+        .mockResolvedValue({ transactions: [], hiddenUnmapped: 0 });
+      plaidApi.getInsuranceCandidates.mockResolvedValue({
+        deposit: { id: 1, amount: 105.3, date: '2026-11-12' }, candidates: [claim(), other],
+        suggestion: [{ expenseId: 25378, amount: 105.3 }], paidAvailable: 0
+      });
+      plaidApi.applyInsuranceToInboxTransaction.mockResolvedValue({});
+      const onExpensesChanged = vi.fn();
+
+      renderInbox({ onExpensesChanged });
+      expect(await screen.findByText('Insurance')).toBeInTheDocument();
+      const button = screen.getByRole('button', { name: 'Apply to insurance' });
+      expect(button).toHaveClass('bank-import-primary');
+      fireEvent.click(button);
+
+      const picker = await screen.findByTestId('insurance-picker');
+      await waitFor(() => expect(within(picker).getByTestId('insurance-preview')).toHaveTextContent('Out-of-pocket after: $11.70 (Amara $6.10, Joliet $5.60)'));
+      expect(within(picker).getByTestId('insurance-total')).toHaveTextContent('Applied $105.30 of $105.30');
+      fireEvent.click(within(picker).getByRole('button', { name: 'Apply to claims' }));
+
+      await waitFor(() => expect(plaidApi.applyInsuranceToInboxTransaction).toHaveBeenCalledWith(1, [{ expenseId: 25378, amount: 105.3 }]));
+      await waitFor(() => expect(onExpensesChanged).toHaveBeenCalled());
+    });
+
+    it('splits across picked claims and only applies once the amounts add up to the deposit', async () => {
+      plaidApi.getInbox.mockResolvedValue({ transactions: [dsf({ amount: -267.3, insurance: { suggested: false } })], hiddenUnmapped: 0 });
+      plaidApi.getInsuranceCandidates.mockResolvedValue({
+        deposit: { id: 1, amount: 267.3 }, candidates: [claim({ rank: 'combination' }), other], suggestion: null, paidAvailable: 0
+      });
+
+      renderInbox();
+      const button = await screen.findByRole('button', { name: 'Apply to insurance' });
+      expect(button).toHaveClass('bank-import-secondary');
+      fireEvent.click(button);
+      const picker = await screen.findByTestId('insurance-picker');
+      await waitFor(() => expect(within(picker).getAllByTestId('insurance-candidate')).toHaveLength(2));
+      const [first, second] = within(picker).getAllByRole('checkbox');
+      fireEvent.click(first);
+      fireEvent.click(second);
+
+      // Expected payouts 105.30 + 162.00 add up to the deposit
+      const inputs = within(picker).getAllByRole('spinbutton');
+      expect(inputs.map(input => input.value)).toEqual(['105.30', '162.00']);
+      expect(within(picker).getByRole('button', { name: 'Apply to claims' })).toBeEnabled();
+
+      fireEvent.change(inputs[1], { target: { value: '150.00' } });
+      expect(within(picker).getByTestId('insurance-total')).toHaveTextContent('$12.00 left to apply');
+      expect(within(picker).getByRole('button', { name: 'Apply to claims' })).toBeDisabled();
+    });
+
+    it('shows paid claims only on request, and an error keeps the row', async () => {
+      plaidApi.getInbox.mockResolvedValue({ transactions: [dsf()], hiddenUnmapped: 0 });
+      plaidApi.getInsuranceCandidates
+        .mockResolvedValueOnce({ deposit: {}, candidates: [claim()], suggestion: [{ expenseId: 25378, amount: 105.3 }], paidAvailable: 46 })
+        .mockResolvedValueOnce({ deposit: {}, candidates: [claim(), claim({ expenseId: 9, place: 'Paid one', claimStatus: 'paid', rank: null })], suggestion: [{ expenseId: 25378, amount: 105.3 }], paidAvailable: 0 });
+      plaidApi.applyInsuranceToInboxTransaction.mockRejectedValue(new Error('This bank transaction changed while it was being added.'));
+
+      renderInbox();
+      fireEvent.click(await screen.findByRole('button', { name: 'Apply to insurance' }));
+      fireEvent.click(await screen.findByRole('button', { name: /Show paid claims \(46\)/ }));
+
+      await waitFor(() => expect(plaidApi.getInsuranceCandidates).toHaveBeenLastCalledWith(1, expect.objectContaining({ includePaid: true })));
+      expect(await screen.findByText(/Paid one/)).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Apply to claims' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent('changed while it was being added');
+      expect(screen.getByText('DSF - Direct deposit')).toBeInTheDocument();
     });
   });
 

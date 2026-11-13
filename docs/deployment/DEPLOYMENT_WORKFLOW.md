@@ -191,7 +191,7 @@ Install once after cloning:
 .\scripts\install-git-hooks.ps1
 ```
 
-This copies `scripts/git-hooks/pre-commit` to `.git/hooks/pre-commit`. On `feature/*` and `hotfix/*` branches it blocks a commit when the staged diff adds a version string to `frontend/package.json`, `backend/package.json`, `frontend/src/components/system/BackupSettings.jsx`, `frontend/src/components/system/SystemModal.jsx` or `frontend/src/utils/changelog.js`. It does not check `CHANGELOG.md`. Bypass with `git commit --no-verify` (not recommended). If the hook does not run, check `Test-Path .git/hooks/pre-commit` and re-run the installer (on Linux/macOS it also needs to be executable).
+This copies `scripts/git-hooks/pre-commit` to `.git/hooks/pre-commit`. On `feature/*` and `hotfix/*` branches it blocks a commit when the staged diff adds a version string to `frontend/package.json`, `backend/package.json`, `frontend/src/components/system/BackupSettings.jsx`, `frontend/src/components/system/SystemModal.jsx` or `frontend/src/utils/changelog.js`. It does not check `CHANGELOG.md`, and it skips merge commits (merging `main` into a branch brings `main`'s released version along). Bypass with `git commit --no-verify` (not recommended). If the hook does not run, check `Test-Path .git/hooks/pre-commit` and re-run the installer (on Linux/macOS it also needs to be executable).
 
 ### Version Consistency Check workflow
 

@@ -196,6 +196,16 @@ Expected income (Income Management) is a monthly list of sources: a name, catego
 - **Add income:** for a deposit with no expected source (a one-off government payment, a gift), creates an income source in the deposit's month with the deposit amount. The name and category are pre-filled from an earlier confirmation of the same description, else the description and *Other*.
 - **In Income Management**, a received income source shows the bank icon (income has no payment method pill) with the description, the date it landed and the deposit amount. It turns amber when the income amount differs from the deposit. Deleting the income source returns the deposit to the inbox.
 
+### Insurance reimbursements: close the claim
+
+A deposit can also be an insurer paying medical claims (see [Medical Insurance Tracking](MEDICAL_INSURANCE_TRACKING.md)). **Apply to insurance** on the deposit opens a picker of the insurance-eligible medical expenses from the 180 days before it: *In progress* and *Not claimed* claims; *Paid* ones (a second plan paying the co-pay) behind **Show paid claims**.
+
+- **Expected payout:** original cost − out-of-pocket (what you entered as your share when recording the claim) − what the bank already reimbursed. A claim whose expected payout equals the deposit is marked **Exact** and pre-selected; otherwise, when exactly one set of open claims adds up to the deposit, those are marked **Adds up** and pre-selected. The button is primary, and the row gets an **Insurance** badge, when that happens or the same bank description was applied to claims before.
+- **Several claims per deposit:** tick the claims it pays. The reimbursed amounts are pre-filled (each claim's expected payout when those add up to the deposit, else the deposit split by original cost) and can be edited; **Apply to claims** stays disabled until they add up to the deposit to the cent. Each claim previews its out-of-pocket and each person's share afterwards.
+- **Applying** (all claims at once, or none): out-of-pocket becomes **original cost − everything reimbursed by the bank**, the claim becomes *Paid*, and each person's share is their original amount minus their part of the reimbursement (in proportion to their original amounts). The original cost doesn't change, so card balances don't either. An insurer paying exactly your expected share leaves your out-of-pocket as you entered it; paying less raises it. A full reimbursement leaves $0.00.
+- **On the expense:** the claim status hover in the expense list and the edit form's Insurance section show "Reimbursed $X on <date> (bank)", one line per deposit. **Undo** in the form returns the deposit to the inbox and restores the claim: to what the remaining deposits leave, or, with none left, exactly to what it was before (out-of-pocket, status and people). Deleting the expense removes its link; a deposit with no claims left returns to the inbox.
+- Insurer deposits often arrive as transfers (`TRANSFER_IN`), e.g. "DSF - Direct deposit" from Desjardins.
+
 ### Credit card payments
 
 A card payment shows up twice in the inbox: as a **debit** on the account that paid it (chequing) and as a **credit** on the card. Both resolve to **one** recorded payment (Credit Card Detail → Payments), so the card's balance, statement and reminders update exactly as if you had logged it by hand.
@@ -279,7 +289,7 @@ The balance check says whether the card agrees with the bank **today**. The **Co
 
 ### Data
 
-Tables `plaid_items`, `plaid_accounts`, `plaid_transactions`, `plaid_fixed_expense_links`, `plaid_income_links` and `plaid_card_payment_links`; see [Database Schema](../DATABASE_SCHEMA.md#plaid-tables). The expense list (`GET /api/expenses`) adds a `bankLink` field to every expense: `{ status, name, rawName, date, amount, pending, removed, disconnected }` or `null` (`disconnected`: its bank was disconnected). Fixed expenses and income sources get `bankConfirmation` (`{ landedDate, amount, plannedAmount, name }`) or `null`. A bank's `status` (`ok`, `needs_login`, `gone`, `error`) is derived from its stored `last_error`; there is no status column.
+Tables `plaid_items`, `plaid_accounts`, `plaid_transactions`, `plaid_fixed_expense_links`, `plaid_income_links`, `plaid_card_payment_links` and `plaid_insurance_links`; see [Database Schema](../DATABASE_SCHEMA.md#plaid-tables). The expense list (`GET /api/expenses`) adds a `bankLink` field to every expense: `{ status, name, rawName, date, amount, pending, removed, disconnected }` or `null` (`disconnected`: its bank was disconnected). Fixed expenses and income sources get `bankConfirmation` (`{ landedDate, amount, plannedAmount, name }`) or `null`. A bank's `status` (`ok`, `needs_login`, `gone`, `error`) is derived from its stored `last_error`; there is no status column.
 
 ### API
 

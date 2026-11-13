@@ -38,8 +38,16 @@ function useExpenseFormValidation() {
       errors.push({ message: 'Date is required', field: 'date' });
     }
 
-    if (!formData.amount || parseFloat(formData.amount) <= 0) {
+    if (formData.amount === '' || formData.amount == null || isNaN(parseFloat(formData.amount))) {
       errors.push({ message: 'Amount must be a positive number', field: 'amount' });
+    } else {
+      const amountValue = parseFloat(formData.amount);
+      // A reimbursed expense (it has an original cost) may be fully covered: $0.00 out of pocket
+      const reimbursedCost = isMedicalExpense && insuranceEligible ? originalCost : (showGenericReimbursementUI ? genericOriginalCost : '');
+      const reimbursed = parseFloat(reimbursedCost) > 0;
+      if (amountValue < 0 || (amountValue === 0 && !reimbursed)) {
+        errors.push({ message: 'Amount must be a positive number', field: 'amount' });
+      }
     }
 
     if (!formData.type) {

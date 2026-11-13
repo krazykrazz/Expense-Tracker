@@ -19,7 +19,7 @@ The schema contains **31 tables**:
 | Financial tracking | `loans`, `loan_balances`, `loan_payments`, `investments`, `investment_values`, `budgets`, `budget_allocations` |
 | Medical & tax | `people`, `expense_people`, `expense_invoices` |
 | Payment methods | `payment_methods`, `credit_card_payments`, `credit_card_statements`, `credit_card_billing_cycles` |
-| Bank import (Plaid) | `plaid_items`, `plaid_accounts`, `plaid_transactions`, `plaid_fixed_expense_links`, `plaid_income_links`, `plaid_card_payment_links` |
+| Bank import (Plaid) | `plaid_items`, `plaid_accounts`, `plaid_transactions`, `plaid_fixed_expense_links`, `plaid_income_links`, `plaid_card_payment_links`, `plaid_insurance_links` |
 | Authentication | `users` |
 | Utility | `place_names`, `reminders`, `dismissed_anomalies`, `anomaly_suppression_rules`, `activity_logs`, `settings`, `schema_migrations` |
 
@@ -540,6 +540,25 @@ A bank transaction that is one side of a credit card payment (Import Inbox → R
 
 Deleting the payment, or the card it is on (which cascades its payments), puts **both** bank rows back to `'new'` (trigger `plaid_transactions_unlink_on_card_payment_delete`) and removes the links (cascade). Deleting a bank row only removes its link; the payment stays.
 
+### plaid_insurance_links
+
+An insurer's bank deposit applied to medical insurance claims (Import Inbox → Apply to insurance). One deposit can pay several claims, and a claim can be paid by several deposits. The deposit's status is `matched` with `expense_id` NULL. A claim's out-of-pocket is its original cost minus everything reimbursed (by the bank, plus what was reimbursed outside the bank when it was already Paid before its first deposit).
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | INTEGER PRIMARY KEY | Unique identifier |
+| plaid_transaction_id | INTEGER NOT NULL | Foreign key to plaid_transactions (ON DELETE CASCADE): the deposit |
+| expense_id | INTEGER NOT NULL | Foreign key to expenses (ON DELETE CASCADE): the claim (indexed) |
+| amount | REAL NOT NULL | What this deposit reimbursed on this claim (CHECK > 0) |
+| previous_amount | REAL NOT NULL | The claim's out-of-pocket before the bank |
+| previous_status | TEXT | Its claim status before the bank |
+| previous_people | TEXT | JSON `[{ personId, amount }]`: each person's out-of-pocket before the bank |
+| created_at | TEXT NOT NULL | Timestamp |
+
+**Constraints**: `UNIQUE (plaid_transaction_id, expense_id)`.
+
+The **earliest** remaining link of a claim holds its before-the-bank snapshot: undoing that deposit hands the snapshot to the next link, and undoing the last one restores the claim (out-of-pocket, status, people) exactly. Deleting a claim removes its links (cascade); its deposit returns to `'new'` only when no other claim is linked to it (trigger `plaid_transactions_unlink_on_insurance_claim_delete`). Earlier links also teach the inbox which bank descriptions are insurance payouts.
+
 ## Authentication Tables
 
 ### users
@@ -728,6 +747,7 @@ All indexes are listed per table above. `schema.js` (`INDEX_STATEMENTS`) creates
 | `plaid_transactions_unlink_on_fixed_expense_delete` | fixed_expenses | BEFORE DELETE: the confirming `plaid_transactions` row goes back to `status = 'new'` (its link row is removed by cascade) |
 | `plaid_transactions_unlink_on_income_source_delete` | income_sources | BEFORE DELETE: the confirming deposit goes back to `status = 'new'` (its link row is removed by cascade) |
 | `plaid_transactions_unlink_on_card_payment_delete` | credit_card_payments | BEFORE DELETE: both linked bank rows (card credit and paying debit) go back to `status = 'new'` (link rows are removed by cascade). Also fires when deleting a card cascades its payments |
+| `plaid_transactions_unlink_on_insurance_claim_delete` | expenses | BEFORE DELETE: an insurer deposit linked to the claim goes back to `status = 'new'` when no other claim is linked to it (link rows are removed by cascade) |
 
 ## Foreign Key Constraints
 
@@ -744,6 +764,7 @@ Foreign keys are enforced (`PRAGMA foreign_keys = ON` per connection):
   - plaid_fixed_expense_links (when its plaid transaction or fixed expense is deleted)
   - plaid_income_links (when its plaid transaction or income source is deleted)
   - plaid_card_payment_links (when its plaid transaction or credit card payment is deleted)
+  - plaid_insurance_links (when its deposit or claim is deleted)
 
 - **SET NULL**: Foreign key is set to NULL when parent is deleted
   - fixed_expenses.linked_loan_id (when loan deleted)

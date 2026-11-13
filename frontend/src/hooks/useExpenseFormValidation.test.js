@@ -48,6 +48,16 @@ describe('useExpenseFormValidation', () => {
       expect(result.errors).toContainEqual({ message: 'Amount must be a positive number', field: 'amount' });
     });
 
+    it('accepts $0.00 out of pocket for a reimbursed expense (insurance or generic), not without an original cost', () => {
+      const insured = defaultOptions({ isMedicalExpense: true, insuranceEligible: true, originalCost: '20.00' });
+      const generic = defaultOptions({ showGenericReimbursementUI: true, genericOriginalCost: '50.00' });
+
+      expect(validate(validFormData({ type: 'Tax - Medical', amount: '0' }), insured).valid).toBe(true);
+      expect(validate(validFormData({ amount: '0.00' }), generic).valid).toBe(true);
+      expect(validate(validFormData({ amount: '0' }), defaultOptions({ showGenericReimbursementUI: true })).valid).toBe(false);
+      expect(validate(validFormData({ amount: '-1' }), generic).valid).toBe(false);
+    });
+
     it('should reject negative amount', () => {
       const result = validate(validFormData({ amount: '-10' }), defaultOptions());
       expect(result.valid).toBe(false);

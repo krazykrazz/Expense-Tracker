@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { formatCurrency, formatDate } from '../../utils/formatters';
 import './InsuranceStatusIndicator.css';
 
 /**
@@ -20,6 +21,7 @@ const InsuranceStatusIndicator = ({
   claimStatus = null,
   originalCost = null,
   outOfPocket = null,
+  reimbursements = [],
   size = 'medium',
   onClick = null,
   showText = false,
@@ -109,13 +111,18 @@ const InsuranceStatusIndicator = ({
     } else if (originalCost !== null) {
       parts.push(`Original cost: $${originalCost.toFixed(2)}`);
     }
+
+    // Deposits from the insurer applied in Bank Import
+    for (const reimbursement of reimbursements || []) {
+      parts.push(`Reimbursed ${formatCurrency(reimbursement.amount)} on ${formatDate(reimbursement.date)} (bank)`);
+    }
     
     if (onClick) {
       parts.push('Click to update status');
     }
     
     return parts.join('\n');
-  }, [statusConfig.description, originalCost, outOfPocket, onClick]);
+  }, [statusConfig.description, originalCost, outOfPocket, reimbursements, onClick]);
 
   const isClickable = !!onClick;
   const tooltipText = getTooltipText();

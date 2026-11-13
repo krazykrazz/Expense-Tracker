@@ -191,6 +191,23 @@ export const cardPaymentInboxTransaction = (id, body = {}) =>
   call('recording card payment', () => apiPost(API_ENDPOINTS.PLAID_INBOX_ACTION(id, 'card-payment'), body, 'record card payment'));
 
 /**
+ * Insurance claims a deposit could reimburse, ranked, with the suggested split (null when none fits exactly).
+ * @param {{includePaid?: boolean, signal?: AbortSignal}} [options] includePaid: also Paid claims (a second plan)
+ * @returns {Promise<{deposit: object, candidates: Array, suggestion: (Array<{expenseId: number, amount: number}>|null),
+ *   paidAvailable: number}>}
+ */
+export const getInsuranceCandidates = (id, { includePaid = false, signal } = {}) =>
+  call('fetching insurance claims', () => apiGet(API_ENDPOINTS.PLAID_INBOX_INSURANCE_CANDIDATES(id, includePaid), 'fetch insurance claims', { signal }));
+
+/** Apply a deposit to insurance claims; the amounts must add up to the deposit. @param {Array<{expenseId: number, amount: number}>} claims */
+export const applyInsuranceToInboxTransaction = (id, claims) =>
+  call('applying deposit to insurance claims', () => apiPost(API_ENDPOINTS.PLAID_INBOX_ACTION(id, 'insurance'), { claims }, 'apply to insurance claims'));
+
+/** Undo: the claims go back to what they were and the deposit returns to the Inbox. */
+export const undoInsuranceReimbursement = (id) =>
+  call('undoing insurance reimbursement', () => apiDelete(API_ENDPOINTS.PLAID_INBOX_ACTION(id, 'insurance'), 'undo insurance reimbursement'));
+
+/**
  * Review a pending charge (added as an expense) that the bank dropped.
  * @param {{action: 'keep'|'delete_expense'|'link', postedId?: number}} decision
  */

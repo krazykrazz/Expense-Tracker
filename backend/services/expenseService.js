@@ -3,6 +3,7 @@ const expensePeopleRepository = require('../repositories/expensePeopleRepository
 const peopleRepository = require('../repositories/peopleRepository');
 const paymentMethodRepository = require('../repositories/paymentMethodRepository');
 const plaidRepository = require('../repositories/plaidRepository');
+const plaidInsuranceRepository = require('../repositories/plaidInsuranceRepository');
 const { calculateWeek, getTodayString } = require('../utils/dateUtils');
 const { dayNumber, LIKELY_PENDING_DAYS } = require('../utils/plaidCardBalanceMath');
 const logger = require('../config/logger');
@@ -400,12 +401,17 @@ class ExpenseService {
       : new Map();
     await this._markProbablyPending(bankLinks);
 
+    const insuranceIds = expenses.filter(e => e.insurance_eligible).map(e => e.id);
+    const reimbursements = await plaidInsuranceRepository.findReimbursementsForExpenses(insuranceIds);
+
     return expenses.map(expense => {
       const bankLink = bankLinks.get(expense.id) ?? null;
+      // Insurer deposits applied to this claim (spec 3.7); only on insurance-eligible expenses
+      const insurance = expense.insurance_eligible ? { insuranceReimbursements: reimbursements.get(expense.id) || [] } : {};
       if (expense.type === 'Tax - Medical') {
-        return { ...expense, people: peopleByExpense[expense.id] || [], bankLink };
+        return { ...expense, people: peopleByExpense[expense.id] || [], bankLink, ...insurance };
       }
-      return { ...expense, bankLink };
+      return { ...expense, bankLink, ...insurance };
     });
   }
 

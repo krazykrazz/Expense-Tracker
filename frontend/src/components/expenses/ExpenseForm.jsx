@@ -25,6 +25,7 @@ import {
 } from '../../hooks/useBadgeCalculations';
 import PersonAllocationModal from '../tax/PersonAllocationModal';
 import InvoiceUpload from '../tax/InvoiceUpload';
+import BankReimbursements from './BankReimbursements';
 import CollapsibleSection from '../shared/CollapsibleSection';
 import HelpTooltip from '../shared/HelpTooltip';
 import './ExpenseForm.css';
@@ -59,7 +60,7 @@ const FUTURE_MONTHS_OPTIONS = [
   { value: 12, label: "12" }
 ];
 
-const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => {
+const ExpenseForm = ({ onExpenseAdded, onClose, people: propPeople, expense = null }) => {
   const isEditing = !!expense;
   const { openFinancialOverview } = useModalContext();
   
@@ -614,6 +615,10 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
   // Show for non-medical expenses, OR medical expenses without insurance tracking enabled
   const showMedicalInsuranceUI = isMedicalExpense && insuranceEligible;
   const showGenericReimbursementUI = !showMedicalInsuranceUI && !isMedicalExpense;
+  // A reimbursed expense (it has an original cost) may be fully covered: $0.00 out of pocket
+  const isReimbursed = showMedicalInsuranceUI
+    ? parseFloat(originalCost) > 0
+    : showGenericReimbursementUI && parseFloat(genericOriginalCost) > 0;
 
   // Handle invoice upload success (Requirements 1.1, 1.2, 2.1)
   // Updated to support multiple invoices
@@ -991,7 +996,7 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
               value={formData.amount}
               onChange={handleChange}
               step="0.01"
-              min="0.01"
+              min={isReimbursed ? '0' : '0.01'}
               placeholder="0.00"
               required
             />
@@ -1306,6 +1311,9 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
                     {insuranceValidationError}
                   </div>
                 )}
+
+                {/* Insurer deposits applied in Bank Import */}
+                <BankReimbursements reimbursements={expense?.insuranceReimbursements} disabled={isSubmitting} onUndone={onClose} />
                 
                 {/* Status Info Notes (Requirement 6.5) */}
                 {claimStatus === 'paid' && (

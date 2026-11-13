@@ -340,6 +340,21 @@ describe('ExpenseService - People Integration', () => {
       expect(expenseRepository.create).not.toHaveBeenCalled();
       expect(expensePeopleRepository.createAssociations).not.toHaveBeenCalled();
     });
+
+    test('a fully reimbursed expense may be $0.00 out of pocket, as may a person whose share was covered', () => {
+      const claim = { date: '2026-09-24', place: 'CHEO', amount: 0, original_cost: 20, type: 'Tax - Medical', method: 'VISA' };
+
+      expect(() => expenseService.validateExpense({ ...claim })).not.toThrow();
+      expect(() => expenseService.validateExpense({ ...claim, original_cost: null })).toThrow(/Amount must be a positive number/);
+      expect(() => expenseService.validatePersonAllocations(5, [
+        { personId: 1, amount: 0, originalAmount: 10 },
+        { personId: 2, amount: 5, originalAmount: 10 }
+      ])).not.toThrow();
+      expect(() => expenseService.validatePersonAllocations(5, [
+        { personId: 1, amount: 0 },
+        { personId: 2, amount: 5 }
+      ])).toThrow(/Each allocation amount must be a positive number/);
+    });
   });
 
   describe('Expense update with people changes', () => {

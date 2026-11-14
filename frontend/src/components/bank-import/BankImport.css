@@ -354,7 +354,8 @@
 
 .inbox-row-main {
   display: grid;
-  grid-template-columns: 90px minmax(0, 1fr) 110px 120px auto;
+  /* Actions get their own line below (see .inbox-row-actions), so the description keeps the width */
+  grid-template-columns: 90px minmax(0, 1fr) 110px 120px;
   align-items: center;
   gap: var(--spacing-3, 12px);
 }
@@ -379,7 +380,10 @@
 }
 
 .inbox-row-actions {
+  grid-column: 2 / -1;
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: var(--spacing-1, 4px);
   justify-content: flex-end;
 }

@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.28.0',
+    date: 'November 14, 2026',
+    added: [],
+    changed: ['Bank import: Inbox tabs To review and Not expenses, more Plaid fields captured; insurance claims marked Paid by hand take the payout; bank balance as of Plaid fetch; estimated posted dates for Wealthsimple charges settled from the balance'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.27.0',
     date: 'November 13, 2026',
     added: [],

@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.28.0] - 2026-11-14
+
+### Bank import: Inbox tabs To review and Not expenses, more Plaid fields captured; insurance claims marked Paid by hand take the payout; bank balance as of Plaid fetch; estimated posted dates for Wealthsimple charges settled from the balance
+
 ## [1.27.0] - 2026-11-13
 
 ### Insurance reimbursements from the bank: apply an insurer deposit to one or more claims with per-person shares and undo; zero out-of-pocket for fully reimbursed expenses; Wealthsimple charges not yet in the card balance show as probably pending

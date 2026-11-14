@@ -200,10 +200,10 @@ describe('plaidCardBalanceService', () => {
     const card = await cardCheck();
 
     expect(card).toMatchObject({ status: 'differs', bank: { owed: 13 }, tracker: 75, difference: -62, unexplained: 0 });
-    expect(card.causes.map(c => [c.type, c.name, c.effect, c.inboxStatus])).toEqual([
-      ['tracker_only', 'Typo', -50, undefined],
-      ['bank_only', 'ANNUAL FEE', 3.5, 'new'],
-      ['bank_only', 'REFUND', -15.5, 'ignored']
+    expect(card.causes.map(c => [c.type, c.name, c.effect, c.inboxStatus, c.inboxBucket])).toEqual([
+      ['tracker_only', 'Typo', -50, undefined, undefined],
+      ['bank_only', 'ANNUAL FEE', 3.5, 'new', 'spending'],
+      ['bank_only', 'REFUND', -15.5, 'ignored', 'spending']
     ]);
   });
 

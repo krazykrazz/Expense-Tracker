@@ -97,7 +97,7 @@ const InboxRow = ({ txn, filter, expanded, onExpand, onAction, busy, error, unco
               ) : (
                 <button
                   className="bank-import-link"
-                  title="A card payment, transfer or loan payment: move it to Not expenses"
+                  title="A card payment or a transfer between accounts: move it to Not expenses"
                   onClick={() => onAction('bucket', 'not_expense')}
                   disabled={busy}
                 >

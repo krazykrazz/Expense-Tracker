@@ -29,11 +29,11 @@ const countsAfter = (counts, txn, action, payload) => {
 
 /**
  * Inbox tab: each synced bank transaction is added as a new expense, matched to an existing one, or ignored.
- * Rows still to review are split into To review (spending) and Not expenses (card payments, transfers and loan
- * payments out of a bank account); either can be moved to the other.
+ * Rows still to review are split into To review (spending) and Not expenses (card payments and transfers between
+ * accounts); either can be moved to the other. `initialView` picks the filter it opens on (default To review).
  */
-const ImportInbox = ({ onExpensesChanged, onInboxChanged, onOpenConnections }) => {
-  const [view, setView] = useState('spending');
+const ImportInbox = ({ initialView, onExpensesChanged, onInboxChanged, onOpenConnections }) => {
+  const [view, setView] = useState(VIEWS.some(v => v.value === initialView) ? initialView : 'spending');
   const { status: filter } = VIEWS.find(v => v.value === view);
   const [data, setData] = useState({ transactions: [], hiddenUnmapped: 0 });
   const [loading, setLoading] = useState(true);
@@ -165,7 +165,7 @@ const ImportInbox = ({ onExpensesChanged, onInboxChanged, onOpenConnections }) =
         <div className="bank-import-empty">
           {{
             spending: 'Nothing to review. Use Sync now on the Connections tab to pull new transactions.',
-            not_expense: 'No card payments, transfers or loan payments waiting.',
+            not_expense: 'No card payments or transfers waiting.',
             ignored: 'No ignored transactions.'
           }[view]}
         </div>

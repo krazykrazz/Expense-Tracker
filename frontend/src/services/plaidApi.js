@@ -88,7 +88,9 @@ export const refreshBank = (id) =>
 
 /** Window event asking the header Bank Import button to open its modal, e.g. `{ detail: { tab: 'connections' } }`. */
 export const OPEN_BANK_IMPORT_EVENT = 'open-bank-import';
-export const openBankImport = (tab = 'inbox') => window.dispatchEvent(new CustomEvent(OPEN_BANK_IMPORT_EVENT, { detail: { tab } }));
+/** @param {{inboxView?: 'spending'|'not_expense'|'ignored'}} [options] the Inbox filter to open on */
+export const openBankImport = (tab = 'inbox', { inboxView } = {}) =>
+  window.dispatchEvent(new CustomEvent(OPEN_BANK_IMPORT_EVENT, { detail: { tab, inboxView } }));
 
 /**
  * Bank vs tracker balance for each credit card linked to a bank account, with likely causes of a difference.
@@ -157,7 +159,6 @@ export const getAutoSyncSettings = (options = {}) =>
 export const saveAutoSyncSettings = (fields) =>
   call('saving auto sync settings', () => apiPut(API_ENDPOINTS.PLAID_SYNC_SETTINGS, fields, 'save auto sync settings'));
 
-/** @returns {Promise<{transactions: Array, hiddenUnmapped: number}>} */
 /**
  * @param {'new'|'ignored'} status
  * @param {'spending'|'not_expense'} bucket the tab of new rows: To review or Not expenses (ignored rows: any)

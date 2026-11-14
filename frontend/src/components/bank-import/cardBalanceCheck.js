@@ -95,3 +95,19 @@ export function balanceCheckTitle(card) {
   }
   return lines.join('\n');
 }
+
+/**
+ * The Inbox filter "Open Inbox" should land on for these causes (balance check `inboxStatus`/`inboxBucket`, statement
+ * check `status`/`bucket`): To review when any cause is there (or is a dropped pending charge, shown at its top),
+ * else Not expenses (an unrecorded card payment), else Ignored.
+ * @returns {'spending'|'not_expense'|'ignored'}
+ */
+export function inboxViewFor(causes) {
+  const views = (causes || []).flatMap((cause) => {
+    if (cause.type === 'cancelled') return ['spending'];
+    if (cause.type !== 'bank_only') return [];
+    if ((cause.inboxStatus ?? cause.status) === 'ignored') return ['ignored'];
+    return [(cause.inboxBucket ?? cause.bucket) === 'not_expense' ? 'not_expense' : 'spending'];
+  });
+  return ['spending', 'not_expense', 'ignored'].find(view => views.includes(view)) || 'spending';
+}

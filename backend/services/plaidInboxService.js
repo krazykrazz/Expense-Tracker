@@ -25,8 +25,7 @@ const SETTLE_WINDOW_DAYS = 10;
 class PlaidInboxService {
   /**
    * @param {'new'|'ignored'} status
-   * @param {'spending'|'not_expense'} bucket the tab of 
-ew rows: To review or Not expenses (spec 3.1); ignored
+   * @param {'spending'|'not_expense'} bucket the tab of new rows: To review or Not expenses (spec 3.1); ignored
    *   rows are listed whatever their bucket
    * @returns {Promise<{transactions: Array, hiddenUnmapped: number, counts: {toReview: number, notExpenses: number},
    *   cancelled: Array, unconnectedCards: Array}>}

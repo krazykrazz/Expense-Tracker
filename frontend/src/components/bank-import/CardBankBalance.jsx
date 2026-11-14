@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { formatCAD as formatCurrency } from '../../utils/formatters';
 import { applyBankCreditLimit, openBankImport } from '../../services/plaidApi';
-import { balanceCheckTitle, describeCause } from './cardBalanceCheck';
+import { balanceCheckTitle, describeCause, inboxViewFor } from './cardBalanceCheck';
 import './BankImport.css';
 
 /**
@@ -44,7 +44,7 @@ export const CardBankBalanceCauses = ({ check }) => {
       <div className="card-bank-causes-header">
         <span className="card-bank-causes-title">Why it differs from the bank</span>
         {hasInboxCause && (
-          <button type="button" className="bank-import-secondary" onClick={() => openBankImport('inbox')}>Open Inbox</button>
+          <button type="button" className="bank-import-secondary" onClick={() => openBankImport('inbox', { inboxView: inboxViewFor(causes) })}>Open Inbox</button>
         )}
       </div>
       <ul>

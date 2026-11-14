@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { describeCause } from './cardBalanceCheck';
+import { describeCause, inboxViewFor } from './cardBalanceCheck';
 
 describe('cardBalanceCheck describeCause', () => {
   it('explains a transaction that is only in a bank file', () => {
@@ -20,5 +20,17 @@ describe('cardBalanceCheck describeCause', () => {
   it('explains a pending charge on a bank that leaves pending out', () => {
     expect(describeCause({ type: 'settling', name: 'Sobeys', amount: 12.41, date: '2026-11-05' }))
       .toBe('Still pending at the bank, which leaves pending charges out of its balance: Sobeys $12.41 (2026-11-05)');
+  });
+});
+
+describe('cardBalanceCheck inboxViewFor', () => {
+  it('opens To review when a cause is there, else Not expenses, else Ignored', () => {
+    const notExpense = { type: 'bank_only', inboxStatus: 'new', inboxBucket: 'not_expense' };
+    const ignored = { type: 'bank_only', inboxStatus: 'ignored', inboxBucket: 'spending' };
+    expect(inboxViewFor([ignored, notExpense, { type: 'bank_only', inboxStatus: 'new', inboxBucket: 'spending' }])).toBe('spending');
+    expect(inboxViewFor([ignored, { type: 'cancelled' }])).toBe('spending');
+    expect(inboxViewFor([ignored, notExpense, { type: 'tracker_only' }])).toBe('not_expense');
+    expect(inboxViewFor([ignored])).toBe('ignored');
+    expect(inboxViewFor([{ type: 'bank_only', status: 'new', bucket: 'not_expense' }])).toBe('not_expense');
   });
 });

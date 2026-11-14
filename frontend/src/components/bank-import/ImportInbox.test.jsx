@@ -451,6 +451,16 @@ describe('ImportInbox', () => {
       expect(screen.getByTestId('inbox-kind-badge')).toHaveTextContent('Transfer');
     });
 
+    it('opens on the tab it is asked for (Open Inbox from a card balance cause)', async () => {
+      plaidApi.getInbox.mockResolvedValue({ transactions: [transfer()], hiddenUnmapped: 0, counts: { toReview: 0, notExpenses: 1 } });
+
+      renderInbox({ initialView: 'not_expense' });
+
+      expect(await screen.findByText('To savings')).toBeInTheDocument();
+      expect(plaidApi.getInbox).toHaveBeenCalledWith('new', 'not_expense', expect.any(Object));
+      expect(screen.getByRole('button', { name: 'Not expenses (1)' })).toHaveAttribute('aria-pressed', 'true');
+    });
+
     it('keeps every action on a Not expenses row and moves it back to To review', async () => {
       const onInboxChanged = vi.fn();
       plaidApi.getInbox.mockImplementation(async (status, bucket) => ({

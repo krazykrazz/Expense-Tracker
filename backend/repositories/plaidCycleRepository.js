@@ -24,7 +24,7 @@ class PlaidCycleRepository {
   async findBankRows(plaidAccountIds, fromDate, toDate) {
     if (plaidAccountIds.length === 0) return [];
     return dbHelper.queryAll(
-      `SELECT pt.id, pt.amount, pt.date, COALESCE(pt.merchant_name, pt.name) AS name, pt.status, pt.expense_id AS expenseId,
+      `SELECT pt.id, pt.amount, pt.date, COALESCE(pt.merchant_name, pt.name) AS name, pt.status, pt.review_bucket AS bucket, pt.expense_id AS expenseId,
               COALESCE(e.posted_date, e.date) AS expenseDate, COALESCE(e.original_cost, e.amount) AS expenseAmount,
               EXISTS (SELECT 1 FROM plaid_fixed_expense_links fl WHERE fl.plaid_transaction_id = pt.id) AS fixedExpense,
               cpl.credit_card_payment_id AS paymentId, p.payment_date AS paymentDate

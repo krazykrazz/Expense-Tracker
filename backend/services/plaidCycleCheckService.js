@@ -11,7 +11,7 @@ const MAX_CYCLES = 3;
 
 const { round2, toCents: cents } = require('../utils/money');
 
-const bankItem = (row) => ({ effect: row.amount, date: row.date, name: row.name, transactionId: row.id, status: row.status });
+const bankItem = (row) => ({ effect: row.amount, date: row.date, name: row.name, transactionId: row.id, status: row.status, bucket: row.bucket });
 const trackerItem = (row, effect, kind) => ({ effect, date: row.date, name: row.name, kind, id: row.id });
 
 /**

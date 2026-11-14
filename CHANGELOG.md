@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.28.1] - 2026-11-14
+
+### Bank import Inbox: row actions on their own line so the bank description is readable
+
 ## [1.28.0] - 2026-11-14
 
 ### Bank import: Inbox tabs To review and Not expenses, more Plaid fields captured; insurance claims marked Paid by hand take the payout; bank balance as of Plaid fetch; estimated posted dates for Wealthsimple charges settled from the balance

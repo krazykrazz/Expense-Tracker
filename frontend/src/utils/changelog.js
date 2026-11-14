@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.28.1',
+    date: 'November 14, 2026',
+    added: [],
+    changed: ['Bank import Inbox: row actions on their own line so the bank description is readable'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.28.0',
     date: 'November 14, 2026',
     added: [],

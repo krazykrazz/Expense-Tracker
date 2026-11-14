@@ -441,6 +441,26 @@ describe('plaidInboxService', () => {
         expect.objectContaining({ action: 'settled', postedDateUpdated: true })
       );
     });
+
+    test('a charge settled from the balance (no bank date) gets the next business day, never past today, and keeps a date it has', async () => {
+      const { getTodayString } = require('../utils/dateUtils');
+      const settleFromBalance = (plaidTransactionId, expenseId) => plaidSettlementService.applySettlements([
+        { plaidTransactionId, expenseId, settled: true, previousAmount: 35.54, amount: 35.54, postedDate: null, estimatePostedDate: true }
+      ]);
+
+      const saturday = await cardExpense({ date: '2026-10-31' });
+      await settleFromBalance(await cardRow({ pending: 1 }), saturday);
+      expect(await expenseRow(saturday)).toEqual({ date: '2026-10-31', posted_date: '2026-11-02' });
+
+      const today = getTodayString();
+      const boughtToday = await cardExpense({ date: today });
+      await settleFromBalance(await stage('today', { accountId: cardAccountId, amount: 35.54, date: today, pending: 1 }), boughtToday);
+      expect(await expenseRow(boughtToday)).toEqual({ date: today, posted_date: null });
+
+      const entered = await cardExpense({ date: '2026-10-31', posted_date: '2026-11-03' });
+      await settleFromBalance(await stage('entered', { accountId: cardAccountId, amount: 35.54, date: '2026-10-31', pending: 1 }), entered);
+      expect(await expenseRow(entered)).toEqual({ date: '2026-10-31', posted_date: '2026-11-03' });
+    });
   });
 
   describe('ignore / unignore', () => {

@@ -457,6 +457,7 @@ const TABLE_STATEMENTS = [
     previous_amount REAL NOT NULL,
     previous_status TEXT,
     previous_people TEXT,
+    outside_bank REAL,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (plaid_transaction_id, expense_id),
     FOREIGN KEY (plaid_transaction_id) REFERENCES plaid_transactions(id) ON DELETE CASCADE,

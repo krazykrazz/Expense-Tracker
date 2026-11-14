@@ -10,11 +10,13 @@ const account = (extra = {}) => ({
 });
 
 describe('bankBalanceOf', () => {
-  it('is the account balance, fresh within 12 hours', () => {
+  it('is the account balance, fresh within 12 hours, as new as Plaid\'s last fetch from the bank', () => {
     expect(bankBalanceOf([account()], NOW)).toEqual({
-      total: 700.52, available: null, asOf: '2026-11-08T17:10:00Z', stale: false, staleReason: null,
+      total: 700.52, available: null, asOf: '2026-11-08T17:00:00Z', receivedAt: '2026-11-08T17:10:00Z', stale: false, staleReason: null,
       bankUpdatedAt: '2026-11-08T17:00:00Z', currency: 'CAD'
     });
+    // Received before Plaid's last fetch was recorded: the time received
+    expect(bankBalanceOf([account({ bankUpdatedAt: '2026-11-08T17:20:00Z' })], NOW).asOf).toBe('2026-11-08T17:10:00Z');
   });
 
   it('adds several accounts that import into one method, rounding to the cent, and uses the oldest time', () => {
@@ -88,9 +90,18 @@ describe('formatBankTime', () => {
 });
 
 describe('bankBalanceTitle', () => {
-  it('lists the balance and when it was received', () => {
+  it('lists the balance and how new the bank\'s figures are', () => {
     const title = bankBalanceTitle({ total: 700.52, available: null, asOf: '2026-11-08T17:10:00Z', stale: false, staleReason: null, bankUpdatedAt: null, currency: 'CAD' });
-    expect(title.split('\n')).toEqual(['Bank balance: $700.52', expect.stringMatching(/^Received /)]);
+    expect(title.split('\n')).toEqual(['Bank balance: $700.52', expect.stringMatching(/^Bank's figures from /)]);
+  });
+
+  it('says when figures received later were older (WS Shared, Nov 11: received 8:45 PM, Plaid\'s fetch 3:51 PM)', () => {
+    const lines = bankBalanceTitle({
+      total: 660.52, available: null, asOf: '2026-11-11T20:51:15Z', receivedAt: '2026-11-12T01:45:00Z',
+      stale: false, staleReason: null, bankUpdatedAt: '2026-11-11T20:51:15Z', currency: 'CAD'
+    }).split('\n');
+    expect(lines[1]).toMatch(/^Bank's figures from Nov 11/);
+    expect(lines[2]).toMatch(/^Received .*\(Plaid hadn't fetched newer figures from the bank\)$/);
   });
 
   it('adds the available amount only when it differs, other currencies, and why it may be old', () => {
@@ -115,11 +126,12 @@ describe('bankBalanceTitle', () => {
 
 describe('BankBalance', () => {
   it('shows the balance with when it arrived, in the hover text too', () => {
-    render(<BankBalance accounts={[account({ balanceAsOf: new Date().toISOString() })]} />);
+    const now = new Date().toISOString();
+    render(<BankBalance accounts={[account({ balanceAsOf: now, bankUpdatedAt: now })]} />);
     const el = screen.getByTestId('bank-balance');
     expect(el.textContent).toMatch(/^Bank \$700\.52 · as of \d{1,2}:\d{2}/);
     expect(el).not.toHaveClass('stale');
-    expect(el.getAttribute('title')).toMatch(/^Bank balance: \$700\.52\nReceived /);
+    expect(el.getAttribute('title')).toMatch(/^Bank balance: \$700\.52\nBank's figures from /);
   });
 
   it('is dimmed and says it may be out of date when the bank is not updating', () => {

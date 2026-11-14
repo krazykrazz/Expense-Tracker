@@ -107,6 +107,16 @@ describe('plaidCardBalanceService', () => {
     });
   });
 
+  test('the bank\'s figures are as new as Plaid\'s last fetch from the bank, which can be older than our sync', async () => {
+    await setBank({ current: 40, available: 900, limit: 1000 });
+    await run('UPDATE plaid_items SET bank_updated_at = ? WHERE id = ?', ['2026-11-03T15:51:00.000Z', itemId]);
+
+    expect((await cardCheck()).bank).toMatchObject({ asOf: '2026-11-03T15:51:00.000Z', receivedAt: '2026-11-03T20:00:00.000Z' });
+
+    await run('UPDATE plaid_items SET bank_updated_at = ? WHERE id = ?', ['2026-11-03T21:00:00.000Z', itemId]);
+    expect((await cardCheck()).bank).toMatchObject({ asOf: '2026-11-03T20:00:00.000Z', receivedAt: '2026-11-03T20:00:00.000Z' });
+  });
+
   test('a bank without available credit uses its balance; a linked pending charge it leaves out is "settling"', async () => {
     const dinner = await addExpense('2026-11-02', 60);
     await stage('t-dinner', { amount: 60, date: '2026-11-02', status: 'added', pending: 1, expenseId: dinner });

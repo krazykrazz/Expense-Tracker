@@ -1,5 +1,5 @@
 const {
-  expectedPayout, rankClaims, prefillSplit, outOfPocketAfter, claimBaseline, peopleAfter
+  expectedPayout, outsideBankForFirstDeposit, rankClaims, prefillSplit, outOfPocketAfter, claimBaseline, peopleAfter
 } = require('./insuranceReimbursement');
 
 const claim = (expenseId, extra = {}) => ({
@@ -11,7 +11,8 @@ describe('insuranceReimbursement', () => {
     test.each([
       ['open claim: original − out-of-pocket − reimbursed', { originalCost: 117, outOfPocket: 11.7 }, 105.3],
       ['open claim already partly reimbursed', { originalCost: 100, outOfPocket: 10, reimbursed: 40 }, 50],
-      ['paid claim: the remaining out-of-pocket', { claimStatus: 'paid', originalCost: 100, outOfPocket: 10 }, 10],
+      ['paid claim a deposit already paid: the remaining out-of-pocket', { claimStatus: 'paid', originalCost: 100, outOfPocket: 10, linkCount: 1 }, 10],
+      ['paid by hand, no deposit yet: the payout is still to come', { claimStatus: 'paid', originalCost: 100, outOfPocket: 10 }, 90],
       ['never below zero', { originalCost: 100, outOfPocket: 100, reimbursed: 5 }, 0],
       ['no original cost: the amount', { originalCost: null, outOfPocket: 20 }, 0]
     ])('%s', (_label, extra, expected) => {
@@ -77,13 +78,43 @@ describe('insuranceReimbursement', () => {
   });
 
   describe('outOfPocketAfter and peopleAfter', () => {
-    test('claimBaseline: a claim Paid before the bank was reimbursed outside it; an open one was not', () => {
+    test('claimBaseline: nothing counts as reimbursed before any deposit; afterwards the first deposit\'s decision', () => {
       expect(claimBaseline({ originalCost: 117, outOfPocket: 11.7, claimStatus: 'paid', reimbursed: 0 }))
-        .toMatchObject({ original: 117, outsideBank: 105.3, unreimbursed: 11.7 });
+        .toMatchObject({ original: 117, outsideBank: 0, unreimbursed: 117 });
       expect(claimBaseline({
         originalCost: 200, outOfPocket: 100, claimStatus: 'paid', reimbursed: 100,
         linkCount: 1, firstPreviousAmount: 20, firstPreviousStatus: 'not_claimed'
       })).toMatchObject({ beforeAmount: 20, beforeStatus: 'not_claimed', outsideBank: 0, unreimbursed: 100 });
+      // Second plan on a claim paid outside the bank: stored on the link
+      expect(claimBaseline({
+        originalCost: 117, outOfPocket: 0, claimStatus: 'paid', reimbursed: 11.7,
+        linkCount: 1, firstPreviousAmount: 11.7, firstPreviousStatus: 'paid', firstOutsideBank: 105.3
+      })).toMatchObject({ outsideBank: 105.3, unreimbursed: 0 });
+      // Links from 1.27.0 (no stored decision) derive it from the snapshot, as before
+      expect(claimBaseline({
+        originalCost: 117, outOfPocket: 0, claimStatus: 'paid', reimbursed: 11.7,
+        linkCount: 1, firstPreviousAmount: 11.7, firstPreviousStatus: 'paid', firstOutsideBank: null
+      })).toMatchObject({ outsideBank: 105.3 });
+    });
+
+    test.each([
+      ['the payout (DSF, Nov 2026)', 105.3, 0],
+      ['an insurer paying less than expected', 90, 0],
+      ['a second plan paying the co-pay', 11.7, 105.3],
+      ['a second plan paying part of it', 5, 105.3]
+    ])('first deposit on a claim marked Paid by hand: %s', (_label, amount, outside) => {
+      expect(outsideBankForFirstDeposit({ originalCost: 117, outOfPocket: 11.7 }, amount)).toBe(outside);
+    });
+
+    test('a 50% plan: a deposit equal to both the co-pay and the payout is the payout', () => {
+      expect(outsideBankForFirstDeposit({ originalCost: 100, outOfPocket: 50 }, 50)).toBe(0);
+    });
+
+    test('a claim marked Paid by hand ranks exact by its payout or by its co-pay', () => {
+      const paid = claim(7, { claimStatus: 'paid', originalCost: 117, outOfPocket: 11.7 });
+      expect(rankClaims(105.3, [paid])[0]).toMatchObject({ rank: 'exact', expectedPayout: 105.3 });
+      expect(rankClaims(11.7, [paid])[0].rank).toBe('exact');
+      expect(rankClaims(11.7, [{ ...paid, linkCount: 1 }])[0]).toMatchObject({ rank: 'exact', expectedPayout: 11.7 });
     });
     test('DSF: out-of-pocket and people amounts stay as entered', () => {
       expect(outOfPocketAfter(117, 105.3)).toBe(11.7);

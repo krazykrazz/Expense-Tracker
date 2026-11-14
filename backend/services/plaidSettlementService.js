@@ -4,7 +4,8 @@ const expenseRepository = require('../repositories/expenseRepository');
 const expenseService = require('./expenseService');
 const logger = require('../config/logger');
 const { toCents } = require('../utils/plaidMatching');
-const { fail, round2, money, describeTxn, exclusive, logReview, postedDateFor } = require('./plaidInboxSupport');
+const { getTodayString } = require('../utils/dateUtils');
+const { fail, round2, money, describeTxn, exclusive, logReview, postedDateFor, estimatedPostedDate } = require('./plaidInboxSupport');
 
 /** What to correct by hand when the expense update after a bank change failed (nothing retries it). */
 function settleFailedMessage(s, txn, err) {
@@ -25,7 +26,8 @@ class PlaidSettlementService {
    * - the amount follows the bank only if the expense still has the previous bank amount; an amount edited
    *   by hand, or a reimbursed / insurance-tracked expense, is kept (its payment method pill shows the
    *   difference);
-   * - on settlement, credit card expenses take the bank's posting date (see postedDateChange).
+   * - on settlement, credit card expenses take the bank's posting date (see postedDateChange); one settled
+   *   from the balance (no date from the bank) gets an estimate if it has none (see estimatedPostedDate).
    * Runs after the sync batch is committed. Never throws: a failed update leaves the expense as it was.
    * @param {Array<{plaidTransactionId: number, expenseId: number, settled: boolean, previousAmount: number,
    *   amount: number, postedDate: (string|null), postedDateOnly?: boolean}>} settlements
@@ -49,7 +51,9 @@ class PlaidSettlementService {
         // The expense's own payment method decides: after a reconnect the bank account may not be mapped yet
         const isCard = expense.payment_method_type === 'credit_card' || txn.paymentMethodType === 'credit_card';
         if (s.settled && isCard) {
-          Object.assign(changes, await postedDateFor(expense, s.postedDate, txn.plaidAccountId));
+          Object.assign(changes, s.estimatePostedDate
+            ? estimatedPostedDate(expense, getTodayString())
+            : await postedDateFor(expense, s.postedDate, txn.plaidAccountId));
         }
         // Plaid took over a settled bank-file row with another date: only worth a log entry when the expense changed
         if (s.postedDateOnly && !('posted_date' in changes)) continue;

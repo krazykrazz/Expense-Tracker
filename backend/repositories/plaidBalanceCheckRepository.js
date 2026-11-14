@@ -78,7 +78,7 @@ class PlaidBalanceCheckRepository {
     const [rows, first] = await Promise.all([
       dbHelper.queryAll(
         `SELECT pt.id, pt.amount, COALESCE(pt.authorized_date, pt.date) AS date, pt.date AS postedDate,
-                COALESCE(pt.merchant_name, pt.name) AS name, pt.status, pt.pending, pt.expense_id AS expenseId,
+                COALESCE(pt.merchant_name, pt.name) AS name, pt.status, pt.review_bucket AS bucket, pt.pending, pt.expense_id AS expenseId,
                 pt.removed_at IS NOT NULL AS removed, pt.transaction_id LIKE '${FILE_ID_PREFIX}%' AS fromFile,
                 (SELECT e.posted_date FROM expenses e WHERE e.id = pt.expense_id) AS expensePostedDate,
                 EXISTS (SELECT 1 FROM plaid_fixed_expense_links fl WHERE fl.plaid_transaction_id = pt.id) AS fixedExpense

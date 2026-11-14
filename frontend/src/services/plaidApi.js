@@ -88,7 +88,9 @@ export const refreshBank = (id) =>
 
 /** Window event asking the header Bank Import button to open its modal, e.g. `{ detail: { tab: 'connections' } }`. */
 export const OPEN_BANK_IMPORT_EVENT = 'open-bank-import';
-export const openBankImport = (tab = 'inbox') => window.dispatchEvent(new CustomEvent(OPEN_BANK_IMPORT_EVENT, { detail: { tab } }));
+/** @param {{inboxView?: 'spending'|'not_expense'|'ignored'}} [options] the Inbox filter to open on */
+export const openBankImport = (tab = 'inbox', { inboxView } = {}) =>
+  window.dispatchEvent(new CustomEvent(OPEN_BANK_IMPORT_EVENT, { detail: { tab, inboxView } }));
 
 /**
  * Bank vs tracker balance for each credit card linked to a bank account, with likely causes of a difference.
@@ -157,9 +159,14 @@ export const getAutoSyncSettings = (options = {}) =>
 export const saveAutoSyncSettings = (fields) =>
   call('saving auto sync settings', () => apiPut(API_ENDPOINTS.PLAID_SYNC_SETTINGS, fields, 'save auto sync settings'));
 
-/** @returns {Promise<{transactions: Array, hiddenUnmapped: number}>} */
-export const getInbox = (status = 'new', options = {}) =>
-  call('fetching import inbox', () => apiGet(API_ENDPOINTS.PLAID_INBOX(status), 'fetch import inbox', options));
+/**
+ * @param {'new'|'ignored'} status
+ * @param {'spending'|'not_expense'} bucket the tab of new rows: To review or Not expenses (ignored rows: any)
+ * @returns {Promise<{transactions: Array, hiddenUnmapped: number, counts: {toReview: number, notExpenses: number},
+ *   cancelled: Array, unconnectedCards: Array}>}
+ */
+export const getInbox = (status = 'new', bucket = 'spending', options = {}) =>
+  call('fetching import inbox', () => apiGet(API_ENDPOINTS.PLAID_INBOX(status, bucket), 'fetch import inbox', options));
 
 /** @param {{type: string, place?: string, date?: string, notes?: string}} fields */
 export const addInboxTransaction = (id, fields) =>
@@ -216,6 +223,10 @@ export const resolveCancelledPending = (id, decision) =>
 
 export const ignoreInboxTransaction = (id) =>
   call('ignoring bank transaction', () => apiPost(API_ENDPOINTS.PLAID_INBOX_ACTION(id, 'ignore'), {}, 'ignore transaction'));
+
+/** Move a row between the Inbox's To review ('spending') and Not expenses ('not_expense') tabs. */
+export const setInboxTransactionBucket = (id, bucket) =>
+  call('moving bank transaction', () => apiPost(API_ENDPOINTS.PLAID_INBOX_ACTION(id, 'bucket'), { bucket }, 'move transaction'));
 
 export const unignoreInboxTransaction = (id) =>
   call('restoring bank transaction', () => apiPost(API_ENDPOINTS.PLAID_INBOX_ACTION(id, 'unignore'), {}, 'restore transaction'));

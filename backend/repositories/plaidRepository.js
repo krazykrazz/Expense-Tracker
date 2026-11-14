@@ -9,7 +9,8 @@ const TXN_COLUMNS = `pt.id, pt.transaction_id AS transactionId, pt.plaid_account
   pt.iso_currency_code AS isoCurrencyCode, pt.date, pt.authorized_date AS authorizedDate, pt.name,
   pt.merchant_name AS merchantName, pt.status, pt.expense_id AS expenseId, pt.pending,
   pt.pending_transaction_id AS pendingTransactionId, pt.removed_at AS removedAt,
-  pt.pfc_primary AS pfcPrimary, pt.pfc_detailed AS pfcDetailed, pt.pfc_confidence AS pfcConfidence`;
+  pt.pfc_primary AS pfcPrimary, pt.pfc_detailed AS pfcDetailed, pt.pfc_confidence AS pfcConfidence,
+  pt.review_bucket AS bucket`;
 
 /**
  * Data access for Plaid items, accounts and staged transactions.
@@ -176,20 +177,31 @@ class PlaidRepository {
   }
 
   /**
-   * How many rows the Inbox's To review tab lists: new rows on accounts mapped to a payment method (same join as
-   * findInbox), plus pending charges the bank dropped that are waiting for a decision (shown at the top).
+   * How many rows the Inbox's tabs list. To review: new rows in bucket 'spending' on accounts mapped to a payment
+   * method (same join as findInbox), plus pending charges the bank dropped that are waiting for a decision (shown
+   * at the top). Not expenses: new rows in bucket 'not_expense'.
+   * @returns {Promise<{toReview: number, notExpenses: number}>}
    */
-  async countToReview() {
+  async countInbox() {
     const row = await dbHelper.queryOne(
       `SELECT
          (SELECT COUNT(*) FROM plaid_transactions pt
             JOIN plaid_accounts pa ON pa.id = pt.plaid_account_id
             JOIN payment_methods pm ON pm.id = pa.payment_method_id
-          WHERE pt.status = 'new') AS fresh,
+          WHERE pt.status = 'new' AND pt.review_bucket = 'spending') AS fresh,
+         (SELECT COUNT(*) FROM plaid_transactions pt
+            JOIN plaid_accounts pa ON pa.id = pt.plaid_account_id
+            JOIN payment_methods pm ON pm.id = pa.payment_method_id
+          WHERE pt.status = 'new' AND pt.review_bucket = 'not_expense') AS notExpenses,
          (SELECT COUNT(*) FROM plaid_transactions
           WHERE pending = 1 AND removed_at IS NOT NULL AND status IN ('added', 'matched')) AS cancelled`
     );
-    return row ? row.fresh + row.cancelled : 0;
+    return row ? { toReview: row.fresh + row.cancelled, notExpenses: row.notExpenses } : { toReview: 0, notExpenses: 0 };
+  }
+
+  /** The header badge: what the Inbox's To review tab lists (see countInbox). */
+  async countToReview() {
+    return (await this.countInbox()).toReview;
   }
 
   /**

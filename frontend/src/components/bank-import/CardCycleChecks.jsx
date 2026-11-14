@@ -4,6 +4,7 @@ import { useSyncEvent } from '../../hooks/useSyncEvent';
 import { formatDate } from '../../utils/formatters';
 import { createLogger } from '../../utils/logger';
 import { describeCycleCause, describeCycleTotals } from './cardCycleCheck';
+import { inboxViewFor } from './cardBalanceCheck';
 import './BankImport.css';
 
 const logger = createLogger('CardCycleChecks');
@@ -66,7 +67,7 @@ const CardCycleChecks = ({ paymentMethodId, refreshKey }) => {
             </ul>
           )}
           {cycle.status === 'differs' && hasInboxCause(cycle) && (
-            <button type="button" className="bank-import-secondary" onClick={() => openBankImport('inbox')}>Open Inbox</button>
+            <button type="button" className="bank-import-secondary" onClick={() => openBankImport('inbox', { inboxView: inboxViewFor(cycle.causes) })}>Open Inbox</button>
           )}
         </details>
       ))}

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { bankLagNote, describeCause } from './cardBalanceCheck';
+import { bankLagNote, describeCause, inboxViewFor } from './cardBalanceCheck';
 
 describe('cardBalanceCheck describeCause', () => {
   it('explains a transaction that is only in a bank file', () => {
@@ -31,5 +31,17 @@ describe('cardBalanceCheck describeCause', () => {
     expect(describeCause(tire, fresh)).not.toMatch(/may have settled since/);
     expect(describeCause({ type: 'bank_only', name: 'X', amount: 5, date: '2026-11-10' }, stale)).not.toMatch(/may have settled since/);
     expect(bankLagNote({ bank: { asOf: null, receivedAt: null } })).toBeNull();
+  });
+});
+
+describe('cardBalanceCheck inboxViewFor', () => {
+  it('opens To review when a cause is there, else Not expenses, else Ignored', () => {
+    const notExpense = { type: 'bank_only', inboxStatus: 'new', inboxBucket: 'not_expense' };
+    const ignored = { type: 'bank_only', inboxStatus: 'ignored', inboxBucket: 'spending' };
+    expect(inboxViewFor([ignored, notExpense, { type: 'bank_only', inboxStatus: 'new', inboxBucket: 'spending' }])).toBe('spending');
+    expect(inboxViewFor([ignored, { type: 'cancelled' }])).toBe('spending');
+    expect(inboxViewFor([ignored, notExpense, { type: 'tracker_only' }])).toBe('not_expense');
+    expect(inboxViewFor([ignored])).toBe('ignored');
+    expect(inboxViewFor([{ type: 'bank_only', status: 'new', bucket: 'not_expense' }])).toBe('not_expense');
   });
 });

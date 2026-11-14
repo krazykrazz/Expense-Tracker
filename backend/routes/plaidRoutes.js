@@ -44,5 +44,6 @@ router.delete('/inbox/:id/insurance', plaidController.unlinkInsurance);
 router.post('/inbox/:id/cancelled', plaidController.resolveCancelled);
 router.post('/inbox/:id/ignore', plaidController.ignore);
 router.post('/inbox/:id/unignore', plaidController.unignore);
+router.post('/inbox/:id/bucket', plaidController.setBucket);
 
 module.exports = router;

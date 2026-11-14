@@ -48,7 +48,7 @@ describe('CardCycleChecks', () => {
     getCardCycleChecks.mockResolvedValue({
       cycles: [cycle({
         bank: { total: 103.5, count: 4 }, difference: 3.5, status: 'differs', awaitingMatch: 2,
-        causes: [{ type: 'bank_only', effect: 3.5, name: 'ANNUAL FEE', date: '2026-10-01', status: 'new', transactionId: 7 }]
+        causes: [{ type: 'bank_only', effect: 3.5, name: 'ANNUAL FEE', date: '2026-10-01', status: 'new', bucket: 'not_expense', transactionId: 7 }]
       })]
     });
 
@@ -57,7 +57,7 @@ describe('CardCycleChecks', () => {
     expect(await screen.findByText(/Charge at the bank, not in the tracker yet: ANNUAL FEE \$3.50/)).toBeInTheDocument();
     expect(screen.getByText(/2 Inbox transactions match entries already in the tracker/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Open Inbox' }));
-    expect(openBankImport).toHaveBeenCalledWith('inbox');
+    expect(openBankImport).toHaveBeenCalledWith('inbox', { inboxView: 'not_expense' });
   });
 
   it('a slow earlier response never replaces a newer one', async () => {

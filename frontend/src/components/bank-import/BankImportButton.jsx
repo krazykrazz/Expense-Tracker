@@ -23,11 +23,12 @@ const MAX_BADGE_COUNT = 99;
  * - Shows the number of Inbox rows waiting for review as a badge; it follows syncs, Inbox decisions and expense
  *   changes in any tab.
  * - Shows a warning dot when a bank needs the user (login expired, removed at the bank); the modal then opens
- *   on Connections. Other components open it with `openBankImport(tab)`.
+ *   on Connections. Other components open it with `openBankImport(tab, { inboxView })`.
  */
 const BankImportButton = () => {
   const [status, setStatus, reloadStatus] = usePlaidStatus();
   const [openTab, setOpenTab] = useState(null);
+  const [inboxView, setInboxView] = useState(null);
   const { refreshExpenses, refreshTrigger, currentMonthExpenseCount } = useExpenseContext();
   const lastCheckRef = useRef(0);
   const enabled = Boolean(status && status.enabled);
@@ -65,7 +66,10 @@ const BankImportButton = () => {
 
   useEffect(() => {
     if (!enabled) return undefined;
-    const onOpenRequest = (event) => setOpenTab(event.detail?.tab || 'inbox');
+    const onOpenRequest = (event) => {
+      setInboxView(event.detail?.inboxView || null);
+      setOpenTab(event.detail?.tab || 'inbox');
+    };
     window.addEventListener(OPEN_BANK_IMPORT_EVENT, onOpenRequest);
     return () => window.removeEventListener(OPEN_BANK_IMPORT_EVENT, onOpenRequest);
   }, [enabled]);
@@ -86,6 +90,7 @@ const BankImportButton = () => {
         className="header-icon-button bank-import-header-button"
         onClick={() => {
           syncIfStale(true);
+          setInboxView(null);
           setOpenTab(attention.length > 0 ? 'connections' : 'inbox');
         }}
         aria-label={detailText ? `Bank import: ${detailText}` : 'Bank import'}
@@ -106,6 +111,7 @@ const BankImportButton = () => {
             <BankImportModal
               status={status}
               initialTab={openTab}
+              initialInboxView={inboxView}
               onStatusChange={setStatus}
               onExpensesChanged={refreshExpenses}
               onInboxChanged={reloadStatus}

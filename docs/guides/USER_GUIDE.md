@@ -178,7 +178,13 @@ Banks then sync on their own: every 30 minutes from 06:00 to 23:00, and whenever
 
 ### Reviewing Transactions
 
-Click the bank icon → **Inbox**. A small number on the icon says how many rows are waiting. Each row is one bank transaction:
+Click the bank icon → **Inbox**. It has three filters:
+
+- **To review**: purchases, deposits (income, insurer payouts) and everything else to decide on. The small number on the bank icon counts these.
+- **Not expenses**: card payments, and transfers between accounts out of your bank accounts, with a badge saying which. Interac e-Transfers and loan payments stay in To review, since they are often spending or a fixed expense. They keep all their actions below, plus **Move to To review**.
+- **Ignored**: what you ignored.
+
+A row in the wrong tab can be moved: **Not an expense** (in To review) or **Move to To review**; it then stays put. Each row is one bank transaction:
 
 - **Add**: creates an expense, with the place, date and a suggested category filled in. The place is the one you used before for the same bank description, or an existing place it starts with (e.g. "Sobeys" for "SOBEYS #4123").
 - **Match**: links it to an expense you already logged, a planned **fixed expense** (records when it actually landed) or expected **income** (for deposits).

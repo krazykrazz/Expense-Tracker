@@ -743,6 +743,78 @@ describe('plaidService', () => {
       ]);
     });
 
+    test('stores the other fields Plaid sends, asking for the original description; a sync without them keeps them', async () => {
+      const item = await connect();
+      const extra = {
+        merchant_entity_id: 'ent-1', logo_url: 'https://logo/x.png', website: 'x.com',
+        original_description: 'SQ *X 1234', payment_channel: 'in store'
+      };
+      const captured = () => all(`SELECT transaction_id AS tid, merchant_entity_id, logo_url, website, original_description,
+        payment_channel FROM plaid_transactions ORDER BY transaction_id`);
+      client.transactionsSync.mockResolvedValueOnce(page({ added: [txn('a', extra), txn('b')] }));
+      await plaidService.syncItem(item.id);
+
+      expect(client.transactionsSync).toHaveBeenCalledWith(expect.objectContaining({ options: { include_original_description: true } }));
+      expect(await captured()).toEqual([
+        { tid: 'a', ...extra },
+        { tid: 'b', merchant_entity_id: null, logo_url: null, website: null, original_description: null, payment_channel: null }
+      ]);
+
+      client.transactionsSync.mockResolvedValueOnce(page({
+        modified: [txn('a', { amount: 20 }), txn('b', { payment_channel: 'online', original_description: 'B RAW' })],
+        next_cursor: 'c2'
+      }));
+      await plaidService.syncItem(item.id);
+
+      expect(await captured()).toEqual([
+        { tid: 'a', ...extra },
+        { tid: 'b', merchant_entity_id: null, logo_url: null, website: null, original_description: 'B RAW', payment_channel: 'online' }
+      ]);
+    });
+
+    test('puts transfers out of a bank account in Not expenses, but not e-Transfers or loan payments; a row moved by hand stays put', async () => {
+      const item = await connect();
+      const pfc = (primary, detailed = `${primary}_OTHER`) => ({ personal_finance_category: { primary, detailed, confidence_level: 'HIGH' } });
+      const buckets = async () => Object.fromEntries((await all('SELECT transaction_id, review_bucket FROM plaid_transactions'))
+        .map(row => [row.transaction_id, row.review_bucket]));
+      client.transactionsSync.mockResolvedValueOnce(page({ added: [
+        txn('xfer', { amount: 300, ...pfc('TRANSFER_OUT') }),
+        txn('loan', { amount: 900, ...pfc('LOAN_PAYMENTS', 'LOAN_PAYMENTS_MORTGAGE_PAYMENT') }),
+        txn('insurer', { amount: -105.3, ...pfc('TRANSFER_IN') }),
+        txn('salary', { amount: -2000, ...pfc('INCOME') }),
+        txn('cafe', { amount: 4.5 }),
+        txn('etransfer', { amount: 80, name: 'Barbara Coady - INTERAC e-Transfer', ...pfc('TRANSFER_OUT') })
+      ] }));
+      await plaidService.syncItem(item.id);
+
+      expect(await buckets()).toEqual({ xfer: 'not_expense', loan: 'spending', insurer: 'spending', salary: 'spending', cafe: 'spending', etransfer: 'spending' });
+
+      const xferId = (await get("SELECT id FROM plaid_transactions WHERE transaction_id = 'xfer'")).id;
+      await require('./plaidReviewService').setBucket(xferId, 'spending');
+      client.transactionsSync.mockResolvedValueOnce(page({
+        modified: [txn('xfer', { amount: 310, ...pfc('TRANSFER_OUT') }), txn('cafe', { amount: 4.5, ...pfc('TRANSFER_OUT') })],
+        next_cursor: 'c2'
+      }));
+      await plaidService.syncItem(item.id);
+
+      expect(await buckets()).toMatchObject({ xfer: 'spending', cafe: 'not_expense' });
+    });
+
+    test('mapping an account to a credit card reclassifies its rows still to review', async () => {
+      const item = await connect();
+      client.transactionsSync.mockResolvedValueOnce(page({ added: [txn('pay', { amount: -500, name: 'PAYMENT THANK YOU' })] }));
+      await plaidService.syncItem(item.id);
+      expect(await get('SELECT review_bucket FROM plaid_transactions')).toEqual({ review_bucket: 'spending' });
+
+      const card = await run("INSERT INTO payment_methods (type, display_name, full_name, is_active) VALUES ('credit_card', 'Bucket Visa', 'Bucket Visa', 1)");
+      const { id: accountId } = await get("SELECT id FROM plaid_accounts WHERE account_id = 'acc-1'");
+      await plaidService.updateAccountMapping(accountId, card);
+
+      expect(await get('SELECT review_bucket FROM plaid_transactions')).toEqual({ review_bucket: 'not_expense' });
+      await run('DELETE FROM plaid_accounts');
+      await run('DELETE FROM payment_methods WHERE id = ?', [card]);
+    });
+
     test("a pending row settling in place takes the posted transaction's category", async () => {
       const item = await connect();
       client.transactionsSync.mockResolvedValueOnce(page({ added: [txn('p1', { pending: true })] }));

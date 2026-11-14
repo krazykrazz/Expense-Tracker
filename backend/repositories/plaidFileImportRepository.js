@@ -1,5 +1,6 @@
 const dbHelper = require('../utils/dbHelper');
 const { FILE_ID_PREFIX, SAME_TXN_DAYS, planFileImport } = require('../utils/bankFileImport');
+const plaidBucketRepository = require('./plaidBucketRepository');
 const { STAGED_COLUMNS, STAGED_COLUMN_NAMES } = require('./plaidSql');
 
 /**
@@ -70,6 +71,7 @@ class PlaidFileImportRepository {
         const columns = Object.keys(changes).map(name => `${STAGED_COLUMN_NAMES[name]} = ?`);
         await tx.run(`UPDATE plaid_transactions SET ${columns.join(', ')} WHERE id = ?`, [...Object.values(changes), row.id]);
       }
+      await plaidBucketRepository.classify(tx, 'pt.plaid_account_id = ?', [plaidAccountId]);
       return result;
     });
   }

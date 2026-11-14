@@ -89,7 +89,7 @@ const EXPECTED_TABLES = {
   users: ['id', 'username', 'password_hash', 'created_at', 'updated_at'],
   plaid_items: ['id', 'item_id', 'institution_name', 'access_token_enc', 'sync_cursor', 'environment', 'last_synced_at', 'last_error', 'bank_updated_at', 'bank_update_failed_at', 'institution_status', 'institution_status_since', 'created_at', 'updated_at'],
   plaid_accounts: ['id', 'plaid_item_id', 'account_id', 'name', 'mask', 'type', 'subtype', 'payment_method_id', 'current_balance', 'available_balance', 'credit_limit', 'balance_currency', 'balance_as_of', 'created_at', 'updated_at'],
-  plaid_transactions: ['id', 'transaction_id', 'plaid_account_id', 'amount', 'iso_currency_code', 'date', 'authorized_date', 'name', 'merchant_name', 'status', 'expense_id', 'pending', 'pending_transaction_id', 'removed_at', 'pfc_primary', 'pfc_detailed', 'pfc_confidence', 'created_at', 'updated_at'],
+  plaid_transactions: ['id', 'transaction_id', 'plaid_account_id', 'amount', 'iso_currency_code', 'date', 'authorized_date', 'name', 'merchant_name', 'status', 'expense_id', 'pending', 'pending_transaction_id', 'removed_at', 'pfc_primary', 'pfc_detailed', 'pfc_confidence', 'merchant_entity_id', 'logo_url', 'website', 'original_description', 'payment_channel', 'review_bucket', 'bucket_overridden', 'created_at', 'updated_at'],
   plaid_fixed_expense_links: ['id', 'plaid_transaction_id', 'fixed_expense_id', 'landed_date', 'planned_amount', 'created_at'],
   plaid_income_links: ['id', 'plaid_transaction_id', 'income_source_id', 'landed_date', 'planned_amount', 'created_at'],
   plaid_card_payment_links: ['id', 'plaid_transaction_id', 'credit_card_payment_id', 'side', 'created_at'],

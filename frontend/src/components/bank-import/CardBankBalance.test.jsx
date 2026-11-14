@@ -79,7 +79,7 @@ describe('CardBankBalanceCauses', () => {
     expect(screen.getByText(/\$4.00 isn't explained/)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Open Inbox' }));
-    expect(openBankImport).toHaveBeenCalledWith('inbox');
+    expect(openBankImport).toHaveBeenCalledWith('inbox', { inboxView: 'ignored' });
   });
 
   it('takes no space when the balances match', () => {

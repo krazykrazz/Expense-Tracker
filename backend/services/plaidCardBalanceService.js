@@ -194,7 +194,7 @@ class PlaidCardBalanceService {
     });
     const causes = [
       ...bankOnly.filter(row => !row.fromFile)
-        .map(row => bankCause('bank_only', row, row.amount, { pending: Boolean(row.pending), inboxStatus: row.status })),
+        .map(row => bankCause('bank_only', row, row.amount, { pending: Boolean(row.pending), inboxStatus: row.status, inboxBucket: row.bucket })),
       ...trackerOnly.map(item => trackerCause('tracker_only', item)),
       ...settling.map(row => bankCause('settling', row, -row.amount, { expenseId: row.expenseId })),
       ...postsLater.map(row => bankCause('posts_later', row, row.amount, { expenseId: row.expenseId, trackerPostedDate: row.expensePostedDate })),

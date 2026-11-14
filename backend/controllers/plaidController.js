@@ -163,9 +163,9 @@ const saveSyncSettings = asyncHandler(async (req, res) => {
   res.json(await plaidSyncSchedulerService.saveSettings(req.body || {}, tabIdOf(req)));
 });
 
-/** GET /api/plaid/inbox?status=new|ignored */
+/** GET /api/plaid/inbox?status=new|ignored&bucket=spending|not_expense (bucket: the tab of 'new' rows) */
 const getInbox = asyncHandler(async (req, res) => {
-  res.json(await plaidInboxService.listInbox(req.query.status || 'new'));
+  res.json(await plaidInboxService.listInbox(req.query.status || 'new', req.query.bucket || 'spending'));
 });
 
 /**
@@ -264,6 +264,14 @@ const ignore = asyncHandler(async (req, res) => {
   res.json(await plaidReviewService.ignore(idParam(req)));
 });
 
+/**
+ * POST /api/plaid/inbox/:id/bucket
+ * Body: { bucket: 'spending'|'not_expense' } — move a row between To review and Not expenses
+ */
+const setBucket = asyncHandler(async (req, res) => {
+  res.json(await plaidReviewService.setBucket(inboxIdParam(req), (req.body || {}).bucket));
+});
+
 /** POST /api/plaid/inbox/:id/unignore */
 const unignore = asyncHandler(async (req, res) => {
   res.json(await plaidReviewService.unignore(idParam(req)));
@@ -301,5 +309,6 @@ module.exports = {
   unlinkInsurance,
   resolveCancelled,
   ignore,
-  unignore
+  unignore,
+  setBucket
 };

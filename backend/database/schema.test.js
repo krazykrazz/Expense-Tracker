@@ -179,6 +179,49 @@ describe('Consolidated Schema – Unit Tests', () => {
     expect(await checkMigrationApplied(db, 'plaid_transactions_pfc_v1')).toBe(true);
   });
 
+  test('plaid_capture_v1 adds the capture and bucket columns and sorts categorised rows into Not expenses', async () => {
+    const ADDED = ['merchant_entity_id', 'logo_url', 'website', 'original_description', 'payment_channel', 'review_bucket', 'bucket_overridden'];
+    const columns = async () => (await dbAll(db, 'PRAGMA table_info(plaid_transactions)')).map(c => c.name).filter(name => ADDED.includes(name));
+    await runMigrations(db);
+    await dbRun(db, 'DROP INDEX IF EXISTS idx_plaid_transactions_merchant_entity');
+    for (const column of await columns()) {
+      await dbRun(db, `ALTER TABLE plaid_transactions DROP COLUMN ${column}`);
+    }
+    await dbRun(db, "DELETE FROM schema_migrations WHERE migration_name = 'plaid_capture_v1'");
+    expect(await columns()).toEqual([]);
+
+    await dbRun(db, "INSERT INTO plaid_items (item_id, institution_name, access_token_enc, environment) VALUES ('mig-item', 'Bank', 'v1:x:y:z', 'sandbox')");
+    const item = await dbGet(db, "SELECT id FROM plaid_items WHERE item_id = 'mig-item'");
+    await dbRun(db, "INSERT INTO plaid_accounts (plaid_item_id, account_id, name, payment_method_id) VALUES (?, 'mig-chq', 'Chequing', 2)", [item.id]);
+    await dbRun(db, "INSERT INTO plaid_accounts (plaid_item_id, account_id, name, payment_method_id) VALUES (?, 'mig-card', 'Visa', 4)", [item.id]);
+    const chq = (await dbGet(db, "SELECT id FROM plaid_accounts WHERE account_id = 'mig-chq'")).id;
+    const card = (await dbGet(db, "SELECT id FROM plaid_accounts WHERE account_id = 'mig-card'")).id;
+    const stage = (tid, account, amount, status, primary, detailed = null, name = 'X') => dbRun(db,
+      'INSERT INTO plaid_transactions (transaction_id, plaid_account_id, amount, date, name, status, pfc_primary, pfc_detailed) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [tid, account, amount, '2026-10-01', name, status, primary, detailed]);
+    await stage('mig-xfer', chq, 300, 'new', 'TRANSFER_OUT');
+    await stage('mig-etransfer', chq, 12, 'new', 'TRANSFER_OUT', 'TRANSFER_OUT_ACCOUNT_TRANSFER', 'Joliet Cutler - INTERAC e-Transfer®');
+    await stage('mig-xfer-ignored', chq, 75, 'ignored', 'TRANSFER_OUT', null, 'Transfer out');
+    await stage('mig-loan', chq, 900, 'new', 'LOAN_PAYMENTS', 'LOAN_PAYMENTS_CAR_PAYMENT');
+    await stage('mig-card-pay', card, -500, 'new', 'LOAN_PAYMENTS', 'LOAN_PAYMENTS_CREDIT_CARD_PAYMENT');
+    await stage('mig-insurer', chq, -105.3, 'new', 'TRANSFER_IN');
+    await stage('mig-refund', card, -20, 'new', 'GENERAL_MERCHANDISE', null, 'AMAZON REFUND');
+    await stage('mig-no-pfc', chq, 300, 'new', null);
+    await stage('mig-added', chq, 300, 'added', 'TRANSFER_OUT');
+
+    await runMigrations(db);
+
+    expect(await columns()).toEqual(ADDED);
+    expect(await checkMigrationApplied(db, 'plaid_capture_v1')).toBe(true);
+    expect(await dbGet(db, "SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_plaid_transactions_merchant_entity'")).toBeDefined();
+    const rows = await dbAll(db, "SELECT transaction_id, review_bucket FROM plaid_transactions WHERE transaction_id LIKE 'mig-%' ORDER BY transaction_id");
+    expect(Object.fromEntries(rows.map(r => [r.transaction_id, r.review_bucket]))).toEqual({
+      'mig-added': 'spending', 'mig-card-pay': 'not_expense', 'mig-etransfer': 'spending', 'mig-insurer': 'spending',
+      'mig-loan': 'spending', 'mig-no-pfc': 'spending', 'mig-refund': 'spending', 'mig-xfer': 'not_expense',
+      'mig-xfer-ignored': 'not_expense'
+    });
+  });
+
   // ── Requirement 7.3: update_budgets_timestamp trigger exists and fires ──
 
   test('update_budgets_timestamp trigger exists', async () => {

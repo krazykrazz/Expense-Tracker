@@ -62,7 +62,7 @@ async function requireNew(id, { settled = false } = {}) {
 /**
  * Activity log for an inbox decision. Entity `plaid_transaction` is routed as `plaid`, so open inboxes in
  * other tabs refresh. Side effects (expense_added, fixed_expense_updated, ...) are logged by their services.
- * @param {'add'|'match'|'match_fixed'|'match_income'|'add_income'|'card_payment'|'insurance'|'insurance_undone'|'ignore'|'unignore'|'settled'|'pending_changed'|'posted_date'|'cancelled_keep'|'cancelled_delete'|'settle_failed'} action
+ * @param {'add'|'match'|'match_fixed'|'match_income'|'add_income'|'card_payment'|'insurance'|'insurance_undone'|'bucket'|'ignore'|'unignore'|'settled'|'pending_changed'|'posted_date'|'cancelled_keep'|'cancelled_delete'|'settle_failed'} action
  */
 async function logReview(txn, action, description, extra = {}) {
   await activityLogService.logEvent('plaid_transaction_updated', 'plaid_transaction', txn.id, description, {

@@ -11,7 +11,8 @@ vi.mock('../../../services/plaidApi', () => ({
   cardPaymentInboxTransaction: vi.fn(),
   applyInsuranceToInboxTransaction: vi.fn(),
   ignoreInboxTransaction: vi.fn(),
-  unignoreInboxTransaction: vi.fn()
+  unignoreInboxTransaction: vi.fn(),
+  setInboxTransactionBucket: vi.fn()
 }));
 
 describe('INBOX_ACTIONS', () => {
@@ -39,9 +40,16 @@ describe('INBOX_ACTIONS', () => {
     expect(INBOX_ACTIONS[action].changesData).toBe(false);
   });
 
+  it('bucket moves the row between To review and Not expenses without changing other screens', async () => {
+    await INBOX_ACTIONS.bucket.run(7, 'not_expense');
+
+    expect(plaidApi.setInboxTransactionBucket).toHaveBeenCalledWith(7, 'not_expense');
+    expect(INBOX_ACTIONS.bucket.changesData).toBe(false);
+  });
+
   it('has exactly the actions the Inbox row offers', () => {
     expect(Object.keys(INBOX_ACTIONS).sort()).toEqual(
-      ['add', 'add-income', 'card-payment', 'ignore', 'insurance', 'match', 'match-fixed', 'match-income', 'unignore']
+      ['add', 'add-income', 'bucket', 'card-payment', 'ignore', 'insurance', 'match', 'match-fixed', 'match-income', 'unignore']
     );
   });
 });

@@ -93,7 +93,7 @@ const EXPECTED_TABLES = {
   plaid_fixed_expense_links: ['id', 'plaid_transaction_id', 'fixed_expense_id', 'landed_date', 'planned_amount', 'created_at'],
   plaid_income_links: ['id', 'plaid_transaction_id', 'income_source_id', 'landed_date', 'planned_amount', 'created_at'],
   plaid_card_payment_links: ['id', 'plaid_transaction_id', 'credit_card_payment_id', 'side', 'created_at'],
-  plaid_insurance_links: ['id', 'plaid_transaction_id', 'expense_id', 'amount', 'previous_amount', 'previous_status', 'previous_people', 'created_at']
+  plaid_insurance_links: ['id', 'plaid_transaction_id', 'expense_id', 'amount', 'previous_amount', 'previous_status', 'previous_people', 'outside_bank', 'created_at']
 };
 
 const TABLE_NAMES = Object.keys(EXPECTED_TABLES);

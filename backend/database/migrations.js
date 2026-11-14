@@ -327,6 +327,18 @@ const MIGRATIONS = [
     }
   },
   {
+    // What a claim marked Paid by hand had been reimbursed outside the bank, decided when its first deposit is
+    // applied (0 when that deposit is the insurer's payout). NULL on older links: derived from the snapshot.
+    name: 'plaid_insurance_links_outside_bank_v1',
+    async apply(db) {
+      try {
+        await runSql(db, 'ALTER TABLE plaid_insurance_links ADD COLUMN outside_bank REAL');
+      } catch (err) {
+        if (!err.message.includes('duplicate column name')) throw err;
+      }
+    }
+  },
+  {
     // Spec 2.1 + 3.1: keep the other fields Plaid sends for each staged transaction, and the Inbox tab of each
     // row (To review = 'spending', Not expenses = 'not_expense'; bucket_overridden = moved by hand). Rows already
     // staged with a category (to review or ignored) are classified here; rows without one stay in To review.

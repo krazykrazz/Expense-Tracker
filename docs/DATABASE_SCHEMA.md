@@ -556,6 +556,7 @@ An insurer's bank deposit applied to medical insurance claims (Import Inbox → 
 | previous_amount | REAL NOT NULL | The claim's out-of-pocket before the bank |
 | previous_status | TEXT | Its claim status before the bank |
 | previous_people | TEXT | JSON `[{ personId, amount }]`: each person's out-of-pocket before the bank |
+| outside_bank | REAL | What was reimbursed outside the bank before the first deposit, decided when it was applied (a claim marked Paid by hand: 0 when the deposit is the payout, original − out-of-pocket when it is a second plan's co-pay). NULL on older links (derived as before) |
 | created_at | TEXT NOT NULL | Timestamp |
 
 **Constraints**: `UNIQUE (plaid_transaction_id, expense_id)`.

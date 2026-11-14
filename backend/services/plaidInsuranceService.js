@@ -6,7 +6,8 @@ const dbHelper = require('../utils/dbHelper');
 const { toCents, round2 } = require('../utils/money');
 const { shiftDate, transactionDate, isDeposit, descriptionKey } = require('../utils/plaidMatching');
 const {
-  OPEN_STATUSES, expectedPayout, rankClaims, prefillSplit, outOfPocketAfter, claimBaseline, peopleAfter
+  OPEN_STATUSES, expectedPayout, paidWithoutBank, outsideBankForFirstDeposit, rankClaims, prefillSplit,
+  outOfPocketAfter, claimBaseline, peopleAfter
 } = require('../utils/insuranceReimbursement');
 const { fail, defaultPlace, money, describeTxn, exclusive, requireNew, logReview } = require('./plaidInboxSupport');
 
@@ -67,7 +68,12 @@ class PlaidInsuranceService {
 
     const rows = (await plaidInsuranceRepository.findCandidateClaims(shiftDate(deposit.date, -CLAIM_WINDOW_DAYS), deposit.date))
       .map(withBaseline);
-    const shown = includePaid ? rows : rows.filter(row => row.claimStatus !== 'paid');
+    // Paid claims are listed on request, except one marked Paid by hand that this deposit fits exactly (marked
+    // ahead of the payout, or a second plan paying its co-pay)
+    const cents = toCents(deposit.amount);
+    const fitsPaidByHand = (row) => paidWithoutBank(row)
+      && (toCents(expectedPayout({ ...row, originalCost: row.baseline.original })) === cents || toCents(row.outOfPocket) === cents);
+    const shown = includePaid ? rows : rows.filter(row => row.claimStatus !== 'paid' || fitsPaidByHand(row));
     const people = await plaidInsuranceRepository.findPeopleForExpenses(shown.map(row => row.expenseId));
 
     const ranked = rankClaims(deposit.amount, shown.map(row => ({
@@ -79,6 +85,8 @@ class PlaidInsuranceService {
       outOfPocket: row.outOfPocket,
       reimbursed: row.reimbursed,
       unreimbursed: row.baseline.unreimbursed,
+      linkCount: row.linkCount,
+      paidWithoutBank: paidWithoutBank(row),
       people: (people.get(row.expenseId) || []).map(({ personId, name, originalAmount, amount }) => ({ personId, name, originalAmount, amount }))
     })));
 
@@ -113,9 +121,12 @@ class PlaidInsuranceService {
       plaidInsuranceRepository.findCandidateClaims(shiftDate(dates[0], -CLAIM_WINDOW_DAYS), dates[dates.length - 1])
     ]);
     const open = claims
-      .filter(claim => OPEN_STATUSES.includes(claim.claimStatus))
-      .map(claim => ({ date: claim.date, payout: toCents(expectedPayout({ ...claim, originalCost: claimBaseline(claim).original })) }))
-      .filter(claim => claim.payout > 0);
+      .filter(claim => OPEN_STATUSES.includes(claim.claimStatus) || paidWithoutBank(claim))
+      .flatMap(claim => {
+        const payout = toCents(expectedPayout({ ...claim, originalCost: claimBaseline(claim).original }));
+        const coPay = paidWithoutBank(claim) ? toCents(claim.outOfPocket) : 0;
+        return [payout, coPay].filter(cents => cents > 0).map(cents => ({ date: claim.date, payout: cents }));
+      });
 
     for (const row of deposits) {
       const date = transactionDate(row);
@@ -144,14 +155,21 @@ class PlaidInsuranceService {
       const applied = await dbHelper.runInTransaction(async (tx) => {
         const ids = wanted.map(claim => claim.expenseId);
         const rows = new Map((await plaidInsuranceRepository.findClaimsByIds(ids, tx)).map(row => [row.expenseId, withBaseline(row)]));
+        // A claim's first deposit decides what it had been reimbursed outside the bank (see outsideBankForFirstDeposit)
+        const outsideBank = new Map();
         for (const { expenseId, amount } of wanted) {
           const row = rows.get(expenseId);
           if (!row) throw fail(`Expense ${expenseId} not found`, 404);
           if (row.insuranceEligible !== 1 || row.type !== INSURANCE_TYPE || !CLAIM_STATUSES.includes(row.claimStatus)) {
             throw fail(`"${row.place || 'Expense'}" (${row.date}) is not an insurance claim that can be reimbursed`, 400);
           }
-          if (toCents(amount) > toCents(row.baseline.unreimbursed)) {
-            throw fail(`"${row.place || 'Expense'}" (${row.date}) has at most ${money(Math.max(0, row.baseline.unreimbursed))} left to reimburse`, 400);
+          const outside = paidWithoutBank(row)
+            ? outsideBankForFirstDeposit({ originalCost: row.baseline.original, outOfPocket: row.outOfPocket }, amount)
+            : row.baseline.outsideBank;
+          outsideBank.set(expenseId, outside);
+          const left = toCents(row.baseline.original) - toCents(outside) - toCents(row.reimbursed);
+          if (toCents(amount) > left) {
+            throw fail(`"${row.place || 'Expense'}" (${row.date}) has at most ${money(Math.max(0, left / 100))} left to reimburse`, 400);
           }
         }
         const people = await plaidInsuranceRepository.findPeopleForExpenses(ids, tx);
@@ -170,10 +188,11 @@ class PlaidInsuranceService {
             amount,
             previousAmount: row.outOfPocket,
             previousStatus: row.claimStatus,
-            previousPeople: claimPeople.map(({ personId, amount: personAmount }) => ({ personId, amount: personAmount }))
+            previousPeople: claimPeople.map(({ personId, amount: personAmount }) => ({ personId, amount: personAmount })),
+            outsideBank: outsideBank.get(expenseId)
           });
           const snapshotPeople = row.snapshotPeople ?? claimPeople.map(({ personId, amount: a }) => ({ personId, amount: a }));
-          const after = await this._recompute(tx, row, toCents(row.reimbursed) + toCents(amount), claimPeople, snapshotPeople);
+          const after = await this._recompute(tx, row, toCents(row.reimbursed) + toCents(amount), claimPeople, snapshotPeople, outsideBank.get(expenseId));
           results.push({ ...this._summary(row, after), amount });
         }
         return results;
@@ -291,8 +310,8 @@ class PlaidInsuranceService {
    * Write a claim's out-of-pocket, Paid status and people amounts for `bankCents` reimbursed by deposits.
    * People without an original amount are shared on their amount before the bank (the snapshot).
    */
-  async _recompute(conn, row, bankCents, claimPeople, snapshotPeople) {
-    const total = row.baseline.outsideBank + bankCents / 100;
+  async _recompute(conn, row, bankCents, claimPeople, snapshotPeople, outsideBank = row.baseline.outsideBank) {
+    const total = outsideBank + bankCents / 100;
     const outOfPocket = outOfPocketAfter(row.baseline.original, total);
     const before = new Map(snapshotPeople.map(person => [person.personId, person.amount]));
     const people = peopleAfter(claimPeople.map(person => ({

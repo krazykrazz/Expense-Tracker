@@ -49,6 +49,14 @@ describe('businessDays', () => {
       expect(holidays.has('2027-12-28')).toBe(true);
     });
 
+    it('moves Boxing Day to Tuesday when Christmas is a Sunday and takes Monday', () => {
+      for (const year of [2022, 2033]) {
+        const holidays = getHolidaysForYear(year);
+        expect(holidays.has(`${year}-12-26`)).toBe(true);
+        expect(holidays.has(`${year}-12-27`)).toBe(true);
+      }
+    });
+
     it('observes New Year\'s Day on Monday when Jan 1 is a Saturday', () => {
       // Jan 1 2028 is a Saturday -> observed Monday Jan 3
       const holidays = getHolidaysForYear(2028);

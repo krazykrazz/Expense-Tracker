@@ -49,7 +49,7 @@ export const CardBankBalanceCauses = ({ check }) => {
       </div>
       <ul>
         {causes.map(cause => (
-          <li key={`${cause.type}-${cause.transactionId ?? cause.kind ?? ''}-${cause.id ?? cause.expenseId ?? ''}`}>{describeCause(cause)}</li>
+          <li key={`${cause.type}-${cause.transactionId ?? cause.kind ?? ''}-${cause.id ?? cause.expenseId ?? ''}`}>{describeCause(cause, check)}</li>
         ))}
         {unexplained && (
           <li>

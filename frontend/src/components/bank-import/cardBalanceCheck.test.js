@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { describeCause, inboxViewFor } from './cardBalanceCheck';
+import { bankLagNote, describeCause, inboxViewFor } from './cardBalanceCheck';
 
 describe('cardBalanceCheck describeCause', () => {
   it('explains a transaction that is only in a bank file', () => {
@@ -20,6 +20,17 @@ describe('cardBalanceCheck describeCause', () => {
   it('explains a pending charge on a bank that leaves pending out', () => {
     expect(describeCause({ type: 'settling', name: 'Sobeys', amount: 12.41, date: '2026-11-05' }))
       .toBe('Still pending at the bank, which leaves pending charges out of its balance: Sobeys $12.41 (2026-11-05)');
+  });
+
+  it('says the bank\'s balance is older than when it was received (WS VISA, Nov 11: fetched 3:51 PM, received 8:45 PM)', () => {
+    const tire = { type: 'likely_pending', name: 'Canadian Tire', amount: 30.5, date: '2026-11-10' };
+    const stale = { bank: { asOf: '2026-11-11T20:51:15Z', receivedAt: '2026-11-12T01:45:00Z' } };
+    const fresh = { bank: { asOf: '2026-11-12T01:30:00Z', receivedAt: '2026-11-12T01:45:00Z' } };
+
+    expect(describeCause(tire, stale)).toMatch(/\(the bank's balance is from .+; it may have settled since\)$/);
+    expect(describeCause(tire, fresh)).not.toMatch(/may have settled since/);
+    expect(describeCause({ type: 'bank_only', name: 'X', amount: 5, date: '2026-11-10' }, stale)).not.toMatch(/may have settled since/);
+    expect(bankLagNote({ bank: { asOf: null, receivedAt: null } })).toBeNull();
   });
 });
 

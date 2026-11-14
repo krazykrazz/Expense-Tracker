@@ -27,8 +27,31 @@ export function bankBalanceLabel(card) {
   return `Bank: ${formatCurrency(card.bank.owed)}${card.bank.includesPending ? ' incl. pending' : ''}${when ? ` (as of ${when})` : ''}`;
 }
 
-/** One line per likely cause of a difference. */
-export function describeCause(cause) {
+/** Plaid's copy of the bank's balance is at least this much older than when we received it: say so. */
+const LAG_NOTE_MS = 60 * 60 * 1000;
+
+/**
+ * "the bank's balance is from 3:51 PM; it may have settled since", when Plaid last fetched the bank's figures well
+ * before we received them, so a charge named as still pending may already have posted. Null otherwise.
+ */
+export function bankLagNote(card) {
+  const bank = card && card.bank;
+  if (!bank || !bank.asOf || !bank.receivedAt) return null;
+  if (new Date(bank.receivedAt).getTime() - new Date(bank.asOf).getTime() < LAG_NOTE_MS) return null;
+  const when = formatTime(bank.asOf);
+  return when ? `the bank's balance is from ${when}; it may have settled since` : null;
+}
+
+const PENDING_CAUSES = new Set(['settling', 'likely_pending']);
+
+/** One line per likely cause of a difference; `card` adds the lag note to charges named as still pending. */
+export function describeCause(cause, card = null) {
+  const text = describeCauseText(cause);
+  const note = PENDING_CAUSES.has(cause.type) ? bankLagNote(card) : null;
+  return note ? `${text} (${note})` : text;
+}
+
+function describeCauseText(cause) {
   const what = `${cause.name || 'Unnamed'} ${formatCurrency(Math.abs(cause.amount))} (${cause.date})`;
   switch (cause.type) {
     case 'bank_only':
@@ -84,7 +107,7 @@ export function balanceCheckTitle(card) {
   const lines = [describeDifference(card.difference), bankBalanceLabel(card), `Tracker: ${formatCurrency(card.tracker)} as of today`];
   if (card.bankError) lines.push(card.bankError);
   if (card.status === 'differs') {
-    for (const cause of card.causes || []) lines.push(`• ${describeCause(cause)}`);
+    for (const cause of card.causes || []) lines.push(`• ${describeCause(cause, card)}`);
     if (Math.abs(card.unexplained || 0) >= 0.005) lines.push(`• ${formatCurrency(Math.abs(card.unexplained))} not explained by the bank's recent history`);
   }
   if (card.futureDated?.count > 0) {

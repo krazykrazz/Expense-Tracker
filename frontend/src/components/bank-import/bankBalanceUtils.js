@@ -49,8 +49,9 @@ function staleReason(accounts, asOf, now) {
  *   balanceCurrency?: string|null, balanceAsOf?: string|null, bankStatus?: string, bankUpdatedAt?: string|null}>|undefined} accounts
  *   the bank accounts mapped to one payment method
  * @param {number} [now] epoch ms, for tests
- * @returns {{total: number, available: (number|null), asOf: (string|null), stale: boolean,
+ * @returns {{total: number, available: (number|null), asOf: (string|null), receivedAt: (string|null), stale: boolean,
  *   staleReason: ('login'|'error'|'plaid'|'old'|null), bankUpdatedAt: (string|null), currency: (string|null)}|null}
+ *   `asOf`: how new the bank's figures are (the earlier of when we received them and Plaid's last fetch from the bank)
  *   null without accounts, or when a sum would mislead: an account has no balance yet, they differ in currency, or one
  *   isn't a deposit account (a card or loan balance is an amount owed, not money in the bank)
  */
@@ -66,10 +67,13 @@ export function bankBalanceOf(accounts, now = Date.now()) {
   const available = accounts.every(account => typeof account.availableBalance === 'number')
     ? round2(accounts.reduce((sum, account) => sum + account.availableBalance, 0))
     : null;
-  const asOf = accounts.map(account => account.balanceAsOf).filter(Boolean).sort()[0] ?? null;
+  // How new the figures are: Plaid's balance is only as new as its last fetch from the bank (bankUpdatedAt),
+  // which can be hours before we asked for it (receivedAt)
+  const asOf = accounts.map(account => [account.balanceAsOf, account.bankUpdatedAt].filter(Boolean).sort()[0]).filter(Boolean).sort()[0] ?? null;
+  const receivedAt = accounts.map(account => account.balanceAsOf).filter(Boolean).sort()[0] ?? null;
   const bankUpdatedAt = accounts.map(account => account.bankUpdatedAt).filter(Boolean).sort()[0] ?? null;
   const reason = staleReason(accounts, asOf, now);
-  return { total, available, asOf, stale: reason !== null, staleReason: reason, bankUpdatedAt, currency: currencies[0] };
+  return { total, available, asOf, receivedAt, stale: reason !== null, staleReason: reason, bankUpdatedAt, currency: currencies[0] };
 }
 
 const hasDifferentAvailable = (balance) => balance.available != null && Math.abs(balance.available - balance.total) >= 0.005;
@@ -95,7 +99,9 @@ export function bankBalanceTitle(balance) {
   const lines = [`Bank balance: ${formatCAD(balance.total)}${balance.currency && balance.currency !== EXPECTED_CURRENCY ? ` ${balance.currency}` : ''}`];
   if (hasDifferentAvailable(balance)) lines.push(`Available: ${formatCAD(balance.available)}`);
   const when = balance.asOf ? formatDateTime(balance.asOf) : null;
-  if (when) lines.push(`Received ${when}`);
+  if (when) lines.push(`Bank's figures from ${when}`);
+  const received = balance.receivedAt && balance.receivedAt !== balance.asOf ? formatDateTime(balance.receivedAt) : null;
+  if (received) lines.push(`Received ${received} (Plaid hadn't fetched newer figures from the bank)`);
   if (balance.staleReason === 'plaid' && balance.bankUpdatedAt) {
     const since = formatDateTime(balance.bankUpdatedAt);
     if (since) lines.push(`Plaid last had data from the bank ${since}`);

@@ -87,17 +87,12 @@ function goodFriday(year) {
 
 /**
  * Add a fixed-date holiday to the set, applying in-lieu observance: if it falls
- * on a weekend, it is observed on the next non-holiday weekday instead.
+ * on a weekend, or on a day another holiday's in-lieu day already took (Boxing
+ * Day when Christmas is a Sunday), it is observed on the next free weekday.
  */
 function addObserved(set, dateStr) {
-  if (!isWeekend(dateStr)) {
-    set.add(dateStr);
-    return;
-  }
   let d = dateStr;
-  do {
-    d = addDays(d, 1);
-  } while (isWeekend(d) || set.has(d));
+  while (isWeekend(d) || set.has(d)) d = addDays(d, 1);
   set.add(d);
 }
 

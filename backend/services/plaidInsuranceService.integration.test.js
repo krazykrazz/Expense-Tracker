@@ -199,22 +199,49 @@ describe('plaidInsuranceService', () => {
     expect(loggedEvents('expense_updated')).toHaveLength(3);
   });
 
-  test('a second plan paying the co-pay of a Paid claim, listed only with includePaid', async () => {
+  test('a second plan paying the co-pay of a claim marked Paid by hand: listed when it fits, leaves $0.00', async () => {
     const claimId = await claim({ status: 'paid', people: [[amara, 61, 6.1], [joliet, 56, 5.6]] });
+    const other = await claim({ place: 'Other paid', status: 'paid', originalCost: 50, amount: 5 });
     const depositId = await deposit('d-1', 11.7, { name: 'Second plan' });
     const before = await state(claimId);
 
-    const hidden = await plaidInsuranceService.candidates(depositId);
-    expect(hidden.candidates).toEqual([]);
-    expect(hidden.paidAvailable).toBe(1);
-    const shown = await plaidInsuranceService.candidates(depositId, { includePaid: true });
-    expect(shown.candidates).toEqual([expect.objectContaining({ expenseId: claimId, expectedPayout: 11.7, rank: 'exact' })]);
+    const listed = await plaidInsuranceService.candidates(depositId);
+    expect(listed.candidates).toEqual([expect.objectContaining({ expenseId: claimId, rank: 'exact', paidWithoutBank: true })]);
+    expect(listed.paidAvailable).toBe(1);
+    const all = await plaidInsuranceService.candidates(depositId, { includePaid: true });
+    expect(all.candidates.map(c => c.expenseId)).toEqual([claimId, other]);
 
     await plaidInsuranceService.apply(depositId, [{ expenseId: claimId, amount: 11.7 }]);
     expect(await state(claimId)).toMatchObject({ amount: 0, status: 'paid', people: [[amara, 0], [joliet, 0]] });
     expect(loggedEvents('insurance_status_changed')).toHaveLength(0);
 
     await plaidInsuranceService.unlink(depositId);
+    expect(await state(claimId)).toEqual(before);
+  });
+
+  test('a claim marked Paid by hand before its payout arrived (DSF, Nov 2026): the payout applies and leaves the co-pay', async () => {
+    const claimId = await claim({ status: 'paid', people: [[amara, 61, 6.1], [joliet, 56, 5.6]] });
+    const depositId = await deposit('dsf-1', 105.3);
+    const before = await state(claimId);
+
+    const listed = await plaidInsuranceService.candidates(depositId);
+    expect(listed.candidates).toEqual([expect.objectContaining({ expenseId: claimId, rank: 'exact', expectedPayout: 105.3, unreimbursed: 117 })]);
+    expect(listed.suggestion).toEqual([{ expenseId: claimId, amount: 105.3 }]);
+    const flags = await plaidInsuranceService.describeDeposits([await plaidRepository.findTransactionById(depositId)]);
+    expect(flags.get(depositId)).toEqual({ suggested: true });
+
+    await plaidInsuranceService.apply(depositId, listed.suggestion);
+    expect(await state(claimId)).toEqual({ amount: 11.7, status: 'paid', originalCost: 117, people: [[amara, 6.1], [joliet, 5.6]] });
+
+    // A second plan then pays the co-pay
+    const secondId = await deposit('plan-2', 11.7, { name: 'Second plan' });
+    await plaidInsuranceService.apply(secondId, [{ expenseId: claimId, amount: 11.7 }]);
+    expect(await state(claimId)).toMatchObject({ amount: 0, people: [[amara, 0], [joliet, 0]] });
+
+    // Undoing the payout leaves the second plan's deposit, still counted against the original cost
+    await plaidInsuranceService.unlink(depositId);
+    expect(await state(claimId)).toMatchObject({ amount: 105.3, status: 'paid' });
+    await plaidInsuranceService.unlink(secondId);
     expect(await state(claimId)).toEqual(before);
   });
 

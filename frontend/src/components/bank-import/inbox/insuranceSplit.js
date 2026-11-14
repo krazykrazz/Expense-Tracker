@@ -57,10 +57,17 @@ export function prefillSplit(depositCents, picked) {
  */
 export function claimAfter(claim, amount) {
   const originalCents = toCents(claim.originalCost);
-  const openCents = claim.unreimbursed != null
+  const amountCents = toCents(amount || 0);
+  let openCents = claim.unreimbursed != null
     ? toCents(claim.unreimbursed)
     : originalCents - toCents(claim.reimbursed || 0);
-  const amountCents = toCents(amount || 0);
+  if (claim.paidWithoutBank) {
+    // Marked Paid by hand, no deposit yet: up to the co-pay (and not the expected payout) is a second plan paying
+    // it, so the payout came outside the bank; anything else is the payout (as backend outsideBankForFirstDeposit)
+    const coPay = toCents(claim.outOfPocket);
+    const secondPlan = amountCents <= coPay && amountCents !== originalCents - coPay;
+    openCents = originalCents - (secondPlan ? originalCents - coPay : 0);
+  }
   const totalCents = originalCents - openCents + amountCents;
 
   const people = claim.people || [];

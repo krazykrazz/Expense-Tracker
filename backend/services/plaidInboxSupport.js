@@ -9,6 +9,7 @@ const activityLogService = require('./activityLogService');
  */
 
 const { fail } = require('../utils/httpError');
+const { nextBusinessDay } = require('../utils/businessDays');
 
 /**
  * The expense/income/payment services throw plain Errors for invalid input: those become 400. Database errors
@@ -96,7 +97,19 @@ async function postedDateFor(expense, bankPostedDate, plaidAccountId) {
   return postedDateChange(expense, bankPostedDate, real);
 }
 
+/**
+ * Posted date for a card charge that settled without one from the bank (Wealthsimple, settled from the balance):
+ * the expense form's estimate (next business day after the purchase), but not after `today`, when the settlement
+ * was seen. A posted date already on the expense is kept.
+ * @returns {{posted_date: string}|null}
+ */
+function estimatedPostedDate(expense, today) {
+  if (expense.posted_date) return null;
+  const estimate = nextBusinessDay(expense.date);
+  return postedDateChange(expense, estimate < today ? estimate : today);
+}
+
 module.exports = {
   fail, asInputError, round2, defaultPlace, incomeDescription, money, describeTxn, exclusive, requireNew, logReview,
-  postedDateChange, postedDateFor
+  postedDateChange, postedDateFor, estimatedPostedDate
 };

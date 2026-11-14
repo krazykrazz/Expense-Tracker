@@ -13,7 +13,7 @@ const CLAIM_SELECT = `
          COALESCE((SELECT SUM(l.amount) FROM plaid_insurance_links l WHERE l.expense_id = e.id), 0) AS reimbursed,
          (SELECT COUNT(*) FROM plaid_insurance_links l WHERE l.expense_id = e.id) AS linkCount,
          f.previous_amount AS firstPreviousAmount, f.previous_status AS firstPreviousStatus,
-         f.previous_people AS firstPreviousPeople
+         f.previous_people AS firstPreviousPeople, f.outside_bank AS firstOutsideBank
   FROM expenses e
   LEFT JOIN plaid_insurance_links f
     ON f.id = (SELECT MIN(l.id) FROM plaid_insurance_links l WHERE l.expense_id = e.id)`;
@@ -83,7 +83,8 @@ class PlaidInsuranceRepository {
   async findLinksForClaim(expenseId, conn = null) {
     return allOn(conn)(
       `SELECT id, plaid_transaction_id AS plaidTransactionId, expense_id AS expenseId, amount,
-              previous_amount AS previousAmount, previous_status AS previousStatus, previous_people AS previousPeople
+              previous_amount AS previousAmount, previous_status AS previousStatus, previous_people AS previousPeople,
+              outside_bank AS outsideBank
        FROM plaid_insurance_links WHERE expense_id = ? ORDER BY id`,
       [expenseId]
     );
@@ -148,22 +149,23 @@ class PlaidInsuranceRepository {
 
   /**
    * @param {{transactionId: number, expenseId: number, amount: number, previousAmount: number,
-   *   previousStatus: (string|null), previousPeople: Array<{personId: number, amount: number}>}} link
+   *   previousStatus: (string|null), previousPeople: Array<{personId: number, amount: number}>, outsideBank: number}} link
+   *   `outsideBank`: what the claim had been reimbursed outside the bank before its first deposit
    */
-  async insertLink(conn, { transactionId, expenseId, amount, previousAmount, previousStatus, previousPeople }) {
+  async insertLink(conn, { transactionId, expenseId, amount, previousAmount, previousStatus, previousPeople, outsideBank }) {
     await conn.run(
       `INSERT INTO plaid_insurance_links
-         (plaid_transaction_id, expense_id, amount, previous_amount, previous_status, previous_people)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [transactionId, expenseId, amount, previousAmount, previousStatus, JSON.stringify(previousPeople)]
+         (plaid_transaction_id, expense_id, amount, previous_amount, previous_status, previous_people, outside_bank)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [transactionId, expenseId, amount, previousAmount, previousStatus, JSON.stringify(previousPeople), outsideBank]
     );
   }
 
   /** Copy a before-the-bank snapshot onto another link (the claim's next earliest, when the earliest is undone). */
-  async updateLinkSnapshot(conn, linkId, { previousAmount, previousStatus, previousPeople }) {
+  async updateLinkSnapshot(conn, linkId, { previousAmount, previousStatus, previousPeople, outsideBank }) {
     await conn.run(
-      'UPDATE plaid_insurance_links SET previous_amount = ?, previous_status = ?, previous_people = ? WHERE id = ?',
-      [previousAmount, previousStatus, previousPeople, linkId]
+      'UPDATE plaid_insurance_links SET previous_amount = ?, previous_status = ?, previous_people = ?, outside_bank = ? WHERE id = ?',
+      [previousAmount, previousStatus, previousPeople, outsideBank ?? null, linkId]
     );
   }
 

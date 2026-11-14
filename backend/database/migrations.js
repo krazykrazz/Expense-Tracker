@@ -308,6 +308,18 @@ const MIGRATIONS = [
       await runSql(db, 'DROP TABLE IF EXISTS mortgage_payments');
       logger.info('Dropped mortgage_payments table');
     }
+  },
+  {
+    // What a claim marked Paid by hand had been reimbursed outside the bank, decided when its first deposit is
+    // applied (0 when that deposit is the insurer's payout). NULL on older links: derived from the snapshot.
+    name: 'plaid_insurance_links_outside_bank_v1',
+    async apply(db) {
+      try {
+        await runSql(db, 'ALTER TABLE plaid_insurance_links ADD COLUMN outside_bank REAL');
+      } catch (err) {
+        if (!err.message.includes('duplicate column name')) throw err;
+      }
+    }
   }
 ];
 

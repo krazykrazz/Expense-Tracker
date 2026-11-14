@@ -43,7 +43,10 @@ class PlaidCardBalanceService {
     const bank = owedParts.some(part => part === null) ? null : {
       owed: round2(owedParts.reduce((sum, part) => sum + part.owed, 0)),
       includesPending: owedParts.every(part => part.includesPending),
-      asOf: accounts.map(a => a.balanceAsOf).sort()[0] || null,
+      // How new the bank's figures are: Plaid's balance is only as new as its last fetch from the bank, which can
+      // be hours before we asked for it (`receivedAt`)
+      asOf: accounts.map(a => [a.balanceAsOf, a.bankUpdatedAt].filter(Boolean).sort()[0]).filter(Boolean).sort()[0] || null,
+      receivedAt: accounts.map(a => a.balanceAsOf).filter(Boolean).sort()[0] || null,
       currency: first.currency || null
     };
 
@@ -291,7 +294,7 @@ class PlaidCardBalanceService {
       for (const cause of posted.filter(c => settled.includes(c.transactionId))) {
         settlements.push({
           plaidTransactionId: cause.transactionId, expenseId: cause.expenseId, settled: true,
-          previousAmount: cause.amount, amount: cause.amount, postedDate: null
+          previousAmount: cause.amount, amount: cause.amount, postedDate: null, estimatePostedDate: true
         });
       }
     }

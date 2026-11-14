@@ -44,7 +44,17 @@ describe('insuranceSplit', () => {
     expect(claimAfter({ ...cheo, reimbursed: 15 }, 6)).toMatchObject({ over: true });
   });
 
-  it('a second plan paying the co-pay of a claim marked Paid by hand leaves $0.00 (the server sends what is still open)', () => {
+  it('a claim marked Paid by hand: the payout leaves the co-pay, a second plan paying the co-pay leaves $0.00', () => {
+    // Carp Chiro marked Paid before the DSF deposit arrived (Nov 2026)
+    const paidByHand = { originalCost: 117, outOfPocket: 11.7, unreimbursed: 117, paidWithoutBank: true, people: carpChiro.people };
+
+    expect(claimAfter(paidByHand, 105.3)).toMatchObject({ outOfPocket: 11.7, over: false });
+    expect(claimAfter(paidByHand, 105.3).people.map(p => p.amount)).toEqual([6.1, 5.6]);
+    expect(claimAfter(paidByHand, 11.7)).toMatchObject({ outOfPocket: 0, over: false });
+    expect(claimAfter(paidByHand, 117.01)).toMatchObject({ over: true });
+  });
+
+  it('a claim whose payout already came (the server sends only the co-pay as open): a second plan paying it leaves $0.00', () => {
     const paid = { originalCost: 117, unreimbursed: 11.7, people: carpChiro.people };
 
     expect(claimAfter(paid, 11.7)).toEqual({

@@ -21,15 +21,36 @@ const originalOf = (claim) => claim.originalCost ?? claim.outOfPocket;
 
 /**
  * What the insurer is expected to pay: original cost − out-of-pocket − already reimbursed for an open claim (the
- * owner's estimate entered with the claim); the out-of-pocket amount for a Paid claim (a second plan paying the
- * co-pay). Never below $0.
+ * owner's estimate entered with the claim), and for a claim marked Paid by hand before any bank deposit (marked
+ * ahead of the payout: its main payout is still to come); the out-of-pocket amount for a Paid claim a deposit
+ * already paid (a second plan paying the co-pay). Never below $0.
  * @returns {number} dollars
  */
 function expectedPayout(claim) {
-  const cents = claim.claimStatus === 'paid'
+  const secondPlan = claim.claimStatus === 'paid' && (claim.linkCount || 0) > 0;
+  const cents = secondPlan
     ? toCents(claim.outOfPocket)
     : toCents(originalOf(claim)) - toCents(claim.outOfPocket) - toCents(claim.reimbursed || 0);
   return fromCents(Math.max(0, cents));
+}
+
+/** A claim marked Paid by hand with no bank deposit yet: its first deposit is either the payout or a second plan. */
+const paidWithoutBank = (claim) => claim.claimStatus === 'paid' && !((claim.linkCount || 0) > 0);
+
+/**
+ * What a claim marked Paid by hand had been reimbursed outside the bank, decided by its first deposit: a deposit
+ * up to its co-pay (and not exactly the expected payout) is a second plan paying the co-pay, so the payout came
+ * outside the bank (original − co-pay); any other deposit is the payout itself (nothing outside the bank).
+ * @param {{originalCost: (number|null), outOfPocket: number}} claim
+ * @param {number} amount the first deposit's reimbursement (dollars)
+ * @returns {number} dollars
+ */
+function outsideBankForFirstDeposit(claim, amount) {
+  const original = toCents(originalOf(claim));
+  const coPay = toCents(claim.outOfPocket);
+  const cents = toCents(amount);
+  const secondPlan = cents <= coPay && cents !== original - coPay;
+  return fromCents(secondPlan ? Math.max(0, original - coPay) : 0);
 }
 
 /** In progress before Not claimed before Paid, oldest first. */
@@ -68,7 +89,9 @@ function rankClaims(deposit, claims) {
   const ranked = claims.map(claim => ({ ...claim, expectedPayout: expectedPayout(claim), rank: null })).sort(baseOrder);
 
   for (const claim of ranked) {
-    if (target > 0 && toCents(claim.expectedPayout) === target) claim.rank = 'exact';
+    // A claim marked Paid by hand also fits a second plan paying its co-pay
+    const coPayFits = paidWithoutBank(claim) && toCents(claim.outOfPocket) === target;
+    if (target > 0 && (toCents(claim.expectedPayout) === target || coPayFits)) claim.rank = 'exact';
   }
   if (!ranked.some(claim => claim.rank === 'exact')) {
     const pool = ranked.filter(claim => OPEN_STATUSES.includes(claim.claimStatus) && toCents(claim.expectedPayout) > 0);
@@ -138,11 +161,12 @@ function outOfPocketAfter(originalCost, totalReimbursed) {
 
 /**
  * Where a claim stood before any bank deposit: from its earliest link's snapshot when it has links, else its
- * current state. A claim already Paid then had been reimbursed outside the bank (original − out-of-pocket, e.g.
- * marked Paid by hand before a second plan pays the co-pay); an open claim's out-of-pocket is only an estimate,
- * so nothing counts as reimbursed yet.
+ * current state. `outsideBank` is what was reimbursed outside the bank: decided by the first deposit and stored
+ * on its link (see outsideBankForFirstDeposit); older links without it derive it (a claim already Paid then:
+ * original − out-of-pocket). Before any deposit nothing counts as reimbursed, so a claim marked Paid by hand may
+ * still take up to its whole original cost (its first deposit decides which case it is).
  * @param {{originalCost: (number|null), outOfPocket: number, claimStatus: (string|null), reimbursed: number,
- *   linkCount?: number, firstPreviousAmount?: number, firstPreviousStatus?: (string|null)}} claim
+ *   linkCount?: number, firstPreviousAmount?: number, firstPreviousStatus?: (string|null), firstOutsideBank?: (number|null)}} claim
  * @returns {{beforeAmount: number, beforeStatus: (string|null), original: number, outsideBank: number, unreimbursed: number}}
  *   dollars; `unreimbursed` is what the bank may still pay (original − outside the bank − bank so far)
  */
@@ -151,7 +175,12 @@ function claimBaseline(claim) {
   const beforeAmount = linked ? claim.firstPreviousAmount : claim.outOfPocket;
   const beforeStatus = linked ? claim.firstPreviousStatus : claim.claimStatus;
   const original = claim.originalCost ?? beforeAmount;
-  const outsideBank = beforeStatus === 'paid' ? Math.max(0, toCents(original) - toCents(beforeAmount)) : 0;
+  let outsideBank = 0;
+  if (linked) {
+    outsideBank = claim.firstOutsideBank != null
+      ? toCents(claim.firstOutsideBank)
+      : (beforeStatus === 'paid' ? Math.max(0, toCents(original) - toCents(beforeAmount)) : 0);
+  }
   return {
     beforeAmount,
     beforeStatus,
@@ -192,6 +221,8 @@ module.exports = {
   MAX_COMBINATION_CLAIMS,
   OPEN_STATUSES,
   expectedPayout,
+  paidWithoutBank,
+  outsideBankForFirstDeposit,
   rankClaims,
   prefillSplit,
   outOfPocketAfter,

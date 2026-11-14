@@ -573,11 +573,20 @@ The budget plan already has monthly allocations ("RRSP $300", optionally linked 
 
 ### 3.6 Refunds as reimbursements
 
+**Why (2026-11-14):** a HomeSense charge on CIBC MC with $13.74 of it returned. Spending should drop by the refund in the purchase's month, and the card balance by the credit when the bank posts it. The reimbursement fields alone can't do both: the card balance counts `COALESCE(original_cost, amount)`, so a refund recorded only as a reimbursement leaves the tracker's card balance $13.74 above the bank once the credit posts. **Workaround until built:** set the reimbursement by hand (Original Cost = the charge, Amount = net), then **Record payment** on the refund credit when it reaches the Inbox (3.2); a payment lowers the balance on its own date and isn't spending.
+
 **Requirements**
-1. A refund (credit, bucket spending) offers **Apply to an expense**. Candidates: same payment method, same merchant (place or `merchant_entity_id`), within 90 days before, with charged amount ≥ refund.
-2. Applying sets `original_cost` and `amount` via `expenseService.updateExpense` (card balance, log), `link_type = 'refund'`.
-3. **Full refund:** ask each time whether to delete the expense or keep it and ignore the refund (Q5).
-4. Insurance-tracked medical expenses are excluded.
+1. A refund (a settled credit on a card, bucket spending) offers **Apply to an expense**. Candidates: same payment method, same merchant (place or `merchant_entity_id`), within 90 days before, with charged amount (`COALESCE(original_cost, amount)`) ≥ refund. A refund already entered by hand as a reimbursement on a candidate (net amount = charged − refund to the cent, no refund link yet) ranks first and is pre-selected.
+2. **Applying does both, in one transaction:**
+   - **Spending:** the expense becomes a reimbursement through `expenseService.updateExpense` (log, validation): `original_cost` = the charge (kept when already set), `amount` = charged − everything refunded. Already entered by hand: unchanged.
+   - **Card balance:** the credit is recorded on the card on its posted date, so the tracker's balance and the statement it lands on match the bank. Recorded as a `credit_card_payments` row through `creditCardPaymentService.recordPayment` (the balance, statement and reminder logic already handle it), marked as a refund (`source = 'refund'` or a note) so the card's Payments tab says **Refund: <place>** instead of Payment.
+   - Link: `plaid_refund_links(plaid_transaction_id UNIQUE → CASCADE, expense_id → CASCADE, credit_card_payment_id → CASCADE, amount, previous_original_cost, previous_amount)`. A partial refund and later ones on the same expense each get a link.
+3. **Full refund:** ask each time whether to delete the expense or keep it at $0.00 out of pocket (allowed since 3.7) and record the credit (Q5).
+4. **Undo:** removes the credit and restores the expense's amount and original cost; the refund returns to the Inbox. Deleting the expense or the credit does the same for the other side.
+5. Insurance-tracked medical expenses are excluded (their reimbursements come from deposits, 3.7).
+6. **Non-card refunds** (a debit refund into chequing): only the spending side; there is no card balance to correct.
+
+**Tests:** partial refund (spending net, card balance = bank after posting, statement of the credit's cycle); refund entered by hand first then applied (no double reduction); two partial refunds; full refund both choices; undo; balance check shows no cause for an applied refund.
 
 ### 3.7 Insurance reimbursements close the claim
 

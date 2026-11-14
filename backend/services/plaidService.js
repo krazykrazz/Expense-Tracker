@@ -1,6 +1,7 @@
 const { Products } = require('plaid/legacy');
 const plaidConfig = require('../config/plaid');
 const plaidRepository = require('../repositories/plaidRepository');
+const plaidBucketRepository = require('../repositories/plaidBucketRepository');
 const paymentMethodRepository = require('../repositories/paymentMethodRepository');
 const settingsRepository = require('../repositories/settingsRepository');
 const activityLogService = require('./activityLogService');
@@ -271,6 +272,8 @@ class PlaidService {
 
     const updated = await plaidRepository.updateAccountPaymentMethod(accountId, mappedId);
     if ((account.paymentMethodId ?? null) !== mappedId) {
+      // A card and a chequing account classify the same row differently (Inbox tabs)
+      await plaidBucketRepository.classify(null, 'pt.plaid_account_id = ?', [account.id]);
       const label = `"${account.name}${account.mask ? ` ••${account.mask}` : ''}"`;
       await activityLogService.logEvent(
         'plaid_account_updated',

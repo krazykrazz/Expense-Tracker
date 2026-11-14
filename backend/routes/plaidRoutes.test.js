@@ -129,13 +129,25 @@ describe('plaid routes', () => {
     expect(plaidService.updateAccountMapping).toHaveBeenCalledWith(5, null);
   });
 
-  test('GET /inbox defaults to new and forwards the status filter', async () => {
+  test('GET /inbox defaults to new / To review and forwards the status and bucket filters', async () => {
     plaidInboxService.listInbox.mockResolvedValue({ transactions: [], hiddenUnmapped: 0 });
 
     await request(app).get('/api/plaid/inbox');
     await request(app).get('/api/plaid/inbox?status=ignored');
+    await request(app).get('/api/plaid/inbox?status=new&bucket=not_expense');
 
-    expect(plaidInboxService.listInbox.mock.calls).toEqual([['new'], ['ignored']]);
+    expect(plaidInboxService.listInbox.mock.calls).toEqual([['new', 'spending'], ['ignored', 'spending'], ['new', 'not_expense']]);
+  });
+
+  test('POST /inbox/:id/bucket passes the bucket and honours the service statusCode', async () => {
+    plaidReviewService.setBucket.mockResolvedValueOnce({ transaction: { id: 3, bucket: 'not_expense' } });
+    const ok = await request(app).post('/api/plaid/inbox/3/bucket').send({ bucket: 'not_expense' });
+    expect(ok.status).toBe(200);
+    expect(plaidReviewService.setBucket).toHaveBeenCalledWith(3, 'not_expense');
+
+    plaidReviewService.setBucket.mockRejectedValueOnce(Object.assign(new Error('Bank transaction was already added'), { statusCode: 409 }));
+    expect((await request(app).post('/api/plaid/inbox/3/bucket').send({ bucket: 'spending' })).status).toBe(409);
+    expect((await request(app).post('/api/plaid/inbox/abc/bucket').send({ bucket: 'spending' })).status).toBe(400);
   });
 
   test('POST /inbox/:id/add passes the edits and the tab id', async () => {

@@ -488,9 +488,12 @@ Posted bank transactions staged for review in the Import Inbox.
 | pending_transaction_id | TEXT | For a settled transaction, Plaid's id of its pending version |
 | removed_at | TEXT | Set when the bank dropped a pending row that was added/matched (kept for review: cancelled hold or settled under a new reference) |
 | pfc_primary, pfc_detailed, pfc_confidence | TEXT | Plaid's personal finance category (e.g. `LOAN_PAYMENTS` / `LOAN_PAYMENTS_CREDIT_CARD_PAYMENT`) and its confidence level. NULL for rows staged before it was stored and for rows from a bank file until Plaid takes them over; a sync without it keeps the stored value |
+| merchant_entity_id, logo_url, website, original_description, payment_channel | TEXT | Other fields Plaid sends, kept for later use (merchant rules, logos, refunds): Plaid's merchant id, logo and website, the bank's original description (requested with `include_original_description`) and the channel (`online`, `in store`, `other`). NULL for rows staged before `plaid_capture_v1` and for rows from a bank file; a sync without them keeps the stored values |
+| review_bucket | TEXT NOT NULL DEFAULT 'spending' | Inbox tab of a row: `'spending'` (To review) or `'not_expense'` (Not expenses: card payments, and transfers out of a bank account other than e-Transfers, see `utils/plaidClassification` `bucketFor`). Recomputed on every sync, file import and account mapping change while the row is `'new'`, unless `bucket_overridden` |
+| bucket_overridden | INTEGER NOT NULL DEFAULT 0 | 1 when the user moved the row between tabs; later syncs keep its bucket |
 | created_at, updated_at | TEXT NOT NULL | Timestamps |
 
-**Indexes**: `idx_plaid_transactions_status_date` (status, date), `idx_plaid_transactions_account` (plaid_account_id), `idx_plaid_transactions_expense` (UNIQUE on expense_id WHERE expense_id IS NOT NULL: one bank transaction per expense)
+**Indexes**: `idx_plaid_transactions_status_date` (status, date), `idx_plaid_transactions_account` (plaid_account_id), `idx_plaid_transactions_expense` (UNIQUE on expense_id WHERE expense_id IS NOT NULL: one bank transaction per expense), `idx_plaid_transactions_merchant_entity` (merchant_entity_id; created by migration `plaid_capture_v1`, so absent from test databases)
 
 Sync only modifies or deletes rows whose status is still 'new', except pending ones: a settled transaction replaces its pending row in place (keeping status and links), and a linked pending row the bank drops gets `removed_at` instead of being deleted. Deleting a linked expense puts its row back to 'new' (trigger `plaid_transactions_unlink_on_expense_delete`).
 
@@ -698,7 +701,7 @@ Migration tracking for database schema changes.
 | migration_name | TEXT NOT NULL UNIQUE | Name of the migration |
 | applied_at | TEXT DEFAULT CURRENT_TIMESTAMP | When the migration was applied |
 
-Current entries written by `runMigrations()`: `consolidated_schema_v1`, `auth_infrastructure_v1`, `dismissed_anomalies_nullable_expense_id_v1`, `performance_compound_indexes_v1`, `analytics_hub_revamp_v1`, `fixed_expenses_payment_method_id_backfill_v1`, `plaid_transactions_pending_v1`, `plaid_account_balances_v1`, `plaid_item_freshness_v1`, `plaid_transactions_pfc_v1`. See [Database Migrations](DATABASE_MIGRATIONS.md).
+Current entries written by `runMigrations()`: `consolidated_schema_v1`, `auth_infrastructure_v1`, `dismissed_anomalies_nullable_expense_id_v1`, `performance_compound_indexes_v1`, `analytics_hub_revamp_v1`, `fixed_expenses_payment_method_id_backfill_v1`, `plaid_transactions_pending_v1`, `plaid_account_balances_v1`, `plaid_item_freshness_v1`, `plaid_transactions_pfc_v1`, `plaid_capture_v1`. See [Database Migrations](DATABASE_MIGRATIONS.md).
 
 ## Relationships
 
@@ -814,7 +817,7 @@ Foreign keys are enforced (`PRAGMA foreign_keys = ON` per connection):
 - `payment_methods.type` enumeration; `credit_limit` NULL or > 0; `current_balance` >= 0; `payment_due_day`, `billing_cycle_start`, `billing_cycle_end`, `billing_cycle_day` NULL or 1-31
 - `credit_card_payments.amount` > 0
 - `credit_card_billing_cycles.actual_statement_balance`, `calculated_statement_balance` >= 0; `minimum_payment` NULL or >= 0; `balance_type` NULL, 'actual' or 'calculated'
-- `plaid_items.environment` 'sandbox'/'production'; `plaid_transactions.status` 'new'/'added'/'matched'/'ignored'
+- `plaid_items.environment` 'sandbox'/'production'; `plaid_transactions.status` 'new'/'added'/'matched'/'ignored'; `plaid_transactions.review_bucket` 'spending'/'not_expense'
 
 ## Schema Definition
 

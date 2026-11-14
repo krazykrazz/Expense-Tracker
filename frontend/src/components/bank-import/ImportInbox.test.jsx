@@ -16,6 +16,7 @@ vi.mock('../../services/plaidApi', () => ({
   resolveCancelledPending: vi.fn(),
   ignoreInboxTransaction: vi.fn(),
   unignoreInboxTransaction: vi.fn(),
+  setInboxTransactionBucket: vi.fn(),
 }));
 
 const txn = (overrides = {}) => ({
@@ -42,7 +43,7 @@ describe('ImportInbox', () => {
     expect(screen.getByText(/2 new transactions are hidden/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Map accounts' }));
     expect(onOpenConnections).toHaveBeenCalled();
-    expect(plaidApi.getInbox).toHaveBeenCalledWith('new', expect.any(Object));
+    expect(plaidApi.getInbox).toHaveBeenCalledWith('new', 'spending', expect.any(Object));
   });
 
   it('adds a transaction as an expense with the edited fields and refreshes expenses', async () => {
@@ -426,6 +427,64 @@ describe('ImportInbox', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Undo ignore' }));
 
     await waitFor(() => expect(plaidApi.unignoreInboxTransaction).toHaveBeenCalledWith(1));
+  });
+
+  describe('To review / Not expenses', () => {
+    const transfer = (overrides = {}) => txn({
+      id: 20, transactionId: 'xfer', place: 'To savings', rawName: 'To savings', amount: 300, bucket: 'not_expense', kind: 'transfer', ...overrides
+    });
+
+    it('shows each tab with its count and fetches the Not expenses tab by bucket', async () => {
+      plaidApi.getInbox.mockImplementation(async (status, bucket) => ({
+        transactions: status === 'new' && bucket === 'not_expense' ? [transfer()] : [txn({ bucket: 'spending' })],
+        hiddenUnmapped: 0,
+        counts: { toReview: 4, notExpenses: 1 }
+      }));
+
+      renderInbox();
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Not expenses (1)' }));
+      expect(screen.getByRole('button', { name: 'To review (4)' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Ignored' })).toBeInTheDocument();
+      expect(await screen.findByText('To savings')).toBeInTheDocument();
+      expect(plaidApi.getInbox).toHaveBeenLastCalledWith('new', 'not_expense', expect.any(Object));
+      expect(screen.getByTestId('inbox-kind-badge')).toHaveTextContent('Transfer');
+    });
+
+    it('keeps every action on a Not expenses row and moves it back to To review', async () => {
+      const onInboxChanged = vi.fn();
+      plaidApi.getInbox.mockImplementation(async (status, bucket) => ({
+        transactions: bucket === 'not_expense' ? [transfer({ matchCandidates: [{ id: 3, date: '2026-10-10', place: 'Savings', amount: 300 }] })] : [],
+        hiddenUnmapped: 0,
+        counts: { toReview: 0, notExpenses: 1 }
+      }));
+      plaidApi.setInboxTransactionBucket.mockResolvedValue({ transaction: {} });
+
+      renderInbox({ onInboxChanged });
+      fireEvent.click(await screen.findByRole('button', { name: 'Not expenses (1)' }));
+      const row = await screen.findByTestId('inbox-row');
+      for (const name of ['Add', 'Match', 'Ignore']) expect(within(row).getByRole('button', { name })).toBeInTheDocument();
+      expect(within(row).queryByRole('button', { name: 'Not an expense' })).not.toBeInTheDocument();
+      fireEvent.click(within(row).getByRole('button', { name: 'Move to To review' }));
+
+      await waitFor(() => expect(plaidApi.setInboxTransactionBucket).toHaveBeenCalledWith(20, 'spending'));
+      await waitFor(() => expect(screen.queryByText('To savings')).not.toBeInTheDocument());
+      expect(screen.getByRole('button', { name: 'To review (1)' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Not expenses (0)' })).toBeInTheDocument();
+      expect(onInboxChanged).toHaveBeenCalled();
+    });
+
+    it('moves a To review row to Not expenses', async () => {
+      plaidApi.getInbox.mockResolvedValue({ transactions: [txn({ bucket: 'spending' })], hiddenUnmapped: 0, counts: { toReview: 1, notExpenses: 0 } });
+      plaidApi.setInboxTransactionBucket.mockResolvedValue({ transaction: {} });
+
+      renderInbox();
+      fireEvent.click(await screen.findByRole('button', { name: 'Not an expense' }));
+
+      await waitFor(() => expect(plaidApi.setInboxTransactionBucket).toHaveBeenCalledWith(1, 'not_expense'));
+      expect(await screen.findByRole('button', { name: 'Not expenses (1)' })).toBeInTheDocument();
+      expect(screen.queryByTestId('inbox-kind-badge')).not.toBeInTheDocument();
+    });
   });
 
   describe('credit card payments', () => {

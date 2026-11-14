@@ -240,6 +240,11 @@ What a week of real use showed; each one shaped 2.6–2.8 and the merge rules in
 
 ### 2.1 Keep everything Plaid already sends
 
+> **Status: built** (with 3.1, one PR). As built:
+> - Migration `plaid_capture_v1` adds `merchant_entity_id`, `logo_url`, `website`, `original_description`, `payment_channel` to `plaid_transactions` (plus 3.1's `review_bucket` / `bucket_overridden`) and creates `idx_plaid_transactions_merchant_entity`; same end state in `schema.js` (the index only in the migration). No `plaid_accounts` columns (balances were done with 4.2).
+> - `plaidSql` `CAPTURE_COLUMNS` / `captureValues` / `CAPTURE_SET_FIELDS`, next to the `pfc_*` ones: every insert and update path of `applySyncBatch` (insert, update, settle in place, replace pending, file takeover, re-attach) writes them, with `COALESCE` so a sync without them never clears them. `/transactions/sync` is called with `options: { include_original_description: true }`.
+> - **Deferred:** the backfill of existing rows via `/transactions/get` (rows staged before stay NULL) and showing the merchant logo in inbox rows (requirement 3). Nothing reads the new columns yet.
+
 **Why first:** Phases 3–5 all need data we receive on every sync and currently discard.
 
 **Requirements**
@@ -423,7 +428,7 @@ Planned now, because Phase 3 adds five more inbox actions and three more link ta
 **Open:** Q17.
 
 ### Phase 2 exit criteria
-- [ ] 2.1 capture and backfill in production; PFC and balances visible in the DB for new rows. *(Balances done with 4.2; PFC and the other transaction fields not started.)*
+- [ ] 2.1 capture and backfill in production; PFC and balances visible in the DB for new rows. *(Balances done with 4.2; PFC and the other transaction fields built (`plaid_capture_v1`), not yet in production; the backfill is deferred.)*
 - [x] 2.2 an expired login repaired with Reconnect, without a new Trial slot. *(Verified in production on CIBC instead of a Sandbox `reset_login`; consent expiry still open, low value.)*
 - [x] 2.3 badge counts match the inbox. *(`countToReview` mirrors `findInbox` plus the dropped pending charges; tested against both.)*
 - [x] R1–R8 merged; no Plaid source file over ~350 lines. *(Released in 1.25.4.Splits with R4–R8: `plaidService` 666 → 346 (+ `plaidSyncService` 314, `plaidConnectionSupport` 53), `plaidRepository` 585 → 357 (+ `plaidFileImportRepository` 84, `plaidBalanceCheckRepository` 165), `plaidCardBalanceService` 398 → 290 (+ `utils/plaidCardBalanceMath` 120), `bankFileImport` 403 → 219 (+ `utils/bankFileFormats` 194). Ticked when this PR merges.)*
@@ -439,6 +444,19 @@ Planned now, because Phase 3 adds five more inbox actions and three more link ta
 About 30% of Wealthsimple rows are transfers, card payments, income or loan payments. Today they can only be ignored, and the money movement goes unrecorded.
 
 ### 3.1 Classification: To review / Not expenses
+
+> **Status: built** (with 2.1, one PR). **Owner decisions** that override the requirements below:
+> - **Not expenses** holds only money **out** of an account that isn't a card with Plaid primary category `TRANSFER_OUT` (except Interac e-Transfers) or detailed `LOAN_PAYMENTS_CREDIT_CARD_PAYMENT`, and credits on a card that `kindFor` calls a `card_payment`. **Changed after checking production data (owner, 2026-11-13):** Plaid files e-Transfers to people as `TRANSFER_OUT_ACCOUNT_TRANSFER`, and most of the household's are spending (babysitter, contractor, school committee); other `LOAN_PAYMENTS` (the Pine Canada mortgage debit) are usually confirmed as fixed expenses. Both stay in To review; `kindFor` still names `loan_payment` for 3.4. **To review** keeps everything else: **all deposits** (`TRANSFER_IN` and `INCOME` included: insurer payouts arrive as `TRANSFER_IN` and the income/insurance actions must stay in To review), refunds on a card, bank fees and interest, and rows without a category (staged before it was stored).
+> - Not expenses rows keep **all** their actions (record/link card payment, add, match, income, insurance, ignore) plus **Move to To review**; To review rows get a small **Not an expense**.
+>
+> As built:
+> - `plaidClassification`: `kindFor` also returns `transfer` (`TRANSFER_OUT`) and `loan_payment` (other `LOAN_PAYMENTS`) for money out of a non-card account; the `card_payment` rules are unchanged. `bucketFor({ pfcPrimary, pfcDetailed, amount, isCard, name, merchantName })` (pure) = `not_expense` for `card_payment` and `transfer` (an e-Transfer is never a `transfer`), else `spending`.
+> - Columns `review_bucket TEXT NOT NULL DEFAULT 'spending'` (CHECK) and `bucket_overridden INTEGER NOT NULL DEFAULT 0` in `plaid_capture_v1`, which also classifies the rows already staged with a category (`new` and `ignored`) in JS with `bucketFor`.
+> - `plaidBucketRepository.classify` recomputes the bucket of `new`, not overridden rows: at the end of every sync batch (for the item), after a bank file import (the account) and when an account's payment method mapping changes (a card and a chequing account classify the same row differently). An override survives *modified* syncs.
+> - `GET /inbox?status=new&bucket=spending|not_expense` (default `spending`; `ignored` lists both); rows carry `bucket` and `kind`, the response `counts: { toReview, notExpenses }`; dropped pending charges are listed with To review only. Card payment pairing still looks at both tabs. `countToReview` (header badge) counts `spending` only, plus the dropped pending charges.
+> - `POST /inbox/:id/bucket { bucket }` → `plaidReviewService.setBucket`: sets the bucket and `bucket_overridden = 1` while the row is `new` (409 otherwise, 400 bad bucket), under the per-row lock; logs `plaid_transaction_updated` (`action: 'bucket'`).
+> - Inbox filters **To review (n)**, **Not expenses (n)**, **Ignored**; a *Card payment* / *Transfer* / *Loan payment* badge on Not expenses rows.
+> - **Not built:** `ignore_reason` / `markReviewed(id, reason)` and `link_type` (not needed yet), `income` / `fee` kinds.
 
 **Requirements**
 1. Each staged row gets a bucket:
@@ -624,7 +642,7 @@ Closes the loop on medical insurance claims (see [`MEDICAL_INSURANCE_TRACKING.md
 **Tests:** ranking and split (unit + PBT: amounts add up to the deposit; people shares add up to the claim); the DSF deposit as a fixture; apply/undo round trip restores amount, status and people; undoing the earlier of two deposits; one deposit over three claims across two people; second-plan deposit on a Paid claim; amounts not adding up or over-reimbursing rejected; deleting a claim returns the deposit only when no link is left; $0.00 out-of-pocket accepted with an original cost and refused without; Plaid not configured.
 
 ### Phase 3 exit criteria
-- [ ] Inbox shows To review / Not expenses.
+- [ ] Inbox shows To review / Not expenses. *(Built with 2.1; tick once in production.)*
 - [x] A real card payment recorded from the card side, with the chequing side linked. *(WS VISA $3,471.31 and CIBC MC $4,104.59 on Oct 30, both sides linked.)*
 - [ ] A contribution recorded against an allocation, shown in the Plan tab.
 - [ ] A loan payment recorded.

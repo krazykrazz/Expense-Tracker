@@ -68,7 +68,7 @@ Plaid Link loads from `https://cdn.plaid.com`. The helmet CSP in `backend/server
 
 The **bank icon** in the header opens the Bank Import modal. It appears as soon as Plaid keys are saved.
 
-- **Count badge:** a small blue number on the icon is how many rows are waiting in the Inbox's **To review** tab: new transactions from accounts mapped to a payment method (pending ones included) plus pending charges the bank dropped that need a decision. Rows from unmapped accounts, ignored rows and rows you already added or matched aren't counted. It shows **99+** above 99 and disappears at zero. The badge sits at the bottom right, so the red or amber warning dot (top right) stays visible. It updates after every sync, every Inbox decision and when expenses change, in any open tab.
+- **Count badge:** a small blue number on the icon is how many rows are waiting in the Inbox's **To review** tab: new transactions from accounts mapped to a payment method (pending ones included; **Not expenses** rows aren't counted) plus pending charges the bank dropped that need a decision. Rows from unmapped accounts, ignored rows and rows you already added or matched aren't counted. It shows **99+** above 99 and disappears at zero. The badge sits at the bottom right, so the red or amber warning dot (top right) stays visible. It updates after every sync, every Inbox decision and when expenses change, in any open tab.
 
 ### Connections tab
 
@@ -141,11 +141,20 @@ Nobody needs to know about Sync now:
 
 Lists bank transactions waiting for review, newest first, with the place (Plaid's merchant name, or the raw bank description), the bank's raw description, amount and payment method. Transactions not yet settled at the bank are included with a **Pending** badge (see [Pending transactions](#pending-transactions)).
 
+Three filters:
+
+- **To review (n)**: spending and everything else to decide on, deposits included (income and insurer payouts, which Plaid often labels as transfers in, are confirmed here). The header badge counts this tab.
+- **Not expenses (n)**: money that moves between your accounts or pays off debt: card payments (on either side) and transfers out of a bank account, from Plaid's category (and, on a card, a credit whose text says it is a payment). Interac e-Transfers stay in To review even though Plaid files them as transfers (most pay a person for something), and so do loan payments (often a fixed expense such as the mortgage). A badge names the kind (*Card payment*, *Transfer*). These rows keep every action (record or link a card payment, add, match, ignore...) and have **Move to To review**.
+- **Ignored**: ignored rows from both tabs, with **Undo ignore**.
+
+Each row in To review has a small **Not an expense** action to move it the other way. A row you move stays where you put it, even when the bank later changes it. Rows staged before categories were stored, refunds on a card and bank fees stay in To review.
+
 | Action | What happens |
 |--------|--------------|
 | **Add** | Opens an inline editor pre-filled with place, date and a category suggested from your history for that place. The place is the one you chose before for the same bank description (store numbers, "- Purchase" and city/province ignored, so "Yig Browns 406" gets the "Brown's Independent" you used for "Yig Browns 405"), else an existing place the description starts with ("Sobeys" for "SOBEYS #4123"; the longest match, then the most used), else the bank's text. The bank's own text stays visible under the place. **Add expense** creates a normal expense (validation, activity log and sync all apply). For credit cards, the bank's posting date is stored as the posted date when it is later than the purchase date. |
 | **Match** | Shown when existing expenses could be the same purchase: same payment method, same **charged** amount to the cent, date within ±3 days, and not already linked. For reimbursed or insurance-tracked expenses the charged amount is the original cost (what the card was charged), not the out-of-pocket amount; the picker shows both. Links the transaction to the chosen expense. The expense keeps its purchase date, amount and category, but for a credit card a settled transaction sets its **posted date** to the bank's (replacing an estimate), since statements are built from it; see [Credit Card Posted Date](CREDIT_CARD_POSTED_DATE.md#bank-import). The same picker lists **fixed expenses** the transaction could pay and, for deposits, **expected income** (see below). |
 | **Ignore** | Hides the transaction. The **Ignored** filter lists ignored transactions with **Undo ignore**. |
+| **Not an expense** / **Move to To review** | Moves the row between To review and Not expenses (see above). |
 | **Record payment**, **Link to card payment**, **Record payment to…** | Credit card payments; see [Credit card payments](#credit-card-payments). |
 
 - Refunds and credits on a credit card (zero or negative amounts) are labelled *Refund / credit*, unless they look like a card payment (*Card payment*). They can be recorded as a payment or ignored, never added as an expense. Money coming into a bank account is labelled *Deposit* (see [Income](#income-confirm-a-deposit)).
@@ -217,7 +226,7 @@ A card payment shows up twice in the inbox: as a **debit** on the account that p
 - **Record payment to…** (on the debit): only for a card with **no bank account connected**, since no credit will ever arrive for it. A connected card is refused: its own credit records the payment, so it is never recorded twice.
 - **Add** stays on a debit that looks like a card payment, but its form warns that adding it as an expense counts the spending twice (the card already has it).
 - **Each payment has at most one bank row per side** (one credit on the card, one debit on the paying account).
-- **Undo:** delete the payment in the card's Payments tab. Payments recorded from the bank show a small bank icon there, and the delete dialog says its bank transactions return to the inbox. Both rows go back to **To review**; nothing is lost.
+- **Undo:** delete the payment in the card's Payments tab. Payments recorded from the bank show a small bank icon there, and the delete dialog says its bank transactions return to the inbox. Both rows go back to the Inbox (to the tab they were in, usually **Not expenses**); nothing is lost.
 - **Balance check:** a payment with its credit linked no longer shows as a cause on the card's balance check.
 - **Not supported:** one debit paying two cards, one card paid by two debits, and amounts that differ by even a cent between the two sides. Record the card side and ignore (or link) the rest.
 - Categories help when Plaid sends one (`LOAN_PAYMENTS_CREDIT_CARD_PAYMENT`, stored since 1.22.0 for new rows); rows staged earlier, and rows from a bank file, are recognised by their wording.
@@ -291,6 +300,8 @@ The balance check says whether the card agrees with the bank **today**. The **Co
 
 Tables `plaid_items`, `plaid_accounts`, `plaid_transactions`, `plaid_fixed_expense_links`, `plaid_income_links`, `plaid_card_payment_links` and `plaid_insurance_links`; see [Database Schema](../DATABASE_SCHEMA.md#plaid-tables). The expense list (`GET /api/expenses`) adds a `bankLink` field to every expense: `{ status, name, rawName, date, amount, pending, removed, disconnected }` or `null` (`disconnected`: its bank was disconnected). Fixed expenses and income sources get `bankConfirmation` (`{ landedDate, amount, plannedAmount, name }`) or `null`. A bank's `status` (`ok`, `needs_login`, `gone`, `error`) is derived from its stored `last_error`; there is no status column.
 
+Each staged transaction keeps what Plaid sends with it: its personal finance category (`pfc_*`), merchant id, logo, website, the bank's original description (requested with `include_original_description`) and payment channel; a later sync without a field never clears it. Rows staged before these were stored are not backfilled. `review_bucket` is the Inbox tab (`spending` = To review, `not_expense` = Not expenses), computed by `utils/plaidClassification` `bucketFor` on every sync, file import and account mapping change while the row is to review, unless the user moved it (`bucket_overridden`).
+
 ### API
 
 All under `/api/plaid`; see the [Endpoint Reference](../API_DOCUMENTATION.md#plaid-bank-import--plaidroutesjs).
@@ -301,7 +312,7 @@ All under `/api/plaid`; see the [Endpoint Reference](../API_DOCUMENTATION.md#pla
 - Saving or removing Plaid keys logs `settings_updated` (entity `settings`) describing what changed, e.g. "environment: Sandbox → Production, secret changed", never the values.
 - Adding a transaction as an expense logs the normal `expense_added`. Confirming income with a different amount logs `income_source_updated`; Add income logs `income_source_added`.
 - A sync that brought anything logs `plaid_sync_completed` once per bank (entity `plaid_transaction`): Sync now, scheduled, on opening the app, or the sync right after a login (source `login`). It lists the new / updated / removed / re-attached transaction counts and any changed balance of an account that imports into a payment method, so a balance-only change (a Wealthsimple pending charge posting) shows in the log and refreshes the card balance check in other tabs. Changing the automatic sync schedule logs `settings_updated` with `section: 'plaid_auto_sync'`.
-- Every inbox decision (add, match, confirm fixed expense, confirm income, add income, record or link a card payment, ignore, restore) logs `plaid_transaction_updated` with the action, e.g. "Matched bank transaction "Coffee Shop" ($25.50, 2026-10-12) to an existing expense". Recording a card payment also logs `credit_card_payment_added`; each bank row it linked logs `card_payment` with `creditCardPaymentId` and `side` (`card` or `funding`).
+- Every inbox decision (add, match, confirm fixed expense, confirm income, add income, record or link a card payment, ignore, restore, move between To review and Not expenses (`bucket`)) logs `plaid_transaction_updated` with the action, e.g. "Matched bank transaction "Coffee Shop" ($25.50, 2026-10-12) to an existing expense". Recording a card payment also logs `credit_card_payment_added`; each bank row it linked logs `card_payment` with `creditCardPaymentId` and `side` (`card` or `funding`).
 - Changing an account's mapping logs `plaid_account_updated`; a bank going into error logs `plaid_sync_failed` once (not on every retry).
 - All Plaid events refresh open Bank Import modals and Financial page bank badges in other tabs.
 

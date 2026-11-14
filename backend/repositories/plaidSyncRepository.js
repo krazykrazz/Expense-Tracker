@@ -2,13 +2,14 @@ const dbHelper = require('../utils/dbHelper');
 const plaidRepository = require('./plaidRepository');
 const { FILE_ID_PREFIX, SAME_TXN_DAYS, mergePlaidIntoFileRow, sameTransaction } = require('../utils/bankFileImport');
 const { PENDING_AMOUNT_TOLERANCE } = require('../utils/plaidMatching');
-const { STAGED_COLUMNS, pfcValues, PFC_SET_FIELDS } = require('./plaidSql');
+const plaidBucketRepository = require('./plaidBucketRepository');
+const { STAGED_COLUMNS, pfcValues, PFC_SET_FIELDS, CAPTURE_COLUMNS, captureValues, CAPTURE_SET_FIELDS } = require('./plaidSql');
 
 /** The row a transaction id identifies, as the handlers need it. */
 const EXISTING_COLUMNS = 'id, status, amount, pending, expense_id AS expenseId';
 /** Columns a Plaid transaction sets; a purchase date and merchant name another source supplied are kept when Plaid sends none. */
 const SET_FIELDS = `plaid_account_id = ?, amount = ?, iso_currency_code = ?, date = ?, authorized_date = COALESCE(?, authorized_date),
-  name = ?, merchant_name = COALESCE(?, merchant_name), pending = ?, pending_transaction_id = ?, ${PFC_SET_FIELDS}`;
+  name = ?, merchant_name = COALESCE(?, merchant_name), pending = ?, pending_transaction_id = ?, ${PFC_SET_FIELDS}, ${CAPTURE_SET_FIELDS}`;
 
 const settlement = (row, txn, { settled, postedDate }) => ({
   plaidTransactionId: row.id, expenseId: row.expenseId, settled, previousAmount: row.amount, amount: txn.amount, postedDate
@@ -53,6 +54,8 @@ class PlaidSyncRepository {
       for (const transactionId of removedIds) {
         await this._applyRemoval(ctx, transactionId);
       }
+      // Rows still to review take the Inbox tab their (possibly new) category and amount give them
+      await plaidBucketRepository.classify(tx, 'pt.plaid_account_id IN (SELECT id FROM plaid_accounts WHERE plaid_item_id = ?)', [plaidItemId]);
 
       await tx.run(
         'UPDATE plaid_items SET sync_cursor = ?, last_synced_at = CURRENT_TIMESTAMP, last_error = NULL WHERE id = ?',
@@ -93,7 +96,7 @@ class PlaidSyncRepository {
     return [
       ctx.accountIdMap.get(txn.account_id) ?? null, txn.amount, txn.iso_currency_code ?? null, txn.date,
       txn.authorized_date ?? null, txn.name ?? null, txn.merchant_name ?? null, txn.pending ? 1 : 0,
-      txn.pending_transaction_id ?? null, ...pfcValues(txn)
+      txn.pending_transaction_id ?? null, ...pfcValues(txn), ...captureValues(txn)
     ];
   }
 
@@ -148,11 +151,11 @@ class PlaidSyncRepository {
     await ctx.tx.run(
       `UPDATE plaid_transactions SET transaction_id = ?, plaid_account_id = ?, amount = ?, iso_currency_code = ?, date = ?,
          authorized_date = ?, name = ?, merchant_name = ?, pending = ?, pending_transaction_id = ?, removed_at = NULL,
-         ${PFC_SET_FIELDS}
+         ${PFC_SET_FIELDS}, ${CAPTURE_SET_FIELDS}
        WHERE id = ?`,
       [fields.transactionId, plaidAccountId, fields.amount, fields.isoCurrencyCode, fields.date,
         fields.authorizedDate, fields.name, fields.merchantName, fields.pending, fields.pendingTransactionId,
-        ...pfcValues(txn), fromFile.id]
+        ...pfcValues(txn), ...captureValues(txn), fromFile.id]
     );
     ctx.counts.fromFile++;
     ctx.counts.updated++;
@@ -185,8 +188,8 @@ class PlaidSyncRepository {
     await ctx.tx.run(
       `INSERT INTO plaid_transactions
          (plaid_account_id, amount, iso_currency_code, date, authorized_date, name, merchant_name, pending,
-          pending_transaction_id, pfc_primary, pfc_detailed, pfc_confidence, transaction_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          pending_transaction_id, pfc_primary, pfc_detailed, pfc_confidence, ${CAPTURE_COLUMNS.join(', ')}, transaction_id)
+       VALUES (${Array(13 + CAPTURE_COLUMNS.length).fill('?').join(', ')})`,
       [...this._values(ctx, txn), txn.transaction_id]
     );
     ctx.counts.added++;

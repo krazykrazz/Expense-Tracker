@@ -10,10 +10,12 @@ import MatchPicker from './MatchPicker';
 import { EXPECTED_CURRENCY, formatSigned, isCloseFixed, isCloseIncome } from './inboxFormat';
 
 const CARD_PAYMENT_MODES = ['card-payment', 'link-payment', 'record-to-card'];
+const KIND_LABELS = { card_payment: 'Card payment', transfer: 'Transfer', loan_payment: 'Loan payment' };
 
 /**
  * One bank transaction in the Inbox: what it is (badges), the actions it allows, and the form or picker of the
  * action that is open (`expanded`). Decisions go to `onAction(action, payload)` (see inboxActions).
+ * Rows in Not expenses (`txn.bucket`) keep every action and can be moved back to To review, and the other way.
  * @param {{txn: object, filter: 'new'|'ignored', expanded: (string|null), onExpand: Function, onAction: Function,
  *   busy: boolean, error?: string, unconnectedCards?: Array}} props
  */
@@ -24,6 +26,9 @@ const InboxRow = ({ txn, filter, expanded, onExpand, onAction, busy, error, unco
   const closeIncome = incomeCandidates.filter(isCloseIncome);
   const isOpen = (mode) => expanded === mode;
   const toggle = (mode) => onExpand(isOpen(mode) ? null : mode);
+  const notExpense = txn.bucket === 'not_expense';
+  // CardPaymentBadge already names a card payment it knows about
+  const kindLabel = notExpense && !(txn.kind === 'card_payment' && txn.cardPayment?.kind) ? KIND_LABELS[txn.kind] : null;
 
   return (
     <li className="inbox-row" data-testid="inbox-row">
@@ -54,6 +59,7 @@ const InboxRow = ({ txn, filter, expanded, onExpand, onAction, busy, error, unco
           )}
           {filter === 'new' && !txn.canAdd && !txn.cardPayment?.kind && <span className="inbox-badge">{txn.isDeposit ? 'Deposit' : 'Refund / credit'}</span>}
           {filter === 'new' && <CardPaymentBadge txn={txn} />}
+          {filter === 'new' && kindLabel && <span className="inbox-badge" data-testid="inbox-kind-badge">{kindLabel}</span>}
           {filter === 'new' && txn.insurance?.suggested && (
             <span className="inbox-badge match" title="Looks like an insurance payout: apply it to the claims it reimburses">Insurance</span>
           )}
@@ -86,6 +92,18 @@ const InboxRow = ({ txn, filter, expanded, onExpand, onAction, busy, error, unco
               )}
               <CardPaymentButtons txn={txn} unconnectedCards={unconnectedCards} expanded={expanded} onExpand={onExpand} busy={busy} />
               <button className="bank-import-secondary" onClick={() => onAction('ignore')} disabled={busy}>Ignore</button>
+              {notExpense ? (
+                <button className="bank-import-secondary" onClick={() => onAction('bucket', 'spending')} disabled={busy}>Move to To review</button>
+              ) : (
+                <button
+                  className="bank-import-link"
+                  title="A card payment, transfer or loan payment: move it to Not expenses"
+                  onClick={() => onAction('bucket', 'not_expense')}
+                  disabled={busy}
+                >
+                  Not an expense
+                </button>
+              )}
             </>
           ) : (
             <button className="bank-import-secondary" onClick={() => onAction('unignore')} disabled={busy}>Undo ignore</button>

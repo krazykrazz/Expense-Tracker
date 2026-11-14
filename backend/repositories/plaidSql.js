@@ -19,4 +19,10 @@ const pfcValues = (txn) => {
 const PFC_SET_FIELDS = `pfc_primary = COALESCE(?, pfc_primary), pfc_detailed = COALESCE(?, pfc_detailed),
   pfc_confidence = COALESCE(?, pfc_confidence)`;
 
-module.exports = { STAGED_COLUMNS, STAGED_COLUMN_NAMES, pfcValues, PFC_SET_FIELDS };
+/** The other fields Plaid sends that are kept for later use (spec 2.1), in CAPTURE_COLUMNS order. */
+const CAPTURE_COLUMNS = ['merchant_entity_id', 'logo_url', 'website', 'original_description', 'payment_channel'];
+const captureValues = (txn) => CAPTURE_COLUMNS.map(column => txn[column] ?? null);
+/** Like the category, a sync without them never blanks values already stored. */
+const CAPTURE_SET_FIELDS = CAPTURE_COLUMNS.map(column => `${column} = COALESCE(?, ${column})`).join(', ');
+
+module.exports = { STAGED_COLUMNS, STAGED_COLUMN_NAMES, pfcValues, PFC_SET_FIELDS, CAPTURE_COLUMNS, captureValues, CAPTURE_SET_FIELDS };

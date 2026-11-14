@@ -9,6 +9,7 @@ const {
   fixedExpectedDate, findFixedCandidates, isDeposit, findIncomeCandidates, monthWindow, descriptionKey
 } = require('../utils/plaidMatching');
 const { isFileRow } = require('../utils/bankFileImport');
+const { BUCKETS, kindFor } = require('../utils/plaidClassification');
 const { buildLearnedPlaces, buildPlaceIndex, suggestPlace } = require('../utils/placeSuggestion');
 const { fail, defaultPlace, incomeDescription } = require('./plaidInboxSupport');
 
@@ -24,19 +25,28 @@ const SETTLE_WINDOW_DAYS = 10;
 class PlaidInboxService {
   /**
    * @param {'new'|'ignored'} status
-   * @returns {Promise<{transactions: Array, hiddenUnmapped: number}>}
+   * @param {'spending'|'not_expense'} bucket the tab of 
+ew rows: To review or Not expenses (spec 3.1); ignored
+   *   rows are listed whatever their bucket
+   * @returns {Promise<{transactions: Array, hiddenUnmapped: number, counts: {toReview: number, notExpenses: number},
+   *   cancelled: Array, unconnectedCards: Array}>}
    */
-  async listInbox(status = 'new') {
+  async listInbox(status = 'new', bucket = 'spending') {
     if (!INBOX_STATUSES.includes(status)) {
       throw fail(`status must be one of: ${INBOX_STATUSES.join(', ')}`, 400);
     }
+    if (!BUCKETS.includes(bucket)) {
+      throw fail(`bucket must be one of: ${BUCKETS.join(', ')}`, 400);
+    }
 
-    const [rows, hiddenUnmapped] = await Promise.all([
+    const [allRows, hiddenUnmapped, counts] = await Promise.all([
       plaidRepository.findInbox(status),
-      plaidRepository.countNewUnmapped()
+      plaidRepository.countNewUnmapped(),
+      plaidRepository.countInbox()
     ]);
 
     const isNew = status === 'new';
+    const rows = isNew ? allRows.filter(row => row.bucket === bucket) : allRows;
     const placeByRow = isNew ? await this._suggestPlaces(rows) : new Map();
     const placeOf = (row) => placeByRow.get(row.id) || defaultPlace(row);
     const [candidatesByRow, fixedByRow, incomeByRow, suggestions, cardPayments, insuranceByRow] = await Promise.all([
@@ -44,7 +54,8 @@ class PlaidInboxService {
       isNew ? this._fixedCandidates(rows) : new Map(),
       isNew ? this._incomeCandidates(rows) : new Map(),
       isNew ? this._suggestCategories([...new Set(rows.flatMap(row => [placeOf(row), defaultPlace(row)]))]) : new Map(),
-      isNew ? plaidCardPaymentService.describeRows(rows) : { byRow: new Map(), unconnectedCards: [] },
+      // Both tabs: a card payment's two sides can sit in different tabs (a funding debit without a category)
+      isNew ? plaidCardPaymentService.describeRows(allRows) : { byRow: new Map(), unconnectedCards: [] },
       isNew ? plaidInsuranceService.describeDeposits(rows) : new Map()
     ]);
 
@@ -69,6 +80,9 @@ class PlaidInboxService {
         paymentMethodType: row.paymentMethodType,
         billingCycleDay: row.billingCycleDay ?? null,
         status: row.status,
+        bucket: row.bucket,
+        // What kind of money movement it is, when known: 'card_payment' | 'transfer' | 'loan_payment' | null
+        kind: kindFor({ ...row, isCard: row.paymentMethodType === 'credit_card' }),
         pending: Boolean(row.pending),
         canAdd: row.amount > 0,
         isDeposit: isDeposit(row),
@@ -86,7 +100,8 @@ class PlaidInboxService {
     return {
       transactions,
       hiddenUnmapped,
-      cancelled: isNew ? await this._cancelledPending() : [],
+      counts,
+      cancelled: isNew && bucket === 'spending' ? await this._cancelledPending() : [],
       unconnectedCards: cardPayments.unconnectedCards
     };
   }

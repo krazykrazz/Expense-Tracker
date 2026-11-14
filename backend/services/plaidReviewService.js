@@ -1,5 +1,6 @@
 const plaidRepository = require('../repositories/plaidRepository');
 const plaidLinkRepository = require('../repositories/plaidLinkRepository');
+const plaidBucketRepository = require('../repositories/plaidBucketRepository');
 const expenseRepository = require('../repositories/expenseRepository');
 const fixedExpenseRepository = require('../repositories/fixedExpenseRepository');
 const incomeRepository = require('../repositories/incomeRepository');
@@ -11,6 +12,7 @@ const dbHelper = require('../utils/dbHelper');
 const { getDatabase } = require('../database/db');
 const { toCents, transactionDate, isFixedCandidate, isDeposit, isIncomeCandidate } = require('../utils/plaidMatching');
 const { INCOME_CATEGORIES } = require('../utils/constants');
+const { BUCKETS } = require('../utils/plaidClassification');
 const {
   fail, asInputError, round2, defaultPlace, describeTxn, exclusive, requireNew, logReview, postedDateFor, incomeDescription
 } = require('./plaidInboxSupport');
@@ -281,6 +283,25 @@ class PlaidReviewService {
         throw fail('This bank transaction changed meanwhile. Refresh the Inbox and try again.', 409);
       }
       await logReview(txn, 'ignore', `Ignored bank transaction ${describeTxn(txn)}`);
+      return { transaction: await plaidRepository.findTransactionById(id) };
+    });
+  }
+
+  /**
+   * Move a row still to review between the Inbox tabs (To review = 'spending', Not expenses = 'not_expense'). The
+   * choice sticks: later syncs no longer classify the row.
+   */
+  async setBucket(id, bucket) {
+    if (!BUCKETS.includes(bucket)) {
+      throw fail(`bucket must be one of: ${BUCKETS.join(', ')}`, 400);
+    }
+    return exclusive(id, async () => {
+      const txn = await requireNew(id);
+      if (!(await plaidBucketRepository.setBucket(id, bucket))) {
+        throw fail('This bank transaction changed meanwhile. Refresh the Inbox and try again.', 409);
+      }
+      const tab = bucket === 'spending' ? 'To review' : 'Not expenses';
+      await logReview(txn, 'bucket', `Moved bank transaction ${describeTxn(txn)} to ${tab}`, { bucket, previousBucket: txn.bucket });
       return { transaction: await plaidRepository.findTransactionById(id) };
     });
   }

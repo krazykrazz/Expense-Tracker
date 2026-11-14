@@ -212,7 +212,11 @@ class PlaidSyncService {
     let updateStatus = null;
 
     while (hasMore) {
-      const { data } = await plaidClient().transactionsSync({ access_token: accessToken, cursor, count: SYNC_PAGE_SIZE });
+      const { data } = await plaidClient().transactionsSync({
+        access_token: accessToken, cursor, count: SYNC_PAGE_SIZE,
+        // The bank's own description, kept with the other fields Plaid sends (spec 2.1)
+        options: { include_original_description: true }
+      });
       for (const account of data.accounts || []) accounts.set(account.account_id, account);
       // Pending transactions are staged too (shown as Pending; they settle in place, see applySyncBatch)
       upserts.push(...data.added, ...data.modified);

@@ -5,11 +5,36 @@ import InboxRow from './inbox/InboxRow';
 import CancelledRow from './inbox/CancelledRow';
 import { INBOX_ACTIONS } from './inbox/inboxActions';
 
+/** The Inbox filters: the two tabs of rows still to review (by bucket), and ignored rows. */
+const VIEWS = [
+  { value: 'spending', label: 'To review', status: 'new', countKey: 'toReview' },
+  { value: 'not_expense', label: 'Not expenses', status: 'new', countKey: 'notExpenses' },
+  { value: 'ignored', label: 'Ignored', status: 'ignored', countKey: null }
+];
+const COUNT_KEY = { spending: 'toReview', not_expense: 'notExpenses' };
+
+/**
+ * The tab counts once `txn` leaves the list: it no longer counts where it was, and moving it (or restoring an
+ * ignored row) counts it in the tab it goes to.
+ */
+const countsAfter = (counts, txn, action, payload) => {
+  if (!counts) return counts;
+  const next = { ...counts };
+  const from = txn.status === 'new' ? COUNT_KEY[txn.bucket] : null;
+  const to = action === 'bucket' ? COUNT_KEY[payload] : action === 'unignore' ? COUNT_KEY[txn.bucket] : null;
+  if (from) next[from] = Math.max(0, next[from] - 1);
+  if (to) next[to] += 1;
+  return next;
+};
+
 /**
  * Inbox tab: each synced bank transaction is added as a new expense, matched to an existing one, or ignored.
+ * Rows still to review are split into To review (spending) and Not expenses (card payments, transfers and loan
+ * payments out of a bank account); either can be moved to the other.
  */
 const ImportInbox = ({ onExpensesChanged, onInboxChanged, onOpenConnections }) => {
-  const [filter, setFilter] = useState('new');
+  const [view, setView] = useState('spending');
+  const { status: filter } = VIEWS.find(v => v.value === view);
   const [data, setData] = useState({ transactions: [], hiddenUnmapped: 0 });
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
@@ -24,7 +49,7 @@ const ImportInbox = ({ onExpensesChanged, onInboxChanged, onOpenConnections }) =
     const isCurrent = () => loadId === latestLoadRef.current && !(signal && signal.aborted);
     setLoading(true);
     try {
-      const result = await getInbox(filter, { signal });
+      const result = await getInbox(filter, view === 'ignored' ? 'spending' : view, { signal });
       if (!isCurrent()) return;
       setData(result);
       setLoadError(null);
@@ -33,7 +58,7 @@ const ImportInbox = ({ onExpensesChanged, onInboxChanged, onOpenConnections }) =
     } finally {
       if (isCurrent()) setLoading(false);
     }
-  }, [filter]);
+  }, [filter, view]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -52,7 +77,11 @@ const ImportInbox = ({ onExpensesChanged, onInboxChanged, onOpenConnections }) =
     try {
       await run(txn.id, payload);
 
-      setData(prev => ({ ...prev, transactions: prev.transactions.filter(t => t.id !== txn.id) }));
+      setData(prev => ({
+        ...prev,
+        transactions: prev.transactions.filter(t => t.id !== txn.id),
+        counts: countsAfter(prev.counts, txn, action, payload)
+      }));
       setExpanded({ id: null, mode: null });
       // The header badge counts what is waiting here
       onInboxChanged?.();
@@ -69,8 +98,8 @@ const ImportInbox = ({ onExpensesChanged, onInboxChanged, onOpenConnections }) =
     }
   };
 
-  const { transactions, hiddenUnmapped } = data;
-  const cancelled = filter === 'new' ? (data.cancelled || []) : [];
+  const { transactions, hiddenUnmapped, counts } = data;
+  const cancelled = view === 'spending' ? (data.cancelled || []) : [];
 
   const handleCancelled = async (row, decision) => {
     setBusyId(`c-${row.id}`);
@@ -91,14 +120,14 @@ const ImportInbox = ({ onExpensesChanged, onInboxChanged, onOpenConnections }) =
     <div className="import-inbox">
       <div className="bank-import-toolbar">
         <div className="inbox-filter" role="group" aria-label="Inbox filter">
-          {[['new', 'To review'], ['ignored', 'Ignored']].map(([value, label]) => (
+          {VIEWS.map(({ value, label, countKey }) => (
             <button
               key={value}
-              className={`inbox-filter-button ${filter === value ? 'active' : ''}`}
-              aria-pressed={filter === value}
-              onClick={() => setFilter(value)}
+              className={`inbox-filter-button ${view === value ? 'active' : ''}`}
+              aria-pressed={view === value}
+              onClick={() => setView(value)}
             >
-              {label}
+              {label}{countKey && counts ? ` (${counts[countKey]})` : ''}
             </button>
           ))}
         </div>
@@ -134,7 +163,11 @@ const ImportInbox = ({ onExpensesChanged, onInboxChanged, onOpenConnections }) =
 
       {!loading && transactions.length === 0 && cancelled.length === 0 && !loadError ? (
         <div className="bank-import-empty">
-          {filter === 'new' ? 'Nothing to review. Use Sync now on the Connections tab to pull new transactions.' : 'No ignored transactions.'}
+          {{
+            spending: 'Nothing to review. Use Sync now on the Connections tab to pull new transactions.',
+            not_expense: 'No card payments, transfers or loan payments waiting.',
+            ignored: 'No ignored transactions.'
+          }[view]}
         </div>
       ) : (
         <ul className="inbox-list">

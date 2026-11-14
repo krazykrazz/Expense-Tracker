@@ -1,4 +1,5 @@
 const logger = require('../config/logger');
+const { bucketFor } = require('../utils/plaidClassification');
 
 /**
  * Minimal migration module (post-consolidation)
@@ -68,6 +69,22 @@ function runSql(db, sql, params = []) {
     db.run(sql, params, (err) => {
       if (err) reject(err);
       else resolve();
+    });
+  });
+}
+
+/**
+ * Read rows from the database.
+ * @param {object} db - SQLite database instance
+ * @param {string} sql - SQL query
+ * @param {Array} params - Query parameters
+ * @returns {Promise<Array<object>>}
+ */
+function allSql(db, sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.all(sql, params, (err, rows) => {
+      if (err) reject(err);
+      else resolve(rows);
     });
   });
 }
@@ -307,6 +324,46 @@ const MIGRATIONS = [
       await runSql(db, 'DROP INDEX IF EXISTS idx_mortgage_payments_loan_effective_date');
       await runSql(db, 'DROP TABLE IF EXISTS mortgage_payments');
       logger.info('Dropped mortgage_payments table');
+    }
+  },
+  {
+    // Spec 2.1 + 3.1: keep the other fields Plaid sends for each staged transaction, and the Inbox tab of each
+    // row (To review = 'spending', Not expenses = 'not_expense'; bucket_overridden = moved by hand). Rows already
+    // staged with a category (to review or ignored) are classified here; rows without one stay in To review.
+    name: 'plaid_capture_v1',
+    async apply(db) {
+      for (const column of [
+        'merchant_entity_id TEXT',
+        'logo_url TEXT',
+        'website TEXT',
+        'original_description TEXT',
+        'payment_channel TEXT',
+        "review_bucket TEXT NOT NULL DEFAULT 'spending' CHECK(review_bucket IN ('spending', 'not_expense'))",
+        'bucket_overridden INTEGER NOT NULL DEFAULT 0'
+      ]) {
+        try {
+          await runSql(db, `ALTER TABLE plaid_transactions ADD COLUMN ${column}`);
+        } catch (err) {
+          if (!err.message.includes('duplicate column name')) throw err;
+        }
+      }
+      await runSql(db, 'CREATE INDEX IF NOT EXISTS idx_plaid_transactions_merchant_entity ON plaid_transactions(merchant_entity_id)');
+
+      const rows = await allSql(db, `
+        SELECT pt.id, pt.amount, pt.name, pt.merchant_name AS merchantName, pt.pfc_primary AS pfcPrimary,
+               pt.pfc_detailed AS pfcDetailed, pt.review_bucket AS bucket, pm.type AS paymentMethodType
+        FROM plaid_transactions pt
+        LEFT JOIN plaid_accounts pa ON pa.id = pt.plaid_account_id
+        LEFT JOIN payment_methods pm ON pm.id = pa.payment_method_id
+        WHERE pt.pfc_primary IS NOT NULL AND pt.status IN ('new', 'ignored') AND pt.bucket_overridden = 0
+      `);
+      let notExpenses = 0;
+      for (const row of rows) {
+        const bucket = bucketFor({ ...row, isCard: row.paymentMethodType === 'credit_card' });
+        if (bucket === 'not_expense') notExpenses++;
+        if (bucket !== row.bucket) await runSql(db, 'UPDATE plaid_transactions SET review_bucket = ? WHERE id = ?', [bucket, row.id]);
+      }
+      logger.info('Added capture and review bucket columns to plaid_transactions', { classified: rows.length, notExpenses });
     }
   }
 ];

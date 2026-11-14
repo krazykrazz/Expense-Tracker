@@ -1215,6 +1215,13 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v1.28.0</div>
+                <div className="changelog-date">November 14, 2026</div>
+                <ul className="changelog-items">
+                  <li>Bank import: Inbox tabs To review and Not expenses, more Plaid fields captured; insurance claims marked Paid by hand take the payout; bank balance as of Plaid fetch; estimated posted dates for Wealthsimple charges settled from the balance</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v1.27.0</div>
                 <div className="changelog-date">November 13, 2026</div>
                 <ul className="changelog-items">

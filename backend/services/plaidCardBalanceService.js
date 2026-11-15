@@ -119,14 +119,13 @@ class PlaidCardBalanceService {
    * - `settling`: added from a pending charge on a bank whose balance leaves pending charges out;
    * - `likely_pending`: on such a bank that sends every charge to Plaid as posted (Wealthsimple), recent linked
    *   charges that exactly account for what's otherwise unexplained (see _likelyPending);
-   * - `posts_later`: a pending charge on a bank whose balance includes pending charges (CIBC), linked to an
-   *   expense whose posted date is after today, so the tracker's balance as of today doesn't count it yet;
    * - `from_file`: in the tracker from a bank file row Plaid hasn't sent yet, so the bank's balance from Plaid
    *   doesn't include it (Plaid takes the row over once it catches up);
    * - `cancelled`: added from a pending charge the bank then dropped (review it in the Inbox);
    * - `fixed_expense`: a charge confirmed as a fixed expense, which the card balance doesn't include;
    * - `credit_balance`: the card is in credit at the bank, and the tracker's balance stops at $0.
-   * Only activity posted after a statement entered from the real statement counts (see _statementAnchorEnd).
+   * Only activity posted after a statement entered from the real statement counts (see _statementAnchorEnd), plus
+   * linked charges still pending at the bank (bought before it closed but not on it).
    * Inbox rows that match an entry already in the tracker cancel out; they are counted in `awaitingMatch`.
    */
   async _explain(paymentMethodId, accounts, bank, tracker, today) {
@@ -139,12 +138,13 @@ class PlaidCardBalanceService {
 
     const bankItems = [];
     const settling = [];
-    const postsLater = [];
     const fromFile = [];
     const cancelled = [];
     const fixedCharges = [];
     for (const row of rows) {
-      if (row.date > today || !afterAnchor(row.postedDate)) continue;
+      // A linked charge still pending at the bank isn't on the statement, whatever its date (the tracker counts it)
+      const missedStatement = row.pending && row.expenseId != null && !row.removed;
+      if (row.date > today || (!afterAnchor(row.postedDate) && !missedStatement)) continue;
       if (row.fromFile) {
         // Only in a bank file: Plaid hasn't sent it, so its balance doesn't include it yet (if Plaid had
         // fetched it, it would have taken the row over). Unreviewed or ignored ones are in neither balance,
@@ -158,11 +158,9 @@ class PlaidCardBalanceService {
       } else if (row.fixedExpense) {
         fixedCharges.push(row);
       } else if (row.expenseId != null) {
-        // Linked pending charge: in the tracker; in the bank balance only when the bank counts pending.
-        // When it does, but the expense's posted date is after today (an estimate from the expense form), the
-        // tracker's balance as of today leaves it out until then.
+        // Linked pending charge: in the tracker (which counts by purchase date); in the bank balance only when the
+        // bank counts pending
         if (!includesPending) settling.push(row);
-        else if (row.pending && row.expensePostedDate && row.expensePostedDate > today) postsLater.push(row);
       } else if (!(row.pending && !includesPending)) {
         bankItems.push({ ...row, effect: row.amount });
       }
@@ -197,7 +195,6 @@ class PlaidCardBalanceService {
         .map(row => bankCause('bank_only', row, row.amount, { pending: Boolean(row.pending), inboxStatus: row.status, inboxBucket: row.bucket })),
       ...trackerOnly.map(item => trackerCause('tracker_only', item)),
       ...settling.map(row => bankCause('settling', row, -row.amount, { expenseId: row.expenseId })),
-      ...postsLater.map(row => bankCause('posts_later', row, row.amount, { expenseId: row.expenseId, trackerPostedDate: row.expensePostedDate })),
       ...fromFile.map(row => bankCause('from_file', row, -row.amount, { expenseId: row.expenseId, pending: Boolean(row.pending) })),
       ...fileHeld.map(item => trackerCause('from_file', item)),
       ...cancelled.map(row => bankCause('cancelled', row, -row.amount, { expenseId: row.expenseId })),
@@ -232,7 +229,7 @@ class PlaidCardBalanceService {
     const fromDate = new Date((dayNumber(today) - LIKELY_PENDING_DAYS) * 86400000).toISOString().slice(0, 10);
     const rows = await plaidBalanceCheckRepository.findRecentLinkedCharges(accounts.map(a => a.id), fromDate);
     const candidates = rows
-      .filter(row => row.amount > 0 && row.date <= today && row.expensePostedDate <= today && afterAnchor(row.postedDate))
+      .filter(row => row.amount > 0 && row.date <= today && row.expenseDate <= today && afterAnchor(row.postedDate))
       .slice(0, MAX_SETTLING_ROWS)
       .map(row => ({ ...row, effect: -row.amount }));
     const match = uniqueSubset(candidates, leftover);

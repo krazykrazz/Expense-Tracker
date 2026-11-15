@@ -258,7 +258,6 @@ Each sync also stores the balance the bank reports for every account. For credit
     - *In the tracker, not at the bank:* an expense or payment since the bank's history starts (about 30 days before connecting) that no bank transaction is linked to: a typo, the wrong card, a duplicate, or not posted yet;
     - *Still pending:* an expense added from a pending charge, on a bank whose balance leaves pending charges out;
     - *Probably still pending:* on a bank whose balance leaves pending charges out and that sends every charge to Plaid as posted (Wealthsimple), recent charges (last 7 days) that are the only combination adding up, to the cent, to what's otherwise unexplained. When several combinations fit, nothing is guessed. When the bank's figures are an hour or more older than the sync, this and *Still pending* add "the bank's balance is from 3:51 pm; it may have settled since";
-    - *Posts later in the tracker:* a pending charge on a bank whose balance includes pending charges (CIBC), matched to an expense whose posted date is after today. A charge entered by hand gets the next business day as its posted date, so the tracker counts it from then while the bank counts it already;
     - *Cancelled by the bank:* an expense added from a pending charge the bank then dropped (review it in the Inbox);
     - *Fixed expense:* a charge confirmed as a fixed expense, which the card balance doesn't include;
     - *Credit balance:* the card is in credit at the bank, while the tracker's balance stops at $0;

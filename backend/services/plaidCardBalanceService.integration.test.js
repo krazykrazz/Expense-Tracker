@@ -390,16 +390,35 @@ describe('plaidCardBalanceService', () => {
     expect(await cardCheck()).toMatchObject({ difference: -12.41, unexplained: 0 });
   });
 
-  test('a pending charge the bank counts (CIBC) but the tracker counts from a later posted date explains the difference', async () => {
+  test('a charge bought before today counts now, even with a posted date after today (CIBC counts it pending)', async () => {
     // Hand-entered yesterday with the form's estimated posted date (the next business day, after today)
     const scone = await addExpense('2026-11-02', 25, 'Rocket Scone', { postedDate: '2026-11-04' });
     await stage('t-scone', { amount: 25, date: '2026-11-02', status: 'matched', pending: 1, expenseId: scone, name: 'ROCKET SCONE' });
     await setBank({ current: 0, available: 975, limit: 1000 });
 
-    const card = await cardCheck();
+    expect(await cardCheck()).toMatchObject({ status: 'match', tracker: 25, difference: 0, causes: [], futureDated: { count: 0 } });
+  });
 
-    expect(card).toMatchObject({ status: 'differs', tracker: 0, difference: 25, unexplained: 0 });
-    expect(card.causes).toEqual([expect.objectContaining({ type: 'posts_later', name: 'ROCKET SCONE', effect: 25, trackerPostedDate: '2026-11-04' })]);
+  test('a charge still pending when the statement closed counts after an entered statement (CIBC, Nov 14 case)', async () => {
+    await run(
+      `INSERT INTO credit_card_billing_cycles (payment_method_id, cycle_start_date, cycle_end_date, actual_statement_balance,
+         calculated_statement_balance, is_user_entered) VALUES (?, '2026-10-02', '2026-11-01', 100, 140, 1)`,
+      [CREDIT_CARD]
+    );
+    const amazon = await addExpense('2026-11-01', 40, 'Amazon');
+    await stage('t-amazon', { amount: 40, date: '2026-11-01', status: 'added', pending: 1, expenseId: amazon, name: 'AMAZON' });
+    // Already on the statement: dated inside it, settled
+    const onStatement = await addExpense('2026-10-30', 60, 'On statement');
+    await stage('t-old', { amount: 60, date: '2026-10-30', status: 'matched', expenseId: onStatement });
+    await setBank({ current: 100, available: 860, limit: 1000 });
+
+    expect(await cardCheck()).toMatchObject({ status: 'match', tracker: 140, difference: 0, causes: [] });
+
+    // A bank that leaves pending out (Wealthsimple file row): the charge is a known cause, not unexplained
+    await setBank({ current: 100 });
+    const card = await cardCheck();
+    expect(card).toMatchObject({ status: 'differs', difference: -40, unexplained: 0 });
+    expect(card.causes).toEqual([expect.objectContaining({ type: 'settling', name: 'AMAZON', effect: -40 })]);
   });
 
   test('settleFromBalance: when the balance matches the tracker, the last pending charge posted (Sobeys case)', async () => {

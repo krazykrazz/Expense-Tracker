@@ -7,11 +7,6 @@ describe('cardBalanceCheck describeCause', () => {
       .toBe("From a bank file, not in the bank's balance yet (Plaid hasn't sent it): Food Basics $44.57 (2026-11-03)");
   });
 
-  it('explains a pending charge the bank counts but the tracker counts from a later posted date', () => {
-    expect(describeCause({ type: 'posts_later', name: 'Rocket Scone', amount: 25, date: '2026-11-07', trackerPostedDate: '2026-11-09' }))
-      .toBe("Pending at the bank, which counts pending charges; in the tracker's balance from its posted date 2026-11-09: Rocket Scone $25.00 (2026-11-07)");
-  });
-
   it('explains a recent charge that is probably still pending at a bank that does not report pending', () => {
     expect(describeCause({ type: 'likely_pending', name: 'Canadian Tire', amount: 30.5, date: '2026-11-10' }))
       .toBe("Probably still pending at the bank, which leaves pending charges out of its balance (it doesn't tell Plaid which are pending): Canadian Tire $30.50 (2026-11-10)");

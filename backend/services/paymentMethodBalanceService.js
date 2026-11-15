@@ -63,8 +63,9 @@ class PaymentMethodBalanceService {
   }
 
   /**
-   * Calculate current (posted) balance for a credit card
-   * Sum of expenses with effective_date <= today minus payments <= today
+   * Calculate current balance for a credit card: what you owe today, including pending. The latest statement's
+   * balance plus everything bought up to today that isn't on it (whether it has posted or not), minus payments
+   * made since. Statements and billing cycles count charges by posted date; this one counts them by purchase date.
    * @param {number} paymentMethodId - Credit card ID
    * @returns {Promise<number>} Current balance (minimum 0)
    */
@@ -288,16 +289,22 @@ class PaymentMethodBalanceService {
       return this._calculateLegacyCurrentBalance(db, paymentMethodId, todayStr);
     }
 
-    const { effectiveBalance } = calculateEffectiveBalance(anchorCycle);
+    const { effectiveBalance, balanceType } = calculateEffectiveBalance(anchorCycle);
 
+    // Everything bought up to today that isn't on the statement, posted or not: posted after it closed, or,
+    // when the balance was entered from the real statement, still pending at the bank (bought before it closed,
+    // so dated inside it, but not on it). A calculated statement already counts those by purchase date.
+    const missedStatement = balanceType === 'actual'
+      ? 'OR EXISTS (SELECT 1 FROM plaid_transactions pt WHERE pt.expense_id = e.id AND pt.pending = 1 AND pt.removed_at IS NULL)'
+      : '';
     const expenseDelta = await new Promise((resolve, reject) => {
       db.get(
         `SELECT COALESCE(SUM(COALESCE(original_cost, amount)), 0) as total
-         FROM expenses
+         FROM expenses e
          WHERE payment_method_id = ?
-           AND COALESCE(posted_date, date) > ?
-           AND COALESCE(posted_date, date) <= ?`,
-        [paymentMethodId, anchorCycle.cycle_end_date, todayStr],
+           AND date <= ?
+           AND (COALESCE(posted_date, date) > ? ${missedStatement})`,
+        [paymentMethodId, todayStr, anchorCycle.cycle_end_date],
         (err, row) => {
           if (err) return reject(err);
           resolve(row?.total || 0);
@@ -337,7 +344,7 @@ class PaymentMethodBalanceService {
   async _calculateLegacyCurrentBalance(db, paymentMethodId, todayStr) {
     const expenseTotal = await new Promise((resolve, reject) => {
       db.get(
-        'SELECT COALESCE(SUM(COALESCE(original_cost, amount)), 0) as total FROM expenses WHERE payment_method_id = ? AND COALESCE(posted_date, date) <= ?',
+        'SELECT COALESCE(SUM(COALESCE(original_cost, amount)), 0) as total FROM expenses WHERE payment_method_id = ? AND date <= ?',
         [paymentMethodId, todayStr],
         (err, row) => {
           if (err) return reject(err);

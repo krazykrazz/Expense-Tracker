@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.28.2',
+    date: 'November 15, 2026',
+    added: [],
+    changed: ['Credit card current balance includes pending charges and matches banks that count pending; card details scroll as one area'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.28.1',
     date: 'November 14, 2026',
     added: [],

@@ -452,6 +452,16 @@ const SystemModal = () => {
           <div className="changelog">
             <div className="changelog-entry">
               <div className="changelog-version">
+                v1.28.2
+                {isCurrentVersion('v1.28.2') && <span className="current-version-badge">Current Version</span>}
+              </div>
+              <div className="changelog-date">November 15, 2026</div>
+              <ul className="changelog-items">
+                <li>Credit card current balance includes pending charges and matches banks that count pending; card details scroll as one area</li>
+              </ul>
+            </div>
+            <div className="changelog-entry">
+              <div className="changelog-version">
                 v1.28.1
                 {isCurrentVersion('v1.28.1') && <span className="current-version-badge">Current Version</span>}
               </div>

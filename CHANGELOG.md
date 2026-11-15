@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.28.2] - 2026-11-15
+
+### Credit card current balance includes pending charges and matches banks that count pending; card details scroll as one area
+
 ## [1.28.1] - 2026-11-14
 
 ### Bank import Inbox: row actions on their own line so the bank description is readable

@@ -21,7 +21,7 @@ The system now supports an optional `posted_date` field for credit card expenses
 - **Transaction Date**: When the purchase occurred (existing `date` field)
 - **Posted Date**: When the expense posts to the credit card statement (new `posted_date` field)
 
-Credit card balance calculations use the posted date to determine which expenses should be included in the current balance.
+Statements and billing cycles use the posted date to decide which statement an expense is on. The **current balance** (what you owe today) counts expenses by purchase date, pending or not (it used to count them from their posted date).
 
 ## Key Features
 
@@ -32,12 +32,10 @@ Credit card balance calculations use the posted date to determine which expenses
 - Can be set to NULL to indicate a pending transaction
 - Must be on or after the transaction date
 
-### 2. Smart Balance Calculation
+### 2. Balance Calculation
 
-The system uses `COALESCE(posted_date, date)` to determine the effective posting date:
-- If `posted_date` is set, use it for balance calculations
-- If `posted_date` is NULL and transaction date is past/current, include in balance
-- If `posted_date` is NULL and transaction date is future, exclude from balance
+- **Statements and billing cycles** use the effective posting date `COALESCE(posted_date, date)`: an expense is on the statement whose period contains it.
+- **Current balance** (what you owe today, including pending): the latest statement's balance plus everything bought up to today (`date <= today`) that isn't on that statement (posted after it closed, or, when the statement balance was entered from the real statement, linked to a bank charge still pending), minus payments since. An expense dated in the future is left out until its date.
 
 ### 3. Backward Compatibility
 
@@ -58,9 +56,9 @@ When a credit card payment method is selected:
 
 ### Credit Card Detail View
 
-- Balance calculations reflect only posted transactions
-- Pending transactions (NULL posted_date with future date) are excluded
-- Current balance accurately matches credit card statement
+- **Current Balance** includes charges bought up to today that haven't posted yet, like the bank's own balance (CIBC counts pending charges)
+- **Statement Balance** and the billing cycles count each charge on the statement it posts on
+- Expenses dated after today are only in the **Projected Balance**
 
 ### Expense List
 
@@ -141,7 +139,7 @@ CREATE INDEX idx_expenses_posted_date ON expenses(posted_date);
 **Steps:**
 1. Create expense with date = tomorrow
 2. Set posted_date = 2 days from now
-3. Credit card balance doesn't change until posted_date arrives
+3. The current balance includes it from tomorrow (its purchase date); the statement it lands on follows the posted date
 
 **Result:** Accurate balance tracking for planned expenses.
 
@@ -152,9 +150,9 @@ CREATE INDEX idx_expenses_posted_date ON expenses(posted_date);
 **Steps:**
 1. Create expense with date = today
 2. Leave posted_date empty (NULL)
-3. Transaction appears in expense list but not in credit card balance
+3. Transaction is in the current balance right away, like the bank's balance that includes pending charges
 
-**Result:** User can track pending transactions separately from posted balance.
+**Result:** The current balance is what you owe, pending included.
 
 ### Use Case 3: Immediate Posting
 
@@ -172,11 +170,11 @@ CREATE INDEX idx_expenses_posted_date ON expenses(posted_date);
 ### Balance Calculation Logic
 
 ```javascript
-// Effective posting date for balance calculations
+// Which statement an expense is on
 const effectiveDate = expense.posted_date || expense.date;
 
-// Only include if posted on or before today
-if (effectiveDate <= today) {
+// Current balance: bought up to today and not on the latest statement
+if (expense.date <= today && (effectiveDate > statementEnd || pendingAtBankAfterEnteredStatement)) {
   balance += expense.amount;
 }
 ```
@@ -187,20 +185,11 @@ if (effectiveDate <= today) {
 - Validates posted_date format and relationship to transaction date
 - Passes posted_date to repository layer
 
-**paymentMethodService.js:**
-- Uses `COALESCE(posted_date, date)` in balance queries
-- Filters by effective date <= current date
-
-### Repository Layer
+**paymentMethodBalanceService.js:**
+- Current balance: purchase date `<= today`, and after the latest statement by `COALESCE(posted_date, date)` (or pending at the bank after an entered statement)
+- Statements use `COALESCE(posted_date, date)`
 
 **expenseRepository.js:**
-```sql
-SELECT SUM(amount) as balance
-FROM expenses
-WHERE payment_method_id = ?
-  AND COALESCE(posted_date, date) <= date('now')
-```
-
 ## Migration
 
 ### Database Migration
@@ -249,7 +238,7 @@ db.run(`CREATE INDEX idx_expenses_posted_date ON expenses(posted_date)`);
 
 ### For Developers
 
-1. **Always use COALESCE**: Use `COALESCE(posted_date, date)` for balance calculations
+1. **Statements use COALESCE**: Use `COALESCE(posted_date, date)` to place an expense on a statement; the current balance counts by purchase date
 2. **Validate relationships**: Ensure posted_date >= date
 3. **Maintain backward compatibility**: NULL posted_date must work correctly
 4. **Index performance**: Use the posted_date index for efficient queries

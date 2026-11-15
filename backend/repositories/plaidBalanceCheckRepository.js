@@ -80,7 +80,6 @@ class PlaidBalanceCheckRepository {
         `SELECT pt.id, pt.amount, COALESCE(pt.authorized_date, pt.date) AS date, pt.date AS postedDate,
                 COALESCE(pt.merchant_name, pt.name) AS name, pt.status, pt.review_bucket AS bucket, pt.pending, pt.expense_id AS expenseId,
                 pt.removed_at IS NOT NULL AS removed, pt.transaction_id LIKE '${FILE_ID_PREFIX}%' AS fromFile,
-                (SELECT e.posted_date FROM expenses e WHERE e.id = pt.expense_id) AS expensePostedDate,
                 EXISTS (SELECT 1 FROM plaid_fixed_expense_links fl WHERE fl.plaid_transaction_id = pt.id) AS fixedExpense
          FROM plaid_transactions pt
          WHERE pt.plaid_account_id IN (${placeholders})
@@ -111,7 +110,7 @@ class PlaidBalanceCheckRepository {
     return dbHelper.queryAll(
       `SELECT pt.id, pt.amount, COALESCE(pt.authorized_date, pt.date) AS date, pt.date AS postedDate,
               COALESCE(pt.merchant_name, pt.name) AS name, pt.expense_id AS expenseId,
-              COALESCE(e.posted_date, e.date) AS expensePostedDate
+              e.date AS expenseDate
        FROM plaid_transactions pt
        JOIN expenses e ON e.id = pt.expense_id
        WHERE pt.plaid_account_id IN (${placeholders}) AND pt.pending = 0 AND pt.removed_at IS NULL
@@ -123,7 +122,7 @@ class PlaidBalanceCheckRepository {
   }
 
   /**
-   * Expenses on a card from `fromDate` to `toDate` (as the balance counts them: posted date when set) that no
+   * Expenses on a card bought from `fromDate` to `toDate` (`postedDate`: posted date when set) that no
    * bank transaction is linked to, and card payments in the same window, for the card balance check.
    */
   async findUnlinkedCardActivity(paymentMethodId, fromDate, toDate) {
@@ -131,7 +130,7 @@ class PlaidBalanceCheckRepository {
       dbHelper.queryAll(
         `SELECT e.id, e.date, COALESCE(e.posted_date, e.date) AS postedDate, e.place, COALESCE(e.original_cost, e.amount) AS amount
          FROM expenses e
-         WHERE e.payment_method_id = ? AND COALESCE(e.posted_date, e.date) >= ? AND COALESCE(e.posted_date, e.date) <= ?
+         WHERE e.payment_method_id = ? AND e.date >= ? AND e.date <= ?
            AND NOT EXISTS (SELECT 1 FROM plaid_transactions pt WHERE pt.expense_id = e.id)
          ORDER BY e.date, e.id`,
         [paymentMethodId, fromDate, toDate]
@@ -147,15 +146,15 @@ class PlaidBalanceCheckRepository {
     return { expenses, payments };
   }
 
-  /** Card activity dated after today, which the as-of-today tracker balance leaves out. */
+  /** Card activity dated after today (expenses by purchase date), which the tracker's current balance leaves out. */
   async sumFutureCardActivity(paymentMethodId, today) {
     const row = await dbHelper.queryOne(
       `SELECT
          (SELECT COALESCE(SUM(COALESCE(original_cost, amount)), 0) FROM expenses
-            WHERE payment_method_id = ? AND COALESCE(posted_date, date) > ?) AS expenses,
+            WHERE payment_method_id = ? AND date > ?) AS expenses,
          (SELECT COALESCE(SUM(amount), 0) FROM credit_card_payments
             WHERE payment_method_id = ? AND payment_date > ?) AS payments,
-         (SELECT COUNT(*) FROM expenses WHERE payment_method_id = ? AND COALESCE(posted_date, date) > ?) AS count`,
+         (SELECT COUNT(*) FROM expenses WHERE payment_method_id = ? AND date > ?) AS count`,
       [paymentMethodId, today, paymentMethodId, today, paymentMethodId, today]
     );
     return { expenses: row?.expenses || 0, payments: row?.payments || 0, count: row?.count || 0 };

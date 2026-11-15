@@ -35,9 +35,9 @@ Open the **💼 Financial** button in the month selector; payment methods appear
 
 ### Credit Card Features
 
-- **Current Balance** ("What you owe today") – anchored to the latest billing cycle (see [Balance Calculation](#credit-card-balance-calculation))
+- **Current Balance** ("What you owe today, including pending") – anchored to the latest billing cycle (see [Balance Calculation](#credit-card-balance-calculation))
 - **Statement Balance** – amount due from the most recently closed cycle; see [Credit Card Statement Balance](./CREDIT_CARD_STATEMENT_BALANCE.md)
-- **Projected Balance** – shown only when it differs from the current balance (future-dated / not-yet-posted expenses)
+- **Projected Balance** – shown only when it differs from the current balance (future-dated expenses)
 - **Utilization** – `current_balance / credit_limit`; bar is green below 30%, warning at ≥ 30%, danger at ≥ 70%
 - **Payment Due** card – days until `payment_due_day`; highlighted when ≤ 7 days and the statement isn't paid
 - **💳 Log Payment** and a **Payments** tab with history and delete
@@ -47,11 +47,11 @@ Open the **💼 Financial** button in the month selector; payment methods appear
 
 ### Credit Card Balance Calculation
 
-Implemented in `backend/services/paymentMethodBalanceService.js`. All expense sums use `COALESCE(original_cost, amount)` (full charge before insurance reimbursement) and the effective date `COALESCE(posted_date, date)`. All results are rounded to cents and floored at 0.
+Implemented in `backend/services/paymentMethodBalanceService.js`. All expense sums use `COALESCE(original_cost, amount)` (full charge before insurance reimbursement). Statements use the effective date `COALESCE(posted_date, date)`; the current balance counts by purchase date. All results are rounded to cents and floored at 0.
 
 | Balance | Calculation |
 |---------|-------------|
-| Current | **Anchored**: take the most recent `credit_card_billing_cycles` record (by `cycle_end_date`) and its effective balance (actual if user-entered, else calculated), then add expenses with effective date in `(cycle_end_date, today]` and subtract payments with `payment_date` in `(cycle_end_date, today]`. If the card has no billing cycle record, falls back to all expenses with effective date ≤ today minus all payments ≤ today. |
+| Current | **Anchored**: take the most recent `credit_card_billing_cycles` record (by `cycle_end_date`) and its effective balance (actual if user-entered, else calculated), then add expenses bought up to today (`date <= today`) that aren't on it: effective date after `cycle_end_date`, or, when the cycle's balance was entered from the real statement, linked to a bank charge still pending (bought before it closed but not on it). Subtract payments with `payment_date` in `(cycle_end_date, today]`. Pending and not-yet-posted charges are included (what you owe today, as a bank that counts pending reports it). If the card has no billing cycle record, falls back to all expenses bought up to today minus all payments ≤ today. |
 | Projected | All expenses minus all payments, with no date filter. |
 | Statement | `statementBalanceService.calculateStatementBalance()` when `billing_cycle_day` is set; otherwise a legacy calculation from `billing_cycle_start`/`billing_cycle_end`, or `null`. |
 

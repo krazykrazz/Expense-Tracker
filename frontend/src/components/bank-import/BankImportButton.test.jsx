@@ -142,9 +142,12 @@ describe('BankImportButton inbox count badge', () => {
   });
 
   it('reloads when expenses change in this tab (deleting a linked expense returns its bank row to the Inbox)', async () => {
-    getPlaidStatus.mockResolvedValueOnce(status({ toReview: 0 }));
+    getPlaidStatus.mockResolvedValue(status({ toReview: 0 }));
     const { rerender } = render(<BankImportButton />);
     await screen.findByRole('button', { name: 'Bank import' });
+    // The sync on open reloads the status too: let it finish so it can't take the response meant for the reload below
+    await waitFor(() => expect(syncBanksIfStale).toHaveBeenCalled());
+    await act(async () => {});
     const before = getPlaidStatus.mock.calls.length;
 
     getPlaidStatus.mockResolvedValueOnce(status({ toReview: 1 }));

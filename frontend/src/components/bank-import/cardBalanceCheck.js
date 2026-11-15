@@ -73,8 +73,6 @@ function describeCauseText(cause) {
       return `Probably still pending at the bank, which leaves pending charges out of its balance (it doesn't tell Plaid which are pending): ${what}`;
     case 'from_file':
       return `From a bank file, not in the bank's balance yet (Plaid hasn't sent it): ${what}`;
-    case 'posts_later':
-      return `Pending at the bank, which counts pending charges; in the tracker's balance from its posted date ${cause.trackerPostedDate}: ${what}`;
     case 'cancelled':
       return `Pending charge the bank cancelled, still an expense in the tracker: ${what}. Review it in the Inbox`;
     case 'fixed_expense':

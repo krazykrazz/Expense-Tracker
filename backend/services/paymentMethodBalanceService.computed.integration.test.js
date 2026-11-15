@@ -79,6 +79,39 @@ describe('credit card balance is computed, not stored', () => {
     expect(await storedBalance()).toBe(STORED);
   });
 
+  it('counts what was bought up to today, posted or not, and charges still pending at the bank after an entered statement', async () => {
+    await addCard({ billingCycleDay: 13 });
+    await runSql(
+      db,
+      `INSERT INTO credit_card_billing_cycles (
+        payment_method_id, cycle_start_date, cycle_end_date,
+        actual_statement_balance, calculated_statement_balance,
+        is_user_entered, effective_balance, balance_type
+      ) VALUES (?, ?, ?, 1000, 1100, 1, 1000, 'actual')`,
+      [paymentMethodId, addDays(today, -30), addDays(today, -1)]
+    );
+    // Bought today, posts tomorrow: counted now
+    await runSql(db, 'INSERT INTO expenses (date, posted_date, place, amount, type, week, method, payment_method_id) VALUES (?, ?, \'Shop\', 30, \'Other\', 1, \'Visa\', ?)',
+      [today, addDays(today, 1), paymentMethodId]);
+    // Dated inside the statement: on it unless the bank still holds it as pending
+    const pending = await runSql(db, 'INSERT INTO expenses (date, place, amount, type, week, method, payment_method_id) VALUES (?, \'Shop\', 40, \'Other\', 1, \'Visa\', ?)',
+      [addDays(today, -1), paymentMethodId]);
+    await runSql(db, 'INSERT INTO expenses (date, place, amount, type, week, method, payment_method_id) VALUES (?, \'Shop\', 60, \'Other\', 1, \'Visa\', ?)',
+      [addDays(today, -2), paymentMethodId]);
+    await runSql(db, `INSERT INTO plaid_transactions (transaction_id, amount, date, name, status, pending, expense_id)
+      VALUES ('computed-pending', 40, ?, 'SHOP', 'added', 1, ?)`, [addDays(today, -1), pending.lastID]);
+
+    try {
+      expect(await paymentMethodBalanceService.calculateCurrentBalance(paymentMethodId)).toBe(1070);
+
+      // A calculated statement already counts it by purchase date
+      await runSql(db, 'UPDATE credit_card_billing_cycles SET is_user_entered = 0, actual_statement_balance = 0, effective_balance = 1100, balance_type = \'calculated\' WHERE payment_method_id = ?', [paymentMethodId]);
+      expect(await paymentMethodBalanceService.calculateCurrentBalance(paymentMethodId)).toBe(1130);
+    } finally {
+      await runSql(db, "DELETE FROM plaid_transactions WHERE transaction_id = 'computed-pending'");
+    }
+  });
+
   it('a future-dated expense joins the balance on its date, not when it is entered', async () => {
     await addCard();
     await addExpense(today, 200);

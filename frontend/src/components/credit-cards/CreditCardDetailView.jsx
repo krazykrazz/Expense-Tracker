@@ -378,7 +378,7 @@ const CreditCardDetailView = ({
                 <div className="overview-value balance-value">
                   {formatCurrency(paymentMethod.current_balance)}
                 </div>
-                <div className="balance-description">What you owe today</div>
+                <div className="balance-description">What you owe today, including pending</div>
                 <CardBankBalanceLine check={bankCheck} />
               </div>
 

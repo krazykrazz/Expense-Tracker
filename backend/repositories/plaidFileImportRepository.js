@@ -1,5 +1,6 @@
 const dbHelper = require('../utils/dbHelper');
-const { FILE_ID_PREFIX, SAME_TXN_DAYS, planFileImport } = require('../utils/bankFileImport');
+const { FILE_ID_PREFIX, planFileImport } = require('../utils/bankFileImport');
+const { POSTING_LAG_DAYS } = require('../utils/plaidMatching');
 const plaidBucketRepository = require('./plaidBucketRepository');
 const { STAGED_COLUMNS, STAGED_COLUMN_NAMES } = require('./plaidSql');
 
@@ -43,7 +44,7 @@ class PlaidFileImportRepository {
     return dbHelper.runInTransaction(async (tx) => {
       const existing = await tx.all(
         `SELECT ${STAGED_COLUMNS} FROM plaid_transactions
-         WHERE plaid_account_id = ? AND date >= date(?, '-${SAME_TXN_DAYS + 2} days')
+         WHERE plaid_account_id = ? AND date >= date(?, '-${POSTING_LAG_DAYS + 2} days')
          ORDER BY date, id`,
         [plaidAccountId, fromDate]
       );

@@ -187,7 +187,7 @@ Click the bank icon → **Inbox**. It has three filters:
 A row in the wrong tab can be moved: **Not an expense** (in To review) or **Move to To review**; it then stays put. Each row is one bank transaction:
 
 - **Add**: creates an expense, with the place, date and a suggested category filled in. The place is the one you used before for the same bank description, or an existing place it starts with (e.g. "Sobeys" for "SOBEYS #4123").
-- **Match**: links it to an expense you already logged, a planned **fixed expense** (records when it actually landed) or expected **income** (for deposits).
+- **Match**: links it to an expense you already logged, a planned **fixed expense** (records when it actually landed) or expected **income** (for deposits). An expense you entered a few cents off the bank's amount is still offered (after exact ones); **Match & use $25.50** also fixes its amount.
 - **Add income**: records an unplanned deposit as income.
 - **Apply to insurance** (on a deposit): an insurer paying medical claims. Tick the claims it pays (an exact match is pre-selected), check the amounts add up to the deposit, and apply: the claims become Paid with their out-of-pocket and each person's share updated. The expense shows the reimbursement, with **Undo** in its edit form.
 - **Record payment** (on a credit to a credit card): records it as a payment on that card. When you paid it from a bank account that is also connected, tick **Also mark the … debit as this payment** and one click settles both rows. If you already logged that payment by hand, **Match** it instead.

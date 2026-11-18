@@ -136,7 +136,7 @@ const InboxRow = ({ txn, filter, expanded, onExpand, onAction, busy, error, unco
           txn={txn}
           busy={busy}
           onCancel={() => onExpand(null)}
-          onMatch={(expenseId) => onAction('match', expenseId)}
+          onMatch={(expenseId, options) => onAction('match', options ? { expenseId, ...options } : expenseId)}
           onMatchFixed={(fixedExpenseId) => onAction('match-fixed', fixedExpenseId)}
           onMatchIncome={(payload) => onAction('match-income', payload)}
         />

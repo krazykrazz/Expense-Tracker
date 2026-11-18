@@ -5,7 +5,7 @@ const categorySuggestionService = require('./categorySuggestionService');
 const plaidCardPaymentService = require('./plaidCardPaymentService');
 const plaidInsuranceService = require('./plaidInsuranceService');
 const {
-  MATCH_WINDOW_DAYS, PENDING_AMOUNT_TOLERANCE, toCents, shiftDate, transactionDate, findMatchCandidates,
+  MATCH_WINDOW_DAYS, POSTING_LAG_DAYS, PENDING_AMOUNT_TOLERANCE, toCents, shiftDate, transactionDate, findMatchCandidates,
   fixedExpectedDate, findFixedCandidates, isDeposit, findIncomeCandidates, monthWindow, descriptionKey
 } = require('../utils/plaidMatching');
 const { isFileRow } = require('../utils/bankFileImport');
@@ -212,14 +212,18 @@ class PlaidInboxService {
     const paymentMethodIds = [...new Set(rows.map(row => row.paymentMethodId))];
     const expenses = await plaidRepository.findUnlinkedExpenses(
       paymentMethodIds,
-      shiftDate(dates[0], -MATCH_WINDOW_DAYS),
+      shiftDate(dates[0], -POSTING_LAG_DAYS),
       shiftDate(dates[dates.length - 1], MATCH_WINDOW_DAYS)
     );
 
     for (const row of rows) {
-      result.set(row.id, findMatchCandidates(row, expenses).map(({ id, date, place, amount, originalCost, chargedAmount, type, notes }) => (
-        { id, date, place, amount, originalCost: originalCost ?? null, chargedAmount, type, notes }
-      )));
+      result.set(row.id, findMatchCandidates(row, expenses).map(({ id, date, place, amount, originalCost, chargedAmount, amountDiff, insuranceEligible, type, notes }) => ({
+        id, date, place, amount, originalCost: originalCost ?? null, chargedAmount, type, notes,
+        // The bank's amount minus the expense's charged amount: 0 for an exact match
+        amountDiff,
+        // Match & use the bank's amount: only for a plain expense (a reimbursed or insured one has its own amounts)
+        canUseBankAmount: amountDiff !== 0 && row.amount > 0 && originalCost == null && !insuranceEligible
+      })));
     }
     return result;
   }

@@ -466,10 +466,17 @@
 
 .inbox-match-picker li {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
   gap: var(--spacing-3, 12px);
   padding: 4px 0;
+}
+
+/* A match candidate whose amount is a little off the bank's: shown in the row's own text colour, but bold */
+.inbox-amount-differs {
+  color: var(--text-secondary);
+  font-weight: 600;
 }
 
 .inbox-inline-check {

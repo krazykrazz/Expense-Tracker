@@ -172,8 +172,16 @@ export const getInbox = (status = 'new', bucket = 'spending', options = {}) =>
 export const addInboxTransaction = (id, fields) =>
   call('adding bank transaction', () => apiPost(API_ENDPOINTS.PLAID_INBOX_ACTION(id, 'add'), fields, 'add expense'));
 
-export const matchInboxTransaction = (id, expenseId) =>
-  call('matching bank transaction', () => apiPost(API_ENDPOINTS.PLAID_INBOX_ACTION(id, 'match'), { expenseId }, 'match expense'));
+/**
+ * Link this transaction to an expense. `updateAmount`: also set the expense's amount to the bank's (a near-miss
+ * amount; refused for a reimbursed or insurance-tracked expense).
+ */
+export const matchInboxTransaction = (id, expenseId, { updateAmount = false } = {}) =>
+  call('matching bank transaction', () => apiPost(
+    API_ENDPOINTS.PLAID_INBOX_ACTION(id, 'match'),
+    updateAmount ? { expenseId, updateAmount: true } : { expenseId },
+    'match expense'
+  ));
 
 /** Confirm a fixed expense with this transaction (updates its amount to the bank amount when they differ). */
 export const matchInboxTransactionToFixed = (id, fixedExpenseId) =>

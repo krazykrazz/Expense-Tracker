@@ -33,6 +33,12 @@ describe('INBOX_ACTIONS', () => {
     expect(INBOX_ACTIONS[action].changesData).toBe(true);
   });
 
+  it('match also accepts { expenseId, updateAmount } for a near-miss amount', async () => {
+    await INBOX_ACTIONS.match.run(7, { expenseId: 42, updateAmount: true });
+
+    expect(plaidApi.matchInboxTransaction).toHaveBeenCalledWith(7, 42, { updateAmount: true });
+  });
+
   it.each([['ignore', 'ignoreInboxTransaction'], ['unignore', 'unignoreInboxTransaction']])('%s only moves the row', async (action, api) => {
     await INBOX_ACTIONS[action].run(7);
 

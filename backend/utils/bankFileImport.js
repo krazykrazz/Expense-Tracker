@@ -17,7 +17,7 @@
  * - description: Plaid's raw name; merchant name from Plaid, else from the file.
  * - review state (new / ignored / added / matched) and expense link: always kept.
  */
-const { toCents, dayDiff, nameTokens, PENDING_AMOUNT_TOLERANCE } = require('./plaidMatching');
+const { toCents, dayDiff, signedDayDiff, nameTokens, PENDING_AMOUNT_TOLERANCE, POSTING_LAG_DAYS } = require('./plaidMatching');
 const { parseCsv, parseBankFile, FORMATS, FILE_ID_PREFIX } = require('./bankFileFormats');
 
 /** Rows for the same money within this many days are the same transaction. */
@@ -40,17 +40,33 @@ function similarNames(a, b) {
 /**
  * The same transaction in two sources: same amount to the cent within SAME_TXN_DAYS (`exact`), or, when either
  * is still pending, an amount within PENDING_AMOUNT_TOLERANCE and a similar description (`settledDifferently`).
+ * Beyond SAME_TXN_DAYS only a posting-dated settled row pairs with a pending charge (see postingLagMatch).
  * @returns {null|{gap: number, exact: boolean}}
  */
 function sameTransaction(a, b) {
   const gap = dayDiff(a.date, b.date);
-  if (gap > SAME_TXN_DAYS) return null;
+  if (gap > SAME_TXN_DAYS) return postingLagMatch(a, b, gap);
   if (toCents(a.amount) === toCents(b.amount)) return { gap, exact: true };
   const eitherPending = Boolean(a.pending) || Boolean(b.pending);
   const close = Math.abs(a.amount - b.amount) <= Math.abs(a.amount) * PENDING_AMOUNT_TOLERANCE;
   return eitherPending && Math.sign(a.amount) === Math.sign(b.amount) && close && similarNames(a, b)
     ? { gap, exact: false }
     : null;
+}
+
+/**
+ * A pending charge carries its purchase date; a source that dates rows by posting (a CIBC file: no purchase date)
+ * can put the settled version several days later. Such a pair is the same transaction when the settled row is
+ * dated 4 to POSTING_LAG_DAYS days after the pending one, the amount is exact and the merchant names are similar.
+ * A settled row that knows its purchase date (`authorizedDate`) is compared by date as usual, never here.
+ * @returns {null|{gap: number, exact: boolean}}
+ */
+function postingLagMatch(a, b, gap) {
+  if (Boolean(a.pending) === Boolean(b.pending)) return null;
+  const [pending, settled] = a.pending ? [a, b] : [b, a];
+  const lag = signedDayDiff(pending.date, settled.date);
+  if (settled.authorizedDate || lag <= SAME_TXN_DAYS || lag > POSTING_LAG_DAYS) return null;
+  return toCents(a.amount) === toCents(b.amount) && similarNames(a, b) ? { gap, exact: true } : null;
 }
 
 /**

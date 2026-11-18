@@ -1,7 +1,7 @@
 const dbHelper = require('../utils/dbHelper');
 const plaidRepository = require('./plaidRepository');
-const { FILE_ID_PREFIX, SAME_TXN_DAYS, mergePlaidIntoFileRow, sameTransaction } = require('../utils/bankFileImport');
-const { PENDING_AMOUNT_TOLERANCE, toCents } = require('../utils/plaidMatching');
+const { FILE_ID_PREFIX, SAME_TXN_DAYS, mergePlaidIntoFileRow, sameTransaction, similarNames } = require('../utils/bankFileImport');
+const { PENDING_AMOUNT_TOLERANCE, POSTING_LAG_DAYS, dayDiff, toCents } = require('../utils/plaidMatching');
 const plaidBucketRepository = require('./plaidBucketRepository');
 const { STAGED_COLUMNS, pfcValues, PFC_SET_FIELDS, CAPTURE_COLUMNS, captureValues, CAPTURE_SET_FIELDS } = require('./plaidSql');
 
@@ -146,10 +146,35 @@ class PlaidSyncRepository {
       [txn.transaction_id, ...this._values(ctx, txn), pendingRow.id]
     );
     ctx.counts.updated++;
+    await this._dropDuplicateFileRow(ctx, txn, pendingRow.id);
     if (pendingRow.expenseId && pendingRow.pending) {
       ctx.settlements.push(settlement(pendingRow, txn, { settled: true, postedDate: txn.date }));
     }
     return true;
+  }
+
+  /**
+   * The settled charge may also be in the Inbox as a bank-file row staged on its own, because the pending charge
+   * and the posting-dated file row were too far apart to pair at the time. That file row has no review or link,
+   * so it is redundant now: at most one, the closest, with the same exact amount and a similar merchant name.
+   */
+  async _dropDuplicateFileRow(ctx, txn, keepId) {
+    const plaidAccountId = ctx.accountIdMap.get(txn.account_id);
+    if (!plaidAccountId) return;
+    const rows = await ctx.tx.all(
+      `SELECT ${STAGED_COLUMNS} FROM plaid_transactions
+       WHERE plaid_account_id = ? AND id != ? AND transaction_id LIKE '${FILE_ID_PREFIX}%' AND status = 'new' AND expense_id IS NULL
+         AND ABS(julianday(date) - julianday(?)) <= ?`,
+      [plaidAccountId, keepId, txn.date, SAME_TXN_DAYS]
+    );
+    const settled = { date: txn.date, amount: txn.amount, pending: false, name: txn.name, merchantName: txn.merchant_name };
+    const duplicate = rows
+      .filter(row => !ctx.claimed.has(row.id) && sameTransaction(settled, row)?.exact && similarNames(settled, row))
+      .sort((a, b) => dayDiff(a.date, txn.date) - dayDiff(b.date, txn.date) || a.id - b.id)[0];
+    if (!duplicate) return;
+    await ctx.tx.run("DELETE FROM plaid_transactions WHERE id = ? AND status = 'new'", [duplicate.id]);
+    ctx.claimed.add(duplicate.id);
+    ctx.counts.fromFile++;
   }
 
   /**
@@ -250,8 +275,9 @@ class PlaidSyncRepository {
 
   /**
    * A row imported from a bank file on the same account that an incoming Plaid transaction is the same as
-   * (utils/bankFileImport sameTransaction: same amount within SAME_TXN_DAYS, or a pending charge that settled
-   * for a different amount), exact amounts and closest dates first.
+   * (utils/bankFileImport sameTransaction: same amount within SAME_TXN_DAYS, a pending charge that settled for
+   * a different amount, or a pending charge and its posting-dated file row up to POSTING_LAG_DAYS later), exact
+   * amounts and closest dates first.
    * @param {Set<number>} claimed rows already taken over in this batch
    */
   async _findFileRow(tx, txn, plaidAccountId, claimed) {
@@ -259,9 +285,12 @@ class PlaidSyncRepository {
     const rows = await tx.all(
       `SELECT ${STAGED_COLUMNS} FROM plaid_transactions
        WHERE plaid_account_id = ? AND transaction_id LIKE '${FILE_ID_PREFIX}%' AND ABS(julianday(date) - julianday(?)) <= ?`,
-      [plaidAccountId, txn.date, SAME_TXN_DAYS]
+      [plaidAccountId, txn.date, POSTING_LAG_DAYS]
     );
-    const incoming = { date: txn.date, amount: txn.amount, pending: Boolean(txn.pending), name: txn.name, merchantName: txn.merchant_name };
+    const incoming = {
+      date: txn.date, authorizedDate: txn.authorized_date ?? null, amount: txn.amount, pending: Boolean(txn.pending),
+      name: txn.name, merchantName: txn.merchant_name
+    };
     let best = null;
     for (const row of rows) {
       if (claimed.has(row.id)) continue;

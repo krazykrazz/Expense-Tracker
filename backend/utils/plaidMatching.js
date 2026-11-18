@@ -1,11 +1,17 @@
 /**
  * Pure helpers for matching staged bank transactions to existing expenses.
- * A candidate has the same payment method, the same *charged* amount to the cent, and a date within
- * ±MATCH_WINDOW_DAYS. The charged amount is `chargedAmount` when given (original cost of a reimbursed or
- * insurance-tracked expense), else `amount`.
+ * A candidate has the same payment method, a *charged* amount that is the bank's amount or within the near-miss
+ * tolerance of it (a typo when entering the expense), and a date within ±MATCH_WINDOW_DAYS, or, for a settled row
+ * dated by its posting date, up to POSTING_LAG_DAYS after the purchase. The charged amount is `chargedAmount` when
+ * given (original cost of a reimbursed or insurance-tracked expense), else `amount`. Exact amounts rank first.
  */
 
 const MATCH_WINDOW_DAYS = 3;
+/** A settled row without a purchase date (a posting-dated bank file row) may follow the purchase by this many days. */
+const POSTING_LAG_DAYS = 10;
+/** An expense entered with a slightly wrong amount still matches: within this many cents or this share of the amount. */
+const NEAR_AMOUNT_CENTS = 100;
+const NEAR_AMOUNT_SHARE = 0.01;
 const DAY_MS = 24 * 60 * 60 * 1000;
 /** A pending charge can settle for a different amount (tip, gas hold): within this share of the pending amount. */
 const PENDING_AMOUNT_TOLERANCE = 0.25;
@@ -29,24 +35,43 @@ const transactionDate = (txn) => txn.authorizedDate || txn.date;
 /** What the bank actually charged for an expense. */
 const chargedAmount = (expense) => expense.chargedAmount ?? expense.amount;
 
-/**
- * @param {{paymentMethodId: number, amount: number, date: string, authorizedDate?: string}} txn
- * @param {{paymentMethodId: number, amount: number, chargedAmount?: number, date: string}} expense
- */
-function isMatchCandidate(txn, expense) {
-  return expense.paymentMethodId === txn.paymentMethodId
-    && toCents(chargedAmount(expense)) === toCents(txn.amount)
-    && dayDiff(transactionDate(txn), expense.date) <= MATCH_WINDOW_DAYS;
-}
+/** How far an expense's amount may be from the bank's and still be offered, in cents. */
+const nearAmountCents = (bankCents) => Math.max(NEAR_AMOUNT_CENTS, Math.round(Math.abs(bankCents) * NEAR_AMOUNT_SHARE));
+
+/** The row's date is a posting date, which can follow the purchase by days: settled, and no purchase date known. */
+const datedByPosting = (txn) => !txn.pending && !txn.authorizedDate;
 
 /**
- * Candidates for one transaction, closest date first.
+ * How well an expense fits a bank transaction, or null when it isn't a candidate.
+ * @param {{paymentMethodId: number, amount: number, date: string, authorizedDate?: string, pending?: boolean}} txn
+ * @param {{paymentMethodId: number, amount: number, chargedAmount?: number, date: string}} expense
+ * @returns {null|{amountDiffCents: number, gap: number}} `amountDiffCents`: the bank's amount minus the expense's
+ *   charged amount (0 = exact); `gap`: days between the purchase dates
+ */
+function matchFit(txn, expense) {
+  if (expense.paymentMethodId !== txn.paymentMethodId) return null;
+  const bankCents = toCents(txn.amount);
+  const amountDiffCents = bankCents - toCents(chargedAmount(expense));
+  // A credit never matches an expense; near misses need a charge
+  if (amountDiffCents !== 0 && (bankCents <= 0 || Math.abs(amountDiffCents) > nearAmountCents(bankCents))) return null;
+  // Positive: the bank row is dated after the expense
+  const lag = toUtcDay(transactionDate(txn)) - toUtcDay(expense.date);
+  if (lag < -MATCH_WINDOW_DAYS || lag > (datedByPosting(txn) ? POSTING_LAG_DAYS : MATCH_WINDOW_DAYS)) return null;
+  return { amountDiffCents, gap: Math.abs(lag) };
+}
+
+const isMatchCandidate = (txn, expense) => matchFit(txn, expense) !== null;
+
+/**
+ * Candidates for one transaction: exact amounts first, then the smaller amount difference, then the closest date.
+ * Each carries `amountDiff` (dollars; the bank's amount minus the expense's charged amount, 0 when exact).
  */
 function findMatchCandidates(txn, expenses) {
-  const date = transactionDate(txn);
   return expenses
-    .filter(expense => isMatchCandidate(txn, expense))
-    .sort((a, b) => dayDiff(date, a.date) - dayDiff(date, b.date) || a.id - b.id);
+    .map(expense => ({ expense, fit: matchFit(txn, expense) }))
+    .filter(({ fit }) => fit)
+    .sort((a, b) => Math.abs(a.fit.amountDiffCents) - Math.abs(b.fit.amountDiffCents) || a.fit.gap - b.fit.gap || a.expense.id - b.expense.id)
+    .map(({ expense, fit }) => ({ ...expense, amountDiff: fit.amountDiffCents / 100 }));
 }
 
 // ─── Fixed expenses ───
@@ -260,6 +285,7 @@ function findPaymentCandidates(txn, payments) {
 
 module.exports = {
   MATCH_WINDOW_DAYS,
+  POSTING_LAG_DAYS,
   PENDING_AMOUNT_TOLERANCE,
   PAYMENT_WINDOW_DAYS,
   isCardRow,
@@ -288,6 +314,8 @@ module.exports = {
   shiftDate,
   transactionDate,
   chargedAmount,
+  matchFit,
+  nearAmountCents,
   isMatchCandidate,
   findMatchCandidates,
   fixedExpectedDate,

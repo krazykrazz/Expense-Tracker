@@ -394,6 +394,76 @@ describe('plaidService', () => {
       ]);
     });
 
+    test('a CIBC file row dated by its posting date pairs with the pending Plaid charge up to 10 days earlier (the Shoppers case)', async () => {
+      const { item, accountId } = await cardBank('Pending Bank');
+      client.transactionsSync.mockResolvedValueOnce(cardPage({ added: [
+        txn('shoppers-p', { amount: 43, date: '2026-11-12', authorized_date: '2026-11-12', name: 'Shoppers Drug Mart', merchant_name: 'Shoppers Drug Mart', pending: true })
+      ] }));
+      await plaidService.syncItem(item.id);
+      const rowId = (await get("SELECT id FROM plaid_transactions WHERE transaction_id = 'shoppers-p'")).id;
+      const { expense } = await plaidReviewService.addAsExpense(rowId, { type: 'Groceries' });
+
+      const imported = await plaidFileImportService.importFile(accountId, {
+        csv: '2026-11-16,"SHOPPERS DRUG MART #12 STITTSVILLE, ON",43.00,,5223********1234', fromDate: '2026-11-01'
+      });
+
+      expect(imported).toMatchObject({ added: 0, updated: 1, settled: 1 });
+      expect(await rows()).toEqual([expect.objectContaining({ tid: 'shoppers-p', status: 'added', pending: 0, date: '2026-11-16', auth: '2026-11-12', expenseId: expense.id })]);
+      expect((await get('SELECT posted_date AS posted FROM expenses WHERE id = ?', [expense.id])).posted).toBe('2026-11-16');
+    });
+
+    test('that pairing stays strict beyond 3 days: another amount, another merchant, a settled row earlier than the charge, or two settled rows stay separate', async () => {
+      const { item, accountId } = await cardBank('Pending Bank');
+      client.transactionsSync.mockResolvedValueOnce(cardPage({ added: [
+        txn('p-shop', { amount: 43, date: '2026-11-12', authorized_date: '2026-11-12', name: 'Shoppers Drug Mart', merchant_name: 'Shoppers Drug Mart', pending: true }),
+        txn('s-shop', { amount: 20, date: '2026-11-01', authorized_date: '2026-11-01', name: 'Shoppers Drug Mart', merchant_name: 'Shoppers Drug Mart', pending: false })
+      ] }));
+      await plaidService.syncItem(item.id);
+
+      const imported = await plaidFileImportService.importFile(accountId, {
+        csv: [
+          '2026-11-16,"SHOPPERS DRUG MART #12",44.00,,5223********1234',   // other amount, 4 days after the pending charge
+          '2026-11-16,"CANADIAN TIRE #123",43.00,,5223********1234',         // other merchant
+          '2026-11-06,"SHOPPERS DRUG MART #12",43.00,,5223********1234',    // settled earlier than the pending charge by 6 days
+          '2026-11-08,"SHOPPERS DRUG MART #12",20.00,,5223********1234'     // 7 days after a settled Plaid row: two settled rows
+        ].join('\n'), fromDate: '2026-11-01'
+      });
+
+      expect(imported).toMatchObject({ added: 4, updated: 0 });
+    });
+
+    test('a file row staged before the pairing rule existed does not outlive Plaid settling the pending charge it duplicates', async () => {
+      const { item, accountId } = await cardBank('Pending Bank');
+      client.transactionsSync.mockResolvedValueOnce(cardPage({ added: [
+        txn('shoppers-p', { amount: 43, date: '2026-11-12', authorized_date: '2026-11-12', name: 'Shoppers Drug Mart', merchant_name: 'Shoppers Drug Mart', pending: true })
+      ] }));
+      await plaidService.syncItem(item.id);
+      const rowId = (await get("SELECT id FROM plaid_transactions WHERE transaction_id = 'shoppers-p'")).id;
+      const { expense } = await plaidReviewService.addAsExpense(rowId, { type: 'Groceries' });
+      // The state production was in: the posting-dated file row staged on its own, unlinked. A file row you already
+      // ignored is staged first (lower id), so only the review status keeps it from being taken as the duplicate
+      const reviewed = await run(
+        `INSERT INTO plaid_transactions (transaction_id, plaid_account_id, amount, date, name, status, pending)
+         VALUES ('file:reviewed', ?, 43, '2026-11-16', 'SHOPPERS DRUG MART #12 STITTSVILLE, ON', 'ignored', 0)`,
+        [accountId]
+      );
+      await run(
+        `INSERT INTO plaid_transactions (transaction_id, plaid_account_id, amount, date, name, status, pending)
+         VALUES ('file:legacy', ?, 43, '2026-11-16', 'SHOPPERS DRUG MART #12 STITTSVILLE, ON', 'new', 0)`,
+        [accountId]
+      );
+
+      client.transactionsSync.mockResolvedValueOnce(cardPage({
+        added: [txn('shoppers-posted', { amount: 43, date: '2026-11-16', authorized_date: '2026-11-12', name: 'Shoppers Drug Mart', merchant_name: 'Shoppers Drug Mart', pending_transaction_id: 'shoppers-p' })],
+        removed: [{ transaction_id: 'shoppers-p' }]
+      }));
+      await plaidService.syncItem(item.id);
+
+      // Plaid's row (linked, settled) stays; the unreviewed duplicate is gone; a file row you already decided on is left alone
+      expect((await rows()).map(r => [r.tid, r.status, r.expenseId])).toEqual([['shoppers-posted', 'added', expense.id], ['file:reviewed', 'ignored', null]]);
+      expect(reviewed).toBeGreaterThan(0);
+    });
+
     test('Plaid first: a file shows a pending charge settled; Plaid\'s posted version later replaces it without a duplicate', async () => {
       const { item, accountId } = await cardBank('Pending Bank');
       client.transactionsSync.mockResolvedValueOnce(cardPage({ added: [

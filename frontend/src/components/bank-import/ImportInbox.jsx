@@ -98,7 +98,7 @@ const ImportInbox = ({ initialView, onExpensesChanged, onInboxChanged, onOpenCon
     }
   };
 
-  const { transactions, hiddenUnmapped, counts } = data;
+  const { transactions, hiddenUnmapped, hiddenUnknown, counts } = data;
   const cancelled = view === 'spending' ? (data.cancelled || []) : [];
 
   const handleCancelled = async (row, decision) => {
@@ -138,6 +138,11 @@ const ImportInbox = ({ initialView, onExpensesChanged, onInboxChanged, onOpenCon
         <div className="bank-import-message">
           {hiddenUnmapped} new transaction{hiddenUnmapped === 1 ? ' is' : 's are'} hidden because the account has no payment method.{' '}
           <button className="bank-import-link" onClick={onOpenConnections}>Map accounts</button>
+        </div>
+      )}
+      {hiddenUnknown > 0 && (
+        <div className="bank-import-message">
+          {hiddenUnknown} new transaction{hiddenUnknown === 1 ? ' is' : 's are'} hidden because they belong to an account the bank connection never listed.
         </div>
       )}
       {loadError && <div className="bank-import-error" role="alert">{loadError}</div>}

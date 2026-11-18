@@ -46,6 +46,15 @@ describe('ImportInbox', () => {
     expect(plaidApi.getInbox).toHaveBeenCalledWith('new', 'spending', expect.any(Object));
   });
 
+  it('explains rows from an account the bank never listed, with no mapping action', async () => {
+    plaidApi.getInbox.mockResolvedValue({ transactions: [txn()], hiddenUnmapped: 0, hiddenUnknown: 3 });
+
+    renderInbox();
+
+    expect(await screen.findByText(/3 new transactions are hidden because they belong to an account the bank connection never listed/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Map accounts' })).not.toBeInTheDocument();
+  });
+
   it('adds a transaction as an expense with the edited fields and refreshes expenses', async () => {
     const onExpensesChanged = vi.fn();
     plaidApi.getInbox

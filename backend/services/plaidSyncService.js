@@ -4,6 +4,7 @@ const plaidSyncRepository = require('../repositories/plaidSyncRepository');
 const activityLogService = require('./activityLogService');
 const plaidSettlementService = require('./plaidSettlementService');
 const plaidCardBalanceService = require('./plaidCardBalanceService');
+const plaidBackfillService = require('./plaidBackfillService');
 const { runWithTabId } = require('../utils/requestContext');
 const { decrypt } = require('../utils/tokenCrypto');
 const logger = require('../config/logger');
@@ -79,6 +80,9 @@ class PlaidSyncService {
           }
           // Only against a balance fetched just now: an old one would settle the wrong charges, irreversibly
           if (balancesFresh) await this._settleFromBalance(id);
+          // One-off backfills of data older versions didn't keep (spec 2.1, 2.5.7); never fails the sync. Outside the
+          // request's tab context, like settlements, so the tab that started the sync refreshes too
+          await runWithTabId(null, () => plaidBackfillService.afterSync(item, accessToken));
           return { id, institutionName: item.institutionName, ...counts, updateStatus: batch.updateStatus };
         } catch (err) {
           const code = plaidErrorOf(err)?.error_code;

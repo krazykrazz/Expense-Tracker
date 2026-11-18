@@ -1,7 +1,7 @@
 const dbHelper = require('../utils/dbHelper');
 const plaidRepository = require('./plaidRepository');
 const { FILE_ID_PREFIX, SAME_TXN_DAYS, mergePlaidIntoFileRow, sameTransaction, similarNames } = require('../utils/bankFileImport');
-const { PENDING_AMOUNT_TOLERANCE, POSTING_LAG_DAYS, dayDiff } = require('../utils/plaidMatching');
+const { PENDING_AMOUNT_TOLERANCE, POSTING_LAG_DAYS, dayDiff, toCents } = require('../utils/plaidMatching');
 const plaidBucketRepository = require('./plaidBucketRepository');
 const { STAGED_COLUMNS, pfcValues, PFC_SET_FIELDS, CAPTURE_COLUMNS, captureValues, CAPTURE_SET_FIELDS } = require('./plaidSql');
 
@@ -25,7 +25,8 @@ const settlement = (row, txn, { settled, postedDate }) => ({
  * - known id, settled row, Plaid says pending → ignored (a charge never goes back to pending);
  * - known id, pending row, Plaid says settled → {@link _settleInPlace};
  * - known id, row still to review (or pending on both sides) → {@link _update};
- * - known id, reviewed and settled → left alone (the user's decision stands).
+ * - known id, reviewed and settled, linked to an expense, with a new amount → {@link _followModifiedAmount};
+ * - known id, reviewed and settled otherwise → left alone (the user's decision stands).
  */
 class PlaidSyncRepository {
   /**
@@ -115,7 +116,21 @@ class PlaidSyncRepository {
       await this._settleInPlace(ctx, txn, existing);
     } else if (existing.status === 'new' || (existing.pending && pending)) {
       await this._update(ctx, txn, existing);
+    } else if (existing.expenseId && toCents(existing.amount) !== toCents(txn.amount)) {
+      await this._followModifiedAmount(ctx, txn, existing);
     }
+  }
+
+  /**
+   * A reviewed, settled row linked to an expense whose amount the bank changed afterwards (Wealthsimple sends
+   * still-pending charges as settled, so the final amount arrives as a modification). Only the row's amount is
+   * taken, so the next change is compared with what the bank last said; the caller brings the expense in line
+   * when it still has the previous bank amount (applySettlements), exactly as for a pending charge.
+   */
+  async _followModifiedAmount(ctx, txn, existing) {
+    await ctx.tx.run('UPDATE plaid_transactions SET amount = ? WHERE id = ?', [txn.amount, existing.id]);
+    ctx.counts.updated++;
+    ctx.settlements.push({ ...settlement(existing, txn, { settled: false, postedDate: null }), reviewed: true });
   }
 
   /**

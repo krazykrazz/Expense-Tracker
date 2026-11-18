@@ -27,8 +27,8 @@ class PlaidInboxService {
    * @param {'new'|'ignored'} status
    * @param {'spending'|'not_expense'} bucket the tab of new rows: To review or Not expenses (spec 3.1); ignored
    *   rows are listed whatever their bucket
-   * @returns {Promise<{transactions: Array, hiddenUnmapped: number, counts: {toReview: number, notExpenses: number},
-   *   cancelled: Array, unconnectedCards: Array}>}
+   * @returns {Promise<{transactions: Array, hiddenUnmapped: number, hiddenUnknown: number,
+   *   counts: {toReview: number, notExpenses: number}, cancelled: Array, unconnectedCards: Array}>}
    */
   async listInbox(status = 'new', bucket = 'spending') {
     if (!INBOX_STATUSES.includes(status)) {
@@ -38,9 +38,10 @@ class PlaidInboxService {
       throw fail(`bucket must be one of: ${BUCKETS.join(', ')}`, 400);
     }
 
-    const [allRows, hiddenUnmapped, counts] = await Promise.all([
+    const [allRows, hiddenUnmapped, hiddenUnknown, counts] = await Promise.all([
       plaidRepository.findInbox(status),
       plaidRepository.countNewUnmapped(),
+      plaidRepository.countNewUnknownAccount(),
       plaidRepository.countInbox()
     ]);
 
@@ -99,6 +100,7 @@ class PlaidInboxService {
     return {
       transactions,
       hiddenUnmapped,
+      hiddenUnknown,
       counts,
       cancelled: isNew && bucket === 'spending' ? await this._cancelledPending() : [],
       unconnectedCards: cardPayments.unconnectedCards

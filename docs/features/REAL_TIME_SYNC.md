@@ -28,7 +28,7 @@ No database changes are required — SSE state is entirely in-memory.
 
 ## Entity Types
 
-The backend broadcasts the `entity_type` of each activity-log event. `useDataSync` first normalizes it with `ENTITY_TYPE_ALIASES` (`frontend/src/hooks/useDataSync.js`), then routes it. Types that are not listed (`settings`, `system`, `auth`, `anomaly`, `suppression_rule`) are ignored.
+The backend broadcasts the `entity_type` of each activity-log event. `useDataSync` first normalizes it with `ENTITY_TYPE_ALIASES` (`frontend/src/hooks/useDataSync.js`), then routes it. Types that are not listed (`system`, `auth`, `anomaly`, `suppression_rule`) are ignored.
 
 | Backend entity types | Routing key | Refresh action |
 |----------------------|-------------|----------------|
@@ -43,6 +43,7 @@ The backend broadcasts the `entity_type` of each activity-log event. `useDataSyn
 | `fixed_expense` | `fixed_expense` | window `syncEvent` |
 | `credit_card_payment`, `credit_card_statement`, `billing_cycle` | `credit_card` | window `syncEvent` |
 | `plaid_transaction` (sync results, inbox decisions), `plaid_account` (mapping changes), `plaid_item` (connect, disconnect, sync failure) | `plaid` | window `syncEvent` |
+| `settings` (`settings_updated`: Bank Import keys, sync schedule, other settings) | `settings` | window event `plaid-settings-changed` (the one the saving tab fires itself), so the header bank icon and the balance hooks re-check Plaid's status |
 
 Recording a card payment from the Import Inbox logs both `credit_card_payment_added` (entity `credit_card_payment`, so card balances refresh as for a payment entered by hand) and one `plaid_transaction_updated` per linked bank row (entity `plaid_transaction`, so open inboxes in other tabs drop those rows).
 

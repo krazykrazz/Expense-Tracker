@@ -162,7 +162,7 @@ export const saveAutoSyncSettings = (fields) =>
 /**
  * @param {'new'|'ignored'} status
  * @param {'spending'|'not_expense'} bucket the tab of new rows: To review or Not expenses (ignored rows: any)
- * @returns {Promise<{transactions: Array, hiddenUnmapped: number, counts: {toReview: number, notExpenses: number},
+ * @returns {Promise<{transactions: Array, hiddenUnmapped: number, hiddenUnknown: number, counts: {toReview: number, notExpenses: number},
  *   cancelled: Array, unconnectedCards: Array}>}
  */
 export const getInbox = (status = 'new', bucket = 'spending', options = {}) =>

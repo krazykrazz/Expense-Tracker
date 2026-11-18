@@ -1,6 +1,7 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useDataSync, normalizeEntityType, ENTITY_TYPE_ALIASES } from './useDataSync';
+import { PLAID_SETTINGS_CHANGED_EVENT } from '../services/plaidApi';
 
 vi.mock('../utils/tabId.js', () => ({
   getTabId: () => 'test-tab-id',
@@ -119,12 +120,24 @@ describe('backend entity type aliases', () => {
     window.addEventListener('syncEvent', listener);
     renderHook(() => useDataSync(cb));
 
-    send('settings');
     send('system');
 
     window.removeEventListener('syncEvent', listener);
     expect(events).toHaveLength(0);
     Object.values(cb).forEach(fn => expect(fn).not.toHaveBeenCalled());
+  });
+
+  test('a settings event from another tab fires the Plaid settings-changed event, an own-tab one does not', () => {
+    const changed = vi.fn();
+    window.addEventListener(PLAID_SETTINGS_CHANGED_EVENT, changed);
+    renderHook(() => useDataSync(callbacks()));
+
+    send('settings', 'test-tab-id');
+    expect(changed).not.toHaveBeenCalled();
+
+    send('settings');
+    window.removeEventListener(PLAID_SETTINGS_CHANGED_EVENT, changed);
+    expect(changed).toHaveBeenCalledTimes(1);
   });
 
   test('every alias targets a type that useDataSync routes', () => {

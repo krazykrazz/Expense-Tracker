@@ -83,6 +83,17 @@ describe('plaidInboxService', () => {
       expect(hiddenUnmapped).toBe(1);
     });
 
+    test('counts rows from an account Plaid never listed separately from unmapped accounts', async () => {
+      await stage('hidden-unmapped', { accountId: unmappedAccountId });
+      await stage('hidden-unknown', { accountId: null });
+
+      const { transactions, hiddenUnmapped, hiddenUnknown } = await plaidInboxService.listInbox('new');
+
+      expect(transactions).toEqual([]);
+      expect(hiddenUnmapped).toBe(1);
+      expect(hiddenUnknown).toBe(1);
+    });
+
     test('carries the card statement close day, for the pending charge turnover warning', async () => {
       await run('UPDATE payment_methods SET billing_cycle_day = 15 WHERE id = ?', [CREDIT_CARD]);
       await stage('card-charge', { accountId: cardAccountId, pending: 1 });
@@ -771,7 +782,8 @@ describe('plaidInboxService', () => {
       [{ settled: true, postedDate: '2026-10-12' }, 'Pending charge "X" ($40.00, 2026-10-12) settled, but its expense could not be updated (boom). Check its amount and posted date (2026-10-12).'],
       [{ settled: true, postedDate: null }, 'Pending charge "X" ($40.00, 2026-10-12) settled, but its expense could not be updated (boom). Check its amount.'],
       [{ settled: false, postedDate: null }, 'Pending charge "X" ($40.00, 2026-10-12) changed, but its expense could not be updated (boom). Check its amount.'],
-      [{ settled: true, postedDateOnly: true, postedDate: '2026-10-13' }, 'Bank transaction "X" ($40.00, 2026-10-12) got its posting date from the bank, but its expense could not be updated (boom). Check its posted date (2026-10-13).']
+      [{ settled: true, postedDateOnly: true, postedDate: '2026-10-13' }, 'Bank transaction "X" ($40.00, 2026-10-12) got its posting date from the bank, but its expense could not be updated (boom). Check its posted date (2026-10-13).'],
+      [{ settled: false, postedDate: null, reviewed: true }, 'Bank transaction "X" ($40.00, 2026-10-12) changed amount after it was reviewed, but its expense could not be updated (boom). Check its amount.']
     ])('the settle_failed message for %j says what to check', (settlement, expected) => {
       const { settleFailedMessage } = plaidSettlementService._internal;
       expect(settleFailedMessage(settlement, { name: 'X', amount: 40, date: '2026-10-12' }, new Error('boom'))).toBe(expected);

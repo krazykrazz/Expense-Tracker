@@ -9,6 +9,9 @@ const { fail, round2, money, describeTxn, exclusive, logReview, postedDateFor, e
 
 /** What to correct by hand when the expense update after a bank change failed (nothing retries it). */
 function settleFailedMessage(s, txn, err) {
+  if (s.reviewed) {
+    return `Bank transaction ${describeTxn(txn)} changed amount after it was reviewed, but its expense could not be updated (${err.message}). Check its amount.`;
+  }
   const [subject, happened, check] = s.postedDateOnly
     ? ['Bank transaction', 'got its posting date from the bank', `posted date (${s.postedDate})`]
     : ['Pending charge', s.settled ? 'settled' : 'changed', s.settled && s.postedDate ? `amount and posted date (${s.postedDate})` : 'amount'];
@@ -30,7 +33,8 @@ class PlaidSettlementService {
    *   from the balance (no date from the bank) gets an estimate if it has none (see estimatedPostedDate).
    * Runs after the sync batch is committed. Never throws: a failed update leaves the expense as it was.
    * @param {Array<{plaidTransactionId: number, expenseId: number, settled: boolean, previousAmount: number,
-   *   amount: number, postedDate: (string|null), postedDateOnly?: boolean}>} settlements
+   *   amount: number, postedDate: (string|null), postedDateOnly?: boolean, reviewed?: boolean}>} settlements
+   *   `reviewed`: the bank changed the amount of a row that was already settled and reviewed
    */
   async applySettlements(settlements) {
     for (const s of settlements) {
@@ -68,9 +72,10 @@ class PlaidSettlementService {
         if ('posted_date' in changes) {
           outcome += `${outcome ? '; ' : ': '}posted date ${changes.posted_date ?? 'same as the purchase date'}`;
         }
-        const action = s.postedDateOnly ? 'posted_date' : s.settled ? 'settled' : 'pending_changed';
+        const action = s.postedDateOnly ? 'posted_date' : s.reviewed ? 'amount_changed' : s.settled ? 'settled' : 'pending_changed';
         const description = {
           posted_date: `Bank transaction ${describeTxn(txn)} from a bank file, posting date from the bank${outcome}`,
+          amount_changed: `Bank transaction ${describeTxn(txn)} amount changed after it was reviewed${outcome}`,
           settled: `Pending charge ${describeTxn(txn)} settled${outcome}`,
           pending_changed: `Pending charge ${describeTxn(txn)} changed${outcome}`
         }[action];

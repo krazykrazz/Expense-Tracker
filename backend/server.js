@@ -41,6 +41,7 @@ const activityLogService = require('./services/activityLogService');
 const sseService = require('./services/sseService');
 const billingCycleSchedulerService = require('./services/billingCycleSchedulerService');
 const plaidSyncSchedulerService = require('./services/plaidSyncSchedulerService');
+const plaidRetentionService = require('./services/plaidRetentionService');
 const versionCheckService = require('./services/versionCheckService');
 const logger = require('./config/logger');
 const { errorHandler } = require('./middleware/errorHandler');
@@ -354,6 +355,12 @@ initializeDatabase()
         await plaidSyncSchedulerService.tick();
       }, { timezone: 'Etc/UTC' }));
       logger.info('Bank auto sync check scheduled (every 5 minutes; syncs per Bank Import settings)');
+
+      // Ignored bank transactions older than the retention period are deleted (no-op without Plaid)
+      scheduledTasks.push(cron.schedule('30 2 * * *', async () => {
+        await plaidRetentionService.run();
+      }, { timezone: 'Etc/UTC' }));
+      logger.info('Bank import retention cleanup scheduled (daily at 2:30 AM UTC)');
     });
   })
   .catch((err) => {

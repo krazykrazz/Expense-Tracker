@@ -58,6 +58,8 @@ beforeEach(async () => {
     accountsGet: jest.fn(),
     transactionsRefresh: jest.fn(),
     transactionsSync: jest.fn(),
+    // The one-off capture backfill (spec 2.1) asks for rows staged without a category
+    transactionsGet: jest.fn().mockResolvedValue({ data: { transactions: [], total_transactions: 0 } }),
     itemRemove: jest.fn().mockResolvedValue({ data: {} }),
     itemGet: jest.fn().mockResolvedValue({
       data: { item: { institution_id: 'ins_test' }, status: { transactions: { last_successful_update: new Date().toISOString(), last_failed_update: null } } }
@@ -599,6 +601,23 @@ describe('plaidService', () => {
       }
     });
 
+    test('runs the one-off backfills outside the request\'s tab, so the tab that pressed Sync now also refreshes', async () => {
+      const plaidBackfillService = require('./plaidBackfillService');
+      const { runWithTabId, getTabId } = require('../utils/requestContext');
+      const tabs = [];
+      const afterSync = jest.spyOn(plaidBackfillService, 'afterSync').mockImplementation(async () => { tabs.push(getTabId()); });
+      try {
+        const item = await connect();
+        client.transactionsSync.mockResolvedValueOnce(page());
+
+        await runWithTabId('tab-7', () => plaidService.syncItem(item.id));
+
+        expect(tabs).toEqual([null]);
+      } finally {
+        afterSync.mockRestore();
+      }
+    });
+
     test('stores every account balance after a sync, even one with no transactions', async () => {
       const item = await connect();
       client.transactionsSync.mockResolvedValueOnce(page({ accounts: [] }));
@@ -1045,6 +1064,64 @@ describe('plaidService', () => {
       await plaidService.syncItem(item.id);
 
       expect((await expenseOf(expenseId)).amount).toBe(45);
+    });
+
+    describe('a settled charge whose amount the bank changes afterwards (spec 2.5.5)', () => {
+      async function addSettledAsExpense(amount = 30) {
+        const item = await connect();
+        await plaidService.updateAccountMapping(item.accounts[0].id, CREDIT_CARD);
+        client.transactionsSync.mockResolvedValueOnce(page({ added: [txn('w1', { amount, date: '2026-10-10', authorized_date: '2026-10-10' })] }));
+        await plaidService.syncItem(item.id);
+        const row = await get("SELECT id FROM plaid_transactions WHERE transaction_id = 'w1'");
+        const { expense } = await plaidReviewService.addAsExpense(row.id, { type: 'Dining Out' });
+        return { item, rowId: row.id, expenseId: expense.id };
+      }
+      const modify = (item, amount, cursor) => {
+        client.transactionsSync.mockResolvedValueOnce(page({ modified: [txn('w1', { amount, date: '2026-10-10', authorized_date: '2026-10-10' })], next_cursor: cursor }));
+        return plaidService.syncItem(item.id);
+      };
+
+      test('the expense follows every change while it still has the last bank amount, and each is logged', async () => {
+        const { item, rowId, expenseId } = await addSettledAsExpense(30);
+
+        const result = await modify(item, 30.5, 'c2');
+        await modify(item, 31, 'c3');
+
+        expect(result.updated).toBe(1);
+        expect(await get('SELECT amount, status, expense_id FROM plaid_transactions WHERE id = ?', [rowId]))
+          .toEqual({ amount: 31, status: 'added', expense_id: expenseId });
+        expect((await expenseOf(expenseId)).amount).toBe(31);
+        expect(activityLogService.logEvent).toHaveBeenCalledWith(
+          'plaid_transaction_updated', 'plaid_transaction', rowId,
+          expect.stringMatching(/amount changed after it was reviewed: \$30\.00 → \$30\.50, expense updated$/),
+          expect.objectContaining({ action: 'amount_changed', amountUpdated: true })
+        );
+      });
+
+      test('an amount edited by hand is kept, and the change is logged as kept', async () => {
+        const { item, rowId, expenseId } = await addSettledAsExpense(30);
+        await run('UPDATE expenses SET amount = 33 WHERE id = ?', [expenseId]);
+
+        await modify(item, 30.5, 'c2');
+
+        expect((await expenseOf(expenseId)).amount).toBe(33);
+        expect((await get('SELECT amount FROM plaid_transactions WHERE id = ?', [rowId])).amount).toBe(30.5);
+        expect(activityLogService.logEvent).toHaveBeenCalledWith(
+          'plaid_transaction_updated', 'plaid_transaction', rowId,
+          expect.stringContaining('expense amount kept (edited by hand)'),
+          expect.objectContaining({ action: 'amount_changed', amountUpdated: false })
+        );
+      });
+
+      test('a reviewed row not linked to an expense, and its date and name, are left alone', async () => {
+        const { item, rowId } = await addSettledAsExpense(30);
+        await run("UPDATE plaid_transactions SET expense_id = NULL, name = 'MY NAME' WHERE id = ?", [rowId]);
+
+        const result = await modify(item, 30.5, 'c2');
+
+        expect(result.updated).toBe(0);
+        expect(await get('SELECT amount, name FROM plaid_transactions WHERE id = ?', [rowId])).toEqual({ amount: 30, name: 'MY NAME' });
+      });
     });
 
     test('a dropped pending charge is flagged for review, and can be linked to the settled transaction', async () => {

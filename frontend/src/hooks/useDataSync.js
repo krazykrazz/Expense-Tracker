@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { API_ENDPOINTS } from '../config.js';
 import { getTabId } from '../utils/tabId.js';
 import { notifyInvoicesChanged } from '../utils/invoiceEvents.js';
+import { PLAID_SETTINGS_CHANGED_EVENT } from '../services/plaidApi.js';
 
 /**
  * Computes the exponential backoff delay for reconnect attempts.
@@ -64,6 +65,12 @@ const CONTEXT_ENTITY_TYPES = new Set(['expense', 'budget', 'people', 'payment_me
 
 /** Entity types that dispatch window custom events (consumed via useSyncEvent) */
 const WINDOW_EVENT_ENTITY_TYPES = new Set(['loan', 'income', 'investment', 'fixed_expense', 'credit_card', 'plaid']);
+
+/**
+ * `settings_updated` events (Bank Import keys and auto sync) reach other tabs as the same window event the
+ * saving tab fires itself, so the bank icon and balance hooks re-check Plaid's status (spec 2.5.3).
+ */
+const SETTINGS_ENTITY_TYPE = 'settings';
 
 /**
  * useDataSync — subscribes to the SSE sync endpoint and dispatches targeted
@@ -173,6 +180,8 @@ export function useDataSync({
         }
       } else if (WINDOW_EVENT_ENTITY_TYPES.has(entityType)) {
         window.dispatchEvent(new CustomEvent('syncEvent', { detail: { entityType } }));
+      } else if (entityType === SETTINGS_ENTITY_TYPE) {
+        window.dispatchEvent(new CustomEvent(PLAID_SETTINGS_CHANGED_EVENT));
       }
       addToast(entityType);
     },
@@ -234,6 +243,7 @@ export function useDataSync({
         for (const entityType of WINDOW_EVENT_ENTITY_TYPES) {
           window.dispatchEvent(new CustomEvent('syncEvent', { detail: { entityType } }));
         }
+        window.dispatchEvent(new CustomEvent(PLAID_SETTINGS_CHANGED_EVENT));
       }
 
       // Fire onReconnect callback on reconnections (not initial connect)
@@ -260,7 +270,8 @@ export function useDataSync({
       // Only route known entity types
       if (
         CONTEXT_ENTITY_TYPES.has(entityType) ||
-        WINDOW_EVENT_ENTITY_TYPES.has(entityType)
+        WINDOW_EVENT_ENTITY_TYPES.has(entityType) ||
+        entityType === SETTINGS_ENTITY_TYPE
       ) {
         scheduleDebounced(entityType);
       }

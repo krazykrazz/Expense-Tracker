@@ -205,15 +205,40 @@ class PlaidRepository {
   }
 
   /**
-   * 'new' rows hidden from the inbox because their account has no payment method.
+   * 'new' rows hidden from the inbox because their account (one Plaid listed) has no payment method.
    */
   async countNewUnmapped() {
     const row = await dbHelper.queryOne(
       `SELECT COUNT(*) AS count FROM plaid_transactions pt
-       LEFT JOIN plaid_accounts pa ON pa.id = pt.plaid_account_id
+       JOIN plaid_accounts pa ON pa.id = pt.plaid_account_id
        WHERE pt.status = 'new' AND pa.payment_method_id IS NULL`
     );
     return row ? row.count : 0;
+  }
+
+  /**
+   * 'new' rows hidden from the inbox because they belong to an account Plaid never listed, so there is no
+   * account to map (spec 2.5.2).
+   */
+  async countNewUnknownAccount() {
+    const row = await dbHelper.queryOne(
+      "SELECT COUNT(*) AS count FROM plaid_transactions WHERE status = 'new' AND plaid_account_id IS NULL"
+    );
+    return row ? row.count : 0;
+  }
+
+  /**
+   * Delete ignored rows whose transaction date (purchase date, else posted) is before `cutoffDate`. Only
+   * ignored rows: reviewed rows are linked to what the user did with them and stay (spec 2.5.1).
+   * @returns {Promise<number>} rows deleted
+   */
+  async deleteIgnoredBefore(cutoffDate) {
+    const { changes } = await dbHelper.execute(
+      `DELETE FROM plaid_transactions
+       WHERE status = 'ignored' AND expense_id IS NULL AND COALESCE(authorized_date, date) < ?`,
+      [cutoffDate]
+    );
+    return changes;
   }
 
   async findTransactionById(id) {

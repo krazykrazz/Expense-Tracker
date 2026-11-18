@@ -1215,6 +1215,13 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v1.29.0</div>
+                <div className="changelog-date">November 18, 2026</div>
+                <ul className="changelog-items">
+                  <li>Bank import: Match offers expenses entered a few cents off the bank amount (Match and use the bank amount) and posting-dated CIBC file rows; CIBC file rows pair with pending charges; ignored rows deleted after 2 months; one-off backfills of posted dates and Plaid details; amount changes on settled charges followed; dependency updates</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v1.28.2</div>
                 <div className="changelog-date">November 15, 2026</div>
                 <ul className="changelog-items">

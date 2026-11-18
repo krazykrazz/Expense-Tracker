@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.29.0',
+    date: 'November 18, 2026',
+    added: [],
+    changed: ['Bank import: Match offers expenses entered a few cents off the bank amount (Match and use the bank amount) and posting-dated CIBC file rows; CIBC file rows pair with pending charges; ignored rows deleted after 2 months; one-off backfills of posted dates and Plaid details; amount changes on settled charges followed; dependency updates'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.28.2',
     date: 'November 15, 2026',
     added: [],

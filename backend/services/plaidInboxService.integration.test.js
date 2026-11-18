@@ -123,11 +123,11 @@ describe('plaidInboxService', () => {
       expect(byId.unknown).toMatchObject({ place: 'SQ *CORNER STORE', suggestedCategory: null });
     });
 
-    test('offers unlinked expenses with the same method, cents and a nearby date as match candidates', async () => {
+    test('offers unlinked expenses with the same method, a close amount and a nearby date as match candidates', async () => {
       const close = await addExpense({ date: '2026-10-11' });
       const exact = await addExpense({ date: '2026-10-10' });
       await addExpense({ date: '2026-10-20' });                                   // too far
-      await addExpense({ amount: 25.51 });                                         // different cents
+      await addExpense({ amount: 30 });                                            // amount too far off
       await addExpense({ paymentMethodId: CREDIT_CARD, method: 'Credit Card' });   // different method
       const linked = await addExpense();
       await stage('linked-elsewhere');
@@ -137,6 +137,64 @@ describe('plaidInboxService', () => {
       const { transactions } = await plaidInboxService.listInbox('new');
 
       expect(transactions[0].matchCandidates.map(c => c.id)).toEqual([exact, close]);
+      expect(transactions[0].matchCandidates[0]).toMatchObject({ amountDiff: 0, canUseBankAmount: false });
+    });
+
+    test('an expense entered a few cents off is offered after exact ones, with the difference and the bank amount option', async () => {
+      const typo = await addExpense({ amount: 25.53, date: '2026-10-10' });          // $0.03 under the bank
+      const exactFurther = await addExpense({ date: '2026-10-12' });
+      await addExpense({ amount: 26.51 });                                            // just over $1.00 off: not offered
+      await stage('t1');
+
+      const { transactions } = await plaidInboxService.listInbox('new');
+
+      expect(transactions[0].matchCandidates).toEqual([
+        expect.objectContaining({ id: exactFurther, amountDiff: 0, canUseBankAmount: false }),
+        expect.objectContaining({ id: typo, amount: 25.53, amountDiff: -0.03, canUseBankAmount: true })
+      ]);
+    });
+
+    test('a near miss on a reimbursed or insurance-tracked expense can be matched but not corrected to the bank amount', async () => {
+      const reimbursed = await run(
+        "INSERT INTO expenses (date, place, amount, original_cost, type, week, method, payment_method_id) VALUES ('2026-10-10', 'Hardware', 15, 25.6, 'Other', 2, 'Debit', ?)",
+        [DEBIT]
+      );
+      const insured = await run(
+        "INSERT INTO expenses (date, place, amount, original_cost, type, week, method, payment_method_id, insurance_eligible, claim_status) VALUES ('2026-10-11', 'Clinic', 5.5, 25.4, 'Tax - Medical', 2, 'Debit', ?, 1, 'paid')",
+        [DEBIT]
+      );
+      await stage('t1');
+
+      const { transactions } = await plaidInboxService.listInbox('new');
+
+      expect(transactions[0].matchCandidates).toEqual([
+        expect.objectContaining({ id: reimbursed, amountDiff: -0.1, canUseBankAmount: false }),
+        expect.objectContaining({ id: insured, amountDiff: 0.1, canUseBankAmount: false })
+      ]);
+    });
+
+    test('a settled row dated by its posting date (a bank file) reaches an expense up to 10 days before it, but a Plaid row with a purchase date does not', async () => {
+      const fourDaysBefore = await addExpense({ date: '2026-11-12' });
+      await addExpense({ date: '2026-11-04' });                                       // 12 days before: too early
+      await stage('file-row', { date: '2026-11-16', authorizedDate: null });
+      await stage('plaid-row', { date: '2026-11-16', authorizedDate: '2026-11-16' });
+      await stage('pending-file-row', { date: '2026-11-16', authorizedDate: null, pending: 1 });
+
+      const { transactions } = await plaidInboxService.listInbox('new');
+      const byId = Object.fromEntries(transactions.map(t => [t.transactionId, t.matchCandidates.map(c => c.id)]));
+
+      expect(byId['file-row']).toEqual([fourDaysBefore]);
+      expect(byId['plaid-row']).toEqual([]);
+      expect(byId['pending-file-row']).toEqual([]);
+    });
+
+    test('an expense dated well after a posting-dated row is not offered', async () => {
+      await addExpense({ date: '2026-11-20' });
+      await stage('file-row', { date: '2026-11-16', authorizedDate: null });
+
+      const { transactions } = await plaidInboxService.listInbox('new');
+
+      expect(transactions[0].matchCandidates).toEqual([]);
     });
 
     test('reimbursed and insurance-tracked expenses are offered on the amount actually charged', async () => {
@@ -283,6 +341,84 @@ describe('plaidInboxService', () => {
 
       await expect(plaidReviewService.matchToExpense(id, cardExpense)).rejects.toMatchObject({ statusCode: 400 });
       await expect(plaidReviewService.matchToExpense(id, 99999)).rejects.toMatchObject({ statusCode: 404 });
+    });
+
+    describe('a near-miss amount', () => {
+      const amountOf = async (expenseId) => (await get('SELECT amount FROM expenses WHERE id = ?', [expenseId])).amount;
+
+      test('plain Match links it and leaves the amount you entered', async () => {
+        const expenseId = await addExpense({ amount: 25.53 });
+        const id = await stage('t1');
+
+        const result = await plaidReviewService.matchToExpense(id, expenseId);
+
+        expect(result).toMatchObject({ amountUpdated: false, transaction: { status: 'matched', expenseId } });
+        expect(await amountOf(expenseId)).toBe(25.53);
+      });
+
+      test('Match and use the bank amount sets the expense to the bank amount, through the expense service, and logs it', async () => {
+        const expenseId = await addExpense({ amount: 25.53 });
+        const id = await stage('t1');
+
+        const result = await plaidReviewService.matchToExpense(id, expenseId, { updateAmount: true });
+
+        expect(result).toMatchObject({ amountUpdated: true, transaction: { status: 'matched', expenseId } });
+        expect(await amountOf(expenseId)).toBe(25.5);
+        expect(activityLogService.logEvent).toHaveBeenCalledWith(
+          'expense_updated', 'expense', expenseId, expect.stringContaining('amount: $25.53 → $25.50'), expect.any(Object)
+        );
+        expect(activityLogService.logEvent).toHaveBeenCalledWith(
+          'plaid_transaction_updated', 'plaid_transaction', id,
+          'Matched bank transaction "Coffee Shop" ($25.50, 2026-10-12) to an existing expense; amount $25.53 → $25.50',
+          expect.objectContaining({ action: 'match', expenseId, amountUpdated: true, previousAmount: 25.53 })
+        );
+      });
+
+      test('an exact match asks for no change even when the bank amount is requested', async () => {
+        const expenseId = await addExpense({ amount: 25.5 });
+        const id = await stage('t1');
+
+        const result = await plaidReviewService.matchToExpense(id, expenseId, { updateAmount: true });
+
+        expect(result.amountUpdated).toBe(false);
+        expect(activityLogService.logEvent).not.toHaveBeenCalledWith('expense_updated', expect.anything(), expect.anything(), expect.anything(), expect.anything());
+      });
+
+      test('a reimbursed or insurance-tracked expense refuses the bank amount and nothing is linked', async () => {
+        const reimbursed = await run(
+          "INSERT INTO expenses (date, place, amount, original_cost, type, week, method, payment_method_id) VALUES ('2026-10-10', 'Hardware', 15, 25.6, 'Other', 2, 'Debit', ?)",
+          [DEBIT]
+        );
+        const id = await stage('t1');
+
+        await expect(plaidReviewService.matchToExpense(id, reimbursed, { updateAmount: true })).rejects.toMatchObject({ statusCode: 400 });
+
+        expect((await get('SELECT status FROM plaid_transactions WHERE id = ?', [id])).status).toBe('new');
+        expect(await amountOf(reimbursed)).toBe(15);
+      });
+
+      test('the amount is put back when the link fails (the row changed meanwhile, or the expense is linked elsewhere)', async () => {
+        const expenseId = await addExpense({ amount: 25.53 });
+        const id = await stage('t1');
+        const resolve = jest.spyOn(require('../repositories/plaidRepository'), 'resolveTransaction').mockResolvedValueOnce(false);
+
+        await expect(plaidReviewService.matchToExpense(id, expenseId, { updateAmount: true })).rejects.toMatchObject({ statusCode: 409 });
+        expect(await amountOf(expenseId)).toBe(25.53);
+
+        resolve.mockRejectedValueOnce(new Error('UNIQUE constraint failed: plaid_transactions.expense_id'));
+        await expect(plaidReviewService.matchToExpense(id, expenseId, { updateAmount: true })).rejects.toMatchObject({ statusCode: 409 });
+        expect(await amountOf(expenseId)).toBe(25.53);
+      });
+
+      test('a credit card match with the bank amount sets both the amount and the posted date in one match', async () => {
+        const expenseId = await addExpense({ paymentMethodId: CREDIT_CARD, method: 'Credit Card', date: '2026-10-31', amount: 35.57 });
+        const id = await stage('card-row', { accountId: cardAccountId, amount: 35.54, date: '2026-11-02', authorizedDate: '2026-10-31' });
+
+        const result = await plaidReviewService.matchToExpense(id, expenseId, { updateAmount: true });
+
+        expect(result).toMatchObject({ amountUpdated: true, postedDateUpdated: true });
+        expect(await get('SELECT amount, date, posted_date FROM expenses WHERE id = ?', [expenseId])).toEqual({ amount: 35.54, date: '2026-10-31', posted_date: '2026-11-02' });
+      });
     });
   });
 

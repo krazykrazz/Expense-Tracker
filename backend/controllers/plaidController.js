@@ -178,10 +178,11 @@ const addAsExpense = asyncHandler(async (req, res) => {
 
 /**
  * POST /api/plaid/inbox/:id/match
- * Body: { expenseId }
+ * Body: { expenseId, updateAmount? } (updateAmount: also set a plain expense's amount to the bank's)
  */
 const matchToExpense = asyncHandler(async (req, res) => {
-  res.json(await plaidReviewService.matchToExpense(idParam(req), (req.body || {}).expenseId));
+  const { expenseId, updateAmount } = req.body || {};
+  res.json(await plaidReviewService.matchToExpense(idParam(req), expenseId, { updateAmount: updateAmount === true }));
 });
 
 /**

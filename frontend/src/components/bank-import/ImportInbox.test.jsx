@@ -102,6 +102,53 @@ describe('ImportInbox', () => {
     expect(within(row).getByText(/you paid \$5\.50 after reimbursement/)).toBeInTheDocument();
   });
 
+  describe('a candidate whose amount is a little off the bank\'s', () => {
+    const exact = { id: 41, date: '2026-10-10', place: 'Coffee', amount: 25.5, originalCost: null, chargedAmount: 25.5, type: 'Dining Out', notes: null, amountDiff: 0, canUseBankAmount: false };
+    const typo = { id: 42, date: '2026-10-10', place: 'Coffee', amount: 25.53, originalCost: null, chargedAmount: 25.53, type: 'Dining Out', notes: null, amountDiff: -0.03, canUseBankAmount: true };
+    const reimbursed = { id: 43, date: '2026-10-10', place: 'Clinic', amount: 5.5, originalCost: 25.6, chargedAmount: 25.6, type: 'Tax - Medical', notes: null, amountDiff: -0.1, canUseBankAmount: false };
+
+    const openPicker = async (candidates) => {
+      plaidApi.getInbox.mockResolvedValue({ transactions: [txn({ matchCandidates: candidates })], hiddenUnmapped: 0 });
+      plaidApi.matchInboxTransaction.mockResolvedValue({ transaction: {} });
+      renderInbox();
+      fireEvent.click(await screen.findByRole('button', { name: 'Match' }));
+      return document.querySelector('.inbox-match-picker');
+    };
+
+    it('says how far off it is, and offers Match & use the bank amount only for it', async () => {
+      const picker = await openPicker([exact, typo]);
+
+      const rows = within(picker).getAllByRole('listitem');
+      expect(within(rows[0]).queryByTestId('amount-differs')).not.toBeInTheDocument();
+      expect(within(rows[0]).queryByRole('button', { name: /use/ })).not.toBeInTheDocument();
+      expect(within(rows[1]).getByTestId('amount-differs')).toHaveTextContent('the bank charged $25.50 ($0.03 less)');
+      expect(within(rows[1]).getByRole('button', { name: 'Match & use $25.50' })).toBeInTheDocument();
+    });
+
+    it('plain Match sends only the expense id, so the amount you entered is kept', async () => {
+      const picker = await openPicker([typo]);
+
+      fireEvent.click(within(picker).getByRole('button', { name: 'Match' }));
+      await waitFor(() => expect(plaidApi.matchInboxTransaction).toHaveBeenCalledWith(1, 42));
+    });
+
+    it('Match & use the bank amount sends updateAmount', async () => {
+      const picker = await openPicker([typo]);
+
+      fireEvent.click(within(picker).getByRole('button', { name: 'Match & use $25.50' }));
+
+      await waitFor(() => expect(plaidApi.matchInboxTransaction).toHaveBeenCalledWith(1, 42, { updateAmount: true }));
+    });
+
+    it('a reimbursed expense can be matched but not changed to the bank amount', async () => {
+      const picker = await openPicker([reimbursed]);
+
+      expect(within(picker).getByTestId('amount-differs')).toHaveTextContent('$0.10 less');
+      expect(within(picker).getByRole('button', { name: 'Match' })).toBeInTheDocument();
+      expect(within(picker).queryByRole('button', { name: /use/ })).not.toBeInTheDocument();
+    });
+  });
+
   it('says that matching a settled card transaction sets the posted date, and not for a debit or a pending charge', async () => {
     const candidate = { id: 42, date: '2026-10-31', place: 'La Vie En Rose', amount: 35.54, originalCost: null, chargedAmount: 35.54, type: 'Clothing', notes: null };
     const card = (overrides) => txn({ paymentMethodType: 'credit_card', paymentMethodName: 'CIBC MC', postedDate: '2026-11-02', matchCandidates: [candidate], ...overrides });

@@ -238,7 +238,7 @@ class PlaidRepository {
     return dbHelper.queryAll(
       `SELECT e.id, e.date, e.place, e.amount, e.original_cost AS originalCost,
               COALESCE(e.original_cost, e.amount) AS chargedAmount,
-              e.type, e.notes, e.payment_method_id AS paymentMethodId
+              e.type, e.notes, e.insurance_eligible AS insuranceEligible, e.payment_method_id AS paymentMethodId
        FROM expenses e
        WHERE e.payment_method_id IN (${paymentMethodIds.map(() => '?').join(',')})
          AND e.date >= ? AND e.date <= ?

@@ -166,7 +166,17 @@ describe('plaid routes', () => {
 
     expect(res.status).toBe(409);
     expect(res.body.error).toBe('already linked');
-    expect(plaidReviewService.matchToExpense).toHaveBeenCalledWith(3, 4);
+    expect(plaidReviewService.matchToExpense).toHaveBeenCalledWith(3, 4, { updateAmount: false });
+  });
+
+  test('POST /inbox/:id/match passes updateAmount only when it is exactly true', async () => {
+    plaidReviewService.matchToExpense.mockResolvedValue({ transaction: {} });
+
+    await request(app).post('/api/plaid/inbox/3/match').send({ expenseId: 4, updateAmount: true });
+    await request(app).post('/api/plaid/inbox/3/match').send({ expenseId: 4, updateAmount: 'yes' });
+
+    expect(plaidReviewService.matchToExpense).toHaveBeenNthCalledWith(1, 3, 4, { updateAmount: true });
+    expect(plaidReviewService.matchToExpense).toHaveBeenNthCalledWith(2, 3, 4, { updateAmount: false });
   });
 
   test('POST /inbox/:id/match-fixed passes the fixed expense and tab id', async () => {

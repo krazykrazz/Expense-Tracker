@@ -1,8 +1,10 @@
 /**
  * @invariant Match candidate rule: a bank transaction and an expense are match candidates exactly when they
- * share a payment method, the transaction equals what the expense *charged* (original cost when reimbursed or
- * insurance-tracked, else amount) to the cent, and they are at most 3 calendar days apart (using the authorized
- * date when present). A charge confirms a fixed expense exactly when it uses the same payment method and posted
+ * share a payment method, the expense's *charged* amount (original cost when reimbursed or insurance-tracked,
+ * else amount) equals the bank's amount or is within max($1.00, 1%) of it (a charge only; a credit never matches
+ * a near miss), and their dates are at most 3 days apart (using the authorized date when present), or, for a
+ * settled row with no authorized date (dated by posting), the expense is up to 10 days before the row. Candidates
+ * rank exact amounts first, then the smaller amount difference, then the closest date. A charge confirms a fixed expense exactly when it uses the same payment method and posted
  * between 3 days before and 10 days after the due date (due day clamped to the month length), whatever the
  * amount. A deposit (money in, not on a credit card) confirms expected income in its own month, the next month
  * when it lands in the month's last 3 days, or the previous month when it lands in the first 3 days.
@@ -13,28 +15,34 @@
 
 const fc = require('fast-check');
 const { pbtOptions } = require('../test/pbtArbitraries');
-const { isMatchCandidate, findMatchCandidates, shiftDate, dayDiff, MATCH_WINDOW_DAYS, fixedExpectedDate, isFixedCandidate, findFixedCandidates, FIXED_EARLY_DAYS, FIXED_LATE_DAYS, INCOME_BOUNDARY_DAYS, isIncomeCandidate, findIncomeCandidates, incomeNameScore } = require('./plaidMatching');
+const { isMatchCandidate, findMatchCandidates, shiftDate, dayDiff, MATCH_WINDOW_DAYS, POSTING_LAG_DAYS, fixedExpectedDate, isFixedCandidate, findFixedCandidates, FIXED_EARLY_DAYS, FIXED_LATE_DAYS, INCOME_BOUNDARY_DAYS, isIncomeCandidate, findIncomeCandidates, incomeNameScore } = require('./plaidMatching');
 
 const arbDate = fc.date({ min: new Date('2019-12-25T00:00:00Z'), max: new Date('2031-01-05T00:00:00Z'), noInvalidDate: true })
   .map(d => d.toISOString().slice(0, 10));
 const arbCents = fc.integer({ min: 1, max: 5_000_000 });
+// Large enough that a near-miss delta never makes the expense amount negative
+const arbChargeCents = fc.integer({ min: 1_000, max: 5_000_000 });
 
 const oracleDays = (a, b) => Math.abs(Math.round((Date.parse(`${a}T00:00:00Z`) - Date.parse(`${b}T00:00:00Z`)) / 86400000));
+const oracleTolerance = (cents) => Math.max(100, Math.round(cents * 0.01));
 
 describe('plaidMatching', () => {
   test('isMatchCandidate agrees with an integer-cents / day-count oracle', () => {
     fc.assert(
       fc.property(
-        arbDate, fc.option(arbDate, { nil: undefined }), arbCents,
-        fc.integer({ min: -2, max: 2 }), fc.integer({ min: -6, max: 6 }),
+        arbDate, fc.option(arbDate, { nil: undefined }), arbChargeCents,
+        fc.integer({ min: -400, max: 400 }), fc.integer({ min: -14, max: 8 }),
         fc.integer({ min: 1, max: 3 }), fc.integer({ min: 1, max: 3 }),
         (postedDate, authorizedDate, cents, centDelta, dayOffset, txnPm, expensePm) => {
           const txn = { paymentMethodId: txnPm, amount: cents / 100, date: postedDate, authorizedDate };
           const purchaseDate = authorizedDate || postedDate;
+          // dayOffset: the expense's date relative to the row's purchase date (negative = the expense is earlier)
           // Float arithmetic on the expense side mirrors how amounts arrive from forms/SQLite
           const expense = { id: 1, paymentMethodId: expensePm, amount: (cents + centDelta) / 100 + 0.0000001, date: shiftDate(purchaseDate, dayOffset) };
 
-          const expected = txnPm === expensePm && centDelta === 0 && Math.abs(dayOffset) <= MATCH_WINDOW_DAYS;
+          const earliest = authorizedDate ? -MATCH_WINDOW_DAYS : -POSTING_LAG_DAYS;
+          const expected = txnPm === expensePm && Math.abs(centDelta) <= oracleTolerance(cents)
+            && dayOffset >= earliest && dayOffset <= MATCH_WINDOW_DAYS;
           expect(isMatchCandidate(txn, expense)).toBe(expected);
         }
       ),
@@ -42,23 +50,31 @@ describe('plaidMatching', () => {
     );
   });
 
+  test('a credit never matches an expense, not even a near miss', () => {
+    fc.assert(
+      // Small amounts: a credit of a few cents is within $1.00 of an expense of nothing or of a few cents
+      fc.property(arbDate, fc.integer({ min: 1, max: 100 }), fc.integer({ min: 0, max: 100 }), (date, creditCents, expenseCents) => {
+        const expense = { id: 1, paymentMethodId: 1, amount: expenseCents / 100, date };
+        expect(isMatchCandidate({ paymentMethodId: 1, amount: -creditCents / 100, date }, expense)).toBe(false);
+      }),
+      pbtOptions()
+    );
+  });
+
   test('reimbursed / insured expenses match on the charged amount, never the out-of-pocket amount', () => {
     fc.assert(
       fc.property(
-        arbDate, arbCents, fc.integer({ min: 1, max: 99 }), fc.integer({ min: -1, max: 1 }),
-        (date, chargedCents, outOfPocketPercent, centDelta) => {
-          const outOfPocketCents = Math.max(0, Math.floor(chargedCents * outOfPocketPercent / 100));
-          const expense = {
-            id: 1, paymentMethodId: 1, date,
-            amount: outOfPocketCents / 100,
-            chargedAmount: (chargedCents + centDelta) / 100
-          };
+        arbDate, arbChargeCents, fc.integer({ min: 1, max: 99 }),
+        (date, chargedCents, outOfPocketPercent) => {
+          const outOfPocketCents = Math.floor(chargedCents * outOfPocketPercent / 100);
+          const expense = { id: 1, paymentMethodId: 1, date, amount: outOfPocketCents / 100, chargedAmount: chargedCents / 100 };
 
-          expect(isMatchCandidate({ paymentMethodId: 1, amount: chargedCents / 100, date }, expense)).toBe(centDelta === 0);
-          // The out-of-pocket share alone never matches (unless it happens to equal the charge)
-          if (outOfPocketCents !== chargedCents + centDelta) {
-            expect(isMatchCandidate({ paymentMethodId: 1, amount: outOfPocketCents / 100, date }, expense)).toBe(false);
-          }
+          // A bank row for what the card was charged matches
+          expect(isMatchCandidate({ paymentMethodId: 1, amount: chargedCents / 100, date }, expense)).toBe(true);
+          // A row equal to the out-of-pocket amount is compared with the charged amount, so it matches only when
+          // that is within tolerance, however exactly it equals the expense's own amount
+          const expected = outOfPocketCents > 0 && Math.abs(outOfPocketCents - chargedCents) <= oracleTolerance(outOfPocketCents);
+          expect(isMatchCandidate({ paymentMethodId: 1, amount: outOfPocketCents / 100, date }, expense)).toBe(expected);
         }
       ),
       pbtOptions()
@@ -77,11 +93,11 @@ describe('plaidMatching', () => {
     );
   });
 
-  test('findMatchCandidates returns only candidates, closest date first', () => {
+  test('findMatchCandidates returns only candidates: exact amounts first, then the smaller difference, then the closest date', () => {
     fc.assert(
       fc.property(
-        arbDate, arbCents,
-        fc.array(fc.record({ offset: fc.integer({ min: -6, max: 6 }), centDelta: fc.integer({ min: -1, max: 1 }), pm: fc.integer({ min: 1, max: 2 }) }), { maxLength: 15 }),
+        arbDate, arbChargeCents,
+        fc.array(fc.record({ offset: fc.integer({ min: -6, max: 6 }), centDelta: fc.integer({ min: -150, max: 150 }), pm: fc.integer({ min: 1, max: 2 }) }), { maxLength: 15 }),
         (date, cents, specs) => {
           const txn = { paymentMethodId: 1, amount: cents / 100, date };
           const expenses = specs.map((s, i) => ({ id: i + 1, paymentMethodId: s.pm, amount: (cents + s.centDelta) / 100, date: shiftDate(date, s.offset) }));
@@ -90,8 +106,12 @@ describe('plaidMatching', () => {
 
           expect(result.map(e => e.id).sort((a, b) => a - b))
             .toEqual(expenses.filter(e => isMatchCandidate(txn, e)).map(e => e.id));
-          const distances = result.map(e => dayDiff(date, e.date));
-          expect(distances).toEqual([...distances].sort((a, b) => a - b));
+          const key = (e) => [Math.abs(Math.round(e.amountDiff * 100)), dayDiff(date, e.date), e.id];
+          const keys = result.map(key);
+          expect(keys).toEqual([...keys].sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2]));
+          for (const e of result) {
+            expect(Math.round(e.amountDiff * 100)).toBe(cents - Math.round(e.amount * 100));
+          }
         }
       ),
       pbtOptions()

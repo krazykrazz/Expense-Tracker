@@ -14,7 +14,13 @@ import {
  */
 export const INBOX_ACTIONS = {
   add: { run: (id, fields) => addInboxTransaction(id, fields), changesData: true },
-  match: { run: (id, expenseId) => matchInboxTransaction(id, expenseId), changesData: true },
+  // The payload is an expense id, or { expenseId, updateAmount: true } to also use the bank's amount
+  match: {
+    run: (id, payload) => (typeof payload === 'object'
+      ? matchInboxTransaction(id, payload.expenseId, { updateAmount: payload.updateAmount })
+      : matchInboxTransaction(id, payload)),
+    changesData: true
+  },
   'match-fixed': { run: (id, fixedExpenseId) => matchInboxTransactionToFixed(id, fixedExpenseId), changesData: true },
   'match-income': { run: (id, payload) => matchInboxTransactionToIncome(id, payload), changesData: true },
   'add-income': { run: (id, fields) => addInboxTransactionAsIncome(id, fields), changesData: true },

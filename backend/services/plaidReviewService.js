@@ -14,7 +14,7 @@ const { toCents, transactionDate, isFixedCandidate, isDeposit, isIncomeCandidate
 const { INCOME_CATEGORIES } = require('../utils/constants');
 const { BUCKETS } = require('../utils/plaidClassification');
 const {
-  fail, asInputError, round2, defaultPlace, describeTxn, exclusive, requireNew, logReview, postedDateFor, incomeDescription
+  fail, asInputError, round2, money, defaultPlace, describeTxn, exclusive, requireNew, logReview, postedDateFor, incomeDescription
 } = require('./plaidInboxSupport');
 
 /**
@@ -77,8 +77,10 @@ class PlaidReviewService {
    * Link a staged transaction to an expense entered by hand. Nothing is created and the expense keeps its
    * purchase date, amount and category; a settled card transaction brings its posted date to the expense
    * (replacing an estimate), since statements are built from it. A pending one does that when it settles.
+   * With `updateAmount` (the user's choice for a near-miss amount) a plain expense also takes the bank's amount:
+   * done first, so a refused change links nothing, and reverted when the link then fails.
    */
-  async matchToExpense(id, expenseId) {
+  async matchToExpense(id, expenseId, { updateAmount = false } = {}) {
     return exclusive(id, async () => {
       const txn = await requireNew(id);
       const parsedId = parseInt(expenseId, 10);
@@ -90,38 +92,83 @@ class PlaidReviewService {
         throw fail('The expense uses a different payment method than this bank account', 400);
       }
 
+      let current = expense;
+      if (updateAmount && toCents(expense.amount) !== toCents(txn.amount)) {
+        current = await this._useBankAmount(expense, txn);
+      }
+
+      let linked = false;
       try {
-        if (!(await plaidRepository.resolveTransaction(id, 'matched', expense.id))) {
-          throw fail('This bank transaction changed meanwhile. Refresh the Inbox and try again.', 409);
-        }
+        linked = await plaidRepository.resolveTransaction(id, 'matched', expense.id);
       } catch (err) {
+        await this._restoreAmount(expense, current);
         if (err.message && err.message.includes('UNIQUE constraint failed')) {
           throw fail('That expense is already linked to another bank transaction', 409);
         }
         throw err;
       }
+      if (!linked) {
+        await this._restoreAmount(expense, current);
+        throw fail('This bank transaction changed meanwhile. Refresh the Inbox and try again.', 409);
+      }
 
       // Best effort: the match stands even when the posted date can't be updated (it is logged either way)
       let postedDate;
       if (!txn.pending && txn.paymentMethodType === 'credit_card') {
-        const change = await postedDateFor(expense, txn.date, txn.plaidAccountId);
+        const change = await postedDateFor(current, txn.date, txn.plaidAccountId);
         if (change) {
           try {
-            await expenseService.updateExpense(expense.id, { ...expense, ...change });
+            await expenseService.updateExpense(expense.id, { ...current, ...change });
             postedDate = change.posted_date ?? expense.date;
           } catch (err) {
             logger.warn('Updating the posted date of a matched expense failed', { expenseId: expense.id, error: err.message });
           }
         }
       }
+      const amountUpdated = current !== expense;
+      const notes = [
+        amountUpdated && `amount ${money(expense.amount)} → ${money(current.amount)}`,
+        postedDate && `posted date ${postedDate}`
+      ].filter(Boolean);
       await logReview(
         txn,
         'match',
-        `Matched bank transaction ${describeTxn(txn)} to an existing expense${postedDate ? `; posted date ${postedDate}` : ''}`,
-        { expenseId: expense.id, ...(postedDate ? { postedDateUpdated: true } : {}) }
+        `Matched bank transaction ${describeTxn(txn)} to an existing expense${notes.length ? `; ${notes.join('; ')}` : ''}`,
+        {
+          expenseId: expense.id,
+          ...(amountUpdated ? { amountUpdated: true, previousAmount: expense.amount } : {}),
+          ...(postedDate ? { postedDateUpdated: true } : {})
+        }
       );
-      return { transaction: await plaidRepository.findTransactionById(id), postedDateUpdated: Boolean(postedDate) };
+      return { transaction: await plaidRepository.findTransactionById(id), postedDateUpdated: Boolean(postedDate), amountUpdated };
     });
+  }
+
+  /** Set a plain expense's amount to the bank's (through expenseService: validation, card balance, log). */
+  async _useBankAmount(expense, txn) {
+    if (txn.amount <= 0) {
+      throw fail('Only a charge can set an expense amount', 400);
+    }
+    if (expense.original_cost != null || expense.insurance_eligible) {
+      throw fail('This expense is reimbursed or insurance-tracked, so its amount is what you paid out of pocket. Change it by hand.', 400);
+    }
+    const amount = round2(txn.amount);
+    try {
+      await expenseService.updateExpense(expense.id, { ...expense, amount });
+    } catch (err) {
+      throw asInputError(err);
+    }
+    return { ...expense, amount };
+  }
+
+  /** Put an expense's amount back after the link it was changed for failed. Best effort: logged when it can't. */
+  async _restoreAmount(expense, current) {
+    if (current === expense) return;
+    try {
+      await expenseService.updateExpense(expense.id, { ...expense });
+    } catch (err) {
+      logger.warn('Restoring an expense amount after a failed match failed', { expenseId: expense.id, error: err.message });
+    }
   }
 
   /**

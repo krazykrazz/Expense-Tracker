@@ -5,6 +5,7 @@ const plaidReviewService = require('../services/plaidReviewService');
 const plaidSettlementService = require('../services/plaidSettlementService');
 const plaidCardPaymentService = require('../services/plaidCardPaymentService');
 const plaidInsuranceService = require('../services/plaidInsuranceService');
+const plaidReimbursementService = require('../services/plaidReimbursementService');
 const plaidCardBalanceService = require('../services/plaidCardBalanceService');
 const plaidCycleCheckService = require('../services/plaidCycleCheckService');
 const plaidFileImportService = require('../services/plaidFileImportService');
@@ -260,6 +261,24 @@ const unlinkInsurance = asyncHandler(async (req, res) => {
   res.json(await plaidInsuranceService.unlink(inboxIdParam(req), tabIdOf(req)));
 });
 
+/** GET /api/plaid/inbox/:id/reimbursement-candidates?all=true — expenses a card refund or a deposit could repay */
+const getReimbursementCandidates = asyncHandler(async (req, res) => {
+  res.json(await plaidReimbursementService.candidates(inboxIdParam(req), { all: req.query.all === 'true' }));
+});
+
+/**
+ * POST /api/plaid/inbox/:id/reimbursement
+ * Body: { expenses: [{ expenseId, amount, alreadyEntered? }] } — a refund repays one purchase, a deposit's amounts add up to it
+ */
+const applyReimbursement = asyncHandler(async (req, res) => {
+  res.json(await plaidReimbursementService.apply(inboxIdParam(req), (req.body || {}).expenses, tabIdOf(req)));
+});
+
+/** DELETE /api/plaid/inbox/:id/reimbursement — undo: the expenses are restored and the row returns to the Inbox */
+const unlinkReimbursement = asyncHandler(async (req, res) => {
+  res.json(await plaidReimbursementService.unlink(inboxIdParam(req), tabIdOf(req)));
+});
+
 /** POST /api/plaid/inbox/:id/ignore */
 const ignore = asyncHandler(async (req, res) => {
   res.json(await plaidReviewService.ignore(idParam(req)));
@@ -308,6 +327,9 @@ module.exports = {
   getInsuranceCandidates,
   applyInsurance,
   unlinkInsurance,
+  getReimbursementCandidates,
+  applyReimbursement,
+  unlinkReimbursement,
   resolveCancelled,
   ignore,
   unignore,

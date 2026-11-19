@@ -4,7 +4,7 @@ import BankReimbursements from './BankReimbursements';
 import InsuranceStatusIndicator from './InsuranceStatusIndicator';
 import * as plaidApi from '../../services/plaidApi';
 
-vi.mock('../../services/plaidApi', () => ({ undoInsuranceReimbursement: vi.fn() }));
+vi.mock('../../services/plaidApi', () => ({ undoInsuranceReimbursement: vi.fn(), undoReimbursement: vi.fn() }));
 
 const dsf = { plaidTransactionId: 144, amount: 105.3, date: '2026-11-12', name: 'DSF - Direct deposit' };
 
@@ -38,6 +38,23 @@ describe('insurer deposits on an expense', () => {
     expect(onUndone).not.toHaveBeenCalled();
     rerender(<BankReimbursements reimbursements={[]} onUndone={onUndone} />);
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it('refunds and deposits on other expenses say so and use their own undo, never the insurance one', async () => {
+    plaidApi.undoReimbursement.mockResolvedValue({});
+    const onUndone = vi.fn();
+    const refund = { plaidTransactionId: 7, kind: 'refund', amount: 13.74, date: '2026-11-16', name: 'HomeSense' };
+    const repaid = { plaidTransactionId: 8, kind: 'deposit', amount: 40, date: '2026-11-17', name: 'Interac e-Transfer from Jordan' };
+
+    render(<BankReimbursements reimbursements={[refund, repaid]} onUndone={onUndone} />);
+    const note = screen.getByTestId('bank-reimbursements');
+    expect(note).toHaveTextContent('Refunded $13.74 on Nov 16, 2026 (bank: HomeSense)');
+    expect(note).toHaveTextContent('Repaid $40.00 on Nov 17, 2026 (bank: Interac e-Transfer from Jordan)');
+    fireEvent.click(screen.getAllByRole('button', { name: 'Undo' })[1]);
+
+    await waitFor(() => expect(onUndone).toHaveBeenCalled());
+    expect(plaidApi.undoReimbursement).toHaveBeenCalledWith(8);
+    expect(plaidApi.undoInsuranceReimbursement).not.toHaveBeenCalled();
   });
 
   it('the claim status hover lists the deposits', () => {

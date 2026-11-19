@@ -139,6 +139,7 @@ class PlaidBalanceCheckRepository {
         `SELECT id, payment_date AS date, payment_date AS postedDate, amount FROM credit_card_payments
          WHERE payment_method_id = ? AND payment_date >= ? AND payment_date <= ?
            AND NOT EXISTS (SELECT 1 FROM plaid_card_payment_links l WHERE l.credit_card_payment_id = credit_card_payments.id AND l.side = 'card')
+           AND NOT EXISTS (SELECT 1 FROM plaid_reimbursement_links r WHERE r.credit_card_payment_id = credit_card_payments.id)
          ORDER BY payment_date, id`,
         [paymentMethodId, fromDate, toDate]
       )

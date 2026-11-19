@@ -1,5 +1,6 @@
 const creditCardPaymentRepository = require('../repositories/creditCardPaymentRepository');
 const paymentMethodRepository = require('../repositories/paymentMethodRepository');
+const plaidReimbursementRepository = require('../repositories/plaidReimbursementRepository');
 const activityLogService = require('./activityLogService');
 const { runInTransaction } = require('../utils/dbHelper');
 const logger = require('../config/logger');
@@ -251,10 +252,24 @@ class CreditCardPaymentService {
       return false;
     }
 
+    // A payment a bank refund recorded (spec 3.6): deleting it also gives the refunded expense its amount back
+    // (trigger plaid_reimbursement_undo_on_payment_delete), which other tabs only learn about from an expense event
+    const refund = await plaidReimbursementRepository.findRefundForPayment(paymentId);
+
     const deleted = await runInTransaction(async (tx) => {
       const result = await tx.run('DELETE FROM credit_card_payments WHERE id = ?', [paymentId]);
       return result.changes > 0;
     });
+
+    if (deleted && refund) {
+      await activityLogService.logEvent(
+        'expense_updated',
+        'expense',
+        refund.expenseId,
+        `Updated expense: ${refund.place || 'Unknown'} on ${refund.date} (refund undone: its card payment was deleted)`,
+        { place: refund.place, date: refund.date, changes: ['refund undone: its card payment was deleted'] }
+      );
+    }
 
     if (deleted) {
       // Look up card name for activity log

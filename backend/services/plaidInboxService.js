@@ -4,6 +4,7 @@ const expenseRepository = require('../repositories/expenseRepository');
 const categorySuggestionService = require('./categorySuggestionService');
 const plaidCardPaymentService = require('./plaidCardPaymentService');
 const plaidInsuranceService = require('./plaidInsuranceService');
+const plaidReimbursementService = require('./plaidReimbursementService');
 const {
   MATCH_WINDOW_DAYS, POSTING_LAG_DAYS, PENDING_AMOUNT_TOLERANCE, toCents, shiftDate, transactionDate, findMatchCandidates,
   fixedExpectedDate, findFixedCandidates, isDeposit, findIncomeCandidates, monthWindow, descriptionKey
@@ -49,14 +50,15 @@ class PlaidInboxService {
     const rows = isNew ? allRows.filter(row => row.bucket === bucket) : allRows;
     const placeByRow = isNew ? await this._suggestPlaces(rows) : new Map();
     const placeOf = (row) => placeByRow.get(row.id) || defaultPlace(row);
-    const [candidatesByRow, fixedByRow, incomeByRow, suggestions, cardPayments, insuranceByRow] = await Promise.all([
+    const [candidatesByRow, fixedByRow, incomeByRow, suggestions, cardPayments, insuranceByRow, reimbursementByRow] = await Promise.all([
       isNew ? this._matchCandidates(rows) : new Map(),
       isNew ? this._fixedCandidates(rows) : new Map(),
       isNew ? this._incomeCandidates(rows) : new Map(),
       isNew ? this._suggestCategories([...new Set(rows.flatMap(row => [placeOf(row), defaultPlace(row)]))]) : new Map(),
       // Both tabs: a card payment's two sides can sit in different tabs (a funding debit without a category)
       isNew ? plaidCardPaymentService.describeRows(allRows) : { byRow: new Map(), unconnectedCards: [] },
-      isNew ? plaidInsuranceService.describeDeposits(rows) : new Map()
+      isNew ? plaidInsuranceService.describeDeposits(rows) : new Map(),
+      isNew ? plaidReimbursementService.describeRows(rows) : new Map()
     ]);
 
     const transactions = rows.map(row => {
@@ -93,7 +95,9 @@ class PlaidInboxService {
         incomeSuggestion: income ? income.suggestion : null,
         cardPayment: cardPayments.byRow.get(row.id) ?? null,
         // Deposits only: whether "Apply to insurance claims" is the primary action (spec 3.7)
-        insurance: insuranceByRow.get(row.id) ?? null
+        insurance: insuranceByRow.get(row.id) ?? null,
+        // Settled credits on a card and deposits that could repay an expense: { kind: 'refund'|'deposit', suggested } (spec 3.6, 3.8)
+        reimbursement: reimbursementByRow.get(row.id) ?? null
       };
     });
 

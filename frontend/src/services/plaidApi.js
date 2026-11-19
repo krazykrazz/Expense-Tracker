@@ -223,6 +223,26 @@ export const undoInsuranceReimbursement = (id) =>
   call('undoing insurance reimbursement', () => apiDelete(API_ENDPOINTS.PLAID_INBOX_ACTION(id, 'insurance'), 'undo insurance reimbursement'));
 
 /**
+ * Expenses a refund on a card or a deposit could repay, ranked, with the suggested one (null when none stands out).
+ * @param {{all?: boolean, signal?: AbortSignal}} [options] all: more candidates (every purchase on the card; the whole window)
+ * @returns {Promise<{kind: 'refund'|'deposit', row: object, candidates: Array, suggestion: (Array<{expenseId: number, amount: number, alreadyEntered: boolean}>|null),
+ *   moreAvailable: boolean}>}
+ */
+export const getReimbursementCandidates = (id, { all = false, signal } = {}) =>
+  call('fetching expenses to repay', () => apiGet(API_ENDPOINTS.PLAID_INBOX_REIMBURSEMENT_CANDIDATES(id, all), 'fetch expenses', { signal }));
+
+/**
+ * Apply a refund (one purchase, the whole credit) or a deposit (amounts adding up to it) to expenses.
+ * @param {Array<{expenseId: number, amount: number, alreadyEntered?: boolean}>} expenses
+ */
+export const applyReimbursementToInboxTransaction = (id, expenses) =>
+  call('applying to expenses', () => apiPost(API_ENDPOINTS.PLAID_INBOX_ACTION(id, 'reimbursement'), { expenses }, 'apply to expenses'));
+
+/** Undo: the expenses go back to what they were (a refund's card payment is deleted) and the row returns to the Inbox. */
+export const undoReimbursement = (id) =>
+  call('undoing reimbursement', () => apiDelete(API_ENDPOINTS.PLAID_INBOX_ACTION(id, 'reimbursement'), 'undo reimbursement'));
+
+/**
  * Review a pending charge (added as an expense) that the bank dropped.
  * @param {{action: 'keep'|'delete_expense'|'link', postedId?: number}} decision
  */

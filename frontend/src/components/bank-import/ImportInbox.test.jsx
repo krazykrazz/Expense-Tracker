@@ -13,6 +13,8 @@ vi.mock('../../services/plaidApi', () => ({
   cardPaymentInboxTransaction: vi.fn(),
   getInsuranceCandidates: vi.fn(),
   applyInsuranceToInboxTransaction: vi.fn(),
+  getReimbursementCandidates: vi.fn(),
+  applyReimbursementToInboxTransaction: vi.fn(),
   resolveCancelledPending: vi.fn(),
   ignoreInboxTransaction: vi.fn(),
   unignoreInboxTransaction: vi.fn(),
@@ -384,6 +386,53 @@ describe('ImportInbox', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Apply to claims' }));
       expect(await screen.findByRole('alert')).toHaveTextContent('changed while it was being added');
       expect(screen.getByText('DSF - Direct deposit')).toBeInTheDocument();
+    });
+  });
+
+  describe('refunds and deposits that repay an expense', () => {
+    const refund = (overrides = {}) => txn({
+      id: 1, place: 'HomeSense', rawName: 'HOMESENSE #123 KANATA', date: '2026-11-16', postedDate: '2026-11-16', amount: -13.74, canAdd: false,
+      paymentMethodType: 'credit_card', paymentMethodName: 'CIBC MC', reimbursement: { kind: 'refund', suggested: true }, ...overrides
+    });
+    const purchase = { expenseId: 41, date: '2026-11-12', place: 'HomeSense', notes: null, type: 'Household', method: 'CIBC MC', amount: 50, charged: 50, reimbursed: 0, tags: ['merchant'], alreadyEntered: false };
+
+    it('offers Apply to an expense on a refund, suggests it, and applies it with the expenses reloaded', async () => {
+      plaidApi.getInbox
+        .mockResolvedValueOnce({ transactions: [refund()], hiddenUnmapped: 0 })
+        .mockResolvedValue({ transactions: [], hiddenUnmapped: 0 });
+      plaidApi.getReimbursementCandidates.mockResolvedValue({
+        kind: 'refund', row: { id: 1, amount: 13.74 }, candidates: [purchase], suggestion: [{ expenseId: 41, amount: 13.74, alreadyEntered: false }], moreAvailable: false
+      });
+      plaidApi.applyReimbursementToInboxTransaction.mockResolvedValue({});
+      const onExpensesChanged = vi.fn();
+
+      renderInbox({ onExpensesChanged });
+      expect(await screen.findByText('Refund')).toBeInTheDocument();
+      const button = screen.getByRole('button', { name: 'Apply to an expense' });
+      expect(button).toHaveClass('bank-import-primary');
+      fireEvent.click(button);
+      fireEvent.click(await screen.findByRole('button', { name: 'Apply refund' }));
+
+      await waitFor(() => expect(plaidApi.applyReimbursementToInboxTransaction).toHaveBeenCalledWith(1, [{ expenseId: 41, amount: 13.74 }]));
+      await waitFor(() => expect(onExpensesChanged).toHaveBeenCalled());
+    });
+
+    it('a deposit gets the same action, secondary unless something fits, and rows that cannot repay an expense get none', async () => {
+      plaidApi.getInbox.mockResolvedValue({
+        transactions: [
+          txn({ id: 2, amount: -40, canAdd: false, isDeposit: true, incomeCandidates: [], reimbursement: { kind: 'deposit', suggested: false } }),
+          txn({ id: 3 })
+        ],
+        hiddenUnmapped: 0
+      });
+
+      renderInbox();
+      const rows = await screen.findAllByTestId('inbox-row');
+
+      const button = within(rows[0]).getByRole('button', { name: 'Apply to an expense' });
+      expect(button).toHaveClass('bank-import-secondary');
+      expect(within(rows[0]).queryByText('Repays an expense')).not.toBeInTheDocument();
+      expect(within(rows[1]).queryByRole('button', { name: 'Apply to an expense' })).not.toBeInTheDocument();
     });
   });
 

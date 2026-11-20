@@ -77,16 +77,14 @@
 }
 
 .investment-row-details {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 10px;
   font-size: 12px;
   color: var(--text-secondary);
 }
 
-.investment-row-details .bank-balance {
+/* The bank's balance sits between the info and the buttons, right-aligned like a payment method's */
+.investment-row-main .bank-balance {
   font-size: 12px;
+  margin-left: auto;
 }
 
 .investment-row-current-value {

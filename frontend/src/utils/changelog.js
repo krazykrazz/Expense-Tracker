@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.30.1',
+    date: 'November 20, 2026',
+    added: [],
+    changed: ['Investment bank balance aligned to the right like a payment method'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.30.0',
     date: 'November 20, 2026',
     added: [],

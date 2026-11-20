@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.30.1] - 2026-11-20
+
+### Investment bank balance aligned to the right like a payment method
+
 ## [1.30.0] - 2026-11-20
 
 ### Refunds and repayments applied to expenses from the Import Inbox, and bank balances on linked investments

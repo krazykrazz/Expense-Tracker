@@ -31,9 +31,9 @@ const InvestmentRow = ({ investment, bankAccounts, needsUpdate = false, onUpdate
             <span className="investment-row-current-value">
               Current Value: {formatCurrency(currentValue)}
             </span>
-            <BankBalance accounts={bankAccounts} />
           </div>
         </div>
+        <BankBalance accounts={bankAccounts} />
         <div className="investment-row-actions">
           <button
             className="financial-cc-view-btn"

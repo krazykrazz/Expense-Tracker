@@ -76,6 +76,14 @@ describe('InvestmentRow bank balance (spec 4.1a)', () => {
     expect(screen.queryByTestId('bank-linked-badge')).not.toBeInTheDocument();
   });
 
+  it('puts the balance between the info and the buttons, where a payment method row has it (right-aligned)', () => {
+    render(<InvestmentRow investment={investment} bankAccounts={[link()]} />);
+
+    const main = screen.getByTestId('investment-row-1').querySelector('.investment-row-main');
+    const children = [...main.children].map(child => child.className);
+    expect(children).toEqual(['investment-row-info', 'bank-balance', 'investment-row-actions']);
+  });
+
   it('says in the badge that only the balance comes from the bank', () => {
     render(<InvestmentRow investment={investment} bankAccounts={[link()]} />);
 

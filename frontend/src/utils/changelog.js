@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.30.0',
+    date: 'November 20, 2026',
+    added: [],
+    changed: ['Refunds and repayments applied to expenses from the Import Inbox, and bank balances on linked investments'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.29.0',
     date: 'November 18, 2026',
     added: [],

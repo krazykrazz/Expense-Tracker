@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.30.0] - 2026-11-20
+
+### Refunds and repayments applied to expenses from the Import Inbox, and bank balances on linked investments
+
 ## [1.29.0] - 2026-11-18
 
 ### Bank import: Match offers expenses entered a few cents off the bank amount (Match and use the bank amount) and posting-dated CIBC file rows; CIBC file rows pair with pending charges; ignored rows deleted after 2 months; one-off backfills of posted dates and Plaid details; amount changes on settled charges followed; dependency updates

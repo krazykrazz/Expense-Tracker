@@ -51,7 +51,7 @@ Phase 1 (the PoC) is archived at [`specs/archive/plaid-integration/spec.md`](../
 - **Correction (owner was told otherwise):** before this PR a Plaid sync did **not** sort the production Shoppers row out: a settled Plaid row that names its pending version replaces it in place and never looks for a file row.
 - **Not changed:** the production Shoppers file row (id 167) was staged before this rule; it clears when Plaid settles the pending charge after this is deployed, or by ignoring it.
 
-**Next:** 2.9 bank files without a Plaid connection (RBC), the rest of Phase 3 (3.3 contributions, 3.4 loan and line-of-credit payments, 3.5 loan payments from fixed expenses) and 4.1 (investment and loan values, history). 3.2 is verified in production: the Oct 30 WS VISA and CIBC MC payments are recorded from the card credits with their chequing debits linked.
+**Next:** 2.9 bank files without a Plaid connection (RBC), the rest of Phase 3 (3.3 contributions, 3.4 loan and line-of-credit payments, 3.5 loan payments from fixed expenses) and 4.1 (split: **4.1a** the bank balance of linked RRSP/TFSA accounts on the Financial page and the investment view, next; **4.1b** monthly values from the bank, loans and lines of credit). 3.2 is verified in production: the Oct 30 WS VISA and CIBC MC payments are recorded from the card credits with their chequing debits linked.
 
 **Order changes:**
 - **2026-11-03:** card balance reconciliation is the biggest day-to-day problem, so 4.2 was built before the rest of Phase 2. It only needed balance capture from 2.1, done as its own migration `plaid_account_balances_v1`; the transaction columns of 2.1 still come in `plaid_capture_v1`.
@@ -174,7 +174,7 @@ Phase 1 (the PoC) is archived at [`specs/archive/plaid-integration/spec.md`](../
 | `plaid_transaction_updated` | plaid_transaction | Inbox decisions (`add`, `match`, `match_fixed`, `match_income`, `add_income`, `ignore`, `unignore`, `cancelled_keep`, `cancelled_delete`) and sync-driven `settled` / `pending_changed` / `settle_failed` |
 | `settings_updated` | settings | `section: 'plaid'` (keys, never values) or `'plaid_auto_sync'` |
 
-All `plaid_*` entity types route to the `plaid` window event. Consumers: `ImportInbox`, `BankConnections`, `useBankAccountLinks`, `usePlaidStatus` and `useCardBalanceChecks`. The records created or changed also log their own events (`expense_added`, `fixed_expense_updated`, …). Balance changes of unmapped accounts (investments, loans) aren't logged until 4.1.
+All `plaid_*` entity types route to the `plaid` window event. Consumers: `ImportInbox`, `BankConnections`, `useBankAccountLinks`, `usePlaidStatus` and `useCardBalanceChecks`. The records created or changed also log their own events (`expense_added`, `fixed_expense_updated`, …). Balance changes of unmapped accounts aren't logged: investments until 4.1a, loans until 4.1b.
 
 ## Frontend (`components/bank-import/`)
 
@@ -369,7 +369,7 @@ Planned now, because Phase 3 adds five more inbox actions and three more link ta
 3. **Settings across tabs:** `plaid-settings-changed` also reaches other tabs (log `settings_updated` → route `settings` to that window event). **Built.**
 4. ~~**Pending backfill on upgrade (R9):** the v1.17.0 upgrade didn't show charges already pending (the sync cursor had passed them). Productize the one-off fix: on the first sync after `plaid_transactions_pending_v1`, call `/transactions/get` (last 21 days) per Item once and insert missing pending rows. Gated by `plaid_pending_backfill_done`.~~ **Obsolete** (see above).
 5. **Modified amounts on reviewed rows (R10):** Wealthsimple sends still-pending charges as settled, so a later amount change arrives as *modified* on an added/matched row, which is ignored today. Apply the `pending_changed` rule to any linked row: follow the bank if the expense still has the previous bank amount; log it. **Partly done (1.21.0):** a linked row still pending (e.g. from a Wealthsimple file) follows a *modified* that settles it, amount included. **Built (this PR):** a *modified* amount on a row that is already settled follows the same rule, for rows linked to an expense.
-6. **Refresh events (from the 1.21.4 audit):** ~~a sync whose only changes are re-attached rows or refreshed balances logs no `plaid_sync_completed`~~ **Done (1.24.6):** `syncItem` logs one `plaid_sync_completed` per bank whenever a sync brought transactions, re-attached rows or a changed balance of a mapped account (also the sync after a login, which used to be silent). Balances of unmapped investment/loan accounts are left for 4.1.
+6. **Refresh events (from the 1.21.4 audit):** ~~a sync whose only changes are re-attached rows or refreshed balances logs no `plaid_sync_completed`~~ **Done (1.24.6):** `syncItem` logs one `plaid_sync_completed` per bank whenever a sync brought transactions, re-attached rows or a changed balance of a mapped account (also the sync after a login, which used to be silent). Balances of unmapped investment/loan accounts are left for 4.1a (investments) and 4.1b (loans).
 7. **Posted date on every bank-reported card transaction (owner, 2026-11-08):** any credit card expense linked to a settled bank transaction should have a `posted_date`.
    - **Already done (1.24.0–1.24.1):** Match and settlements set the posted date from the settled bank transaction (`postedDateChange`; a bank posting date replaces an estimate). A same-day date only clears a posted date where the bank reports real posting dates (CIBC, `bankReportsPostingDates`).
    - **Still missing (Wealthsimple):** no source has a real posting date. Plaid's single date is the purchase day or the next day, the file has only the purchase date, and a balance settlement only says "posted before this sync" (`settleFromBalance` passes no date). So Sobeys and First Choice (added while pending, settled from the balance) have none, while hand-entered charges have the form's estimate. Proposed: when a Wealthsimple charge settles without a posting date, use the form's rule (next business day after purchase, `utils/businessDays`), capped at the date the settlement was seen; never replace a posted date already set.
@@ -721,14 +721,40 @@ Closes the loop on medical insurance claims (see [`MEDICAL_INSURANCE_TRACKING.md
 
 ### 4.1 Linked balances: investments, loans, lines of credit
 
-> **Status: planned.** The display-only 4.3 reuses the balances 4.2 stores; nothing below is built yet.
+> **Status: split (owner, 2026-11-20).** The first slice is **4.1a**, a small, information-only addition: link a bank account to an investment (RRSP, TFSA) and show the bank's balance on the Financial page and the investment's view, exactly as 4.3 does for bank accounts. It writes nothing into `investment_values`. Everything else in this item (monthly values from the bank, loans and lines of credit, reminders) is **4.1b**, planned and unchanged. The display-only 4.3 reuses the balances 4.2 stores; neither slice is built yet.
+
+#### 4.1a Investment accounts and their bank balance (display only)
+
+**Why:** Wealthsimple's RRSP accounts already send a balance on every sync (4.2 stores it for every account), but nothing shows it: an account has to be mapped to a payment method to show a balance, and an investment isn't one. The owner wants the bank's figure next to each investment first, without the automatic monthly values (4.1b) that change what the app records.
+
+**Requirements**
+1. **Mapping (Connections):** an account of Plaid type `investment` can be linked to an investment or left as *Don't link*. The dropdown for such an account lists the investments (TFSA / RRSP, not RESP: Q13); other account types keep their payment-method dropdown. An account has at most one target: linking an investment clears its payment method and the other way round.
+2. **Several accounts per investment** are summed (an RRSP split across accounts). Mixed currencies, or an account that hasn't received a balance, show nothing (as in 4.3). An account can't link to two investments.
+3. **Financial page:** a linked investment's row shows **Bank: $X · as of 3:20 pm**, with the linked icon (the bank badge the payment methods use) and the same "may be out of date" handling and reasons as 4.3 (`login`, `error`, `plaid`, `old`). It sits next to the investment's own value and **doesn't replace it**: the monthly value stays what was entered, and no difference or reconciliation is shown.
+4. **Investment view** (`InvestmentDetailView`): the same line, at the top.
+5. **Nothing is written:** no `investment_values` row, no reminder change. Deleting the investment only unlinks the account.
+6. **Refresh:** on the `plaid` sync event, like 4.3. A changed balance of a linked investment account is logged (`plaid_sync_completed` counts it as `balancesChanged`) so open views refresh; today only accounts mapped to a payment method are compared.
+7. **Without Plaid** nothing changes (principle 1): no calls, no badge, no line.
+
+**Design**
+- **Migration** `plaid_accounts_investment_v1` (and `schema.js`): `plaid_accounts.investment_id INTEGER REFERENCES investments(id) ON DELETE SET NULL`.
+- **Mapping API:** `PUT /api/plaid/accounts/:id` accepts `{ paymentMethodId }` as today or `{ investmentId }`. `plaidService.updateAccountMapping` (now payment-method only) checks the target exists, that an investment target is on a `type = 'investment'` account, and that it isn't also a payment method; the `plaid_account_updated` event says which. `GET /api/plaid/items` accounts carry `investmentId`.
+- **Balance change log:** `plaidRepository.findMappedAccountBalances` also returns accounts with an `investment_id`.
+- **Frontend:** `useBankAccountLinks` also returns the accounts by investment (with `type`, balance and the connection status it already passes on). `BankBalance` and `bankBalanceUtils.js` treat an `investment` account as an asset like a deposit account (a card or loan balance stays hidden); `InvestmentRow` and `InvestmentDetailView` render it. The Connections dropdown for an investment account lists investments.
+- **Out of scope:** writing values, loans and lines of credit, reminders, RESPs, history, contribution detection (3.3), per-holding detail.
+
+**Tests:** mapping (type check, one target, clearing the other, unknown investment, `null` unlinks); deleting an investment unlinks; summing, a missing balance, mixed currencies and stale reasons; a balance change of a linked investment account is logged and an unlinked one isn't; the row and the view show the bank line only when linked; nothing without Plaid.
+
+#### 4.1b Monthly values from the bank, loans and lines of credit
+
+> **Status: planned.** Builds on 4.1a. Nothing below is built yet.
 
 **Decisions (owner):**
 - The bank fills empty months and keeps the current month updated; it never overwrites a hand-entered value (Q8).
 - Several bank accounts can sum into one item.
 - RESPs stay unlinked (the `investments.type` CHECK allows TFSA/RRSP only; Q13).
 
-**Requirements**
+**Requirements** (the investment mapping in 1 comes from 4.1a; 4.1b adds loans and the monthly values)
 1. Connections: each account links to what it represents, by Plaid type:
    - `depository` / `credit` → payment method;
    - `investment` → investment;
@@ -790,7 +816,7 @@ Closes the loop on medical insurance claims (see [`MEDICAL_INSURANCE_TRACKING.md
 > - **No new endpoint:** `GET /api/plaid/items` accounts now carry `currentBalance`, `availableBalance`, `balanceCurrency` and `balanceAsOf` (`ACCOUNT_COLUMNS`), and `useBankAccountLinks` passes them on with the account `type` and the connection's `status` / `bankUpdatedAt`. It already refreshes on the `plaid` sync event, so requirement 4 needed no new wiring.
 > - **`BankBalance`** (with `bankBalanceUtils.js`) renders in the **Other Payment Methods** rows: **Bank $700.52 · as of 12:10 pm**, plus "$650.00 available" when the bank sends it and it differs. Several accounts on one method are summed (oldest time), mixed currencies and **non-deposit accounts** (a card or loan balance is owed, not held) show nothing, and so does a method whose accounts haven't all received a balance.
 > - **"May be out of date"** (requirement 3) follows the connection, not just our own clock: `login` (needs a login / removed), `error` (last sync failed), `plaid` (Plaid has no new data, the 2.6 status; our sync still succeeds and stores the old balance, so `balance_as_of` alone would look fresh) or `old` (stored balance over 12 hours). Dimmed, marked inline, with the reason in the hover text.
-> - **Not done:** `Property Tax ••7943` and other accounts that aren't mapped to a payment method have nothing to show a balance on (map one in Connections, or wait for 4.1); investments, loans and lines of credit are 4.1.
+> - **Not done:** `Property Tax ••7943` and other accounts that aren't mapped to a payment method have nothing to show a balance on (map one in Connections, or wait for 4.1a); investments are 4.1a, loans and lines of credit 4.1b.
 
 **Requirements**
 1. For a **debit / chequing** payment method mapped to a bank account, the Financial page shows the bank's balance: "Bank: $712.52 · as of 6:40 am" (available balance too when the bank sends it). Several accounts mapped to one payment method are summed.
@@ -803,7 +829,8 @@ Closes the loop on medical insurance claims (see [`MEDICAL_INSURANCE_TRACKING.md
 **Later, optional:** cash on hand in the Budget Plan, or a low-balance warning before a fixed expense is due. Not part of 4.3.
 
 ### Phase 4 exit criteria
-- [ ] Production RRSP and LOC values update from bank balances without overwriting a hand-entered month.
+- [ ] 4.1a An RRSP linked to its Wealthsimple account shows the bank balance on the Financial page and in the investment view, flagged when stale; nothing changes with Plaid not configured.
+- [ ] 4.1b Production RRSP and LOC values update from bank balances without overwriting a hand-entered month.
 - [x] Card balance check matches the Phase 0 manual result. *(Both cards matched to the cent in 1.19.0; differences since then are fully explained by causes.)*
 - [x] 4.3 the WS Shared bank balance shows on the Financial page; nothing changes with Plaid not configured. *(Checked in the browser on a copy of production data: Debit - WS shows Bank $700.52; with Plaid off the hook makes no bank calls and `BankBalance` renders nothing.)*
 - [ ] Docs per the matrix.
@@ -950,3 +977,4 @@ Every PR updates the docs its change touches. Recheck after each phase.
 | Q18 | 3.7: when one deposit pays several claims, pre-fill the split (remaining amounts / proportional) or always ask for each amount from the insurer's statement? | Open; pre-fill, editable, must add up to the deposit |
 | Q19 | 3.8: which action is primary for an e-Transfer deposit from a person (Add income, Apply to an expense, Apply to insurance)? Learn it per sender, or always ask? | **Decided (built with 3.8):** learn per bank description, like insurance's `suggested`; Apply to an expense is primary only when a suggestion exists, otherwise Add income stays the default |
 | Q20 | Near-miss Match tolerance (this PR): is max($1.00, 1%) right, or should a typo like a transposed digit ($43.00 vs $34.00) be offered too? | **Decided (2026-11-17):** max($1.00, 1%); bigger differences stay out (too many false candidates); revisit with real examples |
+| Q21 | 4.1: write the bank balance into the monthly investment values straight away, or first only show it? | **Decided (owner, 2026-11-20):** show it first (4.1a), as a smaller and less intrusive addition; writing values is 4.1b |

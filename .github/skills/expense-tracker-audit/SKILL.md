@@ -205,6 +205,12 @@ Past confirmed-true patterns on THIS repo:
     cell as NaN (`amountOf` in `utils/bankFileImport.js`), or blank rows import as $0.00.
   - `if (!err.statusCode) err.statusCode = 400` around service calls labels database errors as
     bad input; `asInputError` in `plaidInboxSupport` leaves errors with a sqlite `code` as 500.
+  - **A link that changes nothing must still use up what it claims** (found 2026-11, PR #528):
+    `plaid_reimbursement_links` rows applied as "entered by hand" have `applied_amount = 0`, and the
+    hand-entered pool was `original_cost − amount − Σ applied_amount`, so the first deposit never consumed
+    it: the expense stayed tagged **Entered by hand**, pre-selected, and accepted a second same-amount
+    deposit without lowering anything. Pool now subtracts `Σ amount`. For any "already accounted for"
+    shortcut, test applying a SECOND bank row to the same target.
 Past confirmed-false patterns (subagent hallucinations on THIS repo):
 - "Duplicate `findById()` in `loanPaymentRepository.js`" — FALSE, there is only
   one `findById()` (line 98). The two methods at lines 47/68 are `findByLoan` and

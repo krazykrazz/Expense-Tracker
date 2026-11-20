@@ -40,9 +40,9 @@ describe('planApply', () => {
 
   test('an expense already entered by hand is never changed, and only when the entered amount covers the bank amount', () => {
     fc.assert(
-      fc.property(arbCents, arbCents, fc.integer({ min: 1, max: 5_000_000 }), fc.integer({ min: 0, max: 5_000_000 }), (outOfPocket, entered, bankAmount, appliedByBank) => {
-        const original = outOfPocket + entered + appliedByBank;
-        const expense = { amount: outOfPocket / 100, originalCost: original / 100, appliedByBank: appliedByBank / 100 };
+      fc.property(arbCents, arbCents, fc.integer({ min: 1, max: 5_000_000 }), fc.integer({ min: 0, max: 5_000_000 }), (outOfPocket, entered, bankAmount, repaidByBank) => {
+        const original = outOfPocket + entered + repaidByBank;
+        const expense = { amount: outOfPocket / 100, originalCost: original / 100, repaidByBank: repaidByBank / 100 };
         const plan = planApply(expense, bankAmount, true);
 
         expect(enteredPoolCents(expense)).toBe(entered);

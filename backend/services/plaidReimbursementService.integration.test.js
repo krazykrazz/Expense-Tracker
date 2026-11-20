@@ -141,6 +141,25 @@ describe('refunds on a card (3.6)', () => {
     expect(await statusOf(id)).toBe('new');
   });
 
+  test('a reimbursement entered by hand covers one bank row: a second one of the same amount is not offered as entered nor accepted', async () => {
+    const dinner = await expense({ place: 'Dinner with Jordan', amount: 40, originalCost: 80, paymentMethodId: DEBIT, method: 'Debit' });
+    const first = await depositRow('d1', 40);
+    const second = await depositRow('d2', 40, { date: '2026-11-17' });
+
+    await plaidReimbursementService.apply(first, [{ expenseId: dinner, amount: 40, alreadyEntered: true }]);
+
+    const listed = await plaidReimbursementService.candidates(second);
+    expect(listed.candidates.find(c => c.expenseId === dinner)).toMatchObject({ alreadyEntered: false });
+    expect(listed.candidates.find(c => c.expenseId === dinner).tags).not.toContain('entered');
+    await expect(plaidReimbursementService.apply(second, [{ expenseId: dinner, amount: 40, alreadyEntered: true }]))
+      .rejects.toMatchObject({ statusCode: 400 });
+    expect(await statusOf(second)).toBe('new');
+
+    // Applied for real, it lowers what the dinner cost
+    await plaidReimbursementService.apply(second, [{ expenseId: dinner, amount: 40 }]);
+    expect(await stateOf(dinner)).toEqual({ amount: 0, originalCost: 80 });
+  });
+
   test('two partial refunds on one purchase, undone in either order', async () => {
     const purchase = await expense({ amount: 50 });
     const first = await refundRow('r1', 10, { date: '2026-11-14' });

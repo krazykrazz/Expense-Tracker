@@ -6,9 +6,9 @@ describe('reimbursement rules', () => {
     expect(chargedOf({ amount: 6.1, originalCost: null })).toBe(6.1);
   });
 
-  test('what was entered by hand excludes what bank rows already took off', () => {
-    expect(enteredPoolCents({ amount: 36.26, originalCost: 50, appliedByBank: 0 })).toBe(1374);
-    expect(enteredPoolCents({ amount: 40, originalCost: 100, appliedByBank: 20 })).toBe(4000);
+  test('what was entered by hand excludes what bank rows account for', () => {
+    expect(enteredPoolCents({ amount: 36.26, originalCost: 50, repaidByBank: 0 })).toBe(1374);
+    expect(enteredPoolCents({ amount: 40, originalCost: 100, repaidByBank: 20 })).toBe(4000);
     expect(enteredPoolCents({ amount: 50, originalCost: null })).toBe(0);
     expect(enteredPoolCents({ amount: 80, originalCost: 70 })).toBe(0);
   });

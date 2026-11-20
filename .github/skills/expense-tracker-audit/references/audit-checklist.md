@@ -67,6 +67,10 @@ Layer-specific, high-signal checks. Confirm each finding against source before r
       clamped balances) and check those cases fall into a named cause, not "unexplained".
 - [ ] Plaid errors never suggest Disconnect for a login problem (costs a Trial slot and
       duplicates history); `LOGIN_CODES` → Reconnect.
+- [ ] Link tables with a "no-op" mode (e.g. reimbursement `alreadyEntered`, `applied_amount = 0`):
+      the capacity check counts every link's claimed amount, not only what it changed; a second bank
+      row on the same expense must not re-claim it. Hand edits to a linked expense (amount, original
+      cost, payment method) between apply and undo: does undo still land somewhere sensible?
 
 ### Loan / LOC subsystem
 - [ ] After removing loan-type exclusions (e.g. `loan_type !== 'line_of_credit'`),

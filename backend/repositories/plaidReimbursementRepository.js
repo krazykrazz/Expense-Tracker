@@ -1,14 +1,15 @@
 const dbHelper = require('../utils/dbHelper');
 
 /**
- * Expense columns for reimbursements: what it cost out of pocket and was charged, how much bank rows already
- * lowered it (`appliedByBank`), and what rules it out (insurance claims have their own flow, 3.7; expenses split
+ * Expense columns for reimbursements: what it cost out of pocket and was charged, how much of the difference bank
+ * rows account for (`repaidByBank`: each link's amount, whether it lowered the out-of-pocket or claimed a
+ * reimbursement entered by hand), and what rules it out (insurance claims have their own flow, 3.7; expenses split
  * between people have per-person shares that would stop adding up).
  */
 const EXPENSE_SELECT = `
   SELECT e.id, e.date, e.place, e.notes, e.type, e.method, e.payment_method_id AS paymentMethodId,
          e.amount, e.original_cost AS originalCost, COALESCE(e.insurance_eligible, 0) AS insuranceEligible,
-         COALESCE((SELECT SUM(l.applied_amount) FROM plaid_reimbursement_links l WHERE l.expense_id = e.id), 0) AS appliedByBank,
+         COALESCE((SELECT SUM(l.amount) FROM plaid_reimbursement_links l WHERE l.expense_id = e.id), 0) AS repaidByBank,
          (SELECT COUNT(*) FROM plaid_reimbursement_links l WHERE l.expense_id = e.id) AS linkCount,
          (SELECT f.previous_original_cost FROM plaid_reimbursement_links f
             WHERE f.expense_id = e.id ORDER BY f.id LIMIT 1) AS firstPreviousOriginalCost,

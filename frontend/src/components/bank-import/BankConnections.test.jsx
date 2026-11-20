@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import BankConnections from './BankConnections';
 import * as plaidApi from '../../services/plaidApi';
 import { getPaymentMethods } from '../../services/paymentMethodApi';
+import { getAllInvestments } from '../../services/investmentApi';
 
 const plaidLink = { open: vi.fn(), ready: false };
 
@@ -18,6 +19,7 @@ vi.mock('../../services/plaidApi', () => ({
   getBankConnections: vi.fn(),
   disconnectBank: vi.fn(),
   mapBankAccount: vi.fn(),
+  linkBankAccountInvestment: vi.fn(),
   importBankFile: vi.fn(),
   syncBanks: vi.fn(),
   getPlaidStatus: vi.fn(),
@@ -27,6 +29,10 @@ vi.mock('../../services/plaidApi', () => ({
 
 vi.mock('../../services/paymentMethodApi', () => ({
   getPaymentMethods: vi.fn(),
+}));
+
+vi.mock('../../services/investmentApi', () => ({
+  getAllInvestments: vi.fn(),
 }));
 
 const item = {
@@ -47,6 +53,7 @@ describe('BankConnections', () => {
       { id: 2, display_name: 'Debit', type: 'debit' },
       { id: 4, display_name: 'Visa', type: 'credit_card' },
     ]);
+    getAllInvestments.mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -100,6 +107,76 @@ describe('BankConnections', () => {
 
     await waitFor(() => expect(plaidApi.mapBankAccount).toHaveBeenCalledWith(7, 2));
     await waitFor(() => expect(select.value).toBe('2'));
+  });
+
+  describe('investment accounts (spec 4.1a)', () => {
+    const wealthsimple = {
+      ...item,
+      accounts: [
+        { id: 1, name: 'RRSP', mask: '3B49', type: 'investment', subtype: 'rrsp', paymentMethodId: null, investmentId: null },
+        { id: 2, name: 'RESP', mask: 'FCQ3', type: 'investment', subtype: 'resp', paymentMethodId: null, investmentId: null },
+        { id: 3, name: 'Shared', mask: '5070', type: 'depository', subtype: 'checking', paymentMethodId: null }
+      ]
+    };
+    const investments = [
+      { id: 10, name: 'Kevin Managed RRSP', type: 'RRSP' },
+      { id: 11, name: 'Melissa TFSA', type: 'TFSA' }
+    ];
+
+    beforeEach(() => {
+      plaidApi.getBankConnections.mockResolvedValue({ items: [wealthsimple] });
+      getAllInvestments.mockResolvedValue(investments);
+    });
+
+    it('links an investment account to an investment instead of a payment method, and can unlink it', async () => {
+      plaidApi.linkBankAccountInvestment.mockResolvedValueOnce({ ...wealthsimple.accounts[0], investmentId: 10 })
+        .mockResolvedValueOnce({ ...wealthsimple.accounts[0], investmentId: null });
+
+      render(<BankConnections status={sandbox} onStatusChange={vi.fn()} />);
+      const select = await screen.findByLabelText('Investment for RRSP');
+
+      expect([...select.options].map(o => o.textContent)).toEqual(["Don't link", 'Kevin Managed RRSP (RRSP)', 'Melissa TFSA (TFSA)']);
+      expect(screen.queryByLabelText('Payment method for RRSP')).not.toBeInTheDocument();
+      expect(screen.queryAllByRole('button', { name: 'Import file' })).toHaveLength(0);
+      fireEvent.change(select, { target: { value: '10' } });
+
+      await waitFor(() => expect(plaidApi.linkBankAccountInvestment).toHaveBeenCalledWith(1, 10));
+      await waitFor(() => expect(select.value).toBe('10'));
+      expect(plaidApi.mapBankAccount).not.toHaveBeenCalled();
+
+      fireEvent.change(select, { target: { value: '' } });
+      await waitFor(() => expect(plaidApi.linkBankAccountInvestment).toHaveBeenLastCalledWith(1, null));
+    });
+
+    it('does not offer an RESP for linking, and leaves deposit accounts on payment methods', async () => {
+      render(<BankConnections status={sandbox} onStatusChange={vi.fn()} />);
+
+      await screen.findByLabelText('Investment for RRSP');
+      expect(screen.queryByLabelText('Investment for RESP')).not.toBeInTheDocument();
+      expect(screen.getByText("Can't be linked yet")).toBeInTheDocument();
+      expect(screen.getByLabelText('Payment method for Shared')).toBeInTheDocument();
+      expect(screen.queryByLabelText('Investment for Shared')).not.toBeInTheDocument();
+    });
+
+    it('shows the connections even when the investments could not be loaded', async () => {
+      getAllInvestments.mockRejectedValue(new Error('offline'));
+
+      render(<BankConnections status={sandbox} onStatusChange={vi.fn()} />);
+
+      const select = await screen.findByLabelText('Investment for RRSP');
+      expect([...select.options].map(o => o.textContent)).toEqual(["Don't link"]);
+    });
+
+    it('shows the error and keeps the link when linking fails', async () => {
+      plaidApi.linkBankAccountInvestment.mockRejectedValue(new Error('Investment not found'));
+
+      render(<BankConnections status={sandbox} onStatusChange={vi.fn()} />);
+      const select = await screen.findByLabelText('Investment for RRSP');
+      fireEvent.change(select, { target: { value: '10' } });
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('Investment not found');
+      await waitFor(() => expect(select.value).toBe(''));
+    });
   });
 
   it('confirms Trial usage before starting Plaid Link in production', async () => {

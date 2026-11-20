@@ -8,6 +8,7 @@ import { getCurrentCycleStatus } from '../../services/creditCardApi';
 import { authAwareFetch } from '../../utils/fetchProvider';
 import { useSyncEvent } from '../../hooks/useSyncEvent';
 import { useBankAccountLinks } from '../../hooks/useBankAccountLinks';
+import { useInvestmentBankLinks } from '../../hooks/useInvestmentBankLinks';
 import { useCardBalanceChecks } from '../../hooks/useCardBalanceChecks';
 import BankLinkedBadge from '../bank-import/BankLinkedBadge';
 import BankBalance from '../bank-import/BankBalance';
@@ -840,6 +841,7 @@ const LoansSection = ({ year, month, onUpdate, highlightIds = [], onTotalDebtCha
 // ─── InvestmentsSection ───────────────────────────────────────────────────────
 
 const InvestmentsSection = ({ onUpdate, highlightIds = [], onTotalInvestmentsChange }) => {
+  const bankLinks = useInvestmentBankLinks();
   const [investments, setInvestments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -966,6 +968,7 @@ const InvestmentsSection = ({ onUpdate, highlightIds = [], onTotalInvestmentsCha
     return (
       <InvestmentDetailView
         investment={selectedInvestment}
+        bankAccounts={bankLinks.get(selectedInvestmentId)}
         isOpen={true}
         onClose={() => { setSelectedInvestmentId(null); }}
         onUpdate={() => { fetchInvestments(); if (onUpdate) onUpdate(); }}
@@ -1042,6 +1045,7 @@ const InvestmentsSection = ({ onUpdate, highlightIds = [], onTotalInvestmentsCha
                   <InvestmentRow
                     key={investment.id}
                     investment={investment}
+                    bankAccounts={bankLinks.get(investment.id)}
                     needsUpdate={highlightIds.includes(investment.id)}
                     onUpdateValue={handleUpdateValue}
                     onViewDetails={handleViewDetails}

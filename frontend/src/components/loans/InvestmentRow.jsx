@@ -1,8 +1,14 @@
 import React from 'react';
 import { formatCurrency } from '../../utils/formatters';
+import BankLinkedBadge from '../bank-import/BankLinkedBadge';
+import BankBalance from '../bank-import/BankBalance';
 import './InvestmentRow.css';
 
-const InvestmentRow = ({ investment, needsUpdate = false, onUpdateValue, onViewDetails, onEdit, onDelete }) => {
+/**
+ * @param {{investment: object, bankAccounts?: Array<object>}} props bankAccounts: the bank accounts linked to this
+ *   investment (useInvestmentBankLinks); the bank's balance is shown next to the entered value, which it never replaces
+ */
+const InvestmentRow = ({ investment, bankAccounts, needsUpdate = false, onUpdateValue, onViewDetails, onEdit, onDelete }) => {
   const { id, name, type, currentValue } = investment;
 
   return (
@@ -14,6 +20,7 @@ const InvestmentRow = ({ investment, needsUpdate = false, onUpdateValue, onViewD
             <span className="investment-row-type-badge" data-testid="type-badge">
               {type}
             </span>
+            <BankLinkedBadge accounts={bankAccounts} name={name} balanceOnly />
             {needsUpdate && (
               <span className="investment-row-needs-update-badge" data-testid="needs-update-badge">
                 ⚠️ Update Needed
@@ -24,6 +31,7 @@ const InvestmentRow = ({ investment, needsUpdate = false, onUpdateValue, onViewD
             <span className="investment-row-current-value">
               Current Value: {formatCurrency(currentValue)}
             </span>
+            <BankBalance accounts={bankAccounts} />
           </div>
         </div>
         <div className="investment-row-actions">

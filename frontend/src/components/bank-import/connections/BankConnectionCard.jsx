@@ -6,15 +6,16 @@ import { STATUS_LABELS, STATUS_HELP } from './connectionStatus';
 
 /**
  * One connected bank on the Connections tab: its status and freshness, Reconnect / Log in again / Disconnect, and
- * each account with its payment method (and Import file for mapped accounts).
- * @param {{item: object, paymentMethods: Array, busy: boolean, linkOpen: boolean, mappingId: (number|null),
+ * each account with its payment method (and Import file for mapped accounts). Investment accounts link to an
+ * investment instead (only their balance is shown); RESPs can't be linked yet.
+ * @param {{item: object, paymentMethods: Array, investments: Array, busy: boolean, linkOpen: boolean, mappingId: (number|null),
  *   importAccountId: (number|null), onImportAccount: Function, onReconnect: Function, onLoginAgain: Function,
- *   onDisconnect: Function, onMap: Function, onImported: Function}} props
+ *   onDisconnect: Function, onMap: Function, onLinkInvestment: Function, onImported: Function}} props
  *   importAccountId: the account whose Import file panel is open (one at a time across banks)
  */
 const BankConnectionCard = ({
-  item, paymentMethods, busy, linkOpen, mappingId, importAccountId, onImportAccount,
-  onReconnect, onLoginAgain, onDisconnect, onMap, onImported
+  item, paymentMethods, investments = [], busy, linkOpen, mappingId, importAccountId, onImportAccount,
+  onReconnect, onLoginAgain, onDisconnect, onMap, onLinkInvestment, onImported
 }) => (
     <section className="bank-connection">
       <div className="bank-connection-header">
@@ -62,29 +63,50 @@ const BankConnectionCard = ({
                 <span className="bank-import-muted"> {account.subtype || account.type}</span>
               </span>
               <span className="bank-account-controls">
-                {account.paymentMethodId != null && importAccountId !== account.id && (
-                  <button
-                    type="button"
-                    className="bank-import-link"
-                    onClick={() => onImportAccount(account.id)}
-                    disabled={busy}
-                    title="Import a CSV downloaded from the bank's website, for when Plaid isn't getting new data"
-                  >
-                    Import file
-                  </button>
+                {account.type === 'investment' ? (
+                  account.subtype === 'resp' ? (
+                    <span className="bank-import-muted" title="An RESP isn't one of the investment types (TFSA, RRSP) yet">Can&apos;t be linked yet</span>
+                  ) : (
+                    <select
+                      className="bank-account-mapping"
+                      value={account.investmentId ?? ''}
+                      onChange={(event) => onLinkInvestment(account.id, event.target.value)}
+                      disabled={mappingId === account.id}
+                      aria-label={`Investment for ${account.name}`}
+                    >
+                      <option value="">Don&apos;t link</option>
+                      {investments.map(investment => (
+                        <option key={investment.id} value={investment.id}>{investment.name} ({investment.type})</option>
+                      ))}
+                    </select>
+                  )
+                ) : (
+                  <>
+                    {account.paymentMethodId != null && importAccountId !== account.id && (
+                      <button
+                        type="button"
+                        className="bank-import-link"
+                        onClick={() => onImportAccount(account.id)}
+                        disabled={busy}
+                        title="Import a CSV downloaded from the bank's website, for when Plaid isn't getting new data"
+                      >
+                        Import file
+                      </button>
+                    )}
+                    <select
+                      className="bank-account-mapping"
+                      value={account.paymentMethodId ?? ''}
+                      onChange={(event) => onMap(account.id, event.target.value)}
+                      disabled={mappingId === account.id}
+                      aria-label={`Payment method for ${account.name}`}
+                    >
+                      <option value="">Don&apos;t import</option>
+                      {paymentMethods.map(method => (
+                        <option key={method.id} value={method.id}>{method.display_name}</option>
+                      ))}
+                    </select>
+                  </>
                 )}
-                <select
-                  className="bank-account-mapping"
-                  value={account.paymentMethodId ?? ''}
-                  onChange={(event) => onMap(account.id, event.target.value)}
-                  disabled={mappingId === account.id}
-                  aria-label={`Payment method for ${account.name}`}
-                >
-                  <option value="">Don&apos;t import</option>
-                  {paymentMethods.map(method => (
-                    <option key={method.id} value={method.id}>{method.display_name}</option>
-                  ))}
-                </select>
               </span>
             </li>
             {importAccountId === account.id && (

@@ -51,6 +51,7 @@ Current migrations (in run order):
 | `plaid_transactions_pfc_v1` | Adds `pfc_primary`, `pfc_detailed` and `pfc_confidence` (Plaid's personal finance category) to `plaid_transactions`, used to recognise credit card payments (idempotent). Existing rows stay NULL |
 | `plaid_insurance_links_outside_bank_v1` | Adds `outside_bank` to `plaid_insurance_links` (what a claim marked Paid by hand had reimbursed outside the bank; idempotent). Existing links stay NULL |
 | `plaid_capture_v1` | Adds `merchant_entity_id`, `logo_url`, `website`, `original_description`, `payment_channel` (other fields Plaid sends) and `review_bucket` / `bucket_overridden` (Inbox tabs To review / Not expenses) to `plaid_transactions`, and the index `idx_plaid_transactions_merchant_entity` (idempotent). Rows already staged with a category, `new` or `ignored`, are classified with `bucketFor`; the other fields are not backfilled |
+| `plaid_accounts_investment_v1` | Adds `investment_id` (REFERENCES investments, ON DELETE SET NULL) to `plaid_accounts`, so an investment account can be linked to an investment and show its bank balance (idempotent). Existing accounts stay NULL |
 
 Because migrations also run on brand-new production databases (immediately after `schema.js`), every migration must be idempotent against a database that already has the end-state schema.
 

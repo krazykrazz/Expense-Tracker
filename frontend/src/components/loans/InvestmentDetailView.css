@@ -172,6 +172,15 @@
   color: var(--text-primary);
 }
 
+/* The bank's balance for a linked investment, above the entered figures */
+.investment-bank-balance {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+  margin: calc(-1 * var(--spacing-3)) 0 var(--spacing-4) 0;
+}
+
 .investment-summary-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));

@@ -222,6 +222,37 @@ describe('Consolidated Schema – Unit Tests', () => {
     });
   });
 
+  test('plaid_accounts_investment_v1 adds investment_id (unlinked when the investment is deleted) to a database created before it', async () => {
+    await runMigrations(db);
+    await dbRun(db, 'PRAGMA foreign_keys = OFF');
+    try {
+      await dbRun(db, 'DROP TABLE plaid_accounts');
+      await dbRun(db, `CREATE TABLE plaid_accounts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, plaid_item_id INTEGER NOT NULL, account_id TEXT NOT NULL UNIQUE, name TEXT, mask TEXT,
+        type TEXT, subtype TEXT, payment_method_id INTEGER, current_balance REAL, available_balance REAL, credit_limit REAL,
+        balance_currency TEXT, balance_as_of TEXT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`);
+    } finally {
+      await dbRun(db, 'PRAGMA foreign_keys = ON');
+    }
+    await dbRun(db, "DELETE FROM schema_migrations WHERE migration_name = 'plaid_accounts_investment_v1'");
+    await dbRun(db, "INSERT INTO plaid_items (item_id, institution_name, access_token_enc, environment) VALUES ('inv-item', 'Bank', 'v1:x:y:z', 'sandbox')");
+    const item = await dbGet(db, "SELECT id FROM plaid_items WHERE item_id = 'inv-item'");
+    await dbRun(db, "INSERT INTO plaid_accounts (plaid_item_id, account_id, name, type) VALUES (?, 'inv-rrsp', 'RRSP', 'investment')", [item.id]);
+    const columns = async () => (await dbAll(db, 'PRAGMA table_info(plaid_accounts)')).map(c => c.name);
+    expect(await columns()).not.toContain('investment_id');
+
+    await runMigrations(db);
+    await runMigrations(db);
+
+    expect(await columns()).toContain('investment_id');
+    expect(await checkMigrationApplied(db, 'plaid_accounts_investment_v1')).toBe(true);
+    const investment = await dbRun(db, "INSERT INTO investments (name, type, initial_value) VALUES ('Mig RRSP', 'RRSP', 100)");
+    await dbRun(db, "UPDATE plaid_accounts SET investment_id = ? WHERE account_id = 'inv-rrsp'", [investment.lastID]);
+    await dbRun(db, 'DELETE FROM investments WHERE id = ?', [investment.lastID]);
+    expect((await dbGet(db, "SELECT investment_id FROM plaid_accounts WHERE account_id = 'inv-rrsp'")).investment_id).toBeNull();
+  });
+
   // ── Requirement 7.3: update_budgets_timestamp trigger exists and fires ──
 
   test('update_budgets_timestamp trigger exists', async () => {

@@ -126,6 +126,13 @@ export const mapBankAccount = (accountId, paymentMethodId) =>
   call('mapping bank account', () => apiPut(API_ENDPOINTS.PLAID_ACCOUNT_BY_ID(accountId), { paymentMethodId }, 'update bank account'));
 
 /**
+ * Link an investment account to an investment, so the bank's balance shows next to it (nothing is imported).
+ * @param {number|null} investmentId null = unlink
+ */
+export const linkBankAccountInvestment = (accountId, investmentId) =>
+  call('linking bank account to investment', () => apiPut(API_ENDPOINTS.PLAID_ACCOUNT_BY_ID(accountId), { investmentId }, 'link bank account to investment'));
+
+/**
  * Import (or with `dryRun`, preview) a CSV exported from the bank's website into a connected bank account.
  * @param {number} accountId
  * @param {{csv: string, fromDate?: string, dryRun?: boolean}} options

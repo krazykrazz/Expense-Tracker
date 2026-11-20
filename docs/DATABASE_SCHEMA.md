@@ -452,7 +452,7 @@ One row per bank login connected through Plaid.
 
 ### plaid_accounts
 
-Bank accounts under an item, and the payment method their transactions are imported as.
+Bank accounts under an item, the payment method their transactions are imported as, or (investment accounts) the investment whose balance they show.
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -461,6 +461,7 @@ Bank accounts under an item, and the payment method their transactions are impor
 | account_id | TEXT NOT NULL UNIQUE | Plaid account id |
 | name, mask, type, subtype | TEXT | Account details from Plaid |
 | payment_method_id | INTEGER | Payment method for imported expenses; NULL = don't import (ON DELETE SET NULL) |
+| investment_id | INTEGER | Investment an `investment` account is linked to, so its balance shows next to it; NULL = not linked (ON DELETE SET NULL). Added by migration `plaid_accounts_investment_v1`. An account has at most one of `payment_method_id` and `investment_id` (the service clears the other when one is set); several accounts can share one investment |
 | current_balance, available_balance, credit_limit | REAL | Balances as received on the last sync (NULL until then or when the bank doesn't send them). For a credit card, `current_balance` is what's owed; `credit_limit − available_balance` also counts pending charges |
 | balance_currency | TEXT | Currency of the balances |
 | balance_as_of | TEXT | When the balances were received (ISO 8601) |
@@ -723,7 +724,7 @@ Migration tracking for database schema changes.
 | migration_name | TEXT NOT NULL UNIQUE | Name of the migration |
 | applied_at | TEXT DEFAULT CURRENT_TIMESTAMP | When the migration was applied |
 
-Current entries written by `runMigrations()`: `consolidated_schema_v1`, `auth_infrastructure_v1`, `dismissed_anomalies_nullable_expense_id_v1`, `performance_compound_indexes_v1`, `analytics_hub_revamp_v1`, `fixed_expenses_payment_method_id_backfill_v1`, `plaid_transactions_pending_v1`, `plaid_account_balances_v1`, `plaid_item_freshness_v1`, `plaid_transactions_pfc_v1`, `plaid_capture_v1`. See [Database Migrations](DATABASE_MIGRATIONS.md).
+Current entries written by `runMigrations()`: `consolidated_schema_v1`, `auth_infrastructure_v1`, `dismissed_anomalies_nullable_expense_id_v1`, `performance_compound_indexes_v1`, `analytics_hub_revamp_v1`, `fixed_expenses_payment_method_id_backfill_v1`, `plaid_transactions_pending_v1`, `plaid_account_balances_v1`, `plaid_item_freshness_v1`, `plaid_transactions_pfc_v1`, `plaid_capture_v1`, `plaid_accounts_investment_v1`. See [Database Migrations](DATABASE_MIGRATIONS.md).
 
 ## Relationships
 
@@ -743,6 +744,7 @@ Current entries written by `runMigrations()`: `consolidated_schema_v1`, `auth_in
 - `people` → `expense_invoices` (optional, via person_id)
 - `plaid_items` → `plaid_accounts` → `plaid_transactions`
 - `payment_methods` → `plaid_accounts` (optional, via payment_method_id)
+- `investments` → `plaid_accounts` (optional, via investment_id)
 - `expenses` → `plaid_transactions` (at most one, via expense_id)
 - `fixed_expenses` ↔ `plaid_transactions` (at most one each, via plaid_fixed_expense_links)
 - `credit_card_payments` ↔ `plaid_transactions` (at most one card row and one paying row per payment, via plaid_card_payment_links)
@@ -797,6 +799,7 @@ Foreign keys are enforced (`PRAGMA foreign_keys = ON` per connection):
   - budget_allocations.investment_id (when investment deleted)
   - expense_invoices.person_id (when person deleted)
   - plaid_accounts.payment_method_id (when payment method deleted)
+  - plaid_accounts.investment_id (when investment deleted)
   - plaid_transactions.plaid_account_id (when bank account deleted, e.g. on disconnect)
   - plaid_transactions.expense_id (when expense deleted)
 

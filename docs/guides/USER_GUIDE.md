@@ -302,6 +302,10 @@ Click **"💼 Financial"** in the month selector and scroll to the Investments s
 3. View line graphs showing investment value changes
 4. See chronological list of all value entries with change indicators and percentages
 
+### Bank Balance (optional)
+
+With [Bank Import](#bank-import-optional) set up, link a Wealthsimple RRSP or TFSA account to its investment under **Bank Import → Connections** (choose the investment in the account's dropdown). The investment then shows a bank icon and **Bank $186,331.55 · as of 6:37 am** next to its **Current Value** and at the top of its **View**. It is only for comparing: your monthly value entries are not changed. It is dimmed and marked "(may be out of date)" when the bank hasn't updated recently. Several accounts linked to one investment are added up.
+
 ### Portfolio Overview
 
 Net worth (investments minus outstanding debt) is shown in the Financial Overview header.

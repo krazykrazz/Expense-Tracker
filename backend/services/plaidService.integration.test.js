@@ -1279,6 +1279,132 @@ describe('plaidService', () => {
     });
   });
 
+  describe('linkAccountInvestment (spec 4.1a)', () => {
+    const connectInvestment = async (type = 'investment') => {
+      client.itemPublicTokenExchange.mockResolvedValueOnce({ data: { access_token: 'access-inv', item_id: 'item-inv' } });
+      client.accountsGet.mockResolvedValueOnce({ data: { accounts: [account('acc-rrsp', { type })] } });
+      return (await plaidService.connectItem({ publicToken: 'public-token', institutionName: 'Investments' })).accounts[0];
+    };
+    const addInvestment = (name = 'Kevin RRSP') =>
+      run("INSERT INTO investments (name, type, initial_value) VALUES (?, 'RRSP', 1000)", [name]);
+    const accountRow = (id) => get('SELECT payment_method_id AS pm, investment_id AS inv FROM plaid_accounts WHERE id = ?', [id]);
+
+    beforeEach(async () => {
+      await run('DELETE FROM investments');
+    });
+
+    test('links an investment account to an investment and back to none, logging each change once', async () => {
+      const rrsp = await connectInvestment();
+      const investmentId = await addInvestment();
+      activityLogService.logEvent.mockClear();
+
+      expect(await plaidService.linkAccountInvestment(rrsp.id, investmentId)).toMatchObject({ investmentId });
+      await plaidService.linkAccountInvestment(rrsp.id, String(investmentId));
+      expect(await plaidService.linkAccountInvestment(rrsp.id, null)).toMatchObject({ investmentId: null });
+
+      const events = activityLogService.logEvent.mock.calls.filter(([type]) => type === 'plaid_account_updated');
+      expect(events.map(([, entity, id, text, metadata]) => [entity, id, text, metadata.investmentId])).toEqual([
+        ['plaid_account', rrsp.id, 'Bank account "Account acc-rrsp ••1234" linked to investment Kevin RRSP', investmentId],
+        ['plaid_account', rrsp.id, 'Bank account "Account acc-rrsp ••1234" unlinked from its investment', null]
+      ]);
+    });
+
+    test('several accounts can link to one investment', async () => {
+      const first = await connectInvestment();
+      const investmentId = await addInvestment();
+      await plaidService.linkAccountInvestment(first.id, investmentId);
+      const second = await run(
+        "INSERT INTO plaid_accounts (plaid_item_id, account_id, name, type) VALUES (?, 'acc-2', 'Second', 'investment')", [first.plaidItemId]
+      );
+
+      await plaidService.linkAccountInvestment(second, investmentId);
+
+      expect((await all('SELECT id FROM plaid_accounts WHERE investment_id = ?', [investmentId])).length).toBe(2);
+    });
+
+    test('only an investment account can be linked, and only to an investment that exists', async () => {
+      const deposit = await connectInvestment('depository');
+      const rrsp = await run(
+        "INSERT INTO plaid_accounts (plaid_item_id, account_id, name, type) VALUES (?, 'acc-inv', 'RRSP', 'investment')", [deposit.plaidItemId]
+      );
+      const investmentId = await addInvestment();
+
+      await expect(plaidService.linkAccountInvestment(deposit.id, investmentId)).rejects.toMatchObject({ statusCode: 400 });
+      await expect(plaidService.linkAccountInvestment(rrsp, 99999)).rejects.toMatchObject({ statusCode: 400 });
+      await expect(plaidService.linkAccountInvestment(rrsp, 'abc')).rejects.toMatchObject({ statusCode: 400 });
+      await expect(plaidService.linkAccountInvestment(99999, investmentId)).rejects.toMatchObject({ statusCode: 404 });
+      expect(await accountRow(deposit.id)).toEqual({ pm: null, inv: null });
+      expect(await accountRow(rrsp)).toEqual({ pm: null, inv: null });
+    });
+
+    test('an account has one target: an investment replaces a payment method and the other way round', async () => {
+      const rrsp = await connectInvestment();
+      const investmentId = await addInvestment();
+
+      await plaidService.updateAccountMapping(rrsp.id, 2);
+      expect(await accountRow(rrsp.id)).toEqual({ pm: 2, inv: null });
+
+      await plaidService.linkAccountInvestment(rrsp.id, investmentId);
+      expect(await accountRow(rrsp.id)).toEqual({ pm: null, inv: investmentId });
+
+      await plaidService.updateAccountMapping(rrsp.id, 2);
+      expect(await accountRow(rrsp.id)).toEqual({ pm: 2, inv: null });
+
+      // Unlinking an investment never touches a payment-method mapping, and "Don't import" never touches an investment link
+      await plaidService.linkAccountInvestment(rrsp.id, null);
+      expect(await accountRow(rrsp.id)).toEqual({ pm: 2, inv: null });
+      await plaidService.linkAccountInvestment(rrsp.id, investmentId);
+      await plaidService.updateAccountMapping(rrsp.id, null);
+      expect(await accountRow(rrsp.id)).toEqual({ pm: null, inv: investmentId });
+    });
+
+    test('deleting the investment unlinks the account and keeps the account and its balance', async () => {
+      const rrsp = await connectInvestment();
+      const investmentId = await addInvestment();
+      await plaidService.linkAccountInvestment(rrsp.id, investmentId);
+      await run('UPDATE plaid_accounts SET current_balance = 186331.55 WHERE id = ?', [rrsp.id]);
+
+      await run('DELETE FROM investments WHERE id = ?', [investmentId]);
+
+      expect(await get('SELECT investment_id AS inv, current_balance AS balance FROM plaid_accounts WHERE id = ?', [rrsp.id]))
+        .toEqual({ inv: null, balance: 186331.55 });
+    });
+
+    test('the accounts of a connection carry investmentId', async () => {
+      const rrsp = await connectInvestment();
+      const investmentId = await addInvestment();
+      await plaidService.linkAccountInvestment(rrsp.id, investmentId);
+
+      const { accounts } = (await plaidService.listItems())[0];
+
+      expect(accounts[0]).toMatchObject({ id: rrsp.id, investmentId, paymentMethodId: null });
+    });
+
+    test('a balance change on a linked investment account is logged, a sync that changes nothing is not', async () => {
+      const rrsp = await connectInvestment();
+      await plaidService.linkAccountInvestment(rrsp.id, await addInvestment());
+      const withBalance = (current) => ({ data: { accounts: [account('acc-rrsp', { type: 'investment', balances: { current, iso_currency_code: 'CAD' } })] } });
+      client.transactionsSync.mockResolvedValueOnce(page());
+      client.accountsGet.mockResolvedValueOnce(withBalance(186331.55));
+      await plaidService.syncItem(rrsp.plaidItemId, 'scheduled');
+
+      client.transactionsSync.mockResolvedValueOnce(page());
+      client.accountsGet.mockResolvedValueOnce(withBalance(186331.55));
+      activityLogService.logEvent.mockClear();
+      await plaidService.syncItem(rrsp.plaidItemId, 'scheduled');
+      expect(activityLogService.logEvent).not.toHaveBeenCalled();
+
+      client.transactionsSync.mockResolvedValueOnce(page());
+      client.accountsGet.mockResolvedValueOnce(withBalance(187010.2));
+      await plaidService.syncItem(rrsp.plaidItemId, 'scheduled');
+      expect(activityLogService.logEvent).toHaveBeenCalledWith(
+        'plaid_sync_completed', 'plaid_transaction', null,
+        expect.stringContaining('balance $186,331.55 → $187,010.20'),
+        expect.objectContaining({ balances: [expect.objectContaining({ field: 'balance', from: 186331.55, to: 187010.2 })] })
+      );
+    });
+  });
+
   describe('disconnectItem', () => {
     test('removes the item at Plaid, deletes unreviewed rows, and keeps reviewed links and expenses', async () => {
       const item = await connect();

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getBankConnections, disconnectBank, mapBankAccount, syncBanks, getPlaidStatus } from '../../services/plaidApi';
+import { getBankConnections, disconnectBank, mapBankAccount, linkBankAccountInvestment, syncBanks, getPlaidStatus } from '../../services/plaidApi';
 import { getPaymentMethods } from '../../services/paymentMethodApi';
+import { getAllInvestments } from '../../services/investmentApi';
 import { useSyncEvent } from '../../hooks/useSyncEvent';
 import AutoSyncSettings from './AutoSyncSettings';
 import BankConnectionCard from './connections/BankConnectionCard';
@@ -8,11 +9,13 @@ import { usePlaidLinkFlow } from './connections/usePlaidLinkFlow';
 import { MAPPABLE_TYPES, describeSync } from './connections/connectionStatus';
 
 /**
- * Connections tab: connect banks with Plaid Link, map accounts to payment methods, sync, disconnect.
+ * Connections tab: connect banks with Plaid Link, map accounts to payment methods (investment accounts to
+ * investments), sync, disconnect.
  */
 const BankConnections = ({ status, onStatusChange }) => {
   const [items, setItems] = useState([]);
   const [paymentMethods, setPaymentMethods] = useState([]);
+  const [investments, setInvestments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -24,13 +27,16 @@ const BankConnections = ({ status, onStatusChange }) => {
 
   const load = useCallback(async (signal) => {
     try {
-      const [{ items: loaded }, methods] = await Promise.all([
+      const [{ items: loaded }, methods, loadedInvestments] = await Promise.all([
         getBankConnections({ signal }),
-        getPaymentMethods({ activeOnly: true, withCounts: false })
+        getPaymentMethods({ activeOnly: true, withCounts: false }),
+        // Only the investment dropdown needs these: a failure there must not hide the connections
+        getAllInvestments().catch(() => [])
       ]);
       if (signal?.aborted) return;
       setItems(loaded);
       setPaymentMethods(methods.filter(m => MAPPABLE_TYPES.includes(m.type)));
+      setInvestments(loadedInvestments || []);
       setError(null);
     } catch (err) {
       if (err.name !== 'AbortError') setError(err.message);
@@ -77,11 +83,11 @@ const BankConnections = ({ status, onStatusChange }) => {
     }
   };
 
-  const handleMap = async (accountId, value) => {
+  const saveMapping = async (accountId, save) => {
     setError(null);
     setMappingId(accountId);
     try {
-      const updated = await mapBankAccount(accountId, value === '' ? null : Number(value));
+      const updated = await save();
       setItems(prev => prev.map(item => ({
         ...item,
         accounts: item.accounts.map(account => (account.id === accountId ? { ...account, ...updated } : account))
@@ -92,6 +98,10 @@ const BankConnections = ({ status, onStatusChange }) => {
       setMappingId(null);
     }
   };
+
+  const handleMap = (accountId, value) => saveMapping(accountId, () => mapBankAccount(accountId, value === '' ? null : Number(value)));
+
+  const handleLinkInvestment = (accountId, value) => saveMapping(accountId, () => linkBankAccountInvestment(accountId, value === '' ? null : Number(value)));
 
   const handleDisconnect = async (item) => {
     const trialNote = item.environment === 'production'
@@ -151,6 +161,7 @@ const BankConnections = ({ status, onStatusChange }) => {
             key={item.id}
             item={item}
             paymentMethods={paymentMethods}
+            investments={investments}
             busy={busy}
             linkOpen={linkOpen}
             mappingId={mappingId}
@@ -160,6 +171,7 @@ const BankConnections = ({ status, onStatusChange }) => {
             onLoginAgain={loginAgain}
             onDisconnect={handleDisconnect}
             onMap={handleMap}
+            onLinkInvestment={handleLinkInvestment}
             onImported={(text) => {
               setMessage(text);
               load();

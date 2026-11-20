@@ -5,10 +5,12 @@ import { updateInvestment } from '../../services/investmentApi';
 import { formatCurrency, formatMonthYear } from '../../utils/formatters';
 import { validateAmount, validateName } from '../../utils/validation';
 import { createLogger } from '../../utils/logger';
+import BankLinkedBadge from '../bank-import/BankLinkedBadge';
+import BankBalance from '../bank-import/BankBalance';
 
 const logger = createLogger('InvestmentDetailView');
 
-const InvestmentDetailView = ({ investment, isOpen, onClose, onUpdate }) => {
+const InvestmentDetailView = ({ investment, isOpen, onClose, onUpdate, bankAccounts }) => {
   const [investmentData, setInvestmentData] = useState(investment);
   const [valueHistory, setValueHistory] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -393,6 +395,13 @@ const InvestmentDetailView = ({ investment, isOpen, onClose, onUpdate }) => {
           {/* Investment Summary Card */}
           <div className="investment-summary-card">
             <h3>Investment Summary</h3>
+
+            {!isEditingInvestment && bankAccounts && bankAccounts.length > 0 && (
+              <div className="investment-bank-balance" data-testid="investment-bank-balance">
+                <BankLinkedBadge accounts={bankAccounts} name={investmentData.name} balanceOnly />
+                <BankBalance accounts={bankAccounts} />
+              </div>
+            )}
             
             {isEditingInvestment ? (
               <div className="investment-edit-form">

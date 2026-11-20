@@ -359,7 +359,8 @@ const TABLE_STATEMENTS = [
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   )`,
 
-  // plaid_accounts — bank accounts under a Plaid item, mapped to a payment method for import
+  // plaid_accounts — bank accounts under a Plaid item, mapped to a payment method for import, or (investment
+  // accounts) linked to an investment so its balance shows next to it (spec 4.1a). At most one of the two.
   `CREATE TABLE IF NOT EXISTS plaid_accounts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     plaid_item_id INTEGER NOT NULL,
@@ -376,8 +377,10 @@ const TABLE_STATEMENTS = [
     balance_as_of TEXT,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    investment_id INTEGER,
     FOREIGN KEY (plaid_item_id) REFERENCES plaid_items(id) ON DELETE CASCADE,
-    FOREIGN KEY (payment_method_id) REFERENCES payment_methods(id) ON DELETE SET NULL
+    FOREIGN KEY (payment_method_id) REFERENCES payment_methods(id) ON DELETE SET NULL,
+    FOREIGN KEY (investment_id) REFERENCES investments(id) ON DELETE SET NULL
   )`,
 
   // plaid_transactions — posted bank transactions staged for review (Import Inbox)

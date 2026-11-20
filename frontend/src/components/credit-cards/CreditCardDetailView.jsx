@@ -641,7 +641,9 @@ const CreditCardDetailView = ({
                               {formatDate(payment.payment_date)}
                               <CardPaymentBankBadge links={payment.bankLinks} />
                             </div>
-                            {payment.notes && (
+                            {payment.refund ? (
+                              <div className="payment-notes" data-testid="payment-refund-label">Refund: {payment.refund.place || 'purchase'}</div>
+                            ) : payment.notes && (
                               <div className="payment-notes">{payment.notes}</div>
                             )}
                           </div>
@@ -708,6 +710,11 @@ const CreditCardDetailView = ({
                 {deleteConfirm.type === 'payment' && (
                   <span className="confirm-detail">
                     {formatCurrency(deleteConfirm.item.amount)} on {formatDate(deleteConfirm.item.payment_date)}
+                  </span>
+                )}
+                {deleteConfirm.type === 'payment' && deleteConfirm.item.refund && (
+                  <span className="confirm-detail" data-testid="payment-refund-note">
+                    A refund for {deleteConfirm.item.refund.place || 'a purchase'}. Deleting it puts that purchase back to what it cost before the refund.
                   </span>
                 )}
                 {deleteConfirm.type === 'payment' && deleteConfirm.item.bankLinks?.length > 0 && (

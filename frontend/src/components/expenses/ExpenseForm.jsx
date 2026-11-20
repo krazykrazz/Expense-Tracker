@@ -1519,6 +1519,8 @@ const ExpenseForm = ({ onExpenseAdded, onClose, people: propPeople, expense = nu
               <small className="form-hint">
                 If you were reimbursed, enter the full amount charged here. Amount above is what you paid out-of-pocket.
               </small>
+              {/* Refunds and deposits applied in Bank Import (spec 3.6, 3.8) */}
+              <BankReimbursements reimbursements={expense?.bankReimbursements} disabled={isSubmitting} onUndone={onClose} />
               {genericReimbursementError && (
                 <div className="reimbursement-error">
                   {genericReimbursementError}

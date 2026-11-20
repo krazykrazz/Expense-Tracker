@@ -6,6 +6,7 @@ import { formatDate } from '../../../utils/formatters';
 import AddExpenseForm from './AddExpenseForm';
 import AddIncomeForm from './AddIncomeForm';
 import InsuranceClaimsPicker from './InsuranceClaimsPicker';
+import ReimbursementPicker from './ReimbursementPicker';
 import MatchPicker from './MatchPicker';
 import { EXPECTED_CURRENCY, formatSigned, isCloseFixed, isCloseIncome } from './inboxFormat';
 
@@ -63,6 +64,11 @@ const InboxRow = ({ txn, filter, expanded, onExpand, onAction, busy, error, unco
           {filter === 'new' && txn.insurance?.suggested && (
             <span className="inbox-badge match" title="Looks like an insurance payout: apply it to the claims it reimburses">Insurance</span>
           )}
+          {filter === 'new' && txn.reimbursement?.suggested && (
+            <span className="inbox-badge match" title="Something you bought looks like what this repays: apply it so spending is right">
+              {txn.reimbursement.kind === 'refund' ? 'Refund' : 'Repays an expense'}
+            </span>
+          )}
           {filter === 'new' && closeIncome.length > 0 && (
             <span className="inbox-badge match" title="Matches expected income: confirm it to record when it landed">
               Income: {closeIncome[0].name}
@@ -88,6 +94,18 @@ const InboxRow = ({ txn, filter, expanded, onExpand, onAction, busy, error, unco
                   disabled={busy}
                 >
                   Apply to insurance
+                </button>
+              )}
+              {txn.reimbursement && (
+                <button
+                  className={txn.reimbursement.suggested && !txn.insurance?.suggested ? 'bank-import-primary' : 'bank-import-secondary'}
+                  onClick={() => toggle('reimbursement')}
+                  disabled={busy}
+                  title={txn.reimbursement.kind === 'refund'
+                    ? 'A refund for a purchase on this card: lowers what it cost and records the credit on the card'
+                    : 'Someone paid you back for an expense: lowers what it cost you'}
+                >
+                  Apply to an expense
                 </button>
               )}
               <CardPaymentButtons txn={txn} unconnectedCards={unconnectedCards} expanded={expanded} onExpand={onExpand} busy={busy} />
@@ -130,6 +148,9 @@ const InboxRow = ({ txn, filter, expanded, onExpand, onAction, busy, error, unco
       )}
       {isOpen('insurance') && (
         <InsuranceClaimsPicker txn={txn} busy={busy} onCancel={() => onExpand(null)} onApply={(claims) => onAction('insurance', claims)} />
+      )}
+      {isOpen('reimbursement') && (
+        <ReimbursementPicker txn={txn} busy={busy} onCancel={() => onExpand(null)} onApply={(expenses) => onAction('reimbursement', expenses)} />
       )}
       {isOpen('match') && (
         <MatchPicker

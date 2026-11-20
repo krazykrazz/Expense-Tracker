@@ -819,14 +819,26 @@ async function getUnifiedBillingCycles(req, res) {
  * _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7_
  */
 async function getCreditCardDetail(req, res) {
-  // Payments recorded from the Import Inbox carry the bank transactions they came from (`bankLinks`); a
-  // failed lookup only leaves the badge off
+  // Payments recorded from the Import Inbox carry the bank transactions they came from (`bankLinks`); one a bank
+  // refund recorded also says which purchase it refunded (`refund`). A failed lookup only leaves the badge off
   const withBankLinks = async (payments) => {
     if (payments.length === 0) return payments;
     try {
       const plaidCardPaymentRepository = require('../repositories/plaidCardPaymentRepository');
-      const links = await plaidCardPaymentRepository.findLinksForPayments(payments.map(payment => payment.id));
-      return payments.map(payment => (links.has(payment.id) ? { ...payment, bankLinks: links.get(payment.id) } : payment));
+      const plaidReimbursementRepository = require('../repositories/plaidReimbursementRepository');
+      const ids = payments.map(payment => payment.id);
+      const [links, refunds] = await Promise.all([
+        plaidCardPaymentRepository.findLinksForPayments(ids),
+        plaidReimbursementRepository.findRefundsForPayments(ids)
+      ]);
+      return payments.map(payment => {
+        const refund = refunds.get(payment.id);
+        return {
+          ...payment,
+          ...(links.has(payment.id) ? { bankLinks: links.get(payment.id) } : {}),
+          ...(refund ? { refund: { expenseId: refund.expenseId, place: refund.place, date: refund.date } } : {})
+        };
+      });
     } catch (err) {
       logger.warn('Could not load bank links for credit card payments:', err.message);
       return payments;

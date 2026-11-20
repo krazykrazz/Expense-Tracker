@@ -5,7 +5,8 @@ const { fail } = require('../utils/httpError');
 
 const PAYMENT_SELECT = `SELECT p.id, p.payment_method_id AS paymentMethodId, pm.display_name AS paymentMethodName, p.amount,
               p.payment_date AS date, p.notes,
-              EXISTS (SELECT 1 FROM plaid_card_payment_links l WHERE l.credit_card_payment_id = p.id AND l.side = 'card') AS cardLinked,
+              (EXISTS (SELECT 1 FROM plaid_card_payment_links l WHERE l.credit_card_payment_id = p.id AND l.side = 'card')
+               OR EXISTS (SELECT 1 FROM plaid_reimbursement_links r WHERE r.credit_card_payment_id = p.id)) AS cardLinked,
               EXISTS (SELECT 1 FROM plaid_card_payment_links l WHERE l.credit_card_payment_id = p.id AND l.side = 'funding') AS fundingLinked
        FROM credit_card_payments p
        JOIN payment_methods pm ON pm.id = p.payment_method_id`;
@@ -77,7 +78,8 @@ class PlaidCardPaymentRepository {
   }
 
   /**
-   * Bank rows linked to payments, for the card view.
+   * Bank rows linked to payments, for the card view: the credit and the paying debit of a recorded payment, and
+   * the refund credit behind a payment a refund recorded (spec 3.6).
    * @returns {Promise<Map<number, Array<{side: string, date: string, name: string, amount: number, accountName: (string|null), accountMask: (string|null)}>>>}
    */
   async findLinksForPayments(paymentIds) {
@@ -92,8 +94,15 @@ class PlaidCardPaymentRepository {
          JOIN plaid_transactions pt ON pt.id = l.plaid_transaction_id
          LEFT JOIN plaid_accounts pa ON pa.id = pt.plaid_account_id
          WHERE l.credit_card_payment_id IN (${chunk.map(() => '?').join(',')})
-         ORDER BY l.side, pt.date`,
-        chunk
+         UNION ALL
+         SELECT r.credit_card_payment_id AS paymentId, 'card' AS side, pt.date, pt.amount, COALESCE(pt.merchant_name, pt.name) AS name,
+                pa.name AS accountName, pa.mask AS accountMask
+         FROM plaid_reimbursement_links r
+         JOIN plaid_transactions pt ON pt.id = r.plaid_transaction_id
+         LEFT JOIN plaid_accounts pa ON pa.id = pt.plaid_account_id
+         WHERE r.credit_card_payment_id IN (${chunk.map(() => '?').join(',')})
+         ORDER BY side, date`,
+        [...chunk, ...chunk]
       );
       for (const { paymentId, ...link } of rows) {
         if (!links.has(paymentId)) links.set(paymentId, []);

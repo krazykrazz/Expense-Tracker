@@ -12,6 +12,9 @@ jest.mock('../repositories/creditCardPaymentRepository', () => ({
 jest.mock('../repositories/plaidCardPaymentRepository', () => ({
   findLinksForPayments: jest.fn()
 }));
+jest.mock('../repositories/plaidReimbursementRepository', () => ({
+  findRefundsForPayments: jest.fn()
+}));
 jest.mock('../services/statementBalanceService', () => ({
   calculateStatementBalance: jest.fn()
 }));
@@ -46,6 +49,7 @@ const paymentMethodService = require('../services/paymentMethodService');
 const paymentMethodRepository = require('../repositories/paymentMethodRepository');
 const creditCardPaymentRepository = require('../repositories/creditCardPaymentRepository');
 const plaidCardPaymentRepository = require('../repositories/plaidCardPaymentRepository');
+const plaidReimbursementRepository = require('../repositories/plaidReimbursementRepository');
 const statementBalanceService = require('../services/statementBalanceService');
 const billingCycleHistoryService = require('../services/billingCycleHistoryService');
 
@@ -108,6 +112,7 @@ describe('billingCycleController.getCreditCardDetail', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     plaidCardPaymentRepository.findLinksForPayments.mockResolvedValue(new Map());
+    plaidReimbursementRepository.findRefundsForPayments.mockResolvedValue(new Map());
     req = { params: { id: '1' }, query: {} };
     res = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
   });
@@ -177,6 +182,21 @@ describe('billingCycleController.getCreditCardDetail', () => {
     expect(res.status).toHaveBeenLastCalledWith(200);
     expect(res.json.mock.calls[0][0].payments).toEqual(withLinks);
     expect(res.json.mock.calls[0][0].errors).toEqual([]);
+  });
+
+  test('a payment a bank refund recorded says which purchase it refunded', async () => {
+    const payments = [{ id: 1, payment_method_id: 1, amount: 13.74, payment_date: '2026-11-16', notes: 'Refund: HomeSense' }];
+    const bankLinks = [{ side: 'card', date: '2026-11-16', name: 'HomeSense', amount: -13.74, accountName: 'Visa', accountMask: '1234' }];
+    paymentMethodService.getCreditCardWithComputedFields.mockResolvedValue(mockCardDetails);
+    creditCardPaymentRepository.findByPaymentMethodId.mockResolvedValue(payments);
+    plaidCardPaymentRepository.findLinksForPayments.mockResolvedValue(new Map([[1, bankLinks]]));
+    plaidReimbursementRepository.findRefundsForPayments.mockResolvedValue(new Map([[1, { expenseId: 7, place: 'HomeSense', date: '2026-11-12', bank: {} }]]));
+
+    await billingCycleController.getCreditCardDetail(req, res);
+
+    expect(res.json.mock.calls[0][0].payments).toEqual([
+      { ...payments[0], bankLinks, refund: { expenseId: 7, place: 'HomeSense', date: '2026-11-12' } }
+    ]);
   });
 
   test('returns partial failure with errors array when sub-query fails', async () => {

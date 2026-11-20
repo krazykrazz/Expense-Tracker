@@ -164,7 +164,8 @@ export function ExpenseProvider({ children }) {
       ? {
         ...updatedExpense,
         bankLink: updatedExpense.bankLink ?? e.bankLink ?? null,
-        ...(e.insuranceReimbursements && !updatedExpense.insuranceReimbursements ? { insuranceReimbursements: e.insuranceReimbursements } : {})
+        ...(e.insuranceReimbursements && !updatedExpense.insuranceReimbursements ? { insuranceReimbursements: e.insuranceReimbursements } : {}),
+        ...(e.bankReimbursements && !updatedExpense.bankReimbursements ? { bankReimbursements: e.bankReimbursements } : {})
       }
       : e)));
     setRefreshTrigger(prev => prev + 1);

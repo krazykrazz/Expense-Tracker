@@ -10,7 +10,7 @@ const TXN_COLUMNS = `pt.id, pt.transaction_id AS transactionId, pt.plaid_account
   pt.merchant_name AS merchantName, pt.status, pt.expense_id AS expenseId, pt.pending,
   pt.pending_transaction_id AS pendingTransactionId, pt.removed_at AS removedAt,
   pt.pfc_primary AS pfcPrimary, pt.pfc_detailed AS pfcDetailed, pt.pfc_confidence AS pfcConfidence,
-  pt.review_bucket AS bucket`;
+  pt.merchant_entity_id AS merchantEntityId, pt.review_bucket AS bucket`;
 
 /**
  * Data access for Plaid items, accounts and staged transactions.

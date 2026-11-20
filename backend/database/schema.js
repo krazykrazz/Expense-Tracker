@@ -471,6 +471,30 @@ const TABLE_STATEMENTS = [
     FOREIGN KEY (expense_id) REFERENCES expenses(id) ON DELETE CASCADE
   )`,
 
+  // plaid_reimbursement_links — a bank row that paid part of an expense back (spec 3.6 and 3.8): a refund credit on
+  // the card it was bought with (kind 'refund', also recorded as a payment on the card: credit_card_payment_id),
+  // or a deposit from a person or business into a bank account (kind 'deposit', several expenses per deposit and
+  // several deposits per expense). `amount` is what the row repaid on the expense, `applied_amount` how much it
+  // lowered the expense's out-of-pocket (0 when the reimbursement had already been entered by hand).
+  // previous_original_cost is the expense's original cost before the first bank row (copied onto later links), so
+  // undoing the last one restores it; undoing any link adds applied_amount back.
+  `CREATE TABLE IF NOT EXISTS plaid_reimbursement_links (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    plaid_transaction_id INTEGER NOT NULL,
+    expense_id INTEGER NOT NULL,
+    kind TEXT NOT NULL CHECK(kind IN ('refund', 'deposit')),
+    amount REAL NOT NULL CHECK(amount > 0),
+    applied_amount REAL NOT NULL CHECK(applied_amount >= 0),
+    previous_original_cost REAL,
+    previous_amount REAL NOT NULL,
+    credit_card_payment_id INTEGER,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (plaid_transaction_id, expense_id),
+    FOREIGN KEY (plaid_transaction_id) REFERENCES plaid_transactions(id) ON DELETE CASCADE,
+    FOREIGN KEY (expense_id) REFERENCES expenses(id) ON DELETE CASCADE,
+    FOREIGN KEY (credit_card_payment_id) REFERENCES credit_card_payments(id) ON DELETE CASCADE
+  )`,
+
   // users — authentication user accounts
   `CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -566,6 +590,42 @@ const TRIGGER_STATEMENTS = [
      WHERE id IN (SELECT plaid_transaction_id FROM plaid_insurance_links WHERE expense_id = OLD.id)
        AND NOT EXISTS (
          SELECT 1 FROM plaid_insurance_links other
+         WHERE other.plaid_transaction_id = plaid_transactions.id AND other.expense_id != OLD.id
+       );
+   END`,
+
+  // Reimbursements (spec 3.6, 3.8). Deleting the credit-card payment a refund created gives the expense its
+  // out-of-pocket back (and its original cost when no other bank row still reimburses it) and returns the refund to
+  // the Import Inbox; the link row is removed by ON DELETE CASCADE
+  `CREATE TRIGGER IF NOT EXISTS plaid_reimbursement_undo_on_payment_delete
+   BEFORE DELETE ON credit_card_payments
+   WHEN EXISTS (SELECT 1 FROM plaid_reimbursement_links WHERE credit_card_payment_id = OLD.id)
+   BEGIN
+     UPDATE expenses SET
+       original_cost = CASE
+         WHEN EXISTS (SELECT 1 FROM plaid_reimbursement_links o WHERE o.expense_id = expenses.id AND o.credit_card_payment_id IS NOT OLD.id)
+           THEN original_cost
+         ELSE (SELECT l.previous_original_cost FROM plaid_reimbursement_links l WHERE l.credit_card_payment_id = OLD.id)
+       END,
+       amount = ROUND(amount + (SELECT l.applied_amount FROM plaid_reimbursement_links l WHERE l.credit_card_payment_id = OLD.id), 2)
+     WHERE id = (SELECT expense_id FROM plaid_reimbursement_links WHERE credit_card_payment_id = OLD.id);
+     UPDATE plaid_transactions SET status = 'new'
+     WHERE id = (SELECT plaid_transaction_id FROM plaid_reimbursement_links WHERE credit_card_payment_id = OLD.id)
+       AND status = 'matched';
+   END`,
+
+  // Deleting a reimbursed expense removes the card payment its refund created (the trigger above returns that
+  // refund to the Inbox) and returns a deposit once it reimburses no other expense
+  `CREATE TRIGGER IF NOT EXISTS plaid_reimbursement_unlink_on_expense_delete
+   BEFORE DELETE ON expenses
+   BEGIN
+     DELETE FROM credit_card_payments
+     WHERE id IN (SELECT credit_card_payment_id FROM plaid_reimbursement_links WHERE expense_id = OLD.id AND credit_card_payment_id IS NOT NULL);
+     UPDATE plaid_transactions SET status = 'new'
+     WHERE id IN (SELECT plaid_transaction_id FROM plaid_reimbursement_links WHERE expense_id = OLD.id)
+       AND status = 'matched'
+       AND NOT EXISTS (
+         SELECT 1 FROM plaid_reimbursement_links other
          WHERE other.plaid_transaction_id = plaid_transactions.id AND other.expense_id != OLD.id
        );
    END`
@@ -666,6 +726,8 @@ const INDEX_STATEMENTS = [
   'CREATE INDEX IF NOT EXISTS idx_plaid_transactions_status_date ON plaid_transactions(status, date)',
   'CREATE INDEX IF NOT EXISTS idx_plaid_transactions_account ON plaid_transactions(plaid_account_id)',
   'CREATE INDEX IF NOT EXISTS idx_plaid_insurance_links_expense ON plaid_insurance_links(expense_id)',
+  'CREATE INDEX IF NOT EXISTS idx_plaid_reimbursement_links_expense ON plaid_reimbursement_links(expense_id)',
+  'CREATE INDEX IF NOT EXISTS idx_plaid_reimbursement_links_payment ON plaid_reimbursement_links(credit_card_payment_id)',
   // One bank transaction per expense (also blocks matching an expense twice)
   'CREATE UNIQUE INDEX IF NOT EXISTS idx_plaid_transactions_expense ON plaid_transactions(expense_id) WHERE expense_id IS NOT NULL'
 ];

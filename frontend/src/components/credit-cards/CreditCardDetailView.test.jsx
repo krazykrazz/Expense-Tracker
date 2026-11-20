@@ -539,6 +539,22 @@ describe('CreditCardDetailView', () => {
     });
   });
 
+  describe('a payment a bank refund recorded', () => {
+    const refundPayment = { id: 3, payment_method_id: 1, amount: 13.74, payment_date: '2026-11-16', notes: 'Refund: HomeSense', refund: { expenseId: 7, place: 'HomeSense', date: '2026-11-12' } };
+
+    it('says which purchase it refunded instead of showing the note, and warns before deleting it', async () => {
+      creditCardApi.getCreditCardDetail.mockResolvedValue({ ...makeApiResponse(), payments: [refundPayment, { id: 4, payment_method_id: 1, amount: 50, payment_date: '2026-11-01', notes: 'By hand' }] });
+      render(<CreditCardDetailView {...defaultProps} initialTab="payments" />);
+
+      expect(await screen.findByTestId('payment-refund-label')).toHaveTextContent('Refund: HomeSense');
+      expect(screen.getAllByTestId('payment-refund-label')).toHaveLength(1);
+      expect(screen.getByText('By hand')).toBeInTheDocument();
+
+      fireEvent.click(screen.getAllByTitle('Delete payment')[0]);
+      expect(await screen.findByTestId('payment-refund-note')).toHaveTextContent('A refund for HomeSense. Deleting it puts that purchase back');
+    });
+  });
+
   describe('deleting a payment', () => {
     const payment = { id: 1, payment_method_id: 1, amount: 100, payment_date: '2026-10-30', notes: null };
 

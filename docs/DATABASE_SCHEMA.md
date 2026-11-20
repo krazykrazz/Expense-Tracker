@@ -19,7 +19,7 @@ The schema contains **31 tables**:
 | Financial tracking | `loans`, `loan_balances`, `loan_payments`, `investments`, `investment_values`, `budgets`, `budget_allocations` |
 | Medical & tax | `people`, `expense_people`, `expense_invoices` |
 | Payment methods | `payment_methods`, `credit_card_payments`, `credit_card_statements`, `credit_card_billing_cycles` |
-| Bank import (Plaid) | `plaid_items`, `plaid_accounts`, `plaid_transactions`, `plaid_fixed_expense_links`, `plaid_income_links`, `plaid_card_payment_links`, `plaid_insurance_links` |
+| Bank import (Plaid) | `plaid_items`, `plaid_accounts`, `plaid_transactions`, `plaid_fixed_expense_links`, `plaid_income_links`, `plaid_card_payment_links`, `plaid_insurance_links`, `plaid_reimbursement_links` |
 | Authentication | `users` |
 | Utility | `place_names`, `reminders`, `dismissed_anomalies`, `anomaly_suppression_rules`, `activity_logs`, `settings`, `schema_migrations` |
 
@@ -563,6 +563,27 @@ An insurer's bank deposit applied to medical insurance claims (Import Inbox → 
 
 The **earliest** remaining link of a claim holds its before-the-bank snapshot: undoing that deposit hands the snapshot to the next link, and undoing the last one restores the claim (out-of-pocket, status, people) exactly. Deleting a claim removes its links (cascade); its deposit returns to `'new'` only when no other claim is linked to it (trigger `plaid_transactions_unlink_on_insurance_claim_delete`). Earlier links also teach the inbox which bank descriptions are insurance payouts.
 
+### plaid_reimbursement_links
+
+A bank row that paid part of an expense back (Import Inbox → Apply to an expense): a **refund** credit on the card the expense was bought with (`kind = 'refund'`, also recorded as a payment on the card) or a **deposit** from a person or business into a bank account (`kind = 'deposit'`). One deposit can repay several expenses, and an expense can be repaid by several rows. The bank row's status is `matched` with `expense_id` NULL. Insurance claims use `plaid_insurance_links` instead.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | INTEGER PRIMARY KEY | Unique identifier |
+| plaid_transaction_id | INTEGER NOT NULL | Foreign key to plaid_transactions (ON DELETE CASCADE): the refund or deposit |
+| expense_id | INTEGER NOT NULL | Foreign key to expenses (ON DELETE CASCADE): the expense it repaid (indexed) |
+| kind | TEXT NOT NULL | `'refund'` or `'deposit'` (CHECK) |
+| amount | REAL NOT NULL | What this row repaid on this expense (CHECK > 0) |
+| applied_amount | REAL NOT NULL | How much it lowered the expense's out-of-pocket (CHECK >= 0): equal to `amount`, or 0 when the reimbursement had already been entered by hand |
+| previous_original_cost | REAL | The expense's original cost before the first bank row (copied onto later links); NULL when it had none |
+| previous_amount | REAL NOT NULL | The expense's out-of-pocket before this row (for reference) |
+| credit_card_payment_id | INTEGER | Foreign key to credit_card_payments (ON DELETE CASCADE): the payment a refund recorded on the card; NULL for a deposit (indexed) |
+| created_at | TEXT NOT NULL | Timestamp |
+
+**Constraints**: `UNIQUE (plaid_transaction_id, expense_id)`.
+
+Undoing a link adds `applied_amount` back to the expense's amount, and restores `original_cost` to `previous_original_cost` when no other bank row still reimburses it. Deleting a refund's card payment does the same and returns the refund to `'new'` (trigger `plaid_reimbursement_undo_on_payment_delete`). Deleting the expense removes the card payment its refund created and returns a deposit once it repays no other expense (trigger `plaid_reimbursement_unlink_on_expense_delete`). Earlier deposit links also teach the inbox which expense a bank description repays.
+
 ## Authentication Tables
 
 ### users
@@ -769,6 +790,7 @@ Foreign keys are enforced (`PRAGMA foreign_keys = ON` per connection):
   - plaid_income_links (when its plaid transaction or income source is deleted)
   - plaid_card_payment_links (when its plaid transaction or credit card payment is deleted)
   - plaid_insurance_links (when its deposit or claim is deleted)
+  - plaid_reimbursement_links (when its bank row or expense is deleted, or the card payment a refund recorded)
 
 - **SET NULL**: Foreign key is set to NULL when parent is deleted
   - fixed_expenses.linked_loan_id (when loan deleted)
@@ -799,7 +821,7 @@ Foreign keys are enforced (`PRAGMA foreign_keys = ON` per connection):
 - `payment_methods`: (display_name)
 - `credit_card_billing_cycles`: (payment_method_id, cycle_end_date)
 - `users`: (username)
-- `plaid_items`: (item_id); `plaid_accounts`: (account_id); `plaid_transactions`: (transaction_id), and expense_id when not NULL; `plaid_fixed_expense_links`: (plaid_transaction_id), (fixed_expense_id); `plaid_income_links`: (plaid_transaction_id), (income_source_id); `plaid_card_payment_links`: (plaid_transaction_id), (credit_card_payment_id, side)
+- `plaid_items`: (item_id); `plaid_accounts`: (account_id); `plaid_transactions`: (transaction_id), and expense_id when not NULL; `plaid_fixed_expense_links`: (plaid_transaction_id), (fixed_expense_id); `plaid_income_links`: (plaid_transaction_id), (income_source_id); `plaid_card_payment_links`: (plaid_transaction_id), (credit_card_payment_id, side); `plaid_insurance_links`: (plaid_transaction_id, expense_id); `plaid_reimbursement_links`: (plaid_transaction_id, expense_id)
 - `schema_migrations`: (migration_name)
 
 ### Check Constraints

@@ -23,17 +23,18 @@ const GENERIC_WORDS = new Set([
 const chargedOf = (expense) => expense.originalCost ?? expense.amount;
 
 /**
- * What the user had already entered by hand as reimbursed, in cents: original cost − out-of-pocket, less what bank
- * rows applied (those lowered the out-of-pocket themselves).
+ * What the user entered by hand as reimbursed and no bank row accounts for yet, in cents: original cost −
+ * out-of-pocket, less every bank row's amount (one that lowered the out-of-pocket is part of that difference; one
+ * applied as "entered by hand" used that much of it up, so a second row can't claim it again).
  */
 function enteredPoolCents(expense) {
   if (expense.originalCost == null) return 0;
-  return Math.max(0, toCents(expense.originalCost) - toCents(expense.amount) - toCents(expense.appliedByBank || 0));
+  return Math.max(0, toCents(expense.originalCost) - toCents(expense.amount) - toCents(expense.repaidByBank || 0));
 }
 
 /**
  * What applying `amountCents` from a bank row does to an expense.
- * @param {{amount: number, originalCost: (number|null), appliedByBank?: number}} expense
+ * @param {{amount: number, originalCost: (number|null), repaidByBank?: number}} expense
  * @param {number} amountCents what the bank row repaid on this expense
  * @param {boolean} [alreadyEntered] the reimbursement was entered by hand before: the expense is left as it is
  * @returns {{error: 'amount'|'notEntered'|'over', leftCents?: number}

@@ -1,16 +1,16 @@
 import { formatCAD } from '../../utils/formatters';
 
 /**
- * Bank balance of a payment method linked to bank accounts (Plaid): the balance each account reported on the
- * last sync, summed when several accounts import into one method. Only what the bank said: nothing is
+ * Bank balance of a payment method or an investment linked to bank accounts (Plaid): the balance each account
+ * reported on the last sync, summed when several accounts link to one. Only what the bank said: nothing is
  * calculated from the tracker's own entries.
  */
 
 /** Our last stored balance counts as old after this long (the same 12 hours as the "Not updating" status). */
 const STALE_HOURS = 12;
 const EXPECTED_CURRENCY = 'CAD';
-/** Plaid's account type for chequing and savings accounts. */
-const DEPOSIT_TYPE = 'depository';
+/** Plaid's account types that hold money or investments (a balance owed on a card or loan is not shown). */
+const ASSET_TYPES = ['depository', 'investment'];
 
 const round2 = (n) => Math.round(n * 100) / 100;
 
@@ -53,11 +53,11 @@ function staleReason(accounts, asOf, now) {
  *   staleReason: ('login'|'error'|'plaid'|'old'|null), bankUpdatedAt: (string|null), currency: (string|null)}|null}
  *   `asOf`: how new the bank's figures are (the earlier of when we received them and Plaid's last fetch from the bank)
  *   null without accounts, or when a sum would mislead: an account has no balance yet, they differ in currency, or one
- *   isn't a deposit account (a card or loan balance is an amount owed, not money in the bank)
+ *   isn't a deposit or investment account (a card or loan balance is an amount owed, not money in the bank)
  */
 export function bankBalanceOf(accounts, now = Date.now()) {
   if (!accounts || accounts.length === 0) return null;
-  if (accounts.some(account => account.accountType !== DEPOSIT_TYPE || typeof account.currentBalance !== 'number')) return null;
+  if (accounts.some(account => !ASSET_TYPES.includes(account.accountType) || typeof account.currentBalance !== 'number')) return null;
 
   const currencies = [...new Set(accounts.map(account => account.balanceCurrency || EXPECTED_CURRENCY))];
   // Different currencies can't be added up

@@ -130,6 +130,20 @@ describe('plaid routes', () => {
 
     expect(res.status).toBe(200);
     expect(plaidService.updateAccountMapping).toHaveBeenCalledWith(5, null);
+    expect(plaidService.linkAccountInvestment).not.toHaveBeenCalled();
+  });
+
+  test('PUT /accounts/:id with investmentId links the investment (null unlinks) and leaves the payment method alone', async () => {
+    plaidService.linkAccountInvestment.mockResolvedValue({ id: 5, investmentId: 3 });
+
+    const linked = await request(app).put('/api/plaid/accounts/5').send({ investmentId: 3 });
+    const unlinked = await request(app).put('/api/plaid/accounts/5').send({ investmentId: null });
+
+    expect(linked.status).toBe(200);
+    expect(linked.body).toEqual({ id: 5, investmentId: 3 });
+    expect(unlinked.status).toBe(200);
+    expect(plaidService.linkAccountInvestment.mock.calls).toEqual([[5, 3], [5, null]]);
+    expect(plaidService.updateAccountMapping).not.toHaveBeenCalled();
   });
 
   test('GET /inbox defaults to new / To review and forwards the status and bucket filters', async () => {

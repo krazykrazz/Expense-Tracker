@@ -124,10 +124,14 @@ const disconnectItem = asyncHandler(async (req, res) => {
 
 /**
  * PUT /api/plaid/accounts/:id
- * Body: { paymentMethodId: number|null }
+ * Body: { paymentMethodId: number|null } maps the account to a payment method (null = don't import);
+ * { investmentId: number|null } links an investment account to an investment (null = unlink).
  */
 const updateAccount = asyncHandler(async (req, res) => {
-  res.json(await plaidService.updateAccountMapping(idParam(req), (req.body || {}).paymentMethodId ?? null));
+  const { paymentMethodId, investmentId } = req.body || {};
+  res.json(investmentId !== undefined
+    ? await plaidService.linkAccountInvestment(idParam(req), investmentId)
+    : await plaidService.updateAccountMapping(idParam(req), paymentMethodId ?? null));
 });
 
 /**

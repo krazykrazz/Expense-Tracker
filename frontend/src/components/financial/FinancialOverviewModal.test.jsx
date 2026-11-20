@@ -9,7 +9,7 @@ vi.mock('../../utils/fetchProvider', async () => {
   };
 });
 
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 
 // Mock config
 vi.mock('../../config', () => ({
@@ -117,6 +117,7 @@ vi.mock('../loans/LoanPaymentForm', () => ({
 }));
 
 vi.mock('../../hooks/useBankAccountLinks', () => ({ useBankAccountLinks: vi.fn() }));
+vi.mock('../../hooks/useInvestmentBankLinks', () => ({ useInvestmentBankLinks: vi.fn() }));
 vi.mock('../../hooks/useCardBalanceChecks', () => ({ useCardBalanceChecks: vi.fn() }));
 
 // Row components are real — they render simple markup
@@ -128,6 +129,7 @@ import * as investmentApi from '../../services/investmentApi';
 import * as paymentMethodApi from '../../services/paymentMethodApi';
 import * as creditCardApi from '../../services/creditCardApi';
 import { useBankAccountLinks } from '../../hooks/useBankAccountLinks';
+import { useInvestmentBankLinks } from '../../hooks/useInvestmentBankLinks';
 import { useCardBalanceChecks } from '../../hooks/useCardBalanceChecks';
 import FinancialOverviewModal from './FinancialOverviewModal';
 
@@ -162,6 +164,7 @@ beforeEach(() => {
   paymentMethodApi.getPaymentMethod.mockResolvedValue({ current_cycle: null });
   creditCardApi.getCurrentCycleStatus.mockResolvedValue(null);
   useBankAccountLinks.mockReturnValue(new Map());
+  useInvestmentBankLinks.mockReturnValue(new Map());
   useCardBalanceChecks.mockReturnValue(new Map());
 
   global.fetch = vi.fn().mockResolvedValue({
@@ -389,6 +392,29 @@ describe('FinancialOverviewModal', () => {
       expect(balance).toHaveTextContent('Bank $700.52');
       expect(balance.closest('.other-payment-method-row')).toHaveTextContent('Debit - WS');
       expect(screen.getAllByTestId('bank-balance')).toHaveLength(1);
+    });
+
+    it('shows the bank balance and the linked icon on a linked investment, next to its entered value, and nothing on others', async () => {
+      investmentApi.getAllInvestments.mockResolvedValue([
+        { id: 1, name: 'Kevin Managed RRSP', type: 'RRSP', currentValue: 192304.85, initial_value: 210277.16 },
+        { id: 2, name: 'Melissa TFSA', type: 'TFSA', currentValue: 123.68, initial_value: 122.37 }
+      ]);
+      useInvestmentBankLinks.mockReturnValue(new Map([
+        [1, [{
+          institutionName: 'Wealthsimple', accountName: 'RRSP', mask: '3B49', accountType: 'investment', currentBalance: 186331.54567054,
+          availableBalance: null, balanceCurrency: 'CAD', balanceAsOf: new Date().toISOString(), bankStatus: 'ok', bankUpdatedAt: null
+        }]]
+      ]));
+
+      render(<FinancialOverviewModal {...defaultProps} />);
+
+      const linked = await screen.findByTestId('investment-row-1');
+      expect(within(linked).getByTestId('bank-balance')).toHaveTextContent(/Bank \$186,?331\.55/);
+      expect(within(linked).getByRole('img', { name: 'Kevin Managed RRSP linked to bank: Wealthsimple · RRSP ••3B49' })).toBeInTheDocument();
+      expect(within(linked).getByText(/Current Value: \$192,?304\.85/)).toBeInTheDocument();
+      const other = screen.getByTestId('investment-row-2');
+      expect(within(other).queryByTestId('bank-balance')).not.toBeInTheDocument();
+      expect(within(other).queryByTestId('bank-linked-badge')).not.toBeInTheDocument();
     });
 
     it('colours each linked card balance by whether it matches the bank, like the expense list pill', async () => {

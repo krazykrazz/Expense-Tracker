@@ -3,6 +3,7 @@ const plaidConfig = require('../config/plaid');
 const plaidRepository = require('../repositories/plaidRepository');
 const plaidBucketRepository = require('../repositories/plaidBucketRepository');
 const paymentMethodRepository = require('../repositories/paymentMethodRepository');
+const investmentRepository = require('../repositories/investmentRepository');
 const settingsRepository = require('../repositories/settingsRepository');
 const activityLogService = require('./activityLogService');
 const plaidSyncService = require('./plaidSyncService');
@@ -12,6 +13,9 @@ const { fail } = require('../utils/httpError');
 const { GONE_ITEM_CODES, LOGIN_CODES, connectionStatus, plaidErrorOf, toServiceError, plaidClient } = require('./plaidConnectionSupport');
 
 const PRODUCTION_ITEMS_KEY = 'plaid_production_items_created';
+
+/** "Chequing ••5070" in activity messages. */
+const label = (account) => `"${account.name}${account.mask ? ` ••${account.mask}` : ''}"`;
 
 /**
  * Plaid connectivity: Link tokens, connecting/disconnecting banks and account mapping. Transaction sync is in
@@ -252,7 +256,7 @@ class PlaidService {
   }
 
   /**
-   * Map a bank account to a payment method (null = don't import).
+   * Map a bank account to a payment method (null = don't import). A payment method replaces an investment link.
    */
   async updateAccountMapping(accountId, paymentMethodId) {
     const account = await plaidRepository.findAccountById(accountId);
@@ -274,13 +278,51 @@ class PlaidService {
     if ((account.paymentMethodId ?? null) !== mappedId) {
       // A card and a chequing account classify the same row differently (Inbox tabs)
       await plaidBucketRepository.classify(null, 'pt.plaid_account_id = ?', [account.id]);
-      const label = `"${account.name}${account.mask ? ` ••${account.mask}` : ''}"`;
       await activityLogService.logEvent(
         'plaid_account_updated',
         'plaid_account',
         account.id,
-        paymentMethod ? `Bank account ${label} now imports into ${paymentMethod.display_name}` : `Bank account ${label} set to Don't import`,
+        paymentMethod ? `Bank account ${label(account)} now imports into ${paymentMethod.display_name}` : `Bank account ${label(account)} set to Don't import`,
         { accountName: account.name, mask: account.mask, paymentMethodId: mappedId, paymentMethodName: paymentMethod ? paymentMethod.display_name : null }
+      );
+    }
+    return updated;
+  }
+
+  /**
+   * Link an `investment` account to an investment (null = unlink), so the bank's balance shows next to it
+   * (spec 4.1a). Nothing is written to the investment's values. An investment replaces a payment-method mapping.
+   */
+  async linkAccountInvestment(accountId, investmentId) {
+    const account = await plaidRepository.findAccountById(accountId);
+    if (!account) {
+      throw fail('Bank account not found', 404);
+    }
+
+    let linkedId = null;
+    let investment = null;
+    if (investmentId !== null && investmentId !== undefined && investmentId !== '') {
+      if (account.type !== 'investment') {
+        throw fail('Only an investment account can be linked to an investment', 400);
+      }
+      linkedId = Number(investmentId);
+      investment = Number.isInteger(linkedId) && linkedId > 0 ? await investmentRepository.findById(linkedId) : null;
+      if (!investment) {
+        throw fail('Investment not found', 400);
+      }
+    }
+
+    const updated = await plaidRepository.updateAccountInvestment(accountId, linkedId);
+    if (linkedId !== null && account.paymentMethodId != null) {
+      await plaidBucketRepository.classify(null, 'pt.plaid_account_id = ?', [account.id]);
+    }
+    if ((account.investmentId ?? null) !== linkedId) {
+      await activityLogService.logEvent(
+        'plaid_account_updated',
+        'plaid_account',
+        account.id,
+        investment ? `Bank account ${label(account)} linked to investment ${investment.name}` : `Bank account ${label(account)} unlinked from its investment`,
+        { accountName: account.name, mask: account.mask, investmentId: linkedId, investmentName: investment ? investment.name : null }
       );
     }
     return updated;

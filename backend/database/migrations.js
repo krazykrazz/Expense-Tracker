@@ -377,6 +377,18 @@ const MIGRATIONS = [
       }
       logger.info('Added capture and review bucket columns to plaid_transactions', { classified: rows.length, notExpenses });
     }
+  },
+  {
+    // Spec 4.1a: a bank account of type investment can be linked to an investment (RRSP, TFSA) so its balance shows
+    // next to it. At most one target per account (payment method or investment); deleting the investment unlinks it.
+    name: 'plaid_accounts_investment_v1',
+    async apply(db) {
+      try {
+        await runSql(db, 'ALTER TABLE plaid_accounts ADD COLUMN investment_id INTEGER REFERENCES investments(id) ON DELETE SET NULL');
+      } catch (err) {
+        if (!err.message.includes('duplicate column name')) throw err;
+      }
+    }
   }
 ];
 

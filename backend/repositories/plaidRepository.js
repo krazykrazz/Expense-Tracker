@@ -4,6 +4,7 @@ const PUBLIC_ITEM_COLUMNS = `id, item_id AS itemId, institution_name AS institut
   last_error AS lastError, bank_updated_at AS bankUpdatedAt, bank_update_failed_at AS bankUpdateFailedAt,
   institution_status AS institutionStatus, institution_status_since AS institutionStatusSince, created_at AS createdAt`;
 const ACCOUNT_COLUMNS = `id, plaid_item_id AS plaidItemId, account_id AS accountId, name, mask, type, subtype, payment_method_id AS paymentMethodId,
+  investment_id AS investmentId,
   current_balance AS currentBalance, available_balance AS availableBalance, balance_currency AS balanceCurrency, balance_as_of AS balanceAsOf`;
 const TXN_COLUMNS = `pt.id, pt.transaction_id AS transactionId, pt.plaid_account_id AS plaidAccountId, pt.amount,
   pt.iso_currency_code AS isoCurrencyCode, pt.date, pt.authorized_date AS authorizedDate, pt.name,
@@ -116,21 +117,32 @@ class PlaidRepository {
   }
 
   /**
-   * Stored balances of a bank's accounts that import into a payment method (compared before and after a
-   * balance refresh, for the activity log).
+   * Stored balances of a bank's accounts that import into a payment method or are linked to an investment
+   * (compared before and after a balance refresh, for the activity log).
    */
   async findMappedAccountBalances(plaidItemId) {
     return dbHelper.queryAll(
       `SELECT account_id AS accountId, name, mask, current_balance AS currentBalance, available_balance AS availableBalance
-       FROM plaid_accounts WHERE plaid_item_id = ? AND payment_method_id IS NOT NULL ORDER BY name, id`,
+       FROM plaid_accounts
+       WHERE plaid_item_id = ? AND (payment_method_id IS NOT NULL OR investment_id IS NOT NULL) ORDER BY name, id`,
       [plaidItemId]
     );
   }
 
+  /** Map an account to a payment method (null = don't import). A payment method replaces an investment link. */
   async updateAccountPaymentMethod(id, paymentMethodId) {
     const { changes } = await dbHelper.execute(
-      'UPDATE plaid_accounts SET payment_method_id = ? WHERE id = ?',
+      'UPDATE plaid_accounts SET payment_method_id = ?1, investment_id = CASE WHEN ?1 IS NULL THEN investment_id ELSE NULL END WHERE id = ?2',
       [paymentMethodId, id]
+    );
+    return changes === 0 ? null : this.findAccountById(id);
+  }
+
+  /** Link an account to an investment (null = unlink). An investment replaces a payment-method mapping. */
+  async updateAccountInvestment(id, investmentId) {
+    const { changes } = await dbHelper.execute(
+      'UPDATE plaid_accounts SET investment_id = ?1, payment_method_id = CASE WHEN ?1 IS NULL THEN payment_method_id ELSE NULL END WHERE id = ?2',
+      [investmentId, id]
     );
     return changes === 0 ? null : this.findAccountById(id);
   }

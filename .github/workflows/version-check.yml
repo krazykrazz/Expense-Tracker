@@ -6,15 +6,22 @@ on:
     paths:
       - 'frontend/package.json'
       - 'backend/package.json'
+      - 'frontend/package-lock.json'
+      - 'backend/package-lock.json'
       - 'frontend/src/components/system/BackupSettings.jsx'
       - 'frontend/src/components/system/SystemModal.jsx'
       - 'frontend/src/utils/changelog.js'
       - 'CHANGELOG.md'
 
+permissions:
+  contents: read
+  pull-requests: read
+
 jobs:
   check-version-bump:
     name: Guard Against PR Version Bumps
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     if: ${{ !startsWith(github.head_ref, 'release/') }}
     
     steps:
@@ -36,6 +43,17 @@ jobs:
               if git diff origin/main...HEAD "$file" | grep -E "^\+.*\"version\":|^\+.*v[0-9]+\.[0-9]+\.[0-9]+|^\+.*version:[[:space:]]*'?[0-9]+\.[0-9]+\.[0-9]+'?"; then
                 VERSION_CHANGED=true
                 echo "Version change detected in: $file"
+              fi
+            fi
+          done
+
+          for lockfile in backend/package-lock.json frontend/package-lock.json; do
+            if echo "$CHANGED_FILES" | grep -q "^$lockfile$"; then
+              BASE_LOCK_VER=$(git show "origin/main:$lockfile" | jq -r .version)
+              HEAD_LOCK_VER=$(jq -r .version "$lockfile")
+              if [ "$BASE_LOCK_VER" != "$HEAD_LOCK_VER" ]; then
+                VERSION_CHANGED=true
+                echo "Version change detected in lockfile: $lockfile"
               fi
             fi
           done
@@ -69,6 +87,7 @@ jobs:
   validate-version-consistency:
     name: Validate Version Consistency
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     if: ${{ startsWith(github.head_ref, 'release/') }}
     
     steps:
@@ -83,18 +102,32 @@ jobs:
           # Extract versions from each source
           BACKEND_VER=$(jq -r .version backend/package.json)
           FRONTEND_VER=$(jq -r .version frontend/package.json)
+          BACKEND_LOCK_VER=$(jq -r .version backend/package-lock.json)
+          FRONTEND_LOCK_VER=$(jq -r .version frontend/package-lock.json)
           CHANGELOG_JS_VER=$(grep -oP "version: '\K[0-9]+\.[0-9]+\.[0-9]+" frontend/src/utils/changelog.js | head -1)
           
           echo "| Location | Version |" >> $GITHUB_STEP_SUMMARY
           echo "|----------|---------|" >> $GITHUB_STEP_SUMMARY
           echo "| backend/package.json | $BACKEND_VER |" >> $GITHUB_STEP_SUMMARY
           echo "| frontend/package.json | $FRONTEND_VER |" >> $GITHUB_STEP_SUMMARY
+          echo "| backend/package-lock.json | $BACKEND_LOCK_VER |" >> $GITHUB_STEP_SUMMARY
+          echo "| frontend/package-lock.json | $FRONTEND_LOCK_VER |" >> $GITHUB_STEP_SUMMARY
           echo "| frontend/src/utils/changelog.js | $CHANGELOG_JS_VER |" >> $GITHUB_STEP_SUMMARY
           
           ERRORS=0
 
           if [ "$BACKEND_VER" != "$FRONTEND_VER" ]; then
             echo "::error::backend/package.json ($BACKEND_VER) != frontend/package.json ($FRONTEND_VER)"
+            ERRORS=$((ERRORS + 1))
+          fi
+
+          if [ "$BACKEND_VER" != "$BACKEND_LOCK_VER" ]; then
+            echo "::error::backend/package.json ($BACKEND_VER) != backend/package-lock.json ($BACKEND_LOCK_VER)"
+            ERRORS=$((ERRORS + 1))
+          fi
+
+          if [ "$BACKEND_VER" != "$FRONTEND_LOCK_VER" ]; then
+            echo "::error::backend/package.json ($BACKEND_VER) != frontend/package-lock.json ($FRONTEND_LOCK_VER)"
             ERRORS=$((ERRORS + 1))
           fi
 
@@ -128,4 +161,4 @@ jobs:
           fi
 
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "✅ **All 5 version locations consistent: v$BACKEND_VER**" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **All 8 version locations consistent: v$BACKEND_VER**" >> $GITHUB_STEP_SUMMARY

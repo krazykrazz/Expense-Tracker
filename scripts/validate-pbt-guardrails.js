@@ -6,7 +6,7 @@
  * Scans all *.pbt.test.* files and enforces:
  *   1. Each PBT file has an invariant comment block (@invariant or Invariant:)
  *      within the first 30 lines
- *   2. PBT files do not exceed 20% of total test files
+ *   2. PBT files do not exceed the configured 48% test-file threshold
  *   3. Unit test files (non-integration, non-PBT) do not import database/db directly
  *
  * Exits with code 1 and descriptive messages if violations are found.

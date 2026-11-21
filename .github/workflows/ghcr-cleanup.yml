@@ -6,12 +6,17 @@ on:
     - cron: '0 0 * * 0'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   cleanup-untagged:
     name: Delete Untagged Images
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       packages: write
+      contents: read
 
     steps:
       - name: Delete untagged container versions
@@ -25,9 +30,11 @@ jobs:
   cleanup-old-versions:
     name: Delete Old Tagged Images
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: cleanup-untagged
     permissions:
       packages: write
+      contents: read
 
     steps:
       - name: Delete old versions (keep latest 20, preserve version tags)

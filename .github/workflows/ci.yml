@@ -30,6 +30,9 @@ on:
         default: '10'
         type: string
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -38,6 +41,9 @@ jobs:
   path-filter:
     name: Detect Changed Paths
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       frontend: ${{ steps.filter.outputs.frontend }}
@@ -117,6 +123,9 @@ jobs:
   lockfile-integrity:
     name: Lockfile Integrity
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -139,9 +148,53 @@ jobs:
             echo "::endgroup::"
           done
 
+  workflow-validation:
+    name: Workflow Syntax
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Run actionlint
+        run: |
+          set -euo pipefail
+          curl -sSfL --retry 3 \
+            -o /tmp/actionlint.tar.gz \
+            https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz
+          echo "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  /tmp/actionlint.tar.gz" | sha256sum -c -
+          tar -xzf /tmp/actionlint.tar.gz -C /tmp actionlint
+          /tmp/actionlint -color
+
+  lint:
+    name: ESLint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Run ESLint
+        run: npm run lint -- --max-warnings=587
+
   backend-unit-tests:
     name: Backend Unit Tests ${{ matrix.shard }}
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: path-filter
     if: |
       needs.path-filter.outputs.backend == 'true' ||
@@ -212,6 +265,7 @@ jobs:
   backend-pbt-shards:
     name: Backend PBT Shard ${{ matrix.shard }}
     runs-on: ubuntu-latest
+    timeout-minutes: 40
     needs: path-filter
     if: |
       needs.path-filter.outputs.backend == 'true' ||
@@ -281,6 +335,7 @@ jobs:
   backend-pbt-tests:
     name: Backend PBT Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: [path-filter, backend-pbt-shards]
     if: |
       always() && (
@@ -301,13 +356,31 @@ jobs:
   backend-tests-status:
     name: Backend Tests Status
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     if: always()
-    needs: [path-filter, backend-unit-tests, backend-pbt-tests]
+    needs: [path-filter, backend-unit-tests, backend-pbt-tests, lint, workflow-validation, lockfile-integrity, security-audit]
     steps:
       - name: Check backend test results
         run: |
           BACKEND_NEEDED="${{ needs.path-filter.outputs.backend == 'true' || needs.path-filter.outputs.shared == 'true' || needs.path-filter.outputs.empty_pr == 'true' || needs.path-filter.result == 'failure' }}"
-          
+
+          if [ "${{ needs.lint.result }}" != "success" ]; then
+            echo "ESLint failed"
+            exit 1
+          fi
+          if [ "${{ needs.workflow-validation.result }}" != "success" ]; then
+            echo "Workflow validation failed"
+            exit 1
+          fi
+          if [ "${{ needs.lockfile-integrity.result }}" != "success" ]; then
+            echo "Lockfile integrity failed"
+            exit 1
+          fi
+          if [ "${{ needs.security-audit.result }}" != "success" ]; then
+            echo "Security audit failed"
+            exit 1
+          fi
+
           if [ "$BACKEND_NEEDED" = "true" ]; then
             # Tests ran - check if they passed
             if [ "${{ needs.backend-unit-tests.result }}" != "success" ] || \
@@ -324,6 +397,7 @@ jobs:
   frontend-tests:
     name: Frontend Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     needs: path-filter
     if: |
       needs.path-filter.outputs.frontend == 'true' ||
@@ -379,16 +453,94 @@ jobs:
         env:
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
 
+  frontend-build:
+    name: Frontend Production Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: path-filter
+    if: |
+      needs.path-filter.outputs.frontend == 'true' ||
+      needs.path-filter.outputs.shared == 'true' ||
+      needs.path-filter.outputs.empty_pr == 'true' ||
+      needs.path-filter.result == 'failure'
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Build frontend
+        run: npm run build
+
+  docker-build-smoke:
+    name: Docker Build Smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: path-filter
+    if: |
+      github.event_name == 'pull_request' &&
+      (
+        needs.path-filter.outputs.backend == 'true' ||
+        needs.path-filter.outputs.frontend == 'true' ||
+        needs.path-filter.outputs.shared == 'true' ||
+        needs.path-filter.outputs.empty_pr == 'true' ||
+        needs.path-filter.result == 'failure'
+      )
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          load: true
+          push: false
+          tags: expense-tracker:ci-smoke
+          cache-from: type=gha,scope=docker-smoke
+          cache-to: type=gha,mode=max,scope=docker-smoke
+
   frontend-tests-status:
     name: Frontend Tests Status
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     if: always()
-    needs: [path-filter, frontend-tests]
+    needs: [path-filter, frontend-tests, frontend-build, docker-build-smoke]
     steps:
       - name: Check frontend test results
         run: |
           FRONTEND_NEEDED="${{ needs.path-filter.outputs.frontend == 'true' || needs.path-filter.outputs.shared == 'true' || needs.path-filter.outputs.empty_pr == 'true' || needs.path-filter.result == 'failure' }}"
-          
+          DOCKER_NEEDED="${{ github.event_name == 'pull_request' && (needs.path-filter.outputs.backend == 'true' || needs.path-filter.outputs.frontend == 'true' || needs.path-filter.outputs.shared == 'true' || needs.path-filter.outputs.empty_pr == 'true' || needs.path-filter.result == 'failure') }}"
+
+          if [ "$FRONTEND_NEEDED" = "true" ] && [ "${{ needs.frontend-build.result }}" != "success" ]; then
+            echo "Frontend production build failed"
+            exit 1
+          fi
+          if [ "$DOCKER_NEEDED" = "true" ] && [ "${{ needs.docker-build-smoke.result }}" != "success" ]; then
+            echo "Docker build smoke test failed"
+            exit 1
+          fi
+
           if [ "$FRONTEND_NEEDED" = "true" ]; then
             # Tests ran - check if they passed
             if [ "${{ needs.frontend-tests.result }}" != "success" ]; then
@@ -404,6 +556,9 @@ jobs:
   security-audit:
     name: Security Audit
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout code
@@ -419,11 +574,11 @@ jobs:
             frontend/package-lock.json
 
       - name: Install backend dependencies
-        run: npm install --ignore-scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
         working-directory: backend
 
       - name: Install frontend dependencies
-        run: npm install --ignore-scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
         working-directory: frontend
 
       - name: Run backend security audit
@@ -473,6 +628,7 @@ jobs:
   test-health-report:
     name: Test Health Report
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     if: always()
     needs: [backend-unit-tests, backend-pbt-tests, frontend-tests]
     steps:
@@ -508,7 +664,8 @@ jobs:
   build-and-push-ghcr:
     name: Build and Push to GHCR
     runs-on: ubuntu-latest
-    needs: [backend-tests-status, frontend-tests-status]
+    timeout-minutes: 60
+    needs: [backend-tests-status, frontend-tests-status, lockfile-integrity, security-audit]
     # Deploy jobs keep the dependabot guard: their GITHUB_TOKEN is read-only on
     # dependabot events, so a run here could only fail. Test jobs need no write scope.
     # `!cancelled()` is required: without a status function GitHub applies an implicit
@@ -521,7 +678,9 @@ jobs:
       github.actor != 'dependabot[bot]' &&
       (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
       needs.backend-tests-status.result == 'success' &&
-      needs.frontend-tests-status.result == 'success'
+      needs.frontend-tests-status.result == 'success' &&
+      needs.lockfile-integrity.result == 'success' &&
+      needs.security-audit.result == 'success'
     permissions:
       contents: write
       packages: write
@@ -553,6 +712,8 @@ jobs:
           context: .
           load: true
           push: false
+          provenance: mode=max
+          sbom: true
           tags: |
             ghcr.io/${{ github.repository_owner }}/expense-tracker:${{ steps.meta.outputs.sha_short }}
             ghcr.io/${{ github.repository_owner }}/expense-tracker:v${{ steps.meta.outputs.version }}
@@ -585,6 +746,7 @@ jobs:
             docker run --rm \
               -v /var/run/docker.sock:/var/run/docker.sock \
               -v "$PWD:/work" -w /work \
+              -v trivy-cache:/root/.cache/trivy \
               aquasec/trivy:${TRIVY_VERSION} image \
               --db-repository "$1" \
               --format json \
@@ -622,6 +784,11 @@ jobs:
             aquasec/trivy:${TRIVY_VERSION} convert \
             --format table --output trivy-results.txt trivy-results.json
 
+          if ! jq empty trivy-results.json >/dev/null 2>&1; then
+            echo "::error::Trivy produced invalid JSON"
+            exit 1
+          fi
+
           for sev in CRITICAL HIGH MEDIUM LOW; do
             count=$(jq --arg s "$sev" \
               '[.Results[]?.Vulnerabilities[]? | select(.Severity == $s)] | length' \
@@ -631,8 +798,25 @@ jobs:
           done
 
           CRITICAL=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "CRITICAL")] | length' trivy-results.json)
-          if [ "$CRITICAL" -gt 0 ]; then
-            echo "::error::Trivy found ${CRITICAL} CRITICAL vulnerabilities in the image"
+          HIGH=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "HIGH")] | length' trivy-results.json)
+          if [ "$CRITICAL" -gt 0 ] || [ "$HIGH" -gt 0 ]; then
+            echo "::error::Trivy found ${CRITICAL} CRITICAL and ${HIGH} HIGH vulnerabilities in the image"
+            exit 1
+          fi
+
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$PWD:/work" -w /work \
+            -v trivy-cache:/root/.cache/trivy \
+            aquasec/trivy:${TRIVY_VERSION} image \
+            --skip-db-update \
+            --format cyclonedx \
+            --output trivy-sbom.cdx.json \
+            --exit-code 0 \
+            "$IMAGE"
+
+          if ! jq empty trivy-sbom.cdx.json >/dev/null 2>&1; then
+            echo "::error::Trivy failed to generate a valid CycloneDX SBOM"
             exit 1
           fi
 
@@ -644,6 +828,7 @@ jobs:
           path: |
             trivy-results.txt
             trivy-results.json
+            trivy-sbom.cdx.json
           retention-days: 30
 
       - name: Write Trivy summary
@@ -664,6 +849,10 @@ jobs:
             done
           else
             echo "⚠️ Trivy did not produce a report - the scan failed to run, so this image has **not** been assessed." >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ -f trivy-sbom.cdx.json ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "A CycloneDX SBOM is attached to the Trivy scan artifact." >> $GITHUB_STEP_SUMMARY
           fi
 
       - name: Push Docker image to GHCR
@@ -755,6 +944,7 @@ jobs:
   deployment-health-check:
     name: Deployment Health Check
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: [build-and-push-ghcr]
     # Explicit result check: the implicit success() would also be false when a
     # test job further up the chain was skipped by the path filter.

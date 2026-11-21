@@ -16,7 +16,7 @@ The deployment workflow ensures:
 The `Build and Push to GHCR` job (`build-and-push-ghcr`) in `.github/workflows/ci.yml`:
 
 - Runs only on a push to `main` (or `workflow_dispatch` on `main`), after `Backend Tests Status` and `Frontend Tests Status` succeed. **Pull requests never build or push images.** Runs triggered by `dependabot[bot]` skip it.
-- Builds the root `Dockerfile` (linux/amd64) with build args `IMAGE_TAG` and `GIT_COMMIT` (both the short SHA) and `BUILD_DATE`.
+- Builds the root `Dockerfile` (linux/amd64) with build args `IMAGE_TAG` and `GIT_COMMIT` (both the 7-character short SHA, `git rev-parse --short=7`) and `BUILD_DATE`.
 - Scans the image with Trivy; any CRITICAL finding fails the job before anything is pushed.
 - Pushes `:<short-sha>` always, and `:v<version>` (version read from `backend/package.json`) only if that tag does not exist yet. The first build of a version is the release merge commit, so a release tag keeps pointing at the image built from its release commit; later `main` builds at the same version get only their SHA tag. If the check cannot reach GHCR the job fails instead of pushing.
 - Creates the GitHub Release `v<version>` (which also creates the git tag) if it does not exist yet, attaching a version-pinned `docker-compose-v<version>.yml`; if the release already exists, it re-uploads that asset.
@@ -164,7 +164,7 @@ Notes:
 
 ## build-and-push.ps1 Reference
 
-`scripts/build-and-push.ps1` is a pull-and-promote script. It derives the SHA (`git rev-parse --short HEAD`) and version (`backend/package.json`) from the **current checkout**, so run it from `main` at a commit CI has built.
+`scripts/build-and-push.ps1` is a pull-and-promote script. It derives the SHA (`git rev-parse --short=7 HEAD`, the same 7 characters CI tags images with) and version (`backend/package.json`) from the **current checkout**, so run it from `main` at a commit CI has built.
 
 Default behaviour:
 1. Authenticates to GHCR with `gh auth token` (if `gh` is installed; otherwise assumes `docker login ghcr.io` was done)

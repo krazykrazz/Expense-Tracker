@@ -381,6 +381,21 @@ describe('an expense is a primary or a part, never both', () => {
 });
 
 describe('everything that reads links treats every part as linked', () => {
+  test('a later settlement gives every expense of the split the bank posted date, and never changes their amounts', async () => {
+    const plaidSettlementService = require('./plaidSettlementService');
+    const { id, big, small } = await brio();
+    await plaidSplitService.apply(id, [big, small]);
+
+    await plaidSettlementService.applySettlements([{
+      plaidTransactionId: id, expenseId: big, settled: true, previousAmount: 326.49, amount: 326.49, postedDate: '2026-11-24'
+    }]);
+
+    const rows = await all('SELECT id, amount, posted_date AS postedDate FROM expenses WHERE id IN (?, ?) ORDER BY id', [big, small]);
+    expect(rows).toEqual([
+      { id: big, amount: 244.02, postedDate: '2026-11-24' },
+      { id: small, amount: 82.47, postedDate: '2026-11-24' }
+    ]);
+  });
   test('the Match candidates and the balance check skip parts', async () => {
     const { id, big, small } = await brio();
     const free = await expense({ amount: 12 });

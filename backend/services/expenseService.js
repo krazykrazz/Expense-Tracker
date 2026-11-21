@@ -409,7 +409,9 @@ class ExpenseService {
     const insuranceIds = expenses.filter(e => e.insurance_eligible).map(e => e.id);
     const reimbursements = await plaidInsuranceRepository.findReimbursementsForExpenses(insuranceIds);
     // Bank refunds and deposits applied to other expenses (spec 3.6, 3.8)
-    const bankReimbursements = await plaidReimbursementRepository.findReimbursementsByExpense();
+    const bankReimbursements = await plaidReimbursementRepository.findReimbursementsByExpense(
+      expenses.filter(e => !e.insurance_eligible).map(e => e.id)
+    );
 
     return expenses.map(expense => {
       const bankLink = bankLinks.get(expense.id) ?? null;

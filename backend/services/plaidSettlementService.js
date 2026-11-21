@@ -1,6 +1,7 @@
 const plaidRepository = require('../repositories/plaidRepository');
 const plaidFileImportRepository = require('../repositories/plaidFileImportRepository');
 const expenseRepository = require('../repositories/expenseRepository');
+const plaidSplitRepository = require('../repositories/plaidSplitRepository');
 const expenseService = require('./expenseService');
 const logger = require('../config/logger');
 const { toCents } = require('../utils/plaidMatching');
@@ -58,6 +59,8 @@ class PlaidSettlementService {
           Object.assign(changes, s.estimatePostedDate
             ? estimatedPostedDate(expense, getTodayString())
             : await postedDateFor(expense, s.postedDate, txn.plaidAccountId));
+          // A charge entered as several expenses (spec 3.9): the others post with it, so statements keep them together
+          await this._followSplitParts(txn, s);
         }
         // Plaid took over a settled bank-file row with another date: only worth a log entry when the expense changed
         if (s.postedDateOnly && !('posted_date' in changes)) continue;
@@ -93,6 +96,26 @@ class PlaidSettlementService {
             expenseId: s.expenseId, amount: s.amount, postedDate: s.postedDate ?? null
           }).catch(() => {});
         }
+      }
+    }
+  }
+
+  /**
+   * The other expenses of a split bank charge (spec 3.9) take the posted date the settlement gives the charge, like
+   * its main expense. Their amounts never follow the bank: each is only a part of it. Best effort, per expense.
+   */
+  async _followSplitParts(txn, s) {
+    const parts = await plaidSplitRepository.findPartsForTransactions([txn.id]);
+    for (const { expenseId } of parts) {
+      try {
+        const part = await expenseRepository.findById(expenseId);
+        if (!part) continue;
+        const change = s.estimatePostedDate
+          ? estimatedPostedDate(part, getTodayString())
+          : await postedDateFor(part, s.postedDate, txn.plaidAccountId);
+        if (change) await expenseService.updateExpense(part.id, { ...part, ...change });
+      } catch (err) {
+        logger.warn('Updating the posted date of a split expense from the bank failed', { expenseId, error: err.message });
       }
     }
   }

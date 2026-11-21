@@ -476,7 +476,7 @@ jobs:
       - name: Extract metadata
         id: meta
         run: |
-          echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "sha_short=$(git rev-parse --short=7 HEAD)" >> $GITHUB_OUTPUT
           echo "version=$(jq -r .version backend/package.json)" >> $GITHUB_OUTPUT
           echo "build_date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
       
@@ -714,8 +714,8 @@ jobs:
       - name: Extract image metadata
         id: meta
         run: |
-          echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-          echo "image=ghcr.io/${{ github.repository_owner }}/expense-tracker:$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "sha_short=$(git rev-parse --short=7 HEAD)" >> $GITHUB_OUTPUT
+          echo "image=ghcr.io/${{ github.repository_owner }}/expense-tracker:$(git rev-parse --short=7 HEAD)" >> $GITHUB_OUTPUT
 
       - name: Store previous deployment SHA
         id: previous

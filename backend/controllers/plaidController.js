@@ -16,7 +16,18 @@ const { runWithTabId } = require('../utils/requestContext');
 const { fail } = require('../utils/httpError');
 
 const tabIdOf = (req) => req.headers['x-tab-id'] ?? null;
-const idParam = (req) => parseInt(req.params.id, 10);
+/**
+ * The :id of the route (a bank connection, account, card or bank transaction), which must be a positive integer:
+ * parseInt would read "12abc" as 12 and act on another row.
+ * @throws 400 otherwise
+ */
+const idParam = (req) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    throw fail('id must be a positive integer', 400);
+  }
+  return id;
+};
 
 /** GET /api/plaid/status */
 const getStatus = asyncHandler(async (req, res) => {
@@ -236,17 +247,8 @@ const resolveCancelled = asyncHandler(async (req, res) => {
   res.json(await plaidSettlementService.resolveCancelled(idParam(req), { action, postedId }, tabIdOf(req)));
 });
 
-/**
- * The :id of an inbox row, which must be a positive integer.
- * @throws 400 otherwise
- */
-const inboxIdParam = (req) => {
-  const id = Number(req.params.id);
-  if (!Number.isInteger(id) || id <= 0) {
-    throw fail('Bank transaction id must be a positive integer', 400);
-  }
-  return id;
-};
+/** The :id of an inbox row (see idParam). */
+const inboxIdParam = (req) => idParam(req);
 
 /** GET /api/plaid/inbox/:id/insurance-candidates?includePaid=true — insurance claims a deposit can reimburse */
 const getInsuranceCandidates = asyncHandler(async (req, res) => {

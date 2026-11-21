@@ -250,6 +250,25 @@ export const undoReimbursement = (id) =>
   call('undoing reimbursement', () => apiDelete(API_ENDPOINTS.PLAID_INBOX_ACTION(id, 'reimbursement'), 'undo reimbursement'));
 
 /**
+ * The unlinked expenses a settled charge could be split across (spec 3.9), and what to pre-select. Works for a charge
+ * still to review (`mode` 'match': a complete set of at least two) and for one already linked to an expense (`mode`
+ * 'complete': more expenses, within what is left).
+ * @param {{signal?: AbortSignal}} [options]
+ * @returns {Promise<{mode: 'match'|'complete', row: object, bankAmount: number, partsTotal: number, remaining: number,
+ *   minExpenses: number, parts: Array, candidates: Array, suggestion: (Array<number>|null)}>}
+ */
+export const getSplitCandidates = (id, { signal } = {}) =>
+  call('fetching expenses to split a charge across', () => apiGet(API_ENDPOINTS.PLAID_TRANSACTION_SPLIT_CANDIDATES(id), 'fetch expenses', { signal }));
+
+/** Link a charge to several expenses that add up to it (or, for one already linked, add more within what is left). */
+export const splitBankTransaction = (id, expenseIds) =>
+  call('splitting bank charge across expenses', () => apiPost(API_ENDPOINTS.PLAID_TRANSACTION_SPLIT(id), { expenseIds }, 'match expenses'));
+
+/** Take an expense out of a split charge; the others stay linked. */
+export const removeSplitExpense = (id, expenseId) =>
+  call('removing expense from split charge', () => apiDelete(API_ENDPOINTS.PLAID_TRANSACTION_SPLIT_EXPENSE(id, expenseId), 'remove expense from charge'));
+
+/**
  * Review a pending charge (added as an expense) that the bank dropped.
  * @param {{action: 'keep'|'delete_expense'|'link', postedId?: number}} decision
  */

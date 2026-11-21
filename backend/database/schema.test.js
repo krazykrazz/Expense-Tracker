@@ -56,17 +56,17 @@ describe('Consolidated Schema – Unit Tests', () => {
     'payment_methods', 'credit_card_payments', 'credit_card_statements',
     'credit_card_billing_cycles', 'activity_logs', 'settings', 'users',
     'plaid_items', 'plaid_accounts', 'plaid_transactions', 'plaid_fixed_expense_links', 'plaid_income_links',
-    'plaid_card_payment_links', 'plaid_insurance_links', 'plaid_reimbursement_links'
+    'plaid_card_payment_links', 'plaid_insurance_links', 'plaid_reimbursement_links', 'plaid_split_links'
   ];
 
-  test('creates exactly 34 tables', async () => {
+  test('creates exactly 35 tables', async () => {
     const rows = await dbAll(
       db,
       "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
     );
     const tableNames = rows.map(r => r.name).sort();
     expect(tableNames).toEqual([...EXPECTED_TABLES].sort());
-    expect(tableNames).toHaveLength(34);
+    expect(tableNames).toHaveLength(35);
   });
 
   test('plaid_transactions allows one bank transaction per expense', async () => {
@@ -251,6 +251,40 @@ describe('Consolidated Schema – Unit Tests', () => {
     await dbRun(db, "UPDATE plaid_accounts SET investment_id = ? WHERE account_id = 'inv-rrsp'", [investment.lastID]);
     await dbRun(db, 'DELETE FROM investments WHERE id = ?', [investment.lastID]);
     expect((await dbGet(db, "SELECT investment_id FROM plaid_accounts WHERE account_id = 'inv-rrsp'")).investment_id).toBeNull();
+  });
+
+  test('plaid_transactions_split_links_v1 replaces the expense-delete trigger so a split charge stays linked', async () => {
+    const TRIGGER = 'plaid_transactions_unlink_on_expense_delete';
+    const triggerSql = async () => (await dbGet(db, "SELECT sql FROM sqlite_master WHERE type = 'trigger' AND name = ?", [TRIGGER])).sql;
+    await runMigrations(db);
+    // A database from before the migration has the older trigger, which returned the row to the Inbox at once
+    await dbRun(db, `DROP TRIGGER ${TRIGGER}`);
+    await dbRun(db, `CREATE TRIGGER ${TRIGGER} BEFORE DELETE ON expenses BEGIN
+      UPDATE plaid_transactions SET status = 'new', expense_id = NULL WHERE expense_id = OLD.id; END`);
+    await dbRun(db, "DELETE FROM schema_migrations WHERE migration_name = 'plaid_transactions_split_links_v1'");
+    expect(await triggerSql()).not.toContain('plaid_split_links');
+
+    await runMigrations(db);
+    await runMigrations(db);
+
+    expect(await triggerSql()).toContain('plaid_split_links');
+    expect(await checkMigrationApplied(db, 'plaid_transactions_split_links_v1')).toBe(true);
+
+    await dbRun(db, "INSERT INTO plaid_items (item_id, institution_name, access_token_enc, environment) VALUES ('split-item', 'Bank', 'v1:x:y:z', 'sandbox')");
+    const item = await dbGet(db, "SELECT id FROM plaid_items WHERE item_id = 'split-item'");
+    const expense = async (amount) => (await dbRun(db, "INSERT INTO expenses (date, place, amount, type, week, method) VALUES ('2026-11-20', 'Brio', ?, 'Gifts', 3, 'Cash')", [amount])).lastID;
+    const primary = await expense(244.02);
+    const part = await expense(82.47);
+    const txn = (await dbRun(db, "INSERT INTO plaid_transactions (transaction_id, amount, date, name, status, expense_id) VALUES ('split-t', 326.49, '2026-11-20', 'Brio', 'matched', ?)", [primary])).lastID;
+    await dbRun(db, 'INSERT INTO plaid_split_links (plaid_transaction_id, expense_id) VALUES (?, ?)', [txn, part]);
+
+    await dbRun(db, 'DELETE FROM expenses WHERE id = ?', [primary]);
+
+    expect(await dbGet(db, 'SELECT status, expense_id AS expenseId FROM plaid_transactions WHERE id = ?', [txn])).toEqual({ status: 'matched', expenseId: part });
+    expect(await dbAll(db, 'SELECT * FROM plaid_split_links')).toEqual([]);
+    await dbRun(db, 'DELETE FROM plaid_transactions WHERE id = ?', [txn]);
+    await dbRun(db, 'DELETE FROM expenses WHERE id = ?', [part]);
+    await dbRun(db, 'DELETE FROM plaid_items WHERE id = ?', [item.id]);
   });
 
   // ── Requirement 7.3: update_budgets_timestamp trigger exists and fires ──

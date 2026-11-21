@@ -5,11 +5,23 @@ import { dueLabel } from './inboxFormat';
 /**
  * What a bank transaction could be: expected income (deposits), an expense already entered, or a planned fixed
  * expense, each with its own confirm button.
- * @param {{txn: object, onMatch: Function, onMatchFixed: Function, onMatchIncome: Function, onCancel: Function, busy: boolean}} props
+ * @param {{txn: object, onMatch: Function, onMatchFixed: Function, onMatchIncome: Function, onSplit: Function, onCancel: Function, busy: boolean}} props
  */
-const MatchPicker = ({ txn, onMatch, onMatchFixed, onMatchIncome, onCancel, busy }) => (
+const MatchPicker = ({ txn, onMatch, onMatchFixed, onMatchIncome, onSplit, onCancel, busy }) => (
   <div className="inbox-match-picker">
     {(txn.incomeCandidates || []).length > 0 && <IncomeCandidates txn={txn} onMatchIncome={onMatchIncome} busy={busy} />}
+    {txn.split && (
+      <div data-testid="split-offer">
+        <div className="bank-import-muted">
+          {txn.split.suggested
+            ? 'Expenses you entered add up to this charge: it may have been split across categories'
+            : 'This charge may be split across several expenses you entered'}
+        </div>
+        <button className={txn.split.suggested ? 'bank-import-primary' : 'bank-import-secondary'} onClick={onSplit} disabled={busy}>
+          Match several expenses…
+        </button>
+      </div>
+    )}
     {txn.matchCandidates.length > 0 && (
       <>
         <div className="bank-import-muted">Expenses: same payment method, an amount within $1.00 or 1% of the bank&apos;s (exact first), and a close date</div>

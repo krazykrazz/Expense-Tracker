@@ -891,6 +891,36 @@
   opacity: 0.6;
 }
 
+/* A bank charge entered as several expenses (Bank Import), above the form: what its expenses cover, with the actions */
+.bank-split {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  margin-bottom: var(--spacing-3);
+}
+
+.bank-split .insurance-status-note {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-2) var(--spacing-3);
+}
+
+.bank-split .insurance-status-note button {
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font-size: var(--text-xs);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.bank-split .insurance-status-note button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
 /* Responsive adjustments for insurance section */
 @media (max-width: 768px) {
   .insurance-field-row {

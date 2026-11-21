@@ -1,5 +1,6 @@
 const logger = require('../config/logger');
 const { bucketFor } = require('../utils/plaidClassification');
+const { UNLINK_ON_EXPENSE_DELETE_TRIGGER } = require('./schema');
 
 /**
  * Minimal migration module (post-consolidation)
@@ -388,6 +389,16 @@ const MIGRATIONS = [
       } catch (err) {
         if (!err.message.includes('duplicate column name')) throw err;
       }
+    }
+  },
+  {
+    // Spec 3.9: a bank charge split across several expenses keeps the row linked while it has other parts, so the
+    // trigger that returned the row to the Inbox when its (primary) expense was deleted is replaced. The table
+    // plaid_split_links and the exclusivity triggers come from schema.js.
+    name: 'plaid_transactions_split_links_v1',
+    async apply(db) {
+      await runSql(db, 'DROP TRIGGER IF EXISTS plaid_transactions_unlink_on_expense_delete');
+      await runSql(db, UNLINK_ON_EXPENSE_DELETE_TRIGGER);
     }
   }
 ];

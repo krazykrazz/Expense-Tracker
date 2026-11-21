@@ -3,6 +3,7 @@ const expensePeopleRepository = require('../repositories/expensePeopleRepository
 const peopleRepository = require('../repositories/peopleRepository');
 const paymentMethodRepository = require('../repositories/paymentMethodRepository');
 const plaidRepository = require('../repositories/plaidRepository');
+const plaidSplitRepository = require('../repositories/plaidSplitRepository');
 const plaidInsuranceRepository = require('../repositories/plaidInsuranceRepository');
 const plaidReimbursementRepository = require('../repositories/plaidReimbursementRepository');
 const { calculateWeek, getTodayString } = require('../utils/dateUtils');
@@ -398,7 +399,10 @@ class ExpenseService {
     }
 
     const bankLinks = expenses.length > 0
-      ? await plaidRepository.findLinksForExpenses(expenses.map(e => e.id))
+      ? await plaidSplitRepository.linksWithSplits(
+        expenses.map(e => e.id),
+        await plaidRepository.findLinksForExpenses(expenses.map(e => e.id))
+      )
       : new Map();
     await this._markProbablyPending(bankLinks);
 

@@ -12,6 +12,7 @@ jest.mock('../services/plaidSettlementService');
 jest.mock('../services/plaidCardPaymentService');
 jest.mock('../services/plaidInsuranceService');
 jest.mock('../services/plaidReimbursementService');
+jest.mock('../services/plaidSplitService');
 jest.mock('../services/plaidSettingsService');
 jest.mock('../services/plaidSyncSchedulerService');
 jest.mock('../services/plaidCardBalanceService');
@@ -25,6 +26,7 @@ const plaidSettlementService = require('../services/plaidSettlementService');
 const plaidCardPaymentService = require('../services/plaidCardPaymentService');
 const plaidInsuranceService = require('../services/plaidInsuranceService');
 const plaidReimbursementService = require('../services/plaidReimbursementService');
+const plaidSplitService = require('../services/plaidSplitService');
 const plaidCardBalanceService = require('../services/plaidCardBalanceService');
 const plaidFileImportService = require('../services/plaidFileImportService');
 const plaidSettingsService = require('../services/plaidSettingsService');
@@ -63,6 +65,7 @@ describe('plaid routes', () => {
     ['post', '/api/plaid/inbox/1/card-payment'],
     ['get', '/api/plaid/inbox/1/insurance-candidates'],
     ['get', '/api/plaid/inbox/1/reimbursement-candidates'],
+    ['get', '/api/plaid/transactions/1/split-candidates'],
   ])('%s %s returns 503 when disabled', async (method, url) => {
     isEnabled.mockReturnValue(false);
 
@@ -382,6 +385,25 @@ describe('plaid routes', () => {
     expect(plaidReimbursementService.apply).toHaveBeenCalledTimes(1);
     expect(plaidReimbursementService.apply).toHaveBeenCalledWith(3, expenses, 'tab-5');
     expect(plaidReimbursementService.unlink).toHaveBeenCalledWith(3, 'tab-5');
+  });
+
+  test('split endpoints (spec 3.9) pass the row and expenses, and reject non-integer ids', async () => {
+    plaidSplitService.candidates.mockResolvedValue({ candidates: [] });
+    plaidSplitService.apply.mockResolvedValue({ expenseIds: [8, 9] });
+    plaidSplitService.remove.mockRejectedValue(Object.assign(new Error('not part'), { statusCode: 404 }));
+
+    const listed = await request(app).get('/api/plaid/transactions/3/split-candidates');
+    const applied = await request(app).post('/api/plaid/transactions/3/split').send({ expenseIds: [8, 9] });
+    const removed = await request(app).delete('/api/plaid/transactions/3/split/8');
+    const badRow = await request(app).post('/api/plaid/transactions/3x/split').send({ expenseIds: [8, 9] });
+    const badExpense = await request(app).delete('/api/plaid/transactions/3/split/x');
+
+    expect([listed.status, applied.status, removed.status, badRow.status, badExpense.status]).toEqual([200, 200, 404, 400, 400]);
+    expect(plaidSplitService.candidates).toHaveBeenCalledWith(3);
+    expect(plaidSplitService.apply).toHaveBeenCalledTimes(1);
+    expect(plaidSplitService.apply).toHaveBeenCalledWith(3, [8, 9]);
+    expect(plaidSplitService.remove).toHaveBeenCalledTimes(1);
+    expect(plaidSplitService.remove).toHaveBeenCalledWith(3, 8);
   });
 
   test('DELETE /items/:id returns 204', async () => {

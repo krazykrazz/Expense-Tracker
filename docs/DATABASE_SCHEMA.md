@@ -19,7 +19,7 @@ The schema contains **31 tables**:
 | Financial tracking | `loans`, `loan_balances`, `loan_payments`, `investments`, `investment_values`, `budgets`, `budget_allocations` |
 | Medical & tax | `people`, `expense_people`, `expense_invoices` |
 | Payment methods | `payment_methods`, `credit_card_payments`, `credit_card_statements`, `credit_card_billing_cycles` |
-| Bank import (Plaid) | `plaid_items`, `plaid_accounts`, `plaid_transactions`, `plaid_fixed_expense_links`, `plaid_income_links`, `plaid_card_payment_links`, `plaid_insurance_links`, `plaid_reimbursement_links` |
+| Bank import (Plaid) | `plaid_items`, `plaid_accounts`, `plaid_transactions`, `plaid_fixed_expense_links`, `plaid_income_links`, `plaid_card_payment_links`, `plaid_insurance_links`, `plaid_reimbursement_links`, `plaid_split_links` |
 | Authentication | `users` |
 | Utility | `place_names`, `reminders`, `dismissed_anomalies`, `anomaly_suppression_rules`, `activity_logs`, `settings`, `schema_migrations` |
 
@@ -585,6 +585,19 @@ A bank row that paid part of an expense back (Import Inbox → Apply to an expen
 
 Undoing a link adds `applied_amount` back to the expense's amount, and restores `original_cost` to `previous_original_cost` when no other bank row still reimburses it. Deleting a refund's card payment does the same and returns the refund to `'new'` (trigger `plaid_reimbursement_undo_on_payment_delete`). Deleting the expense removes the card payment its refund created and returns a deposit once it repays no other expense (trigger `plaid_reimbursement_unlink_on_expense_delete`). Earlier deposit links also teach the inbox which expense a bank description repays.
 
+### plaid_split_links
+
+The other expenses of a bank **charge entered as several expenses** (Import Inbox → Match several expenses, or Edit Expense → Add another expense to this charge; spec 3.9). The bank row's `plaid_transactions.expense_id` is its first expense (the *primary*, the largest when matched) and keeps working everywhere it is read; every further expense is a row here. The bank row's status is `added` or `matched`, and it is only ever a settled charge.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | INTEGER PRIMARY KEY | Unique identifier (the order parts were added: the first one takes over when the primary goes) |
+| plaid_transaction_id | INTEGER NOT NULL | Foreign key to plaid_transactions (ON DELETE CASCADE): the bank charge (indexed) |
+| expense_id | INTEGER NOT NULL UNIQUE | Foreign key to expenses (ON DELETE CASCADE): the part. An expense is a part of at most one bank row |
+| created_at | TEXT NOT NULL | Timestamp |
+
+An expense is a bank row's primary **or** a part of its split, never both: triggers `plaid_split_links_part_not_primary`, `plaid_transactions_primary_not_part_insert` and `plaid_transactions_primary_not_part_update` abort the write with a `UNIQUE constraint failed` message (callers answer 409). The charged amounts (`COALESCE(original_cost, amount)`) of the primary and the parts add up to at most the bank amount; the service enforces it. Deleting the primary expense promotes the first remaining part (the row stays linked) and the bank row only returns to `'new'` when the last expense is deleted (trigger `plaid_transactions_unlink_on_expense_delete`, replaced by migration `plaid_transactions_split_links_v1`). Deleting a part, or the bank row, removes the link by cascade.
+
 ## Authentication Tables
 
 ### users
@@ -724,7 +737,7 @@ Migration tracking for database schema changes.
 | migration_name | TEXT NOT NULL UNIQUE | Name of the migration |
 | applied_at | TEXT DEFAULT CURRENT_TIMESTAMP | When the migration was applied |
 
-Current entries written by `runMigrations()`: `consolidated_schema_v1`, `auth_infrastructure_v1`, `dismissed_anomalies_nullable_expense_id_v1`, `performance_compound_indexes_v1`, `analytics_hub_revamp_v1`, `fixed_expenses_payment_method_id_backfill_v1`, `plaid_transactions_pending_v1`, `plaid_account_balances_v1`, `plaid_item_freshness_v1`, `plaid_transactions_pfc_v1`, `plaid_capture_v1`, `plaid_accounts_investment_v1`. See [Database Migrations](DATABASE_MIGRATIONS.md).
+Current entries written by `runMigrations()`: `consolidated_schema_v1`, `auth_infrastructure_v1`, `dismissed_anomalies_nullable_expense_id_v1`, `performance_compound_indexes_v1`, `analytics_hub_revamp_v1`, `fixed_expenses_payment_method_id_backfill_v1`, `plaid_transactions_pending_v1`, `plaid_account_balances_v1`, `plaid_item_freshness_v1`, `plaid_transactions_pfc_v1`, `plaid_capture_v1`, `plaid_accounts_investment_v1`, `plaid_transactions_split_links_v1`. See [Database Migrations](DATABASE_MIGRATIONS.md).
 
 ## Relationships
 
@@ -770,7 +783,9 @@ All indexes are listed per table above. `schema.js` (`INDEX_STATEMENTS`) creates
 | `update_plaid_items_timestamp` | plaid_items | AFTER UPDATE: sets `updated_at = CURRENT_TIMESTAMP` |
 | `update_plaid_accounts_timestamp` | plaid_accounts | AFTER UPDATE: sets `updated_at = CURRENT_TIMESTAMP` |
 | `update_plaid_transactions_timestamp` | plaid_transactions | AFTER UPDATE: sets `updated_at = CURRENT_TIMESTAMP` |
-| `plaid_transactions_unlink_on_expense_delete` | expenses | BEFORE DELETE: linked `plaid_transactions` go back to `status = 'new'`, `expense_id = NULL`, so the bank transaction returns to the Import Inbox instead of being stranded |
+| `plaid_transactions_unlink_on_expense_delete` | expenses | BEFORE DELETE: linked `plaid_transactions` go back to `status = 'new'`, `expense_id = NULL`, so the bank transaction returns to the Import Inbox instead of being stranded. A bank charge split across several expenses (`plaid_split_links`) keeps its link: the first remaining part becomes the row's `expense_id` (its link row is deleted) and the row only returns to the Inbox when the last expense is deleted |
+| `plaid_split_links_part_not_primary` | plaid_split_links | BEFORE INSERT: aborts when the expense is already some bank row's `expense_id` |
+| `plaid_transactions_primary_not_part_insert` / `_update` | plaid_transactions | BEFORE INSERT / BEFORE UPDATE OF expense_id: abort when the expense is a part of another bank row's split (a row's own part may become its primary) |
 | `plaid_transactions_unlink_on_fixed_expense_delete` | fixed_expenses | BEFORE DELETE: the confirming `plaid_transactions` row goes back to `status = 'new'` (its link row is removed by cascade) |
 | `plaid_transactions_unlink_on_income_source_delete` | income_sources | BEFORE DELETE: the confirming deposit goes back to `status = 'new'` (its link row is removed by cascade) |
 | `plaid_transactions_unlink_on_card_payment_delete` | credit_card_payments | BEFORE DELETE: both linked bank rows (card credit and paying debit) go back to `status = 'new'` (link rows are removed by cascade). Also fires when deleting a card cascades its payments |
@@ -793,6 +808,7 @@ Foreign keys are enforced (`PRAGMA foreign_keys = ON` per connection):
   - plaid_card_payment_links (when its plaid transaction or credit card payment is deleted)
   - plaid_insurance_links (when its deposit or claim is deleted)
   - plaid_reimbursement_links (when its bank row or expense is deleted, or the card payment a refund recorded)
+  - plaid_split_links (when its bank row or its expense is deleted)
 
 - **SET NULL**: Foreign key is set to NULL when parent is deleted
   - fixed_expenses.linked_loan_id (when loan deleted)
@@ -824,7 +840,7 @@ Foreign keys are enforced (`PRAGMA foreign_keys = ON` per connection):
 - `payment_methods`: (display_name)
 - `credit_card_billing_cycles`: (payment_method_id, cycle_end_date)
 - `users`: (username)
-- `plaid_items`: (item_id); `plaid_accounts`: (account_id); `plaid_transactions`: (transaction_id), and expense_id when not NULL; `plaid_fixed_expense_links`: (plaid_transaction_id), (fixed_expense_id); `plaid_income_links`: (plaid_transaction_id), (income_source_id); `plaid_card_payment_links`: (plaid_transaction_id), (credit_card_payment_id, side); `plaid_insurance_links`: (plaid_transaction_id, expense_id); `plaid_reimbursement_links`: (plaid_transaction_id, expense_id)
+- `plaid_items`: (item_id); `plaid_accounts`: (account_id); `plaid_transactions`: (transaction_id), and expense_id when not NULL; `plaid_fixed_expense_links`: (plaid_transaction_id), (fixed_expense_id); `plaid_income_links`: (plaid_transaction_id), (income_source_id); `plaid_card_payment_links`: (plaid_transaction_id), (credit_card_payment_id, side); `plaid_insurance_links`: (plaid_transaction_id, expense_id); `plaid_reimbursement_links`: (plaid_transaction_id, expense_id); `plaid_split_links`: (expense_id)
 - `schema_migrations`: (migration_name)
 
 ### Check Constraints

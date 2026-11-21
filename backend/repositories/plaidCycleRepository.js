@@ -26,6 +26,8 @@ class PlaidCycleRepository {
     return dbHelper.queryAll(
       `SELECT pt.id, pt.amount, pt.date, COALESCE(pt.merchant_name, pt.name) AS name, pt.status, pt.review_bucket AS bucket, pt.expense_id AS expenseId,
               COALESCE(e.posted_date, e.date) AS expenseDate, COALESCE(e.original_cost, e.amount) AS expenseAmount,
+              COALESCE((SELECT SUM(COALESCE(se.original_cost, se.amount)) FROM plaid_split_links sl
+                        JOIN expenses se ON se.id = sl.expense_id WHERE sl.plaid_transaction_id = pt.id), 0) AS splitAmount,
               EXISTS (SELECT 1 FROM plaid_fixed_expense_links fl WHERE fl.plaid_transaction_id = pt.id) AS fixedExpense,
               COALESCE(cpl.credit_card_payment_id, rl.credit_card_payment_id) AS paymentId, p.payment_date AS paymentDate
        FROM plaid_transactions pt
@@ -42,14 +44,15 @@ class PlaidCycleRepository {
 
   /**
    * The card's expenses by the date they count on (posted date, else purchase date), with the bank
-   * transaction each is linked to, if any.
+   * transaction each is linked to, if any (as its expense, or as another part of a split charge, spec 3.9).
    */
   async findTrackerExpenses(paymentMethodId, fromDate, toDate) {
     return dbHelper.queryAll(
       `SELECT e.id, COALESCE(e.posted_date, e.date) AS date, e.place AS name, COALESCE(e.original_cost, e.amount) AS amount,
               pt.id AS bankId, pt.date AS bankDate, pt.pending AS bankPending, pt.removed_at IS NOT NULL AS bankRemoved
        FROM expenses e
-       LEFT JOIN plaid_transactions pt ON pt.expense_id = e.id
+       LEFT JOIN plaid_split_links sl ON sl.expense_id = e.id
+       LEFT JOIN plaid_transactions pt ON pt.id = COALESCE(sl.plaid_transaction_id, (SELECT x.id FROM plaid_transactions x WHERE x.expense_id = e.id))
        WHERE e.payment_method_id = ? AND COALESCE(e.posted_date, e.date) >= ? AND COALESCE(e.posted_date, e.date) <= ?
        ORDER BY date, e.id`,
       [paymentMethodId, fromDate, toDate]

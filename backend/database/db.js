@@ -299,6 +299,7 @@ async function resetTestDatabase() {
     'plaid_card_payment_links',
     'plaid_insurance_links',
     'plaid_reimbursement_links',
+    'plaid_split_links',
     'plaid_transactions',
     'plaid_accounts',
     'plaid_items',

@@ -8,6 +8,7 @@ import AddIncomeForm from './AddIncomeForm';
 import InsuranceClaimsPicker from './InsuranceClaimsPicker';
 import ReimbursementPicker from './ReimbursementPicker';
 import MatchPicker from './MatchPicker';
+import SplitPicker from '../SplitPicker';
 import { EXPECTED_CURRENCY, formatSigned, isCloseFixed, isCloseIncome } from './inboxFormat';
 
 const CARD_PAYMENT_MODES = ['card-payment', 'link-payment', 'record-to-card'];
@@ -22,7 +23,7 @@ const KIND_LABELS = { card_payment: 'Card payment', transfer: 'Transfer', loan_p
  */
 const InboxRow = ({ txn, filter, expanded, onExpand, onAction, busy, error, unconnectedCards = [] }) => {
   const incomeCandidates = txn.incomeCandidates || [];
-  const hasCandidates = txn.matchCandidates.length > 0 || txn.fixedCandidates.length > 0 || incomeCandidates.length > 0;
+  const hasCandidates = txn.matchCandidates.length > 0 || txn.fixedCandidates.length > 0 || incomeCandidates.length > 0 || Boolean(txn.split);
   const closeFixed = txn.fixedCandidates.filter(fixed => isCloseFixed(txn, fixed));
   const closeIncome = incomeCandidates.filter(isCloseIncome);
   const isOpen = (mode) => expanded === mode;
@@ -75,6 +76,9 @@ const InboxRow = ({ txn, filter, expanded, onExpand, onAction, busy, error, unco
             </span>
           )}
           {filter === 'new' && txn.matchCandidates.length > 0 && <span className="inbox-badge match">Possible match</span>}
+          {filter === 'new' && txn.split?.suggested && (
+            <span className="inbox-badge match" title="Expenses you entered add up to this charge: match them all to it">Adds up: several expenses</span>
+          )}
           {filter === 'new' && closeFixed.length > 0 && (
             <span className="inbox-badge match" title="Matches a planned fixed expense: confirm it instead of adding, to avoid counting it twice">
               Fixed: {closeFixed[0].name}
@@ -160,7 +164,11 @@ const InboxRow = ({ txn, filter, expanded, onExpand, onAction, busy, error, unco
           onMatch={(expenseId, options) => onAction('match', options ? { expenseId, ...options } : expenseId)}
           onMatchFixed={(fixedExpenseId) => onAction('match-fixed', fixedExpenseId)}
           onMatchIncome={(payload) => onAction('match-income', payload)}
+          onSplit={() => onExpand('split')}
         />
+      )}
+      {isOpen('split') && (
+        <SplitPicker transactionId={txn.id} busy={busy} onCancel={() => onExpand(null)} onApply={(expenseIds) => onAction('split', expenseIds)} />
       )}
     </li>
   );

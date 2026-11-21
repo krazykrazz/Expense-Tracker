@@ -1,8 +1,28 @@
 const {
-  monthIndex, monthIndexOfDate, monthWindow, descriptionKey, PENDING_AMOUNT_TOLERANCE
+  monthIndex, monthIndexOfDate, monthWindow, descriptionKey, PENDING_AMOUNT_TOLERANCE, expenseDateWindow, matchFit
 } = require('./plaidMatching');
 const { toCents, round2 } = require('./money');
 const { fail } = require('./httpError');
+
+describe('expenseDateWindow', () => {
+  // The window must be exactly the dates matchFit accepts (an expense of the right amount on the card), or the
+  // split candidates would drift from what Match offers
+  const fits = (txn, date) => matchFit(txn, { paymentMethodId: 4, amount: 10, date }) !== null;
+  const base = { paymentMethodId: 4, amount: 10 };
+
+  test.each([
+    ['a settled row with a purchase date', { ...base, date: '2026-11-23', authorizedDate: '2026-11-20', pending: false }, '2026-11-17', '2026-11-23'],
+    ['a pending row', { ...base, date: '2026-11-20', authorizedDate: null, pending: true }, '2026-11-17', '2026-11-23'],
+    ['a settled row dated by its posting date (up to 10 days earlier)', { ...base, date: '2026-11-23', authorizedDate: null, pending: false }, '2026-11-13', '2026-11-26']
+  ])('%s', (_label, txn, from, to) => {
+    expect(expenseDateWindow(txn)).toEqual({ from, to });
+    expect(fits(txn, from)).toBe(true);
+    expect(fits(txn, to)).toBe(true);
+    const day = (date, delta) => new Date(Date.parse(`${date}T00:00:00Z`) + delta * 86400000).toISOString().slice(0, 10);
+    expect(fits(txn, day(from, -1))).toBe(false);
+    expect(fits(txn, day(to, 1))).toBe(false);
+  });
+});
 
 describe('shared ranking helpers', () => {
   test('month indexes are consecutive across a year end', () => {

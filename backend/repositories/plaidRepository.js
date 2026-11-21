@@ -266,7 +266,8 @@ class PlaidRepository {
   }
 
   /**
-   * Expenses not yet linked to any bank transaction, for the given payment methods and date window.
+   * Expenses not yet linked to any bank transaction (as its expense or as a part of a split), for the given
+   * payment methods and date window.
    * `chargedAmount` is what the card/account was actually charged: `original_cost` for reimbursed or
    * insurance-tracked expenses (where `amount` is only the out-of-pocket share), else `amount`.
    */
@@ -280,6 +281,7 @@ class PlaidRepository {
        WHERE e.payment_method_id IN (${paymentMethodIds.map(() => '?').join(',')})
          AND e.date >= ? AND e.date <= ?
          AND NOT EXISTS (SELECT 1 FROM plaid_transactions pt WHERE pt.expense_id = e.id)
+         AND NOT EXISTS (SELECT 1 FROM plaid_split_links s WHERE s.expense_id = e.id)
        ORDER BY e.date`,
       [...paymentMethodIds, fromDate, toDate]
     );

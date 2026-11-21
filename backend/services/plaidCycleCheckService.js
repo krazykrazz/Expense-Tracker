@@ -79,7 +79,8 @@ class PlaidCycleCheckService {
         if (tracker) {
           matched.add(linkKey);
           matchedCount++;
-          const gap = round2(row.amount - tracker.effect);
+          // A split charge (spec 3.9) is compared with all its expenses together
+          const gap = round2(row.amount - tracker.effect - (row.splitAmount || 0));
           if (cents(gap) !== 0) {
             causes.push({ ...bankItem(row), type: 'amount_differs', effect: gap, bankAmount: row.amount, trackerAmount: tracker.effect });
           }

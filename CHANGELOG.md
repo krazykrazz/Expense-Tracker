@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.31.0] - 2026-11-21
+
+### Match one bank charge to several expenses
+
 ## [1.30.1] - 2026-11-20
 
 ### Investment bank balance aligned to the right like a payment method

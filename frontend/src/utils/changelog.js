@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.31.0',
+    date: 'November 21, 2026',
+    added: [],
+    changed: ['Match one bank charge to several expenses'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.30.1',
     date: 'November 20, 2026',
     added: [],

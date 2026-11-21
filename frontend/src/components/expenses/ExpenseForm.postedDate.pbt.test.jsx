@@ -15,6 +15,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, waitFor, fireEvent, cleanup, act } from '@testing-library/react';
 import * as fc from 'fast-check';
 import ExpenseForm from './ExpenseForm';
+import { uiPbtOptions } from '../../test/pbtArbitraries';
 
 vi.mock('../../contexts/ModalContext', () => ({
   ModalProvider: ({ children }) => children,
@@ -217,7 +218,7 @@ describe('ExpenseForm Posted Date Field Visibility Property-Based Tests', () => 
           unmount();
         }
       ),
-      { numRuns: 50 }
+      uiPbtOptions()
     );
   }, 60000);
 
@@ -309,7 +310,7 @@ describe('ExpenseForm Posted Date Field Visibility Property-Based Tests', () => 
           unmount();
         }
       ),
-      { numRuns: 30 }
+      uiPbtOptions()
     );
   }, 60000);
 
@@ -394,7 +395,7 @@ describe('ExpenseForm Posted Date Field Visibility Property-Based Tests', () => 
           unmount();
         }
       ),
-      { numRuns: 30 }
+      uiPbtOptions()
     );
   }, 60000);
 });

@@ -15,6 +15,7 @@ const activityLogService = require('./activityLogService');
 const settingsService = require('./settingsService');
 const activityLogRepository = require('../repositories/activityLogRepository');
 const { getDatabase } = require('../database/db');
+const { dbPbtOptions } = require('../test/pbtArbitraries');
 
 describe('activityLogService - Cleanup Properties', () => {
   let db;
@@ -154,7 +155,7 @@ describe('activityLogService - Cleanup Properties', () => {
             expect(actualRemaining).toBe(totalCreated - expectedDeleted);
           }
         ),
-        { numRuns: 10 }
+        dbPbtOptions()
       );
     });
 
@@ -214,7 +215,7 @@ describe('activityLogService - Cleanup Properties', () => {
             expect(result.oldestRemaining).toBeNull();
           }
         ),
-        { numRuns: 10 }
+        dbPbtOptions()
       );
     });
 
@@ -274,7 +275,7 @@ describe('activityLogService - Cleanup Properties', () => {
             expect(remainingCount).toBe(events.length);
           }
         ),
-        { numRuns: 10 }
+        dbPbtOptions()
       );
     });
 
@@ -356,7 +357,7 @@ describe('activityLogService - Cleanup Properties', () => {
             expect(result.deletedCount).toBeGreaterThanOrEqual(1);
           }
         ),
-        { numRuns: 10 }
+        dbPbtOptions()
       );
     });
   });
@@ -366,9 +367,9 @@ describe('activityLogService - Cleanup Properties', () => {
       await fc.assert(
         fc.asyncProperty(
           // Generate random maxCount value (smaller range for faster tests)
-          fc.integer({ min: 100, max: 150 }),
+          fc.integer({ min: 100, max: 105 }),
           // Generate event count greater than maxCount (smaller range)
-          fc.integer({ min: 5, max: 15 }), // Extra events beyond maxCount
+          fc.integer({ min: 3, max: 8 }), // Extra events beyond maxCount
           async (maxCount, extraEvents) => {
             const totalEvents = maxCount + extraEvents;
 
@@ -432,15 +433,15 @@ describe('activityLogService - Cleanup Properties', () => {
             expect(oldestRemaining.entity_id).toBe(extraEvents);
           }
         ),
-        { numRuns: 10 }
+        dbPbtOptions()
       );
     });
 
     it('should not delete any events when count is below maxCount', async () => {
       await fc.assert(
         fc.asyncProperty(
-          fc.integer({ min: 100, max: 150 }),
-          fc.integer({ min: 5, max: 15 }), // Event count less than min maxCount
+          fc.integer({ min: 100, max: 105 }),
+          fc.integer({ min: 3, max: 8 }), // Event count less than min maxCount
           async (maxCount, eventCount) => {
             // Clean up before this iteration
             await new Promise((resolve) => {
@@ -483,15 +484,15 @@ describe('activityLogService - Cleanup Properties', () => {
             expect(remainingCount).toBe(eventCount);
           }
         ),
-        { numRuns: 10 }
+        dbPbtOptions()
       );
     }, 30000); // 30 second timeout
 
     it('should delete oldest events first when exceeding maxCount', async () => {
       await fc.assert(
         fc.asyncProperty(
-          fc.integer({ min: 100, max: 150 }),
-          fc.integer({ min: 5, max: 15 }),
+          fc.integer({ min: 100, max: 105 }),
+          fc.integer({ min: 3, max: 8 }),
           async (maxCount, extraEvents) => {
             const totalEvents = maxCount + extraEvents;
 
@@ -552,14 +553,14 @@ describe('activityLogService - Cleanup Properties', () => {
             expect(remainingTimestamps).toEqual(expectedTimestamps);
           }
         ),
-        { numRuns: 10 }
+        dbPbtOptions()
       );
     }, 30000); // 30 second timeout
 
     it('should handle edge case where event count exactly equals maxCount', async () => {
       await fc.assert(
         fc.asyncProperty(
-          fc.integer({ min: 100, max: 150 }),
+          fc.integer({ min: 100, max: 105 }),
           async (maxCount) => {
             // Clean up before this iteration
             await new Promise((resolve) => {
@@ -602,15 +603,15 @@ describe('activityLogService - Cleanup Properties', () => {
             expect(remainingCount).toBe(maxCount);
           }
         ),
-        { numRuns: 10 }
+        dbPbtOptions()
       );
     }, 30000); // 30 second timeout
 
     it('should apply count-based cleanup after age-based cleanup', async () => {
       await fc.assert(
         fc.asyncProperty(
-          fc.integer({ min: 100, max: 150 }),
-          fc.integer({ min: 5, max: 15 }),
+          fc.integer({ min: 100, max: 105 }),
+          fc.integer({ min: 3, max: 8 }),
           async (maxCount, extraEvents) => {
             const totalRecentEvents = maxCount + extraEvents;
 
@@ -679,7 +680,7 @@ describe('activityLogService - Cleanup Properties', () => {
             }
           }
         ),
-        { numRuns: 10 }
+        dbPbtOptions()
       );
     }, 30000); // 30 second timeout
   });

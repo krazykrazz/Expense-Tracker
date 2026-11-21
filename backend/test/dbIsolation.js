@@ -23,7 +23,7 @@ const sqlite3 = require('sqlite3').verbose();
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { ALL_STATEMENTS } = require('../database/schema');
+const { FRESH_SCHEMA_STATEMENTS } = require('../database/schema');
 
 const DB_DIR = path.join(__dirname, '..', 'config', 'database');
 
@@ -70,7 +70,7 @@ function createIsolatedTestDb() {
           }
 
           // Execute all schema statements sequentially
-          runStatements(db, ALL_STATEMENTS)
+          runStatements(db, FRESH_SCHEMA_STATEMENTS)
             .then(() => {
               // Attach the path for later cleanup
               db.__isolatedPath = dbPath;

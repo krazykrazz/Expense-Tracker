@@ -18,6 +18,7 @@ import * as fc from 'fast-check';
 import { useFilterContext } from './FilterContext';
 import { useExpenseContext } from './ExpenseContext';
 import { wrapperBuilder } from '../test-utils/wrappers.jsx';
+import { uiPbtOptions } from '../test/pbtArbitraries';
 
 // Hook that returns both filter and expense context values
 function useBothContexts() {
@@ -51,6 +52,10 @@ describe('ExpenseContext Property-Based Tests', () => {
       };
     });
     return { mockFn, calls };
+  }
+
+  function pauseFetches() {
+    globalThis.fetch = vi.fn(() => new Promise(() => {}));
   }
 
   /**
@@ -91,7 +96,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             // Clear recorded calls, then change month
             calls.length = 0;
 
-            act(() => {
+            await act(async () => {
               result.current.filter.handleMonthChange(year, month);
             });
 
@@ -115,7 +120,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             expect(expenseFetchUrl).toMatch(/\?year=\d+&month=\d+/);
           }
         ),
-        { numRuns: 100 }
+        uiPbtOptions()
       );
     });
 
@@ -145,7 +150,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             });
 
             // Set month first
-            act(() => {
+            await act(async () => {
               result.current.filter.handleMonthChange(year, month);
             });
 
@@ -156,7 +161,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             // Clear recorded calls, then trigger global view via search text
             calls.length = 0;
 
-            act(() => {
+            await act(async () => {
               result.current.filter.handleSearchChange(searchText);
             });
 
@@ -176,7 +181,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             expect(globalFetchUrl).toBeDefined();
           }
         ),
-        { numRuns: 100 }
+        uiPbtOptions()
       );
     });
 
@@ -205,7 +210,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             });
 
             // Set month
-            act(() => {
+            await act(async () => {
               result.current.filter.handleMonthChange(selectedYear, selectedMonth);
             });
 
@@ -216,7 +221,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             // Clear recorded calls, then set filterYear (triggers global view)
             calls.length = 0;
 
-            act(() => {
+            await act(async () => {
               result.current.filter.handleFilterYearChange(String(filterYear));
             });
 
@@ -238,7 +243,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             expect(yearFilterUrl).toBeDefined();
           }
         ),
-        { numRuns: 100 }
+        uiPbtOptions()
       );
     });
 
@@ -268,7 +273,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             });
 
             // Set specific month
-            act(() => {
+            await act(async () => {
               result.current.filter.handleMonthChange(year, month);
             });
 
@@ -282,7 +287,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             // Clear and switch to global view
             calls.length = 0;
 
-            act(() => {
+            await act(async () => {
               result.current.filter.handleSearchChange(searchText);
             });
 
@@ -298,7 +303,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             // Clear and return to monthly view
             calls.length = 0;
 
-            act(() => {
+            await act(async () => {
               result.current.filter.handleReturnToMonthlyView();
             });
 
@@ -314,7 +319,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             expect(monthlyUrl).toBeDefined();
           }
         ),
-        { numRuns: 100 }
+        uiPbtOptions()
       );
     });
   });
@@ -409,7 +414,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             globalThis.fetch = deferred.mockFn;
 
             // Trigger a re-fetch by changing month
-            act(() => {
+            await act(async () => {
               result.current.filter.handleMonthChange(year, month);
             });
 
@@ -432,7 +437,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             expect(result.current.expense.error).toBeNull();
           }
         ),
-        { numRuns: 100 }
+        uiPbtOptions()
       );
     });
 
@@ -481,7 +486,7 @@ describe('ExpenseContext Property-Based Tests', () => {
               globalThis.fetch = deferred.mockFn;
 
               // Trigger a re-fetch by changing month
-              act(() => {
+              await act(async () => {
                 result.current.filter.handleMonthChange(year, month);
               });
 
@@ -504,7 +509,7 @@ describe('ExpenseContext Property-Based Tests', () => {
               expect(result.current.expense.error).toBeTruthy();
             }
           ),
-          { numRuns: 100 }
+          uiPbtOptions()
         );
       } finally {
         consoleSpy.mockRestore();
@@ -555,7 +560,7 @@ describe('ExpenseContext Property-Based Tests', () => {
               globalThis.fetch = deferred.mockFn;
 
               // Trigger a re-fetch by changing month
-              act(() => {
+              await act(async () => {
                 result.current.filter.handleMonthChange(year, month);
               });
 
@@ -580,7 +585,7 @@ describe('ExpenseContext Property-Based Tests', () => {
               );
             }
           ),
-          { numRuns: 100 }
+          uiPbtOptions()
         );
       } finally {
         consoleSpy.mockRestore();
@@ -624,7 +629,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             const deferred1 = createDeferredFetch();
             globalThis.fetch = deferred1.mockFn;
 
-            act(() => {
+            await act(async () => {
               result.current.filter.handleMonthChange(year1, month1);
             });
 
@@ -644,7 +649,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             const deferred2 = createDeferredFetch();
             globalThis.fetch = deferred2.mockFn;
 
-            act(() => {
+            await act(async () => {
               result.current.filter.handleMonthChange(year2, month2);
             });
 
@@ -665,7 +670,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             expect(result.current.expense.error).toBeNull();
           }
         ),
-        { numRuns: 100 }
+        uiPbtOptions()
       );
     });
   });
@@ -753,7 +758,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             });
 
             // Set the view to the matching year/month
-            act(() => {
+            await act(async () => {
               result.current.filter.handleMonthChange(year, month);
             });
 
@@ -765,7 +770,9 @@ describe('ExpenseContext Property-Based Tests', () => {
             expect(result.current.filter.isGlobalView).toBe(false);
 
             // Call handleExpenseAdded with the new expense
-            act(() => {
+            pauseFetches();
+
+            await act(async () => {
               result.current.expense.handleExpenseAdded(newExpense);
             });
 
@@ -780,7 +787,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             expect(result.current.expense.expenses.length).toBe(existing.length + 1);
           }
         ),
-        { numRuns: 100 }
+        uiPbtOptions()
       );
     });
 
@@ -845,7 +852,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             });
 
             // Switch to global view by setting a filter year
-            act(() => {
+            await act(async () => {
               result.current.filter.handleFilterYearChange('2023');
             });
 
@@ -857,7 +864,9 @@ describe('ExpenseContext Property-Based Tests', () => {
             expect(result.current.filter.isGlobalView).toBe(true);
 
             // Call handleExpenseAdded with the new expense
-            act(() => {
+            pauseFetches();
+
+            await act(async () => {
               result.current.expense.handleExpenseAdded(newExpense);
             });
 
@@ -872,7 +881,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             expect(result.current.expense.expenses.length).toBe(existing.length + 1);
           }
         ),
-        { numRuns: 100 }
+        uiPbtOptions()
       );
     });
 
@@ -945,7 +954,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             });
 
             // Set the view to the matching year/month
-            act(() => {
+            await act(async () => {
               result.current.filter.handleMonthChange(year, month);
             });
 
@@ -954,7 +963,9 @@ describe('ExpenseContext Property-Based Tests', () => {
             });
 
             // Call handleExpenseAdded
-            act(() => {
+            pauseFetches();
+
+            await act(async () => {
               result.current.expense.handleExpenseAdded(newExpense);
             });
 
@@ -968,7 +979,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             expect(result.current.expense.expenses.length).toBe(existing.length + 1);
           }
         ),
-        { numRuns: 100 }
+        uiPbtOptions()
       );
     });
   });
@@ -1042,7 +1053,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             });
 
             // Set the view to the selected year/month (monthly view)
-            act(() => {
+            await act(async () => {
               result.current.filter.handleMonthChange(selectedYear, selectedMonth);
             });
 
@@ -1068,7 +1079,9 @@ describe('ExpenseContext Property-Based Tests', () => {
             };
 
             // Call handleExpenseAdded with the out-of-view expense
-            act(() => {
+            pauseFetches();
+
+            await act(async () => {
               result.current.expense.handleExpenseAdded(newExpense);
             });
 
@@ -1080,7 +1093,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             expect(expenseIds).not.toContain(newExpense.id);
           }
         ),
-        { numRuns: 100 }
+        uiPbtOptions()
       );
     });
 
@@ -1131,7 +1144,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             });
 
             // Set the view to the selected year/month (monthly view)
-            act(() => {
+            await act(async () => {
               result.current.filter.handleMonthChange(selectedYear, selectedMonth);
             });
 
@@ -1159,7 +1172,9 @@ describe('ExpenseContext Property-Based Tests', () => {
             };
 
             // Call handleExpenseAdded with the out-of-view expense
-            act(() => {
+            pauseFetches();
+
+            await act(async () => {
               result.current.expense.handleExpenseAdded(newExpense);
             });
 
@@ -1170,7 +1185,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             expect(result.current.expense.expenses.map(e => e.id)).not.toContain(newExpense.id);
           }
         ),
-        { numRuns: 100 }
+        uiPbtOptions()
       );
     });
 
@@ -1221,7 +1236,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             });
 
             // Set the view to the selected year/month (monthly view)
-            act(() => {
+            await act(async () => {
               result.current.filter.handleMonthChange(selectedYear, selectedMonth);
             });
 
@@ -1249,7 +1264,9 @@ describe('ExpenseContext Property-Based Tests', () => {
             };
 
             // Call handleExpenseAdded with the out-of-view expense
-            act(() => {
+            pauseFetches();
+
+            await act(async () => {
               result.current.expense.handleExpenseAdded(newExpense);
             });
 
@@ -1260,7 +1277,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             expect(result.current.expense.expenses.map(e => e.id)).not.toContain(newExpense.id);
           }
         ),
-        { numRuns: 100 }
+        uiPbtOptions()
       );
     });
 
@@ -1293,7 +1310,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             });
 
             // Set the view to the selected year/month (monthly view)
-            act(() => {
+            await act(async () => {
               result.current.filter.handleMonthChange(selectedYear, selectedMonth);
             });
 
@@ -1317,7 +1334,9 @@ describe('ExpenseContext Property-Based Tests', () => {
             };
 
             // Call handleExpenseAdded
-            act(() => {
+            pauseFetches();
+
+            await act(async () => {
               result.current.expense.handleExpenseAdded(newExpense);
             });
 
@@ -1328,7 +1347,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             expect(result.current.expense.expenses.length).toBe(0);
           }
         ),
-        { numRuns: 100 }
+        uiPbtOptions()
       );
     });
   });
@@ -1411,7 +1430,9 @@ describe('ExpenseContext Property-Based Tests', () => {
             expect(result.current.expense.expenses.length).toBe(expenses.length);
 
             // Call handleExpenseDeleted with the target ID
-            act(() => {
+            pauseFetches();
+
+            await act(async () => {
               result.current.expense.handleExpenseDeleted(targetId);
             });
 
@@ -1423,7 +1444,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             expect(remainingIds).not.toContain(targetId);
           }
         ),
-        { numRuns: 100 }
+        uiPbtOptions()
       );
     });
 
@@ -1462,7 +1483,9 @@ describe('ExpenseContext Property-Based Tests', () => {
             });
 
             // Call handleExpenseDeleted
-            act(() => {
+            pauseFetches();
+
+            await act(async () => {
               result.current.expense.handleExpenseDeleted(targetId);
             });
 
@@ -1481,7 +1504,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             }
           }
         ),
-        { numRuns: 100 }
+        uiPbtOptions()
       );
     });
 
@@ -1528,7 +1551,9 @@ describe('ExpenseContext Property-Based Tests', () => {
             expect(result.current.expense.expenses.length).toBe(1);
 
             // Delete the only expense
-            act(() => {
+            pauseFetches();
+
+            await act(async () => {
               result.current.expense.handleExpenseDeleted(expenseId);
             });
 
@@ -1537,7 +1562,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             expect(result.current.expense.expenses).toEqual([]);
           }
         ),
-        { numRuns: 100 }
+        uiPbtOptions()
       );
     });
   });
@@ -1639,7 +1664,9 @@ describe('ExpenseContext Property-Based Tests', () => {
             expect(result.current.expense.expenses.length).toBe(expenses.length);
 
             // Call handleExpenseUpdated
-            act(() => {
+            pauseFetches();
+
+            await act(async () => {
               result.current.expense.handleExpenseUpdated(updatedExpense);
             });
 
@@ -1674,7 +1701,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             }
           }
         ),
-        { numRuns: 100 }
+        uiPbtOptions()
       );
     });
 
@@ -1720,7 +1747,9 @@ describe('ExpenseContext Property-Based Tests', () => {
             const originalIds = result.current.expense.expenses.map(e => e.id);
 
             // Call handleExpenseUpdated
-            act(() => {
+            pauseFetches();
+
+            await act(async () => {
               result.current.expense.handleExpenseUpdated(updatedExpense);
             });
 
@@ -1735,7 +1764,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             expect(updatedAtIndex.amount).toBe(999.99);
           }
         ),
-        { numRuns: 100 }
+        uiPbtOptions()
       );
     });
 
@@ -1796,7 +1825,9 @@ describe('ExpenseContext Property-Based Tests', () => {
             expect(result.current.expense.expenses.length).toBe(1);
 
             // Update the only expense
-            act(() => {
+            pauseFetches();
+
+            await act(async () => {
               result.current.expense.handleExpenseUpdated(updatedExpense);
             });
 
@@ -1813,7 +1844,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             expect(resultExpense.method).toBe(newMethod);
           }
         ),
-        { numRuns: 100 }
+        uiPbtOptions()
       );
     });
   });
@@ -1905,7 +1936,9 @@ describe('ExpenseContext Property-Based Tests', () => {
             };
 
             // Call handleExpenseAdded
-            act(() => {
+            pauseFetches();
+
+            await act(async () => {
               result.current.expense.handleExpenseAdded(newExpense);
             });
 
@@ -1913,7 +1946,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             expect(result.current.expense.refreshTrigger).toBe(refreshBefore + 1);
           }
         ),
-        { numRuns: 100 }
+        uiPbtOptions()
       );
     });
 
@@ -1952,7 +1985,9 @@ describe('ExpenseContext Property-Based Tests', () => {
             const refreshBefore = result.current.expense.refreshTrigger;
 
             // Call handleExpenseDeleted
-            act(() => {
+            pauseFetches();
+
+            await act(async () => {
               result.current.expense.handleExpenseDeleted(targetId);
             });
 
@@ -1960,7 +1995,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             expect(result.current.expense.refreshTrigger).toBe(refreshBefore + 1);
           }
         ),
-        { numRuns: 100 }
+        uiPbtOptions()
       );
     });
 
@@ -2006,7 +2041,9 @@ describe('ExpenseContext Property-Based Tests', () => {
             const refreshBefore = result.current.expense.refreshTrigger;
 
             // Call handleExpenseUpdated
-            act(() => {
+            pauseFetches();
+
+            await act(async () => {
               result.current.expense.handleExpenseUpdated(updatedExpense);
             });
 
@@ -2014,7 +2051,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             expect(result.current.expense.refreshTrigger).toBe(refreshBefore + 1);
           }
         ),
-        { numRuns: 100 }
+        uiPbtOptions()
       );
     });
 
@@ -2073,7 +2110,9 @@ describe('ExpenseContext Property-Based Tests', () => {
               week: 1,
             };
 
-            act(() => {
+            pauseFetches();
+
+            await act(async () => {
               result.current.expense.handleExpenseAdded(newExpense);
             });
 
@@ -2087,21 +2126,25 @@ describe('ExpenseContext Property-Based Tests', () => {
               date: makeDate(2024, 6, updateDay),
             };
 
-            act(() => {
+            pauseFetches();
+
+            await act(async () => {
               result.current.expense.handleExpenseUpdated(updatedExpense);
             });
 
             expect(result.current.expense.refreshTrigger).toBe(initialRefresh + 2);
 
             // Operation 3: Delete the existing expense
-            act(() => {
+            pauseFetches();
+
+            await act(async () => {
               result.current.expense.handleExpenseDeleted(1);
             });
 
             expect(result.current.expense.refreshTrigger).toBe(initialRefresh + 3);
           }
         ),
-        { numRuns: 100 }
+        uiPbtOptions()
       );
     });
   });
@@ -2207,7 +2250,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             );
           }
         ),
-        { numRuns: 100 }
+        uiPbtOptions()
       );
     });
 
@@ -2240,7 +2283,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             });
 
             // Apply searchText filter (this triggers global view + re-fetch)
-            act(() => {
+            await act(async () => {
               result.current.filter.handleSearchChange(searchText);
             });
 
@@ -2259,7 +2302,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             );
           }
         ),
-        { numRuns: 100 }
+        uiPbtOptions()
       );
     });
 
@@ -2292,7 +2335,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             });
 
             // Apply filterType (does NOT trigger global view by itself)
-            act(() => {
+            await act(async () => {
               result.current.filter.handleFilterTypeChange(filterType);
             });
 
@@ -2311,7 +2354,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             }
           }
         ),
-        { numRuns: 100 }
+        uiPbtOptions()
       );
     });
 
@@ -2344,7 +2387,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             });
 
             // Apply filterMethod (triggers global view + re-fetch)
-            act(() => {
+            await act(async () => {
               result.current.filter.handleFilterMethodChange(filterMethod);
             });
 
@@ -2368,7 +2411,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             }
           }
         ),
-        { numRuns: 100 }
+        uiPbtOptions()
       );
     });
 
@@ -2405,7 +2448,7 @@ describe('ExpenseContext Property-Based Tests', () => {
 
             // Apply all three filters
             // searchText triggers global view, so apply it first to trigger re-fetch
-            act(() => {
+            await act(async () => {
               result.current.filter.handleSearchChange(searchText);
             });
 
@@ -2415,7 +2458,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             });
 
             // Apply type and method filters
-            act(() => {
+            await act(async () => {
               result.current.filter.handleFilterTypeChange(filterType);
               result.current.filter.handleFilterMethodChange(filterMethod);
             });
@@ -2450,7 +2493,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             }
           }
         ),
-        { numRuns: 100 }
+        uiPbtOptions()
       );
     });
 
@@ -2486,7 +2529,7 @@ describe('ExpenseContext Property-Based Tests', () => {
 
             // Apply whichever filters are non-empty
             if (searchText) {
-              act(() => {
+              await act(async () => {
                 result.current.filter.handleSearchChange(searchText);
               });
               await waitFor(() => {
@@ -2495,13 +2538,13 @@ describe('ExpenseContext Property-Based Tests', () => {
             }
 
             if (filterType) {
-              act(() => {
+              await act(async () => {
                 result.current.filter.handleFilterTypeChange(filterType);
               });
             }
 
             if (filterMethod) {
-              act(() => {
+              await act(async () => {
                 result.current.filter.handleFilterMethodChange(filterMethod);
               });
               // filterMethod triggers global view, wait for re-fetch
@@ -2522,7 +2565,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             );
           }
         ),
-        { numRuns: 100 }
+        uiPbtOptions()
       );
     });
   });

@@ -6,7 +6,7 @@ vi.mock('../../config', () => ({
   API_ENDPOINTS: {
     CREDIT_CARD_PAYMENTS: '/api/credit-card-payments'
   },
-  default: 'http://localhost:2424'
+  default: 'http://expense-tracker.test.invalid'
 }));
 
 // Mock logger

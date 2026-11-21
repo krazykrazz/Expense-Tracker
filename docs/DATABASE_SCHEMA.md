@@ -51,7 +51,7 @@ Variable expense transactions with comprehensive tracking.
 **Foreign Keys**:
 - `payment_method_id` → `payment_methods(id)` (no ON DELETE action — deleting a referenced payment method is rejected while foreign keys are enforced)
 
-**Indexes**: `idx_date` (date), `idx_type` (type), `idx_method` (method), `idx_expenses_insurance_eligible`, `idx_expenses_claim_status`, `idx_expenses_posted_date`, `idx_expenses_payment_method_id`. Added by migration `performance_compound_indexes_v1`: `idx_expenses_date_type` (date, type), `idx_expenses_date_method` (date, method), `idx_expenses_week` (week), `idx_expenses_place_type` (place, type), `idx_expenses_date_place` (date, place).
+**Indexes**: `idx_date` (date), `idx_type` (type), `idx_method` (method), `idx_expenses_insurance_eligible`, `idx_expenses_claim_status`, `idx_expenses_posted_date`, `idx_expenses_payment_method_id`, `idx_expenses_date_type` (date, type), `idx_expenses_date_method` (date, method), `idx_expenses_week` (week), `idx_expenses_place_type` (place, type), and `idx_expenses_date_place` (date, place). The compound indexes are created for both fresh and migrated databases by `schema.js` and `performance_compound_indexes_v1`.
 
 ### monthly_gross
 
@@ -494,7 +494,7 @@ Posted bank transactions staged for review in the Import Inbox.
 | bucket_overridden | INTEGER NOT NULL DEFAULT 0 | 1 when the user moved the row between tabs; later syncs keep its bucket |
 | created_at, updated_at | TEXT NOT NULL | Timestamps |
 
-**Indexes**: `idx_plaid_transactions_status_date` (status, date), `idx_plaid_transactions_account` (plaid_account_id), `idx_plaid_transactions_expense` (UNIQUE on expense_id WHERE expense_id IS NOT NULL: one bank transaction per expense), `idx_plaid_transactions_merchant_entity` (merchant_entity_id; created by migration `plaid_capture_v1`, so absent from test databases)
+**Indexes**: `idx_plaid_transactions_status_date` (status, date), `idx_plaid_transactions_account` (plaid_account_id), `idx_plaid_transactions_expense` (UNIQUE on expense_id WHERE expense_id IS NOT NULL: one bank transaction per expense), and `idx_plaid_transactions_merchant_entity` (merchant_entity_id; created for both fresh and migrated databases).
 
 Sync only modifies or deletes rows whose status is still 'new', except pending ones: a settled transaction replaces its pending row in place (keeping status and links), and a linked pending row the bank drops gets `removed_at` instead of being deleted. Deleting a linked expense puts its row back to 'new' (trigger `plaid_transactions_unlink_on_expense_delete`).
 
@@ -669,7 +669,7 @@ Persisted anomaly dismissals for analytics. Supports two actions: simple dismiss
 
 **Indexes**:
 - `idx_dismissed_anomalies_expense_id` on expense_id
-- `idx_dismissed_anomalies_anomaly_type` on anomaly_type (created by migration `dismissed_anomalies_nullable_expense_id_v1` only)
+- `idx_dismissed_anomalies_anomaly_type` on anomaly_type (created for both fresh and migrated databases)
 
 ### anomaly_suppression_rules
 

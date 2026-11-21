@@ -9,10 +9,11 @@ CI mode is on when `CI=true` or `GITHUB_ACTIONS=true`. It is detected separately
 | Setting | Local | CI | Defined in |
 |---------|-------|----|------------|
 | Backend test timeout | 30s | 45s | `backend/jest.setup.js` |
-| Backend retries | none | `jest.retryTimes(2, { logErrorsBeforeRetry: true })` | `backend/jest.setup.js` |
+| Backend retries | 0 | 0 | `backend/jest.setup.js` |
 | Frontend `testTimeout` / `hookTimeout` | 30s / 20s | 45s / 30s | `frontend/vitest.config.js` |
-| Frontend `retry` | 0 | 2 | `frontend/vitest.config.js` |
-| Frontend `bail` | 0 | 1 | `frontend/vitest.config.js` |
+| Frontend `retry` | 0 | 0 | `frontend/vitest.config.js` |
+| Frontend `bail` | 0 | 0 | `frontend/vitest.config.js` |
+| Frontend workers | default | 4 | `frontend/vitest.config.js` |
 | Frontend reporter | `default` | `verbose` | `frontend/vitest.config.js` |
 | PBT seed (`pbtOptions` family only) | random | `12345` (`CI_SEED`) | `pbtArbitraries.js` |
 | PBT default `numRuns` | higher | lower | `pbtArbitraries.js` (see below) |
@@ -20,8 +21,7 @@ CI mode is on when `CI=true` or `GITHUB_ACTIONS=true`. It is detected separately
 
 Consequences:
 
-- Retries can hide intermittent failures in CI; a test that only passes on retry is still flaky.
-- Frontend `bail: 1` stops the run after the first failing file, so one reported failure can hide others with the same cause.
+- Retries and fail-fast are disabled so first-attempt failures and all failing files remain visible.
 - Validate with CI settings before pushing:
   ```bash
   cd backend && npm run test:unit:ci          # or test:pbt:ci / test:backup:ci / test:ci
@@ -43,7 +43,7 @@ Consequences:
 | Frontend `asyncPbtOptions()` | 20 / 10 | 25s / 45s |
 | Frontend `uiPbtOptions()` | 10 / 5 | 30s / 60s |
 
-- `numRuns` precedence: explicit `numRuns` option > `FAST_CHECK_NUM_RUNS` > the defaults above. `uiPbtOptions()` sets `numRuns` explicitly, so it ignores `FAST_CHECK_NUM_RUNS`.
+- `numRuns` precedence: explicit `numRuns` option > `FAST_CHECK_NUM_RUNS` > the defaults above, including `uiPbtOptions()`.
 - The backend PBT shards set `FAST_CHECK_NUM_RUNS=15`; the frontend CI job does not set it.
 - All helpers set `endOnFailure: true` and, in CI, `verbose: true`.
 - Tests that pass a literal options object (e.g. `{ numRuns: 100 }`) instead of a helper get neither the CI seed nor the CI timeouts.
@@ -73,7 +73,7 @@ import { safeDate, safeAmount, pbtOptions } from '../test/pbtArbitraries';
 
 ## Frontend Test Cleanup
 
-`frontend/vitest.setup.js` runs after each test: `vi.clearAllTimers()`, `vi.clearAllMocks()` and a reset of the global `MockEventSource` (jsdom has no `EventSource`). After all tests in a file it calls `vi.useRealTimers()`. Fake timers are not enabled globally.
+`frontend/vitest.setup.js` installs a fail-closed fetch stub before test modules load, resets it after tests restore globals, clears timers/mocks, and resets the global `MockEventSource` (jsdom has no `EventSource`). The test API base URL is a reserved `.test.invalid` host, so a missing mock cannot reach a local or production service. Fake timers are not enabled globally.
 
 Components should still clear their own timers on unmount — a callback firing after the environment is torn down surfaces as an unhandled error, which fails the Vitest run even when every test passed.
 
@@ -159,7 +159,7 @@ Components should still clear their own timers on unmount — a callback firing 
 | `backend` | `npm test`, `test:unit`, `test:pbt`, `test:fast`, `test:backup` | `--runInBand` (serial) |
 | `backend` | `test:parallel`, `test:unit:parallel`, `test:pbt:parallel`, `test:fast:parallel` | `--maxWorkers=75%` |
 | `frontend` | `npm test` (`vitest --run`), `test:fast` | `forks` pool, Vitest's default worker count |
-| `frontend` | `test:parallel`, `test:fast:parallel` | adds `--pool=forks --poolOptions.forks.maxForks=75%` (see [Known Issues](#known-issues)) |
+| `frontend` | `test:parallel`, `test:fast:parallel` | adds `--pool=forks --maxWorkers=75%` |
 
 `test:fast*` set `FAST_CHECK_NUM_RUNS=10`. For routine backend validation use `npm run test:unit:parallel` followed by `npm run test:backup:ci`; `test:parallel` also runs the backup suites in parallel.
 
@@ -167,26 +167,26 @@ Components should still clear their own timers on unmount — a callback firing 
 
 ### In CI
 
-- Backend unit tests: one job, Jest's default worker count, backup suites excluded
+- Backend unit tests: two `--shard` jobs on separate runners, backup suites excluded
 - Backend PBT: three `--shard` jobs on separate runners, each with parallel workers; shard 1 then runs the backup suites serially
-- Frontend: one job, `forks` pool
+- Frontend: one job, isolated `forks` pool with 4 workers
 
 Races happen between Jest workers inside one job, not between shards. To reproduce a per-worker database race locally, run the affected files with `--maxWorkers=2` rather than the shard command.
 
 ## Known Issues
 
-- `frontend/vitest.config.js` sets `poolOptions.forks.maxForks` (2 in CI). Vitest 4 removed `test.poolOptions` and the installed Vitest 5 only logs a deprecation for it, so the 2-fork CI cap is not applied. The `--poolOptions.forks.maxForks=75%` flag in the frontend `test:parallel` scripts relies on the same removed option.
+- `--no-isolate` is not a supported optimization for this suite. Its module mocks and provider state are intentionally file-local; a benchmark without isolation failed 150 of 256 files and produced 29 unhandled errors. Keep the isolated fork pool and tune `maxWorkers` instead.
 
 ## Configuration Files
 
 | File | Purpose |
 |------|---------|
 | `backend/jest.globalSetup.js` | Creates the isolated `backend/.test-config/` tree |
-| `backend/jest.setup.js` | CI detection, timeout, retries, per-worker test DB lifecycle, console suppression |
+| `backend/jest.setup.js` | CI detection, timeout, per-worker test DB lifecycle, console suppression |
 | `backend/test/pbtArbitraries.js` | Backend PBT options and arbitraries |
 | `backend/test/testConstants.js` | Shared backend test constants |
-| `frontend/vitest.config.js` | CI timeouts, retries, bail, reporter, pool |
-| `frontend/vitest.setup.js` | Cleanup, `EventSource` mock, CI console suppression |
+| `frontend/vitest.config.js` | CI timeouts, reporter, 4-worker fork pool, invalid test base URL, coverage |
+| `frontend/vitest.setup.js` | Network-blocking fetch mock, cleanup, `EventSource` mock, CI console suppression |
 | `frontend/src/test/pbtArbitraries.js` | Frontend PBT options and arbitraries |
 
 ## Environment Variables

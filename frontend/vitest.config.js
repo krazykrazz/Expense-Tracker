@@ -13,24 +13,28 @@ export default defineConfig({
     // Longer timeouts in CI due to slower runners
     testTimeout: isCI ? 45000 : 30000,
     hookTimeout: isCI ? 30000 : 20000,
-    // Retry flaky tests in CI
-    retry: isCI ? 2 : 0,
     // Parallel execution configuration
     pool: 'forks',
-    poolOptions: {
-      forks: {
-        // Use 2 forks in CI for speed (retry handles flakiness), full parallel locally
-        singleFork: false,
-        maxForks: isCI ? 2 : undefined
-      }
-    },
+    maxWorkers: isCI ? 4 : undefined,
     // Better error reporting
     reporters: isCI ? ['verbose'] : ['default'],
-    // Fail fast in CI
-    bail: isCI ? 1 : 0
+    coverage: {
+      provider: 'v8',
+      reportsDirectory: './coverage',
+      reporter: ['text-summary', 'json-summary'],
+      include: ['src/**/*.{js,jsx}'],
+      exclude: [
+        'src/**/*.test.{js,jsx}',
+        'src/**/*.pbt.test.{js,jsx}',
+        'src/**/*.integration.test.{js,jsx}',
+        'src/test/**',
+        'src/test-utils/**',
+        'src/vite-env.d.ts'
+      ]
+    }
   },
   define: {
-    'import.meta.env.VITE_API_BASE_URL': JSON.stringify('http://localhost:2424'),
+    'import.meta.env.VITE_API_BASE_URL': JSON.stringify('http://expense-tracker.test.invalid'),
     'import.meta.env.CI': JSON.stringify(isCI ? 'true' : 'false'),
     'import.meta.env.GITHUB_ACTIONS': JSON.stringify(process.env.GITHUB_ACTIONS || 'false')
   }

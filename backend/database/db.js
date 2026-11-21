@@ -4,7 +4,7 @@ const path = require('path');
 const { getDatabasePath, getConfigDir, ensureDirectories } = require('../config/paths');
 const logger = require('../config/logger');
 const { initializeInvoiceStorage } = require('../scripts/initializeInvoiceStorage');
-const { ALL_STATEMENTS } = require('./schema');
+const { ALL_STATEMENTS, FRESH_SCHEMA_STATEMENTS } = require('./schema');
 
 // Database file path - use dynamic path from config
 const DB_PATH = getDatabasePath();
@@ -90,17 +90,11 @@ function initializeDatabase() {
         const executeNext = () => {
           if (i >= ALL_STATEMENTS.length) {
             logger.info('All schema statements executed successfully');
-            // Run any pending migrations
-            const { runMigrations } = require('./migrations');
-            runMigrations(db)
+            applyPendingMigrations(db)
               .then(() => {
                 resolve(db);
               })
-              .catch((migErr) => {
-                logger.error('Migration error:', migErr);
-                // Don't reject - allow app to start even if migrations fail
-                resolve(db);
-              });
+              .catch(reject);
             return;
           }
           db.run(ALL_STATEMENTS[i], (err) => {
@@ -117,6 +111,25 @@ function initializeDatabase() {
       });
     });
   });
+}
+
+async function applyPendingMigrations(db) {
+  const { runMigrations } = require('./migrations');
+
+  try {
+    await runMigrations(db);
+  } catch (error) {
+    logger.error('Migration error:', error);
+    await new Promise((resolve) => {
+      db.close((closeError) => {
+        if (closeError) {
+          logger.error('Failed to close database after migration error:', closeError);
+        }
+        resolve();
+      });
+    });
+    throw error;
+  }
 }
 
 // Get database connection
@@ -223,11 +236,11 @@ function createTestDatabase() {
         // Execute all schema statements sequentially
         let i = 0;
         const executeNext = () => {
-          if (i >= ALL_STATEMENTS.length) {
+          if (i >= FRESH_SCHEMA_STATEMENTS.length) {
             resolve(db);
             return;
           }
-          db.run(ALL_STATEMENTS[i], (err) => {
+          db.run(FRESH_SCHEMA_STATEMENTS[i], (err) => {
             if (err) {
               reject(err);
               return;
@@ -542,6 +555,7 @@ function isTestMode() {
 
 module.exports = {
   initializeDatabase,
+  applyPendingMigrations,
   getDatabase,
   beginTransaction,
   commitTransaction,

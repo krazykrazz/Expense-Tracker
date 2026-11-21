@@ -15,6 +15,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor, cleanup, within, fireEvent } from '@testing-library/react';
 import * as fc from 'fast-check';
+import { uiPbtOptions } from '../../test/pbtArbitraries';
 
 // ── Mock all dependencies ─────────────────────────────────────────────────────
 
@@ -22,7 +23,7 @@ vi.mock('../../config', () => ({
   API_ENDPOINTS: {
     REMINDER_STATUS: (year, month) => `/api/reminders/status/${year}/${month}`,
   },
-  default: 'http://localhost:2424'
+  default: 'http://expense-tracker.test.invalid'
 }));
 
 vi.mock('../../utils/logger', () => ({
@@ -206,7 +207,7 @@ describe('FinancialOverviewModal PBT', () => {
             unmount();
           }
         ),
-        { numRuns: 100 }
+        uiPbtOptions()
       );
     });
   });
@@ -257,7 +258,7 @@ describe('FinancialOverviewModal PBT', () => {
             unmount();
           }
         ),
-        { numRuns: 100 }
+        uiPbtOptions()
       );
     });
   });
@@ -299,7 +300,7 @@ describe('FinancialOverviewModal PBT', () => {
             unmount();
           }
         ),
-        { numRuns: 100 }
+        uiPbtOptions()
       );
     });
   });
@@ -341,7 +342,7 @@ describe('FinancialOverviewModal PBT', () => {
             unmount();
           }
         ),
-        { numRuns: 100 }
+        uiPbtOptions()
       );
     });
   });
@@ -386,7 +387,7 @@ describe('FinancialOverviewModal PBT', () => {
             unmount();
           }
         ),
-        { numRuns: 100 }
+        uiPbtOptions()
       );
     });
   });
@@ -431,7 +432,7 @@ describe('FinancialOverviewModal PBT', () => {
             unmount();
           }
         ),
-        { numRuns: 100 }
+        uiPbtOptions()
       );
     });
   });
@@ -524,7 +525,7 @@ describe('FinancialOverviewModal PBT', () => {
             unmount();
           }
         ),
-        { numRuns: 100 }
+        uiPbtOptions()
       );
     });
   });
@@ -669,7 +670,7 @@ describe('FinancialOverviewModal PBT', () => {
             unmount();
           }
         ),
-        { numRuns: 100 }
+        uiPbtOptions()
       );
     }, 60000);
   });
@@ -791,7 +792,7 @@ describe('FinancialOverviewModal PBT', () => {
             expect(inactiveCardNames).toContain(deactivatedCard.display_name);
           }
         ),
-        { numRuns: 100 }
+        uiPbtOptions()
       );
     });
   });
@@ -923,7 +924,7 @@ describe('FinancialOverviewModal PBT', () => {
             expect(finalMethodNames).toContain(reactivatedMethod.display_name);
           }
         ),
-        { numRuns: 100 }
+        uiPbtOptions()
       );
     });
   });
@@ -967,7 +968,7 @@ describe('FinancialOverviewModal PBT', () => {
             unmount();
           }
         ),
-        { numRuns: 50 }
+        uiPbtOptions()
       );
     });
 
@@ -999,7 +1000,7 @@ describe('FinancialOverviewModal PBT', () => {
             unmount();
           }
         ),
-        { numRuns: 50 }
+        uiPbtOptions()
       );
     });
 
@@ -1031,7 +1032,7 @@ describe('FinancialOverviewModal PBT', () => {
             unmount();
           }
         ),
-        { numRuns: 50 }
+        uiPbtOptions()
       );
     });
   });
@@ -1075,7 +1076,7 @@ describe('FinancialOverviewModal PBT', () => {
             unmount();
           }
         ),
-        { numRuns: 50 }
+        uiPbtOptions()
       );
     });
 
@@ -1107,7 +1108,7 @@ describe('FinancialOverviewModal PBT', () => {
             unmount();
           }
         ),
-        { numRuns: 50 }
+        uiPbtOptions()
       );
     });
 
@@ -1141,7 +1142,7 @@ describe('FinancialOverviewModal PBT', () => {
             unmount();
           }
         ),
-        { numRuns: 50 }
+        uiPbtOptions()
       );
     });
   });
@@ -1185,7 +1186,7 @@ describe('FinancialOverviewModal PBT', () => {
             unmount();
           }
         ),
-        { numRuns: 50 }
+        uiPbtOptions()
       );
     });
 
@@ -1217,7 +1218,7 @@ describe('FinancialOverviewModal PBT', () => {
             unmount();
           }
         ),
-        { numRuns: 50 }
+        uiPbtOptions()
       );
     });
 
@@ -1251,7 +1252,7 @@ describe('FinancialOverviewModal PBT', () => {
             unmount();
           }
         ),
-        { numRuns: 50 }
+        uiPbtOptions()
       );
     });
   });

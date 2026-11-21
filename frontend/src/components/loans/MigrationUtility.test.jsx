@@ -14,7 +14,7 @@ vi.mock('../../config', () => ({
     LOAN_MIGRATE_BALANCES_PREVIEW: (loanId) => `/api/loans/${loanId}/migrate-balances/preview`,
     LOAN_MIGRATE_BALANCES: (loanId) => `/api/loans/${loanId}/migrate-balances`
   },
-  default: 'http://localhost:2424'
+  default: 'http://expense-tracker.test.invalid'
 }));
 
 // Mock the loanPaymentApi

@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom';
-import { vi, afterEach, beforeAll, afterAll } from 'vitest';
+import { vi, afterEach, beforeAll, beforeEach, afterAll } from 'vitest';
 
 // Detect CI environment
 const isCI = import.meta.env?.CI === 'true' || 
@@ -12,6 +12,25 @@ globalThis.isCI = isCI;
 
 // import.meta.env is automatically provided by Vite/Vitest
 // The VITE_API_BASE_URL is set in vitest.config.js test.env
+
+const nativeFetch = globalThis.fetch;
+const blockedFetch = vi.fn(async (input) => {
+  const target = typeof input === 'string' ? input : input?.url || String(input);
+  throw new Error(
+    `Network access is disabled in frontend tests; mock this request: ${target}`
+  );
+});
+
+// fetchProvider captures window.fetch at module load, so block it before any
+// test modules import. Restored globals are re-blocked for the next test.
+vi.stubGlobal('fetch', blockedFetch);
+
+beforeEach(() => {
+  if (globalThis.fetch === nativeFetch || typeof globalThis.fetch !== 'function') {
+    vi.stubGlobal('fetch', blockedFetch);
+  }
+  blockedFetch.mockClear();
+});
 
 // Mock EventSource — jsdom does not provide it
 // Tests that need fine-grained control can override this with vi.stubGlobal('EventSource', ...)

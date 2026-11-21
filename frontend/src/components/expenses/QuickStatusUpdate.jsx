@@ -1,6 +1,8 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import './QuickStatusUpdate.css';
 
+const DEFAULT_POSITION = { top: 0, left: 0 };
+
 /**
  * QuickStatusUpdate Component
  * 
@@ -21,7 +23,7 @@ const QuickStatusUpdate = ({
   onStatusChange,
   onClose,
   isOpen = false,
-  position = { top: 0, left: 0 }
+  position = DEFAULT_POSITION
 }) => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState(null);

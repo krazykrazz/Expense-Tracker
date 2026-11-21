@@ -539,16 +539,14 @@ before starting.
 > Already fixed (PR #272): created `test-budget.json` (activates runtime budget checks),
 > added npm cache to security-audit job, moved PBT guardrails into shard 1 (eliminates
 > a redundant checkout+install job), consolidated duplicate Trivy scan to single run,
-> removed fixed `sleep 10` before health-check polling, enabled 2-fork parallel frontend
-> in CI (was single-fork).
+> removed fixed `sleep 10` before health-check polling, and now use an isolated 4-worker
+> frontend pool in CI plus two backend unit shards.
 
 ### Medium
 - **Cache `node_modules` across jobs.** npm cache only speeds resolution; installs still
-  run 5× (unit, 3 PBT shards, frontend). Use `actions/cache` with the full
+  run 6× (2 unit shards, 3 PBT shards, frontend). Use `actions/cache` with the full
   `node_modules` path keyed on `package-lock.json` hash, or a shared setup job that
   uploads `node_modules` as an artifact for downstream restore.
-- **Add `--maxWorkers=75%` to backend unit test step.** The main unit-test Jest run
-  doesn't specify worker count; CI runners have 2 vCPUs — explicit parallelism helps.
 - **PR comment with test timing delta.** Cache the runtime from `main` and add a step
   that comments "+5s / −3s vs main" on PRs to surface regressions early.
 

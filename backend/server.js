@@ -54,6 +54,7 @@ activityLogService.setSseService(sseService);
 
 const app = express();
 const PORT = process.env.PORT || 2626;
+const shouldStartRuntime = process.env.NODE_ENV !== 'test';
 
 // Generate a unique startup ID that changes on every process restart
 // Used by the frontend to detect container updates/restarts
@@ -260,8 +261,10 @@ let httpServer = null;
 const scheduledTasks = [];
 let initialBillingCycleTimer = null;
 
-// Initialize database and start server
-initializeDatabase()
+// Importing the Express app is safe for Supertest: production startup side effects
+// only run when this module is loaded by the real server process.
+if (shouldStartRuntime) {
+  initializeDatabase()
   .then(async (db) => {
     // Enable WAL mode for better read concurrency in production
     // (done here rather than in initializeDatabase to avoid interfering with backup/restore)
@@ -367,6 +370,7 @@ initializeDatabase()
     logger.error('Failed to initialize database:', err);
     process.exit(1);
   });
+}
 
 const shutdown = createGracefulShutdown({ logger, closeDatabase, sseService, backupService });
 
@@ -379,7 +383,9 @@ const onSignal = (signal) =>
     timers: [initialBillingCycleTimer]
   });
 
-process.on('SIGTERM', () => onSignal('SIGTERM'));
-process.on('SIGINT', () => onSignal('SIGINT'));
+if (shouldStartRuntime) {
+  process.on('SIGTERM', () => onSignal('SIGTERM'));
+  process.on('SIGINT', () => onSignal('SIGINT'));
+}
 
 module.exports = app;

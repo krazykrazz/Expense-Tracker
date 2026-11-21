@@ -199,7 +199,7 @@ export const asyncPbtOptions = (options = {}) => {
 export const uiPbtOptions = (options = {}) => {
   return pbtOptions({
     timeout: isCI ? 60000 : 30000,
-    numRuns: isCI ? 5 : 10,
+    numRuns: options.numRuns ?? envNumRuns ?? (isCI ? 5 : 10),
     ...options
   });
 };

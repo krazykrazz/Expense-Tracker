@@ -686,7 +686,7 @@ const TRIGGER_STATEMENTS = [
    END`
 ];
 
-// ─── Index Statements (~43 indexes) ───
+// ─── Index Statements ───
 
 const INDEX_STATEMENTS = [
   // expenses indexes
@@ -697,6 +697,11 @@ const INDEX_STATEMENTS = [
   'CREATE INDEX IF NOT EXISTS idx_expenses_claim_status ON expenses(claim_status)',
   'CREATE INDEX IF NOT EXISTS idx_expenses_posted_date ON expenses(posted_date)',
   'CREATE INDEX IF NOT EXISTS idx_expenses_payment_method_id ON expenses(payment_method_id)',
+  'CREATE INDEX IF NOT EXISTS idx_expenses_date_type ON expenses(date, type)',
+  'CREATE INDEX IF NOT EXISTS idx_expenses_date_method ON expenses(date, method)',
+  'CREATE INDEX IF NOT EXISTS idx_expenses_week ON expenses(week)',
+  'CREATE INDEX IF NOT EXISTS idx_expenses_place_type ON expenses(place, type)',
+  'CREATE INDEX IF NOT EXISTS idx_expenses_date_place ON expenses(date, place)',
 
   // monthly_gross indexes
   'CREATE INDEX IF NOT EXISTS idx_year_month ON monthly_gross(year, month)',
@@ -788,6 +793,14 @@ const INDEX_STATEMENTS = [
   'CREATE UNIQUE INDEX IF NOT EXISTS idx_plaid_transactions_expense ON plaid_transactions(expense_id) WHERE expense_id IS NOT NULL'
 ];
 
+// These indexes use columns that older production databases receive only in migrations.
+// Production gets them from the migrations; fresh/test databases apply them after their
+// end-state tables have been created.
+const POST_MIGRATION_INDEX_STATEMENTS = [
+  'CREATE INDEX IF NOT EXISTS idx_dismissed_anomalies_anomaly_type ON dismissed_anomalies(anomaly_type)',
+  'CREATE INDEX IF NOT EXISTS idx_plaid_transactions_merchant_entity ON plaid_transactions(merchant_entity_id)'
+];
+
 // ─── Seed Statements ───
 
 const SEED_PAYMENT_METHODS = [
@@ -806,11 +819,18 @@ const ALL_STATEMENTS = [
   ...SEED_PAYMENT_METHODS
 ];
 
+const FRESH_SCHEMA_STATEMENTS = [
+  ...ALL_STATEMENTS,
+  ...POST_MIGRATION_INDEX_STATEMENTS
+];
+
 module.exports = {
   TABLE_STATEMENTS,
   INDEX_STATEMENTS,
+  POST_MIGRATION_INDEX_STATEMENTS,
   TRIGGER_STATEMENTS,
   UNLINK_ON_EXPENSE_DELETE_TRIGGER,
   SEED_PAYMENT_METHODS,
-  ALL_STATEMENTS
+  ALL_STATEMENTS,
+  FRESH_SCHEMA_STATEMENTS
 };

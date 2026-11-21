@@ -15,13 +15,14 @@
     "test:fast:parallel": "cross-env NODE_ENV=test FAST_CHECK_NUM_RUNS=10 jest --maxWorkers=75%",
     "test:unit": "cross-env NODE_ENV=test jest --runInBand --testPathIgnorePatterns=pbt",
     "test:unit:parallel": "cross-env NODE_ENV=test jest --maxWorkers=75% --testPathIgnorePatterns=pbt",
-    "test:unit:ci": "cross-env NODE_ENV=test CI=true jest --bail --testPathIgnorePatterns=pbt",
+    "test:unit:ci": "cross-env NODE_ENV=test CI=true jest --testPathIgnorePatterns=pbt",
     "test:pbt": "cross-env NODE_ENV=test jest --runInBand --testPathPatterns=pbt",
     "test:pbt:parallel": "cross-env NODE_ENV=test jest --maxWorkers=75% --testPathPatterns=pbt",
-    "test:pbt:ci": "cross-env NODE_ENV=test CI=true FAST_CHECK_NUM_RUNS=15 jest --bail --testPathPatterns=pbt",
+    "test:pbt:ci": "cross-env NODE_ENV=test CI=true FAST_CHECK_NUM_RUNS=15 jest --testPathPatterns=pbt",
     "test:backup": "cross-env NODE_ENV=test jest --runInBand --testPathPatterns=\"backup.*\\.(integration|pbt)\\.test\"",
-    "test:backup:ci": "cross-env NODE_ENV=test CI=true FAST_CHECK_NUM_RUNS=15 jest --bail --runInBand --testPathPatterns=\"backup.*\\.(integration|pbt)\\.test\"",
-    "test:ci": "cross-env NODE_ENV=test CI=true FAST_CHECK_NUM_RUNS=15 jest --bail",
+    "test:backup:ci": "cross-env NODE_ENV=test CI=true FAST_CHECK_NUM_RUNS=15 jest --runInBand --testPathPatterns=\"backup.*\\.(integration|pbt)\\.test\"",
+    "test:ci": "cross-env NODE_ENV=test CI=true FAST_CHECK_NUM_RUNS=15 jest",
+    "test:coverage": "cross-env NODE_ENV=test jest --maxWorkers=75% --testPathIgnorePatterns=pbt --testPathIgnorePatterns=backup --coverage --coverageReporters=json-summary --coverageReporters=text-summary",
     "standardize:places": "node scripts/standardizePlaceNames.js"
   },
   "jest": {
@@ -30,9 +31,22 @@
     "setupFilesAfterEnv": [
       "<rootDir>/jest.setup.js"
     ],
+    "collectCoverageFrom": [
+      "config/**/*.js",
+      "controllers/**/*.js",
+      "database/**/*.js",
+      "events/**/*.js",
+      "middleware/**/*.js",
+      "repositories/**/*.js",
+      "routes/**/*.js",
+      "services/**/*.js",
+      "utils/**/*.js",
+      "!**/*.test.js",
+      "!test/**",
+      "!scripts/**"
+    ],
     "testEnvironment": "node",
-    "verbose": false,
-    "forceExit": true
+    "verbose": false
   },
   "dependencies": {
     "bcrypt": "^6.0.0",

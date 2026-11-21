@@ -8,7 +8,7 @@ vi.mock('../../config', () => ({
     LOAN_PAYMENT_ENTRY: (loanId, paymentId) => `/api/loans/${loanId}/loan-payments/${paymentId}`,
     LOAN_PAYMENT_SUGGESTION: (loanId) => `/api/loans/${loanId}/payment-suggestion`
   },
-  default: 'http://localhost:2424'
+  default: 'http://expense-tracker.test.invalid'
 }));
 
 // Mock the loanPaymentApi

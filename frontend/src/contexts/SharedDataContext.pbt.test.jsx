@@ -7,6 +7,7 @@ import { renderHook, act, cleanup } from '@testing-library/react';
 import * as fc from 'fast-check';
 import { SharedDataProvider, useSharedDataContext } from './SharedDataContext';
 import { createSharedDataWrapper } from '../test-utils/wrappers.jsx';
+import { uiPbtOptions } from '../test/pbtArbitraries';
 
 // Mock API services
 vi.mock('../services/paymentMethodApi', () => ({
@@ -80,7 +81,7 @@ describe('Property 1: Refresh Callback Triggers Re-fetch', () => {
           expect(getPaymentMethods).toHaveBeenCalledTimes(1 + n);
         }
       ),
-      { numRuns: 100 }
+      uiPbtOptions()
     );
   });
 
@@ -119,7 +120,7 @@ describe('Property 1: Refresh Callback Triggers Re-fetch', () => {
           expect(getPeople).toHaveBeenCalledTimes(1 + n);
         }
       ),
-      { numRuns: 100 }
+      uiPbtOptions()
     );
   });
 
@@ -158,7 +159,7 @@ describe('Property 1: Refresh Callback Triggers Re-fetch', () => {
           expect(getBudgets).toHaveBeenCalledTimes(1 + n);
         }
       ),
-      { numRuns: 100 }
+      uiPbtOptions()
     );
   });
 
@@ -217,7 +218,7 @@ describe('Property 1: Refresh Callback Triggers Re-fetch', () => {
           expect(apiMock).toHaveBeenCalledTimes(1 + n);
         }
       ),
-      { numRuns: 100 }
+      uiPbtOptions()
     );
   });
 });
@@ -312,7 +313,7 @@ describe('Property 3: Budget Fetching Responds to Year/Month Changes', () => {
           expect(getBudgets).toHaveBeenCalledTimes(pairs.length);
         }
       ),
-      { numRuns: 100 }
+      uiPbtOptions()
     );
   });
 
@@ -361,7 +362,7 @@ describe('Property 3: Budget Fetching Responds to Year/Month Changes', () => {
           expect(getBudgets).toHaveBeenCalledTimes(years.length);
         }
       ),
-      { numRuns: 100 }
+      uiPbtOptions()
     );
   });
 
@@ -410,7 +411,7 @@ describe('Property 3: Budget Fetching Responds to Year/Month Changes', () => {
           expect(getBudgets).toHaveBeenCalledTimes(months.length);
         }
       ),
-      { numRuns: 100 }
+      uiPbtOptions()
     );
   });
 
@@ -457,7 +458,7 @@ describe('Property 3: Budget Fetching Responds to Year/Month Changes', () => {
           expect(getBudgets).toHaveBeenCalledTimes(1);
         }
       ),
-      { numRuns: 100 }
+      uiPbtOptions()
     );
   });
 });
@@ -551,7 +552,7 @@ describe('Property 4: Error Handling Preserves State', () => {
           expect(result.current.paymentMethods).toEqual(originalState);
         }
       ),
-      { numRuns: 100 }
+      uiPbtOptions()
     );
 
     consoleSpy.mockRestore();
@@ -601,7 +602,7 @@ describe('Property 4: Error Handling Preserves State', () => {
           expect(result.current.people).toEqual(originalState);
         }
       ),
-      { numRuns: 100 }
+      uiPbtOptions()
     );
 
     consoleSpy.mockRestore();
@@ -651,7 +652,7 @@ describe('Property 4: Error Handling Preserves State', () => {
           expect(result.current.budgets).toEqual(originalState);
         }
       ),
-      { numRuns: 100 }
+      uiPbtOptions()
     );
 
     consoleSpy.mockRestore();
@@ -734,7 +735,7 @@ describe('Property 4: Error Handling Preserves State', () => {
           expect(result.current.budgets).toEqual(originalBudgets);
         }
       ),
-      { numRuns: 100 }
+      uiPbtOptions()
     );
 
     consoleSpy.mockRestore();
@@ -795,7 +796,7 @@ describe('Property 5: Handler References are Stable', () => {
           cleanup();
         }
       ),
-      { numRuns: 100 }
+      uiPbtOptions()
     );
   });
 
@@ -829,7 +830,7 @@ describe('Property 5: Handler References are Stable', () => {
           cleanup();
         }
       ),
-      { numRuns: 100 }
+      uiPbtOptions()
     );
   });
 });

@@ -70,7 +70,7 @@ function Parse-JestOutput {
 
     $results = @{
         Suites = 0; SuitesPassed = 0; SuitesFailed = 0
-        Tests = 0; Passed = 0; Failed = 0
+        Tests = 0; Passed = 0; Failed = 0; Skipped = 0
         FailedSuiteNames = [System.Collections.Generic.List[string]]::new()
     }
 
@@ -79,15 +79,16 @@ function Parse-JestOutput {
 
         if ($line -match "Test Suites:\s*(.+)") {
             $parts = $Matches[1]
-            if ($parts -match "(\d+)\s+failed") { $results.SuitesFailed = [int]$Matches[1] }
-            if ($parts -match "(\d+)\s+passed") { $results.SuitesPassed = [int]$Matches[1] }
-            if ($parts -match "(\d+)\s+total")  { $results.Suites = [int]$Matches[1] }
+            if ($parts -match "(\d+)\s+failed") { $results.SuitesFailed += [int]$Matches[1] }
+            if ($parts -match "(\d+)\s+passed") { $results.SuitesPassed += [int]$Matches[1] }
+            if ($parts -match "(\d+)\s+total")  { $results.Suites += [int]$Matches[1] }
         }
         if ($line -match "^Tests:\s*(.+)") {
             $parts = $Matches[1]
-            if ($parts -match "(\d+)\s+failed") { $results.Failed = [int]$Matches[1] }
-            if ($parts -match "(\d+)\s+passed") { $results.Passed = [int]$Matches[1] }
-            if ($parts -match "(\d+)\s+total")  { $results.Tests = [int]$Matches[1] }
+            if ($parts -match "(\d+)\s+failed") { $results.Failed += [int]$Matches[1] }
+            if ($parts -match "(\d+)\s+passed") { $results.Passed += [int]$Matches[1] }
+            if ($parts -match "(\d+)\s+skipped") { $results.Skipped += [int]$Matches[1] }
+            if ($parts -match "(\d+)\s+total")  { $results.Tests += [int]$Matches[1] }
         }
 
         if ($line -match "^\s*FAIL\s+(\S+\.test\S+)") {
@@ -106,7 +107,7 @@ function Parse-VitestOutput {
 
     $results = @{
         Suites = 0; SuitesPassed = 0; SuitesFailed = 0
-        Tests = 0; Passed = 0; Failed = 0
+        Tests = 0; Passed = 0; Failed = 0; Skipped = 0
         FailedSuiteNames = [System.Collections.Generic.List[string]]::new()
     }
 
@@ -115,16 +116,17 @@ function Parse-VitestOutput {
 
         if ($line -match "Test Files\s+(.+)") {
             $parts = $Matches[1]
-            if ($parts -match "(\d+)\s+failed") { $results.SuitesFailed = [int]$Matches[1] }
-            if ($parts -match "(\d+)\s+passed") { $results.SuitesPassed = [int]$Matches[1] }
+            if ($parts -match "(\d+)\s+failed") { $results.SuitesFailed += [int]$Matches[1] }
+            if ($parts -match "(\d+)\s+passed") { $results.SuitesPassed += [int]$Matches[1] }
             if ($parts -match "\((\d+)\)\s*$") { $results.Suites = [int]$Matches[1] }
             elseif ($parts -match "(\d+)\s+total") { $results.Suites = [int]$Matches[1] }
             if ($results.Suites -eq 0) { $results.Suites = $results.SuitesFailed + $results.SuitesPassed }
         }
         if ($line -match "^\s+Tests\s+(.+)") {
             $parts = $Matches[1]
-            if ($parts -match "(\d+)\s+failed") { $results.Failed = [int]$Matches[1] }
-            if ($parts -match "(\d+)\s+passed") { $results.Passed = [int]$Matches[1] }
+            if ($parts -match "(\d+)\s+failed") { $results.Failed += [int]$Matches[1] }
+            if ($parts -match "(\d+)\s+passed") { $results.Passed += [int]$Matches[1] }
+            if ($parts -match "(\d+)\s+skipped") { $results.Skipped += [int]$Matches[1] }
             if ($parts -match "\((\d+)\)\s*$") { $results.Tests = [int]$Matches[1] }
             elseif ($parts -match "(\d+)\s+total") { $results.Tests = [int]$Matches[1] }
             if ($results.Tests -eq 0) { $results.Tests = $results.Failed + $results.Passed }
@@ -411,6 +413,7 @@ $report.Add("")
 $totalSuites = 0
 $totalPassed = 0
 $totalFailed = 0
+$totalSkipped = 0
 $allFailedSuites = [System.Collections.Generic.List[string]]::new()
 $allFailureDetails = [System.Collections.Generic.List[hashtable]]::new()
 $backendDuration = 0
@@ -435,9 +438,9 @@ if ($runParallel) {
         $env:NODE_ENV = 'test'
         if ($fastPbt) { $env:FAST_PBT = "true" }
         # Run unit tests (no DB writes) in parallel, exclude integration/backup tests that share SQLite DB
-        $raw1 = & npx jest --no-coverage --forceExit --maxWorkers=75% --testPathIgnorePatterns="integration|backupService" 2>&1
+        $raw1 = & npx jest --no-coverage --maxWorkers=75% --testPathIgnorePatterns="integration|backupService" 2>&1
         # Run integration + backup tests serially to avoid SQLite corruption
-        $raw2 = & npx jest --no-coverage --forceExit --runInBand --testPathPatterns="integration|backupService" 2>&1
+        $raw2 = & npx jest --no-coverage --runInBand --testPathPatterns="integration|backupService" 2>&1
         $output = ($raw1 | Out-String) + "`n" + ($raw2 | Out-String)
         $output | Out-File -FilePath $outPath -Encoding UTF8
         $duration = [math]::Round(((Get-Date) - $start).TotalSeconds, 1)
@@ -481,10 +484,11 @@ if ($runParallel) {
     $totalSuites += $be.Suites
     $totalPassed += $be.Passed
     $totalFailed += $be.Failed
+    $totalSkipped += $be.Skipped
     foreach ($s in $be.FailedSuiteNames) { $allFailedSuites.Add($s) }
 
     $report.Add("Suites: $($be.SuitesPassed) passed, $($be.SuitesFailed) failed, $($be.Suites) total")
-    $report.Add("Tests:  $($be.Passed) passed, $($be.Failed) failed, $($be.Tests) total")
+    $report.Add("Tests:  $($be.Passed) passed, $($be.Failed) failed, $($be.Skipped) skipped, $($be.Tests) total")
     $report.Add("Time:   ${backendDuration}s")
 
     if ($be.FailedSuiteNames.Count -gt 0) {
@@ -517,10 +521,11 @@ if ($runParallel) {
     $totalSuites += $fe.Suites
     $totalPassed += $fe.Passed
     $totalFailed += $fe.Failed
+    $totalSkipped += $fe.Skipped
     foreach ($s in $fe.FailedSuiteNames) { $allFailedSuites.Add($s) }
 
     $report.Add("Suites: $($fe.SuitesPassed) passed, $($fe.SuitesFailed) failed, $($fe.Suites) total")
-    $report.Add("Tests:  $($fe.Passed) passed, $($fe.Failed) failed, $($fe.Tests) total")
+    $report.Add("Tests:  $($fe.Passed) passed, $($fe.Failed) failed, $($fe.Skipped) skipped, $($fe.Tests) total")
     $report.Add("Time:   ${frontendDuration}s")
 
     if ($fe.FailedSuiteNames.Count -gt 0) {
@@ -564,9 +569,9 @@ if (-not $runParallel -and -not $SkipBackend) {
     $env:NODE_ENV = 'test'
     try {
         # Run unit tests (no DB writes) in parallel, exclude integration/backup tests that share SQLite DB
-        $backendRaw1 = & npx jest --no-coverage --forceExit --maxWorkers=75% --testPathIgnorePatterns="integration|backupService" 2>&1
+        $backendRaw1 = & npx jest --no-coverage --maxWorkers=75% --testPathIgnorePatterns="integration|backupService" 2>&1
         # Run integration + backup tests serially to avoid SQLite corruption
-        $backendRaw2 = & npx jest --no-coverage --forceExit --runInBand --testPathPatterns="integration|backupService" 2>&1
+        $backendRaw2 = & npx jest --no-coverage --runInBand --testPathPatterns="integration|backupService" 2>&1
         $backendRaw = $backendRaw1 + $backendRaw2
     } finally {
         $env:NODE_ENV = $previousNodeEnv
@@ -584,10 +589,11 @@ if (-not $runParallel -and -not $SkipBackend) {
     $totalSuites += $be.Suites
     $totalPassed += $be.Passed
     $totalFailed += $be.Failed
+    $totalSkipped += $be.Skipped
     foreach ($s in $be.FailedSuiteNames) { $allFailedSuites.Add($s) }
 
     $report.Add("Suites: $($be.SuitesPassed) passed, $($be.SuitesFailed) failed, $($be.Suites) total")
-    $report.Add("Tests:  $($be.Passed) passed, $($be.Failed) failed, $($be.Tests) total")
+    $report.Add("Tests:  $($be.Passed) passed, $($be.Failed) failed, $($be.Skipped) skipped, $($be.Tests) total")
     $report.Add("Time:   ${backendDuration}s")
 
     if ($be.FailedSuiteNames.Count -gt 0) {
@@ -646,10 +652,11 @@ if (-not $runParallel -and -not $SkipFrontend) {
     $totalSuites += $fe.Suites
     $totalPassed += $fe.Passed
     $totalFailed += $fe.Failed
+    $totalSkipped += $fe.Skipped
     foreach ($s in $fe.FailedSuiteNames) { $allFailedSuites.Add($s) }
 
     $report.Add("Suites: $($fe.SuitesPassed) passed, $($fe.SuitesFailed) failed, $($fe.Suites) total")
-    $report.Add("Tests:  $($fe.Passed) passed, $($fe.Failed) failed, $($fe.Tests) total")
+    $report.Add("Tests:  $($fe.Passed) passed, $($fe.Failed) failed, $($fe.Skipped) skipped, $($fe.Tests) total")
     $report.Add("Time:   ${frontendDuration}s")
 
     if ($fe.FailedSuiteNames.Count -gt 0) {
@@ -688,7 +695,7 @@ $report.Add($separator)
 $report.Add("  TOTALS")
 $report.Add($separator)
 $report.Add("Suites: $totalSuites total")
-$report.Add("Tests:  $totalPassed passed, $totalFailed failed, $($totalPassed + $totalFailed) total")
+$report.Add("Tests:  $totalPassed passed, $totalFailed failed, $totalSkipped skipped, $($totalPassed + $totalFailed + $totalSkipped) total")
 $report.Add("")
 
 $report.Add("TIMING:")

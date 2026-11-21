@@ -7,7 +7,7 @@ vi.mock('../../config', () => ({
     PAYMENT_METHODS: '/api/payment-methods',
     PAYMENT_METHODS_DISPLAY_NAMES: '/api/payment-methods/display-names'
   },
-  default: 'http://localhost:2424'
+  default: 'http://expense-tracker.test.invalid'
 }));
 
 import * as paymentMethodApi from '../../services/paymentMethodApi';

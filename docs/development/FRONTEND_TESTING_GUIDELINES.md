@@ -10,7 +10,7 @@ Practical guide for writing and running frontend tests (`frontend/`). It covers 
 
 | Package | Version range (`frontend/package.json`) |
 |---------|------------------------------------------|
-| `vitest` / `@vitest/ui` | `^5.0.0` / `^5.0.2` (must be bumped together) |
+| `vitest` / `@vitest/ui` / `@vitest/coverage-v8` | `^5.1.x` (keep all three aligned) |
 | `jsdom` | `^30.1.1` |
 | `@testing-library/react` | `^16.3.3` |
 | `@testing-library/user-event` | `^14.6.7` |
@@ -27,23 +27,24 @@ There is no browser/E2E runner (Playwright, Cypress) in the project. Everything 
 |---------|----|-------|
 | `testTimeout` | 45000 | 30000 |
 | `hookTimeout` | 30000 | 20000 |
-| `retry` | 2 | 0 |
-| `bail` | 1 | 0 |
-| `poolOptions.forks.maxForks` | 2 | default |
+| `retry` | 0 | 0 |
+| `bail` | 0 | 0 |
+| `maxWorkers` | 4 | default |
 | `reporters` | `verbose` | `default` |
 
-It also defines `import.meta.env.VITE_API_BASE_URL` (`http://localhost:2424`), `import.meta.env.CI` and `import.meta.env.GITHUB_ACTIONS`.
+It defines `import.meta.env.VITE_API_BASE_URL` as `http://expense-tracker.test.invalid`, `import.meta.env.CI`, and `import.meta.env.GITHUB_ACTIONS`. The reserved invalid host ensures a missed mock cannot target a real local or production service.
 
 ### `vitest.setup.js`
 
 - Imports `@testing-library/jest-dom` matchers.
 - Sets `globalThis.isCI`.
 - Installs a `MockEventSource` as `globalThis.EventSource` (jsdom has none). Instances are recorded in `EventSource.instances` and expose `_triggerOpen()`, `_triggerMessage(data)`, `_triggerError()`. Override per test with `vi.stubGlobal('EventSource', ...)`.
+- Installs a fail-closed `fetch` mock before test modules load. An unmocked request rejects with `Network access is disabled in frontend tests` instead of reaching the network. `src/test/networkIsolation.test.js` verifies both direct fetch and the function captured by `fetchProvider`.
 - `afterEach`: resets `MockEventSource.instances`, `vi.clearAllTimers()`, `vi.clearAllMocks()` (clears call history, keeps implementations).
 - `afterAll`: `vi.useRealTimers()`.
 - In CI only: `console.log` / `console.warn` are replaced with `vi.fn()`; `console.error` is kept.
 
-It does **not** stub `fetch`, `localStorage`/`sessionStorage`, or `Element.prototype.scrollIntoView` — see [jsdom and Vitest Gotchas](#jsdom-and-vitest-gotchas).
+It does **not** globally stub `localStorage`/`sessionStorage` or `Element.prototype.scrollIntoView` — see [jsdom and Vitest Gotchas](#jsdom-and-vitest-gotchas).
 
 ---
 
@@ -56,7 +57,9 @@ npm test                          # vitest --run (whole suite)
 npx vitest --run ExpenseForm      # filter by file name
 npx vitest --run pbt              # only files whose path contains "pbt"
 npm run test:fast                 # FAST_CHECK_NUM_RUNS=10 (see PBT section)
-npm run test:parallel             # forks pool, maxForks=75%
+npm run test:parallel             # forks pool, maxWorkers=75%
+npm run test:coverage             # V8 coverage: text + json summary
+npm run test:performance           # local App.performance.test.jsx profiling
 npm run test:watch                # watch mode
 npm run test:changed              # only tests affected by uncommitted changes
 npm run test:core                 # also: test:sections, test:people, test:futureMonths, test:dataPreservation
@@ -68,7 +71,7 @@ npm run test:core                 # also: test:sections, test:people, test:futur
 npx cross-env CI=true npx vitest --run
 ```
 
-CI runs `npx vitest --run --exclude '**/App.performance.test.jsx'`, then `scripts/check-test-budget.js frontend-tests` (see [GitHub Actions CI/CD](./GITHUB_ACTIONS_CICD.md#runtime-budgets)).
+CI runs `npx vitest --run --exclude '**/App.performance.test.jsx'` with default and JSON reporters, uploads the JSON result, and then runs `scripts/check-test-budget.js frontend-tests` (see [GitHub Actions CI/CD](./GITHUB_ACTIONS_CICD.md#runtime-budgets)).
 
 **Unhandled errors fail the run even when every test passes** (`Test Files N passed` but exit code 1, with an "Unhandled Errors" section). When summarising output, also look for `Unhandled|Uncaught` and check the exit code.
 
@@ -310,7 +313,7 @@ test('Property 1: ...', () => {
 ```
 
 - `pbtOptions(options)` (`src/test/pbtArbitraries.js`) sets `numRuns` with precedence **explicit `numRuns` > `FAST_CHECK_NUM_RUNS` > CI default** (10 in CI, 20 locally), plus `timeout` (30s CI / 15s local), a fixed `seed` (`CI_SEED = 12345`) in CI, `endOnFailure: true` and `verbose` in CI.
-- `asyncPbtOptions` raises the timeout (45s / 25s). `uiPbtOptions` raises it further (60s / 30s) and **always** sets `numRuns` to 5 (CI) / 10 (local), so `FAST_CHECK_NUM_RUNS` has no effect on it.
+- `asyncPbtOptions` raises the timeout (45s / 25s). `uiPbtOptions` raises it further (60s / 30s) and defaults to 5 runs in CI / 10 locally; an explicit option or `FAST_CHECK_NUM_RUNS` still overrides that default.
 - Many PBT files pass `{ numRuns: N }` explicitly (or a literal options object), which also bypasses `FAST_CHECK_NUM_RUNS` — `npm run test:fast` only speeds up tests that rely on the default.
 - When rendering inside a property, call `cleanup()` at the end of each iteration.
 - A property that fails on some seeds is a real edge case (often in the test's oracle) — investigate before re-running.
@@ -326,9 +329,9 @@ test('Property 1: ...', () => {
 | CSS isn't evaluated, so `toBeVisible()` / collapsed sections are unreliable | Use `MockCollapsibleSection`, or assert on `aria-expanded` / presence instead of visibility |
 | `getBoundingClientRect()` returns zeros; no layout | Stub it for the test, or test the logic separately |
 | `EventSource` missing | Already provided by `vitest.setup.js` |
-| `fetch` not stubbed by setup | Mock the service module or `fetchProvider` (above) |
+| Unmocked `fetch` rejects | The setup-level fail-closed mock intentionally blocks it; mock the service module or `fetchProvider` (above) |
 | Month-end date flakiness (e.g. running on the 31st) | Call `date.setDate(1)` before `date.setMonth(...)` when building relative months |
-| Passes locally, fails in CI | Re-run with `npx cross-env CI=true npx vitest --run`; CI has retries, `bail: 1`, 2 forks, console suppression and a fixed PBT seed |
+| Passes locally, fails in CI | Re-run with `npx cross-env CI=true npx vitest --run`; CI has 4 forks, console suppression and a fixed PBT seed, with retries and bail disabled so first-attempt failures stay visible |
 | Tests pass alone, fail together | Leaked globals/timers/module state. Restore spies (`vi.restoreAllMocks()`), unstub globals, and use `vi.useRealTimers()` after fake timers. `vi.clearAllMocks()` already runs after each test |
 | "act" warnings | `await` every `userEvent` call; wait for async effects with `findBy*` / `waitFor` before the test ends |
 | Mock not applied | Check the path is relative to the **test file** (e.g. `../shared/CollapsibleSection` from `components/expenses/`) and that the factory returns the right `default` / named exports |

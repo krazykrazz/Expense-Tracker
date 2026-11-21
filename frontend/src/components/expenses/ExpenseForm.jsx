@@ -26,6 +26,7 @@ import {
 import PersonAllocationModal from '../tax/PersonAllocationModal';
 import InvoiceUpload from '../tax/InvoiceUpload';
 import BankReimbursements from './BankReimbursements';
+import BankSplit from './BankSplit';
 import CollapsibleSection from '../shared/CollapsibleSection';
 import HelpTooltip from '../shared/HelpTooltip';
 import './ExpenseForm.css';
@@ -902,6 +903,7 @@ const ExpenseForm = ({ onExpenseAdded, onClose, people: propPeople, expense = nu
   return (
     <div className="expense-form-container">
       <h2>{isEditing ? 'Edit Expense' : 'Add New Expense'}</h2>
+      {isEditing && <BankSplit expense={expense} disabled={isSubmitting} onChanged={onClose} />}
       <form onSubmit={handleSubmit} className="expense-form">
         <fieldset disabled={isSubmitting} className="expense-form-fieldset">
         {/* Row 1: Date and Place - Place has initial focus (Requirements 1.1, 3.2) */}

@@ -27,6 +27,19 @@ describe('expense bank link', () => {
     expect(bankLinkTitle({ amount: 30, bankLink: link() })).toMatch(/^Amount differs from bank: \$25\.50/);
   });
 
+  it('a charge entered as several expenses compares the sum of the parts with the bank, on every part', () => {
+    const split = (total, extra = {}) => ({ amount: 244.02, bankLink: link({ amount: 326.49, split: { parts: 2, total }, ...extra }) });
+
+    expect(bankLinkState(split(326.49))).toBe('confirmed');
+    expect(bankLinkState({ ...split(326.49), amount: 82.47 })).toBe('confirmed');
+    expect(bankLinkState(split(326.4))).toBe('differs');
+    expect(bankLinkState({ amount: 244.02, bankLink: link({ amount: 326.49 }) })).toBe('differs');
+    expect(bankLinkTitle(split(326.49))).toBe('Confirmed by bank: Coffee Shop\nOct 10, 2026 · $326.49\nMatched to bank transaction\nSplit across 2 expenses: $326.49 of $326.49');
+    expect(bankLinkTitle(split(244.02))).toMatch(/^Amount differs from bank: \$326\.49[\s\S]*Split across 2 expenses: \$244\.02 of \$326\.49$/);
+    // Pending still wins
+    expect(bankLinkState(split(326.49, { pending: true }))).toBe('pending');
+  });
+
   it('pending wins over the amount check, and a dropped pending charge asks for review', () => {
     const pending = { amount: 30, bankLink: link({ status: 'added', pending: true, removed: false }) };
     const dropped = { amount: 25.5, bankLink: link({ pending: true, removed: true }) };

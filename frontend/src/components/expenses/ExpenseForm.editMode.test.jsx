@@ -60,7 +60,8 @@ vi.mock('../../services/paymentMethodApi', () => ({
 
 import * as paymentMethodApi from '../../services/paymentMethodApi';
 
-vi.mock('../../utils/formatters', () => ({
+vi.mock('../../utils/formatters', async (importOriginal) => ({
+  ...(await importOriginal()),
   getTodayLocalDate: () => '2025-01-15'
 }));
 
@@ -358,5 +359,30 @@ describe('ExpenseForm - Edit Mode with Backend Data Formats', () => {
         0
       );
     });
+  });
+
+  /**
+   * Spec 3.9: an expense that is one of several entered for one bank charge shows what the charge's expenses cover,
+   * on the edit form only
+   */
+  it('shows the bank split section for an expense linked to a charge it does not cover, and not otherwise', async () => {
+    const linked = {
+      id: 123, date: '2026-11-20', place: 'Brio', amount: 244.02, type: 'Other', payment_method_id: 2,
+      bankLink: { bankTransactionId: 7, status: 'added', name: 'Brio', date: '2026-11-20', amount: 326.49, pending: false, removed: false, disconnected: false }
+    };
+
+    const { unmount } = render(<ExpenseForm expense={linked} onExpenseAdded={() => {}} />);
+    await waitFor(() => expect(screen.getByLabelText(/type/i)).toBeInTheDocument());
+    expect(screen.getByTestId('bank-split-summary')).toHaveTextContent('this expense covers $244.02; $82.47 is left');
+    unmount();
+
+    const { unmount: unmountPlain } = render(<ExpenseForm expense={{ ...linked, bankLink: null }} onExpenseAdded={() => {}} />);
+    await waitFor(() => expect(screen.getByLabelText(/type/i)).toBeInTheDocument());
+    expect(screen.queryByTestId('bank-split')).not.toBeInTheDocument();
+    unmountPlain();
+
+    render(<ExpenseForm onExpenseAdded={() => {}} />);
+    await waitFor(() => expect(screen.getByLabelText(/type/i)).toBeInTheDocument());
+    expect(screen.queryByTestId('bank-split')).not.toBeInTheDocument();
   });
 });

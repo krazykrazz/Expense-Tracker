@@ -190,6 +190,9 @@ export const API_ENDPOINTS = {
     `${API_BASE_URL}/api/plaid/inbox/${id}/insurance-candidates${includePaid ? '?includePaid=true' : ''}`,
   PLAID_INBOX_REIMBURSEMENT_CANDIDATES: (id, all = false) =>
     `${API_BASE_URL}/api/plaid/inbox/${id}/reimbursement-candidates${all ? '?all=true' : ''}`,
+  PLAID_TRANSACTION_SPLIT_CANDIDATES: (id) => `${API_BASE_URL}/api/plaid/transactions/${id}/split-candidates`,
+  PLAID_TRANSACTION_SPLIT: (id) => `${API_BASE_URL}/api/plaid/transactions/${id}/split`,
+  PLAID_TRANSACTION_SPLIT_EXPENSE: (id, expenseId) => `${API_BASE_URL}/api/plaid/transactions/${id}/split/${expenseId}`,
 
   // Auth
   AUTH_STATUS: `${API_BASE_URL}/api/auth/status`,

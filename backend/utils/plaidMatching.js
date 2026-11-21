@@ -63,6 +63,16 @@ function matchFit(txn, expense) {
 const isMatchCandidate = (txn, expense) => matchFit(txn, expense) !== null;
 
 /**
+ * The purchase dates an expense may have to belong to this bank row, inclusive: the same date rule as matchFit
+ * (3 days either side, or up to POSTING_LAG_DAYS earlier for a settled row dated by its posting date).
+ * @returns {{from: string, to: string}} YYYY-MM-DD
+ */
+function expenseDateWindow(txn) {
+  const day = transactionDate(txn);
+  return { from: shiftDate(day, -(datedByPosting(txn) ? POSTING_LAG_DAYS : MATCH_WINDOW_DAYS)), to: shiftDate(day, MATCH_WINDOW_DAYS) };
+}
+
+/**
  * Candidates for one transaction: exact amounts first, then the smaller amount difference, then the closest date.
  * Each carries `amountDiff` (dollars; the bank's amount minus the expense's charged amount, 0 when exact).
  */
@@ -317,6 +327,7 @@ module.exports = {
   matchFit,
   nearAmountCents,
   isMatchCandidate,
+  expenseDateWindow,
   findMatchCandidates,
   fixedExpectedDate,
   isFixedCandidate,

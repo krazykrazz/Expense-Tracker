@@ -15,6 +15,8 @@ vi.mock('../../services/plaidApi', () => ({
   applyInsuranceToInboxTransaction: vi.fn(),
   getReimbursementCandidates: vi.fn(),
   applyReimbursementToInboxTransaction: vi.fn(),
+  getSplitCandidates: vi.fn(),
+  splitBankTransaction: vi.fn(),
   resolveCancelledPending: vi.fn(),
   ignoreInboxTransaction: vi.fn(),
   unignoreInboxTransaction: vi.fn(),
@@ -433,6 +435,54 @@ describe('ImportInbox', () => {
       expect(button).toHaveClass('bank-import-secondary');
       expect(within(rows[0]).queryByText('Repays an expense')).not.toBeInTheDocument();
       expect(within(rows[1]).queryByRole('button', { name: 'Apply to an expense' })).not.toBeInTheDocument();
+    });
+  });
+
+  describe('a charge entered as several expenses (spec 3.9)', () => {
+    const brio = (overrides = {}) => txn({
+      id: 7, place: 'Brio', rawName: 'Brio Bodywear Inc-Ottawa - Purchase', date: '2026-11-20', postedDate: '2026-11-20', amount: 326.49,
+      paymentMethodId: 6, paymentMethodType: 'credit_card', paymentMethodName: 'WS VISA', split: { suggested: true }, ...overrides
+    });
+    const parts = [
+      { expenseId: 1, date: '2026-11-20', place: 'Brio', notes: 'Pointe + Accessories', type: 'Recreation Activities', amount: 244.02, originalCost: null, charged: 244.02 },
+      { expenseId: 2, date: '2026-11-20', place: 'Brio', notes: 'Suit & Ballet Shoes', type: 'Gifts', amount: 82.47, originalCost: null, charged: 82.47 }
+    ];
+
+    it('offers Match, a badge and a primary Match several button when the expenses add up, and matches them all', async () => {
+      plaidApi.getInbox
+        .mockResolvedValueOnce({ transactions: [brio()], hiddenUnmapped: 0 })
+        .mockResolvedValue({ transactions: [], hiddenUnmapped: 0 });
+      plaidApi.getSplitCandidates.mockResolvedValue({
+        mode: 'match', row: { id: 7 }, bankAmount: 326.49, partsTotal: 0, remaining: 326.49, minExpenses: 2, parts: [], candidates: parts, suggestion: [1, 2]
+      });
+      plaidApi.splitBankTransaction.mockResolvedValue({});
+      const onExpensesChanged = vi.fn();
+
+      renderInbox({ onExpensesChanged });
+      expect(await screen.findByText('Adds up: several expenses')).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Match' }));
+      const offer = screen.getByTestId('split-offer');
+      expect(within(offer).getByRole('button', { name: 'Match several expenses…' })).toHaveClass('bank-import-primary');
+      fireEvent.click(within(offer).getByRole('button', { name: 'Match several expenses…' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'Match expenses' }));
+
+      await waitFor(() => expect(plaidApi.splitBankTransaction).toHaveBeenCalledWith(7, [1, 2]));
+      await waitFor(() => expect(onExpensesChanged).toHaveBeenCalled());
+    });
+
+    it('a charge with only possible parts still gets Match, a secondary button and no badge; a row without split gets neither', async () => {
+      plaidApi.getInbox.mockResolvedValue({
+        transactions: [brio({ split: { suggested: false } }), txn({ id: 8, place: 'Plain', split: null })],
+        hiddenUnmapped: 0
+      });
+
+      renderInbox();
+      const rows = await screen.findAllByTestId('inbox-row');
+
+      expect(within(rows[0]).queryByText('Adds up: several expenses')).not.toBeInTheDocument();
+      fireEvent.click(within(rows[0]).getByRole('button', { name: 'Match' }));
+      expect(within(screen.getByTestId('split-offer')).getByRole('button', { name: 'Match several expenses…' })).toHaveClass('bank-import-secondary');
+      expect(within(rows[1]).queryByRole('button', { name: 'Match' })).not.toBeInTheDocument();
     });
   });
 

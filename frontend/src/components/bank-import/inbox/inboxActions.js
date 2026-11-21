@@ -1,7 +1,7 @@
 import {
   addInboxTransaction, matchInboxTransaction, matchInboxTransactionToFixed, matchInboxTransactionToIncome,
   addInboxTransactionAsIncome, cardPaymentInboxTransaction, ignoreInboxTransaction, unignoreInboxTransaction,
-  applyInsuranceToInboxTransaction, applyReimbursementToInboxTransaction, setInboxTransactionBucket
+  applyInsuranceToInboxTransaction, applyReimbursementToInboxTransaction, setInboxTransactionBucket, splitBankTransaction
 } from '../../../services/plaidApi';
 
 /**
@@ -27,6 +27,8 @@ export const INBOX_ACTIONS = {
   'card-payment': { run: (id, body) => cardPaymentInboxTransaction(id, body), changesData: true },
   insurance: { run: (id, claims) => applyInsuranceToInboxTransaction(id, claims), changesData: true },
   reimbursement: { run: (id, expenses) => applyReimbursementToInboxTransaction(id, expenses), changesData: true },
+  // Match the charge to several expenses already entered (spec 3.9); the payload is their ids
+  split: { run: (id, expenseIds) => splitBankTransaction(id, expenseIds), changesData: true },
   ignore: { run: (id) => ignoreInboxTransaction(id), changesData: false },
   unignore: { run: (id) => unignoreInboxTransaction(id), changesData: false },
   bucket: { run: (id, bucket) => setInboxTransactionBucket(id, bucket), changesData: false }

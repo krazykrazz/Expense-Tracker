@@ -6,6 +6,7 @@ const plaidSettlementService = require('../services/plaidSettlementService');
 const plaidCardPaymentService = require('../services/plaidCardPaymentService');
 const plaidInsuranceService = require('../services/plaidInsuranceService');
 const plaidReimbursementService = require('../services/plaidReimbursementService');
+const plaidSplitService = require('../services/plaidSplitService');
 const plaidCardBalanceService = require('../services/plaidCardBalanceService');
 const plaidCycleCheckService = require('../services/plaidCycleCheckService');
 const plaidFileImportService = require('../services/plaidFileImportService');
@@ -283,6 +284,29 @@ const unlinkReimbursement = asyncHandler(async (req, res) => {
   res.json(await plaidReimbursementService.unlink(inboxIdParam(req), tabIdOf(req)));
 });
 
+/** GET /api/plaid/transactions/:id/split-candidates — expenses a settled charge could be split across (spec 3.9) */
+const getSplitCandidates = asyncHandler(async (req, res) => {
+  res.json(await plaidSplitService.candidates(inboxIdParam(req)));
+});
+
+/**
+ * POST /api/plaid/transactions/:id/split
+ * Body: { expenseIds: [number] } — a charge to review is matched to a complete set of at least two expenses; a charge
+ * already linked to an expense takes more expenses, within the charge
+ */
+const splitTransaction = asyncHandler(async (req, res) => {
+  res.json(await plaidSplitService.apply(inboxIdParam(req), (req.body || {}).expenseIds));
+});
+
+/** DELETE /api/plaid/transactions/:id/split/:expenseId — take an expense out of a split charge */
+const removeSplitExpense = asyncHandler(async (req, res) => {
+  const expenseId = Number(req.params.expenseId);
+  if (!Number.isInteger(expenseId) || expenseId <= 0) {
+    throw fail('Expense id must be a positive integer', 400);
+  }
+  res.json(await plaidSplitService.remove(inboxIdParam(req), expenseId));
+});
+
 /** POST /api/plaid/inbox/:id/ignore */
 const ignore = asyncHandler(async (req, res) => {
   res.json(await plaidReviewService.ignore(idParam(req)));
@@ -334,6 +358,9 @@ module.exports = {
   getReimbursementCandidates,
   applyReimbursement,
   unlinkReimbursement,
+  getSplitCandidates,
+  splitTransaction,
+  removeSplitExpense,
   resolveCancelled,
   ignore,
   unignore,

@@ -132,6 +132,7 @@ class PlaidBalanceCheckRepository {
          FROM expenses e
          WHERE e.payment_method_id = ? AND e.date >= ? AND e.date <= ?
            AND NOT EXISTS (SELECT 1 FROM plaid_transactions pt WHERE pt.expense_id = e.id)
+           AND NOT EXISTS (SELECT 1 FROM plaid_split_links s WHERE s.expense_id = e.id)
          ORDER BY e.date, e.id`,
         [paymentMethodId, fromDate, toDate]
       ),

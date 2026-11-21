@@ -498,6 +498,19 @@ const TABLE_STATEMENTS = [
     FOREIGN KEY (credit_card_payment_id) REFERENCES credit_card_payments(id) ON DELETE CASCADE
   )`,
 
+  // plaid_split_links — the other parts of a bank charge entered as several expenses (spec 3.9). The bank row's
+  // plaid_transactions.expense_id is the first part (the primary); the rest are here, so everything that reads
+  // expense_id keeps working. An expense is a part of at most one bank row (UNIQUE) and is never also a row's
+  // primary (triggers below).
+  `CREATE TABLE IF NOT EXISTS plaid_split_links (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    plaid_transaction_id INTEGER NOT NULL,
+    expense_id INTEGER NOT NULL UNIQUE,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (plaid_transaction_id) REFERENCES plaid_transactions(id) ON DELETE CASCADE,
+    FOREIGN KEY (expense_id) REFERENCES expenses(id) ON DELETE CASCADE
+  )`,
+
   // users — authentication user accounts
   `CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -509,6 +522,24 @@ const TABLE_STATEMENTS = [
 ];
 
 // ─── Trigger Statements ───
+
+/**
+ * Deleting an expense that came from (or was matched to) a bank transaction puts that transaction back in the
+ * Import Inbox; ON DELETE SET NULL alone would strand it as 'added'. A bank charge split across several expenses
+ * (spec 3.9) stays linked while it has other parts: the first one takes over as the primary. Exported because
+ * migration plaid_transactions_split_links_v1 replaces the older definition in existing databases.
+ */
+const UNLINK_ON_EXPENSE_DELETE_TRIGGER = `CREATE TRIGGER IF NOT EXISTS plaid_transactions_unlink_on_expense_delete
+   BEFORE DELETE ON expenses
+   BEGIN
+     UPDATE plaid_transactions SET expense_id = (
+       SELECT s.expense_id FROM plaid_split_links s WHERE s.plaid_transaction_id = plaid_transactions.id ORDER BY s.id LIMIT 1
+     )
+     WHERE expense_id = OLD.id AND EXISTS (SELECT 1 FROM plaid_split_links s WHERE s.plaid_transaction_id = plaid_transactions.id);
+     DELETE FROM plaid_split_links
+     WHERE expense_id = (SELECT pt.expense_id FROM plaid_transactions pt WHERE pt.id = plaid_split_links.plaid_transaction_id);
+     UPDATE plaid_transactions SET status = 'new', expense_id = NULL WHERE expense_id = OLD.id;
+   END`;
 
 const TRIGGER_STATEMENTS = [
   // Auto-update budgets.updated_at on row update
@@ -550,12 +581,33 @@ const TRIGGER_STATEMENTS = [
      UPDATE plaid_transactions SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
    END`,
 
-  // Deleting an expense that came from (or was matched to) a bank transaction puts that
-  // transaction back in the Import Inbox; ON DELETE SET NULL alone would strand it as 'added'
-  `CREATE TRIGGER IF NOT EXISTS plaid_transactions_unlink_on_expense_delete
-   BEFORE DELETE ON expenses
+  // Deleting an expense that came from (or was matched to) a bank transaction puts that transaction back in the
+  // Import Inbox, unless it is split across other expenses (spec 3.9: one of them takes over)
+  UNLINK_ON_EXPENSE_DELETE_TRIGGER,
+
+  // An expense is either a bank row's primary expense or a part of its split, never both (spec 3.9). The messages
+  // start with "UNIQUE constraint failed" so callers that already answer 409 for a doubly linked expense do so here
+  `CREATE TRIGGER IF NOT EXISTS plaid_split_links_part_not_primary
+   BEFORE INSERT ON plaid_split_links
+   WHEN EXISTS (SELECT 1 FROM plaid_transactions WHERE expense_id = NEW.expense_id)
    BEGIN
-     UPDATE plaid_transactions SET status = 'new', expense_id = NULL WHERE expense_id = OLD.id;
+     SELECT RAISE(ABORT, 'UNIQUE constraint failed: the expense is already linked to a bank transaction');
+   END`,
+
+  `CREATE TRIGGER IF NOT EXISTS plaid_transactions_primary_not_part_insert
+   BEFORE INSERT ON plaid_transactions
+   WHEN NEW.expense_id IS NOT NULL AND EXISTS (SELECT 1 FROM plaid_split_links WHERE expense_id = NEW.expense_id)
+   BEGIN
+     SELECT RAISE(ABORT, 'UNIQUE constraint failed: the expense is already part of a split bank charge');
+   END`,
+
+  // The row's own part may become its primary (the previous primary was deleted or removed)
+  `CREATE TRIGGER IF NOT EXISTS plaid_transactions_primary_not_part_update
+   BEFORE UPDATE OF expense_id ON plaid_transactions
+   WHEN NEW.expense_id IS NOT NULL
+     AND EXISTS (SELECT 1 FROM plaid_split_links s WHERE s.expense_id = NEW.expense_id AND s.plaid_transaction_id != NEW.id)
+   BEGIN
+     SELECT RAISE(ABORT, 'UNIQUE constraint failed: the expense is already part of a split bank charge');
    END`,
 
   // Same for fixed expenses: the confirming bank transaction returns to the Import Inbox
@@ -731,6 +783,7 @@ const INDEX_STATEMENTS = [
   'CREATE INDEX IF NOT EXISTS idx_plaid_insurance_links_expense ON plaid_insurance_links(expense_id)',
   'CREATE INDEX IF NOT EXISTS idx_plaid_reimbursement_links_expense ON plaid_reimbursement_links(expense_id)',
   'CREATE INDEX IF NOT EXISTS idx_plaid_reimbursement_links_payment ON plaid_reimbursement_links(credit_card_payment_id)',
+  'CREATE INDEX IF NOT EXISTS idx_plaid_split_links_transaction ON plaid_split_links(plaid_transaction_id)',
   // One bank transaction per expense (also blocks matching an expense twice)
   'CREATE UNIQUE INDEX IF NOT EXISTS idx_plaid_transactions_expense ON plaid_transactions(expense_id) WHERE expense_id IS NOT NULL'
 ];
@@ -757,6 +810,7 @@ module.exports = {
   TABLE_STATEMENTS,
   INDEX_STATEMENTS,
   TRIGGER_STATEMENTS,
+  UNLINK_ON_EXPENSE_DELETE_TRIGGER,
   SEED_PAYMENT_METHODS,
   ALL_STATEMENTS
 };

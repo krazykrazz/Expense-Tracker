@@ -6,14 +6,16 @@ const toCents = (amount) => Math.round(Number(amount) * 100);
  * @returns {'confirmed'|'differs'|'pending'|'cancelled'|null} how an expense compares to its linked bank
  * transaction: still pending at the bank (or probably: a bank that doesn't flag pending charges hasn't put it
  * in its card balance yet), a pending charge the bank dropped (review in Bank Import), or settled and equal /
- * different. Reimbursed expenses are charged their original cost, so that is what the bank saw.
+ * different. Reimbursed expenses are charged their original cost, so that is what the bank saw. An expense that is
+ * one of several entered for one charge (`bankLink.split`) is compared by what they were charged in all.
  */
 export const bankLinkState = (expense) => {
   const link = expense && expense.bankLink;
   if (!link) return null;
   if (link.pending && link.removed) return 'cancelled';
   if (link.pending || link.probablyPending) return 'pending';
-  const charged = expense.original_cost ?? expense.amount;
+  // A charge split across several expenses is compared with all of them together (spec 3.9)
+  const charged = link.split ? link.split.total : (expense.original_cost ?? expense.amount);
   return toCents(charged) === toCents(link.amount) ? 'confirmed' : 'differs';
 };
 
@@ -42,6 +44,9 @@ export const bankLinkTitle = (expense) => {
     return [`Pending at bank: ${name}`, amountLine, settleLine].join('\n');
   }
   const lines = [`Confirmed by bank: ${name}`, amountLine, origin];
+  if (bankLink.split) {
+    lines.push(`Split across ${bankLink.split.parts} expenses: ${formatCurrency(bankLink.split.total)} of ${formatCurrency(bankLink.amount)}`);
+  }
   if (state === 'differs') lines.unshift(`Amount differs from bank: ${formatCurrency(bankLink.amount)}`);
   return lines.join('\n');
 };

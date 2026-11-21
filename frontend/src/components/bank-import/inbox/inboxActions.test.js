@@ -11,6 +11,7 @@ vi.mock('../../../services/plaidApi', () => ({
   cardPaymentInboxTransaction: vi.fn(),
   applyInsuranceToInboxTransaction: vi.fn(),
   applyReimbursementToInboxTransaction: vi.fn(),
+  splitBankTransaction: vi.fn(),
   ignoreInboxTransaction: vi.fn(),
   unignoreInboxTransaction: vi.fn(),
   setInboxTransactionBucket: vi.fn()
@@ -27,7 +28,8 @@ describe('INBOX_ACTIONS', () => {
     ['add-income', 'addInboxTransactionAsIncome', { name: 'Gift', category: 'Gifts' }],
     ['card-payment', 'cardPaymentInboxTransaction', { alsoLinkId: 11 }],
     ['insurance', 'applyInsuranceToInboxTransaction', [{ expenseId: 5, amount: 105.3 }]],
-    ['reimbursement', 'applyReimbursementToInboxTransaction', [{ expenseId: 5, amount: 13.74, alreadyEntered: true }]]
+    ['reimbursement', 'applyReimbursementToInboxTransaction', [{ expenseId: 5, amount: 13.74, alreadyEntered: true }]],
+    ['split', 'splitBankTransaction', [8, 9]]
   ])('%s calls %s with the row and payload, and changes other screens', async (action, api, payload) => {
     await INBOX_ACTIONS[action].run(7, payload);
 
@@ -57,7 +59,7 @@ describe('INBOX_ACTIONS', () => {
 
   it('has exactly the actions the Inbox row offers', () => {
     expect(Object.keys(INBOX_ACTIONS).sort()).toEqual(
-      ['add', 'add-income', 'bucket', 'card-payment', 'ignore', 'insurance', 'match', 'match-fixed', 'match-income', 'reimbursement', 'unignore']
+      ['add', 'add-income', 'bucket', 'card-payment', 'ignore', 'insurance', 'match', 'match-fixed', 'match-income', 'reimbursement', 'split', 'unignore']
     );
   });
 });

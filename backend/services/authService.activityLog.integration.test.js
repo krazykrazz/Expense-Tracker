@@ -13,6 +13,7 @@
 
 const { describe, test, expect, beforeAll, afterAll, beforeEach } = require('@jest/globals');
 const { createIsolatedTestDb, cleanupIsolatedTestDb } = require('../test/dbIsolation');
+const { waitForLogging } = require('../test/activityLogTestHelpers');
 
 let db;
 let authService;
@@ -63,12 +64,14 @@ describe('Auth Activity Logging - Integration Tests', () => {
     test('should log auth_login event on successful login', async () => {
       // Arrange — set a password so we can log in
       await authService.setPassword(null, 'testpass');
+      await waitForLogging();
       await new Promise((resolve, reject) => {
         db.run("DELETE FROM activity_logs WHERE entity_type = 'auth'", (err) => err ? reject(err) : resolve());
       });
 
       // Act
       await authService.login('testpass');
+      await waitForLogging();
 
       // Assert
       const events = await getAuthEvents();
@@ -88,6 +91,7 @@ describe('Auth Activity Logging - Integration Tests', () => {
     test('should log auth_login_failed event on failed login', async () => {
       // Arrange — set a password so Password_Gate is active
       await authService.setPassword(null, 'testpass');
+      await waitForLogging();
       await new Promise((resolve, reject) => {
         db.run("DELETE FROM activity_logs WHERE entity_type = 'auth'", (err) => err ? reject(err) : resolve());
       });
@@ -98,6 +102,7 @@ describe('Auth Activity Logging - Integration Tests', () => {
       } catch (err) {
         expect(err.statusCode).toBe(401);
       }
+      await waitForLogging();
 
       // Assert
       const events = await getAuthEvents();
@@ -147,6 +152,7 @@ describe('Auth Activity Logging - Integration Tests', () => {
     test('should log auth_password_gate_enabled when setting password from Open_Mode', async () => {
       // Act — transition from Open_Mode to Password_Gate
       await authService.setPassword(null, 'newpass');
+      await waitForLogging();
 
       // Assert
       const events = await getAuthEvents();
@@ -166,12 +172,14 @@ describe('Auth Activity Logging - Integration Tests', () => {
     test('should log auth_password_gate_disabled when removing password', async () => {
       // Arrange — enable Password_Gate first
       await authService.setPassword(null, 'testpass');
+      await waitForLogging();
       await new Promise((resolve, reject) => {
         db.run("DELETE FROM activity_logs WHERE entity_type = 'auth'", (err) => err ? reject(err) : resolve());
       });
 
       // Act — remove password, returning to Open_Mode
       await authService.removePassword('testpass');
+      await waitForLogging();
 
       // Assert
       const events = await getAuthEvents();
@@ -191,12 +199,14 @@ describe('Auth Activity Logging - Integration Tests', () => {
     test('should NOT log gate enabled/disabled when changing password while already in Password_Gate', async () => {
       // Arrange — enable Password_Gate
       await authService.setPassword(null, 'firstpass');
+      await waitForLogging();
       await new Promise((resolve, reject) => {
         db.run("DELETE FROM activity_logs WHERE entity_type = 'auth'", (err) => err ? reject(err) : resolve());
       });
 
       // Act — change password while already in Password_Gate
       await authService.setPassword('firstpass', 'secondpass');
+      await waitForLogging();
 
       // Assert — should NOT have gate enabled/disabled events
       const events = await getAuthEvents();

@@ -18,6 +18,7 @@ const activityLogService = require('./activityLogService');
 const settingsRepository = require('../repositories/settingsRepository');
 const activityLogRepository = require('../repositories/activityLogRepository');
 const { getDatabase } = require('../database/db');
+const { waitForLogging } = require('../test/activityLogTestHelpers');
 
 describe('Settings Service - Integration Tests', () => {
   let db;
@@ -177,6 +178,7 @@ describe('Settings Service - Integration Tests', () => {
       await settingsService.updateRetentionSettings(60, 1000);
 
       // Clear the settings_updated activity log entry so it doesn't affect counts
+      await waitForLogging();
       await new Promise((resolve, reject) => {
         db.run('DELETE FROM activity_logs WHERE event_type = \'settings_updated\'', (err) => err ? reject(err) : resolve());
       });
@@ -401,6 +403,7 @@ describe('Settings Service - Integration Tests', () => {
       await settingsService.updateRetentionSettings(30, 1000);
 
       // Clear the settings_updated activity log entry so it doesn't affect counts
+      await waitForLogging();
       await new Promise((resolve, reject) => {
         db.run('DELETE FROM activity_logs WHERE event_type = \'settings_updated\'', (err) => err ? reject(err) : resolve());
       });
@@ -435,6 +438,7 @@ describe('Settings Service - Integration Tests', () => {
       await settingsService.updateRetentionSettings(365, 150);
 
       // Clear the settings_updated activity log entry so it doesn't affect counts
+      await waitForLogging();
       await new Promise((resolve, reject) => {
         db.run('DELETE FROM activity_logs WHERE event_type = \'settings_updated\'', (err) => err ? reject(err) : resolve());
       });
@@ -464,6 +468,7 @@ describe('Settings Service - Integration Tests', () => {
       await settingsService.updateRetentionSettings(365, 120);
 
       // Clear the settings_updated activity log entry so it doesn't affect counts
+      await waitForLogging();
       await new Promise((resolve, reject) => {
         db.run('DELETE FROM activity_logs WHERE event_type = \'settings_updated\'', (err) => err ? reject(err) : resolve());
       });
@@ -520,6 +525,7 @@ describe('Settings Service - Integration Tests', () => {
       await settingsService.updateRetentionSettings(60, 100);
 
       // Clear the settings_updated activity log entry so it doesn't affect counts
+      await waitForLogging();
       await new Promise((resolve, reject) => {
         db.run('DELETE FROM activity_logs WHERE event_type = \'settings_updated\'', (err) => err ? reject(err) : resolve());
       });

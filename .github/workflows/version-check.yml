@@ -6,8 +6,6 @@ on:
     paths:
       - 'frontend/package.json'
       - 'backend/package.json'
-      - 'frontend/package-lock.json'
-      - 'backend/package-lock.json'
       - 'frontend/src/components/system/BackupSettings.jsx'
       - 'frontend/src/components/system/SystemModal.jsx'
       - 'frontend/src/utils/changelog.js'

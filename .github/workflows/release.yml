@@ -169,16 +169,13 @@ jobs:
       - name: Create Pull Request
         id: create_pr
         run: |
-          NEW_VERSION="${{ steps.version.outputs.new }}"
-          DESCRIPTION="${{ inputs.description }}"
-          
           PR_BODY="## Release v${NEW_VERSION}
 
           ${DESCRIPTION}
 
-          ### Version Bump (${{ inputs.bump_type }})
-          - \`backend/package.json\`
-          - \`frontend/package.json\`
+          ### Version Bump (${BUMP_TYPE})
+          - \`backend/package.json\`, \`backend/package-lock.json\`
+          - \`frontend/package.json\`, \`frontend/package-lock.json\`
           - \`CHANGELOG.md\`
           - \`frontend/src/utils/changelog.js\`
           - \`frontend/src/components/system/BackupSettings.jsx\`
@@ -195,7 +192,7 @@ jobs:
           
           PR_URL=$(gh pr create \
             --base main \
-            --head "${{ steps.version.outputs.branch }}" \
+            --head "$BRANCH" \
             --title "Release v${NEW_VERSION}: ${DESCRIPTION}" \
             --body "$PR_BODY")
           
@@ -205,6 +202,10 @@ jobs:
             echo "[$PR_URL]($PR_URL)"
           } >> "$GITHUB_STEP_SUMMARY"
         env:
+          NEW_VERSION: ${{ steps.version.outputs.new }}
+          BRANCH: ${{ steps.version.outputs.branch }}
+          BUMP_TYPE: ${{ inputs.bump_type }}
+          DESCRIPTION: ${{ inputs.description }}
           # RELEASE_PAT attributes the PR to the repository owner so CI starts
           # without waiting for approval of a github-actions[bot] author.
           GH_TOKEN: ${{ secrets.RELEASE_PAT }}

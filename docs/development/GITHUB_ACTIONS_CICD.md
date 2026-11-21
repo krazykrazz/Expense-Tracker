@@ -572,9 +572,9 @@ After the merge, CI builds and pushes the image; promote it locally with `.\scri
 
 ## Version Consistency Check
 
-`.github/workflows/version-check.yml` runs on PRs to `main` that touch `frontend/package.json`, `backend/package.json`, either package lockfile, `BackupSettings.jsx`, `SystemModal.jsx`, `frontend/src/utils/changelog.js` or `CHANGELOG.md`:
+`.github/workflows/version-check.yml` runs on PRs to `main` that touch `frontend/package.json`, `backend/package.json`, `BackupSettings.jsx`, `SystemModal.jsx`, `frontend/src/utils/changelog.js` or `CHANGELOG.md`:
 
-- **Non-`release/*` branches** — `Guard Against PR Version Bumps` fails if the diff adds a version string to any of those files except `CHANGELOG.md`. Version bumps belong in the Release workflow
+- **Non-`release/*` branches** — `Guard Against PR Version Bumps` fails if the diff adds a version string to any of those files except `CHANGELOG.md`. Version bumps belong in the Release workflow. Lockfiles are not inspected: dependency updates add `"version"` lines to them
 - **`release/*` branches** — `Validate Version Consistency` checks that `backend/package.json`, `frontend/package.json`, both lockfiles and `changelog.js` agree, and that `CHANGELOG.md`, `BackupSettings.jsx` and `SystemModal.jsx` contain the version
 
 The same rule is enforced locally by the pre-commit hook (`scripts/git-hooks/pre-commit`, installed with `.\scripts\install-git-hooks.ps1`), which blocks staged version changes on `feature/*` and `hotfix/*` branches.

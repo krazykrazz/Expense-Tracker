@@ -64,7 +64,7 @@ describe('update-release-files', () => {
       rootDir,
       version: '1.2.3',
       date: '2026-11-21',
-      description: 'Fix <headers> &  protect "quotes"',
+      description: 'Fix <headers> &  protect "quotes" {braces}',
     });
 
     expect(changed).toHaveLength(8);
@@ -93,13 +93,13 @@ describe('update-release-files', () => {
       path.join(rootDir, 'frontend', 'src', 'components', 'system', 'BackupSettings.jsx'),
       'utf8'
     );
-    expect(backup).toContain('Fix &lt;headers&gt; &amp; protect &quot;quotes&quot;');
+    expect(backup).toContain('Fix &lt;headers&gt; &amp; protect &quot;quotes&quot; &#123;braces&#125;');
 
     const modal = fs.readFileSync(
       path.join(rootDir, 'frontend', 'src', 'components', 'system', 'SystemModal.jsx'),
       'utf8'
     );
-    expect(modal).toContain('Fix &lt;headers&gt; &amp; protect &quot;quotes&quot;');
+    expect(modal).toContain('Fix &lt;headers&gt; &amp; protect &quot;quotes&quot; &#123;braces&#125;');
   });
 
   test('normalizes multiline descriptions', () => {

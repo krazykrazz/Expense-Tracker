@@ -722,8 +722,6 @@ jobs:
           context: .
           load: true
           push: false
-          provenance: mode=max
-          sbom: true
           tags: |
             ghcr.io/${{ github.repository_owner }}/expense-tracker:${{ steps.meta.outputs.sha_short }}
             ghcr.io/${{ github.repository_owner }}/expense-tracker:v${{ steps.meta.outputs.version }}
@@ -809,7 +807,7 @@ jobs:
                 trivy-results.json)
               key=$(printf '%s' "$sev" | tr '[:upper:]' '[:lower:]')
               echo "${key}=$count"
-              echo "${sev}: ${count}"
+              echo "${sev}: ${count}" >&2
             done
           } >> "$GITHUB_OUTPUT"
 
@@ -1022,9 +1020,9 @@ jobs:
             echo "previous_sha=$PREVIOUS_SHA"
             echo "registry=$REGISTRY"
             echo "image_name=$IMAGE_NAME"
-            echo "Current SHA: $CURRENT_SHA"
-            echo "Previous deployment SHA: $PREVIOUS_SHA"
           } >> "$GITHUB_OUTPUT"
+          echo "Current SHA: $CURRENT_SHA"
+          echo "Previous deployment SHA: $PREVIOUS_SHA"
 
       - name: Pull deployed Docker image
         run: docker pull "${{ steps.meta.outputs.image }}"
@@ -1049,18 +1047,18 @@ jobs:
 
       - name: Run backend health check
         id: backend_health
-        run: |
-          RETRIES=${{ inputs.health_check_retries || '10' }}
-          TIMEOUT=${{ inputs.health_check_timeout || '30' }}
-          ./scripts/health-check.sh http://localhost:2424/api/health "$RETRIES" 3 "$TIMEOUT"
+        env:
+          RETRIES: ${{ inputs.health_check_retries || '10' }}
+          TIMEOUT: ${{ inputs.health_check_timeout || '30' }}
+        run: ./scripts/health-check.sh http://localhost:2424/api/health "$RETRIES" 3 "$TIMEOUT"
         continue-on-error: true
 
       - name: Run frontend health check
         id: frontend_health
-        run: |
-          RETRIES=${{ inputs.health_check_retries || '10' }}
-          TIMEOUT=${{ inputs.health_check_timeout || '30' }}
-          ./scripts/health-check.sh http://localhost:2424/ "$RETRIES" 3 "$TIMEOUT"
+        env:
+          RETRIES: ${{ inputs.health_check_retries || '10' }}
+          TIMEOUT: ${{ inputs.health_check_timeout || '30' }}
+        run: ./scripts/health-check.sh http://localhost:2424/ "$RETRIES" 3 "$TIMEOUT"
         continue-on-error: true
 
       - name: Report health check results

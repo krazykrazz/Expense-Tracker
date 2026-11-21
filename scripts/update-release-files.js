@@ -49,13 +49,15 @@ function formatDisplayDate(date) {
   }).format(new Date(`${date}T00:00:00Z`));
 }
 
-function escapeHtml(text) {
+function escapeJsxText(text) {
   return String(text)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+    .replace(/'/g, '&#39;')
+    .replace(/\{/g, '&#123;')
+    .replace(/\}/g, '&#125;');
 }
 
 function readFile(filePath) {
@@ -139,7 +141,7 @@ function updateBackupSettings(rootDir, version, displayDate, description) {
     `                <div className="changelog-version">v${version}</div>`,
     `                <div className="changelog-date">${displayDate}</div>`,
     '                <ul className="changelog-items">',
-    `                  <li>${escapeHtml(description)}</li>`,
+    `                  <li>${escapeJsxText(description)}</li>`,
     '                </ul>',
     '              </div>',
   ].join('\n');
@@ -165,7 +167,7 @@ function updateSystemModal(rootDir, version, displayDate, description) {
     '              </div>',
     `              <div className="changelog-date">${displayDate}</div>`,
     '              <ul className="changelog-items">',
-    `                <li>${escapeHtml(description)}</li>`,
+    `                <li>${escapeJsxText(description)}</li>`,
     '              </ul>',
     '            </div>',
   ].join('\n');

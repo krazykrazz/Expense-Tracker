@@ -53,7 +53,7 @@ Phase 1 (the PoC) is archived at [`specs/archive/plaid-integration/spec.md`](../
 - **Correction (owner was told otherwise):** before this PR a Plaid sync did **not** sort the production Shoppers row out: a settled Plaid row that names its pending version replaces it in place and never looks for a file row.
 - **Not changed:** the production Shoppers file row (id 167) was staged before this rule; it clears when Plaid settles the pending charge after this is deployed, or by ignoring it.
 
-**Next:** 2.9 bank files without a Plaid connection (RBC), 3.9 Add as split (the Add form takes several lines), the rest of Phase 3 (3.3 contributions, 3.4 loan and line-of-credit payments, 3.5 loan payments from fixed expenses) and 4.1b (monthly investment values from the bank, loans and lines of credit; 4.1a, the bank balance of linked RRSP/TFSA accounts, is built). 3.2 is verified in production: the Oct 30 WS VISA and CIBC MC payments are recorded from the card credits with their chequing debits linked.
+**Next:** 2.9 bank files without a Plaid connection (RBC), 3.9 Add as split (the Add form takes several lines), the rest of Phase 3 (3.3 contributions, 3.4 loan and line-of-credit payments, 3.5 loan payments from fixed expenses) and 4.1b (monthly investment values from the bank, loans and lines of credit; 4.1a, the bank balance of linked RRSP/TFSA accounts, is built). 3.2 is verified in production: the Oct 30 WS VISA and CIBC MC payments are recorded from the card credits with their chequing debits linked. Still to see in real use (2026-11-21): a card refund through **Apply to an expense** (3.6), a deposit that lowers the out-of-pocket amount (3.8) and, with 2.9, 3.3 and 3.4, the unbuilt items above.
 
 **Order changes:**
 - **2026-11-03:** card balance reconciliation is the biggest day-to-day problem, so 4.2 was built before the rest of Phase 2. It only needed balance capture from 2.1, done as its own migration `plaid_account_balances_v1`; the transaction columns of 2.1 still come in `plaid_capture_v1`.
@@ -452,13 +452,13 @@ Planned now, because Phase 3 adds five more inbox actions and three more link ta
 **Open:** Q17.
 
 ### Phase 2 exit criteria
-- [ ] 2.1 capture and backfill in production; PFC and balances visible in the DB for new rows. *(Balances done with 4.2; PFC and the other transaction fields built (`plaid_capture_v1`); the backfill of earlier unreviewed rows is built (this PR). Tick once the first sync after the upgrade has filled them in production: 5 rows to review and 19 ignored ones lacked the fields on Nov 17. The merchant logo is dropped.)*
+- [x] 2.1 capture and backfill in production; PFC and balances visible in the DB for new rows. *(Verified 2026-11-21: both one-off backfills ran after 1.29.0 (`plaid_capture_backfill_done` and `plaid_posted_date_backfill_done` are set), 81 of 181 staged rows carry Plaid's category and 16 a merchant id (reviewed rows from before 1.28.0 are not backfilled, by design), and every account has a stored balance. The merchant logo is dropped.)*
 - [x] 2.2 an expired login repaired with Reconnect, without a new Trial slot. *(Verified in production on CIBC instead of a Sandbox `reset_login`; consent expiry still open, low value.)*
 - [x] 2.3 badge counts match the inbox. *(`countToReview` mirrors `findInbox` plus the dropped pending charges; tested against both.)*
 - [x] R1–R8 merged; no Plaid source file over ~350 lines. *(Released in 1.25.4.Splits with R4–R8: `plaidService` 666 → 346 (+ `plaidSyncService` 314, `plaidConnectionSupport` 53), `plaidRepository` 585 → 357 (+ `plaidFileImportRepository` 84, `plaidBalanceCheckRepository` 165), `plaidCardBalanceService` 398 → 290 (+ `utils/plaidCardBalanceMath` 120), `bankFileImport` 403 → 219 (+ `utils/bankFileFormats` 194). Ticked when this PR merges.)*
 - [x] 2.6 a stalled bank shows Not updating, from Plaid's own fetch time.
 - [x] 2.7 Wealthsimple and CIBC files imported in production, merged with Plaid in either order without duplicates.
-- [ ] 2.8 Log in again brings CIBC transactions without a new Trial slot. *(The mechanism was verified by hand on Nov 6: refresh → `ITEM_LOGIN_REQUIRED` → Reconnect brought the missing transactions. #462 shipped in 1.22.0: tick once the button has brought CIBC transactions in production in one go. On Nov 7 a login brought nothing; see Production findings.)*
+- [x] 2.8 Log in again brings CIBC transactions without a new Trial slot. *(Verified 2026-11-21: since Nov 13 the daily CIBC login brings the day's transactions on the same connection (Nov 14: 4 new, 3 updated; Nov 15: 4 new, 2 updated; Nov 16 and 17: new rows and balance changes); CIBC is still item 3 and the Trial counter is still 3. #462 shipped in 1.22.0; the Nov 6 hand check and the Nov 7 login that brought nothing are in Production findings.)*
 - [ ] 2.9 an RBC CSV imported into a payment method with no Plaid connection, reviewed in the Inbox.
 - [x] 2.5 items merged. *(2.5.1–3, 2.5.5 and the 2.5.7 backfill built in this PR, 2.5.4 retired as obsolete; 2.5.6 done in 1.24.6; 2.5.8 superseded by #520; 2.5.9–10 done in 1.27.0–1.28.0. Ticked when this PR merges.)*
 - [ ] Docs per the [matrix](#documentation-matrix); full-suite validation.
@@ -690,7 +690,7 @@ Closes the loop on medical insurance claims (see [`MEDICAL_INSURANCE_TRACKING.md
 > - **Q19 decided (primary action):** **Apply to an expense** is the primary button when `reimbursement.suggested` (learned sender, or an expense entered by hand, or exact amount) and the row isn't an insurance suggestion; otherwise **Add income** stays the default. It is learned per bank description (the ranking above), never an automatic choice.
 > - **Not offered for insurance-tracked expenses or expenses split between people** (Q20 aside: their shares wouldn't add up). A deposit repaying one of those is still ignored or added as income.
 > - **A card keeps the full charge** for a deposit: no payment record is made, and the row is `status = 'matched'` with no `expense_id`.
-> - **Not yet used on production:** the exit criterion below stays unticked until a real person's deposit is applied.
+> - **Used on production (2026-11-21):** a $25.00 e-Transfer was applied through the **entered by hand** path (see the exit criteria). The path that lowers the out-of-pocket amount has not been used yet.
 
 **Why:** such a deposit goes through **Add income** or **Ignore** today. Neither lowers the original expense, so spending stays overstated (or income is). The expense form already supports a hand-entered reimbursement (original cost plus out of pocket, $0.00 allowed since 3.7); nothing links a bank deposit to it.
 
@@ -719,7 +719,7 @@ Closes the loop on medical insurance claims (see [`MEDICAL_INSURANCE_TRACKING.md
 > - **Reconciliation:** `findUnlinkedExpenses` and `findUnlinkedCardActivity` skip parts; the cycle check's bank rows carry `splitAmount` (the parts' total) and its tracker query links a part to its bank row (a complete split shows no cause; the production case before matching showed `amount_differs` +$82.47 and `tracker_only` −$82.47).
 > - **Not built:** Add as split (5); pending rows; the cycle check when the parts of one charge land in different statement cycles (the same posted date is applied to each part, so this needs an edit by hand).
 > - **Found on production (read-only):** the Brio case above, bank row 184 linked to expense 25443 ($244.02) with 25447 ($82.47) unlinked. The WS card also showed orange at the time for an unrelated reason: Wealthsimple reported the card balance as $0.00 at the 22:55 UTC sync (from $4,403.17, with no payment credit), so the check differed by the whole tracker balance. Not caused by the split, and not changed here.
-> - **Not yet used on production:** the exit criterion stays unticked until the Brio charge is matched to its two expenses.
+> - **Used on production (2026-11-21):** the Brio charge was matched to its two expenses with **Add another expense to this charge**.
 
 **The problem (found on production, 2026-11-20):** one card charge is sometimes entered as several expenses because its items clearly belong to different categories. Before Plaid this worked: the card balance is the sum of the expenses. A Wealthsimple charge at Brio for **$326.49** was entered as **$244.02** (Recreation Activities) and **$82.47** (Gifts): the first was added from the Inbox and edited down, the second was entered by hand. Plaid's link is **one bank row ↔ one expense** (`plaid_transactions.expense_id`, with a unique index), so:
 - the bank row is linked to the $244.02 expense, whose pill is orange (*Amount differs from bank: $326.49*), and nothing can ever link the $82.47 expense: **Match** offers only one expense, within max($1.00, 1%) of the bank's amount;
@@ -770,14 +770,14 @@ Closes the loop on medical insurance claims (see [`MEDICAL_INSURANCE_TRACKING.md
 **If it is ever built** (open: Q23): the link is the hard part. The symmetrical design is a table of extra bank rows per expense (like `plaid_split_links` the other way round) with the first row staying in `plaid_transactions.expense_id`, but a bank row can then belong to an expense that is not its `expense_id`, which every reader above would have to learn, and a pill compares the expense's amount with the **sum** of its bank rows (the mirror of 3.9's pill rule). A lighter alternative is a pairing-only mark: **Ignore as part of expense N** keeps the rows out of the Inbox and records which expense they paid, without changing the links or the pill. Neither is needed while the workaround is fine.
 
 ### Phase 3 exit criteria
-- [ ] Inbox shows To review / Not expenses. *(Built with 2.1; tick once in production.)*
+- [x] Inbox shows To review / Not expenses. *(Verified 2026-11-21: in use since Nov 15; five rows were moved to Not expenses by hand with **Not an expense**.)*
 - [x] A real card payment recorded from the card side, with the chequing side linked. *(WS VISA $3,471.31 and CIBC MC $4,104.59 on Oct 30, both sides linked.)*
 - [ ] A contribution recorded against an allocation, shown in the Plan tab.
 - [ ] A loan payment recorded.
-- [ ] A real insurance deposit applied to its claims (3.7), with the claims Paid and the out-of-pocket amounts updated.
-- [ ] A real card refund applied to its purchase (3.6, e.g. the HomeSense $13.74 on CIBC MC), with the purchase's out-of-pocket lowered and the refund shown as a payment on the card.
-- [ ] A person's deposit applied to the expense it repays (3.8), with the out-of-pocket amount updated.
-- [ ] A real split charge matched to its expenses (3.9, e.g. Brio $326.49 = $244.02 + $82.47 on the WS card): green pill on both, no false balance-check cause.
+- [x] A real insurance deposit applied to its claims (3.7), with the claims Paid and the out-of-pocket amounts updated. *(Verified 2026-11-21: the DSF direct deposit of $105.30 (Nov 12) applied to the Carp Chiro claim: Paid, $11.70 out of pocket on a $117.00 original cost.)*
+- [ ] A real card refund applied to its purchase (3.6), with the purchase's out-of-pocket lowered and the refund shown as a payment on the card. *(Not yet through **Apply to an expense**: the HomeSense refund of Nov 13 ($13.54 on production, not the $13.74 first noted) was recorded before 3.6 shipped, as a card payment with the reimbursement entered by hand on the $46.27 purchase: the documented workaround. The next refund will be the test.)*
+- [x] A person's deposit applied to the expense it repays (3.8), with the out-of-pocket amount updated. *(Verified 2026-11-21 for the **entered by hand** path: the $25.00 e-Transfer from Amara Cutler (Nov 18) is linked to the Brown's Independent expense ($259.18 original cost, $234.18 out of pocket), recognised as already reimbursed and left unchanged. The path that **lowers** the out-of-pocket amount has not been used on production yet.)*
+- [x] A real split charge matched to its expenses (3.9, e.g. Brio $326.49 = $244.02 + $82.47 on the WS card): green pill on both, no false balance-check cause. *(Verified 2026-11-21: expense 25447 added to bank row 184 with **Add another expense to this charge** on the day 1.31.0 was deployed.)*
 - [ ] Docs per the matrix; full-suite validation.
 
 ## Phase 4: Balances
@@ -794,7 +794,7 @@ Closes the loop on medical insurance claims (see [`MEDICAL_INSURANCE_TRACKING.md
 > - **Connections:** an `investment` account's dropdown lists the investments as "name (type)", *Don't link* first; an account with subtype `resp` shows "Can't be linked yet" instead. Investments are loaded with the connections, and a failure there leaves the dropdown empty rather than hiding the connections.
 > - **Balance changes:** `findMappedAccountBalances` also returns accounts with an `investment_id`, so a changed balance of a linked investment account is in `plaid_sync_completed` (and open views refresh); unlinked ones stay unlogged.
 > - **Verified on production data (read-only, 2026-11-20):** Wealthsimple sends `current` only (no `available`) in CAD for every investment account, unrounded (e.g. 186331.54567054, rounded to cents for display): RRSP ••3B49 $186,331.55, ••3K48 $40,235.89, ••C649 $0.00, Spousal RRSP ••X140 $92,280.32, three RESPs. The likely links are 3B49 → Kevin Managed RRSP, 3K48 → Kevin Self Directed RRSP, X140 → Spousal RRSP (WealthSimple); the entered monthly values differ from the bank by 0.7% to 3%, which the display makes visible without changing them. The iA investments and the TFSA aren't on Plaid and stay manual.
-> - **Not yet used on production:** the exit criterion below stays unticked until the links are made and the balances seen on the Financial page.
+> - **Used on production (2026-11-20):** the three Wealthsimple RRSP accounts were linked and their balances show on the Financial page.
 **Why:** Wealthsimple's RRSP accounts already send a balance on every sync (4.2 stores it for every account), but nothing shows it: an account has to be mapped to a payment method to show a balance, and an investment isn't one. The owner wants the bank's figure next to each investment first, without the automatic monthly values (4.1b) that change what the app records.
 
 **Requirements**
@@ -899,7 +899,7 @@ Closes the loop on medical insurance claims (see [`MEDICAL_INSURANCE_TRACKING.md
 **Later, optional:** cash on hand in the Budget Plan, or a low-balance warning before a fixed expense is due. Not part of 4.3.
 
 ### Phase 4 exit criteria
-- [ ] 4.1a An RRSP linked to its Wealthsimple account shows the bank balance on the Financial page and in the investment view, flagged when stale; nothing changes with Plaid not configured.
+- [x] 4.1a An RRSP linked to its Wealthsimple account shows the bank balance on the Financial page and in the investment view, flagged when stale; nothing changes with Plaid not configured. *(Verified 2026-11-21: ••3B49, ••3K48 and ••X140 were linked on Nov 20 to Kevin Managed RRSP, Kevin Self Directed RRSP and Spousal RRSP (WealthSimple); the balances show on the Financial page. The right alignment was adjusted in 1.30.1.)*
 - [ ] 4.1b Production RRSP and LOC values update from bank balances without overwriting a hand-entered month.
 - [x] Card balance check matches the Phase 0 manual result. *(Both cards matched to the cent in 1.19.0; differences since then are fully explained by causes.)*
 - [x] 4.3 the WS Shared bank balance shows on the Financial page; nothing changes with Plaid not configured. *(Checked in the browser on a copy of production data: Debit - WS shows Bank $700.52; with Plaid off the hook makes no bank calls and `BankBalance` renders nothing.)*

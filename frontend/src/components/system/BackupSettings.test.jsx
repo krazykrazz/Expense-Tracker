@@ -12,7 +12,7 @@ vi.mock('../../config', () => ({
     BACKUP_STATS: '/api/backup/stats',
     VERSION: '/api/version'
   },
-  default: 'http://localhost:2424'
+  default: 'http://expense-tracker.test.invalid'
 }));
 
 // Mock logger

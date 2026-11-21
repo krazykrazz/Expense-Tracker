@@ -14,6 +14,7 @@
 
 const fc = require('fast-check');
 const { dbPbtOptions, calculatePreviousCycleDates } = require('../test/pbtArbitraries');
+const { calculateDaysUntilDue } = require('../utils/dateUtils');
 const sqlite3 = require('sqlite3').verbose();
 
 // Helper functions (consolidated from source files)
@@ -182,38 +183,6 @@ function insertPayment(db, payment) {
       }
     );
   });
-}
-
-// Helper function to calculate days until due
-function calculateDaysUntilDue(paymentDueDay, referenceDate) {
-  if (!paymentDueDay || paymentDueDay < 1 || paymentDueDay > 31) {
-    return null;
-  }
-
-  const today = new Date(referenceDate);
-  today.setHours(0, 0, 0, 0);
-  
-  const currentDay = today.getDate();
-  const currentMonth = today.getMonth();
-  const currentYear = today.getFullYear();
-  
-  let dueDate;
-  
-  if (currentDay <= paymentDueDay) {
-    dueDate = new Date(currentYear, currentMonth, paymentDueDay);
-  } else {
-    dueDate = new Date(currentYear, currentMonth + 1, paymentDueDay);
-  }
-  
-  const lastDayOfMonth = new Date(dueDate.getFullYear(), dueDate.getMonth() + 1, 0).getDate();
-  if (paymentDueDay > lastDayOfMonth) {
-    dueDate.setDate(lastDayOfMonth);
-  }
-  
-  const diffTime = dueDate.getTime() - today.getTime();
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  
-  return diffDays;
 }
 
 // NOTE: calculatePreviousCycleDates is now imported from pbtArbitraries

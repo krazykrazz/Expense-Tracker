@@ -25,13 +25,13 @@ The repository restricts which actions can run. Allowed: GitHub-owned actions (`
 | Detect Changed Paths | `path-filter` | Every run | Decides which test jobs run |
 | Lockfile Integrity | `lockfile-integrity` | Every run | `npm ci` in root, `backend/` and `frontend/` |
 | Security Audit | `security-audit` | Every run | `npm audit --audit-level=high` for backend and frontend |
-| Backend Unit Tests | `backend-unit-tests` | Backend or shared changes | Jest (non-PBT), test-naming check, runtime budget |
+| Backend Unit Tests 1/2, 2/2 | `backend-unit-tests` | Backend or shared changes | Jest (non-PBT) in 2 shards; shard 1 runs enforcement-script tests |
 | Backend PBT Shard 1/3, 2/3, 3/3 | `backend-pbt-shards` | Backend or shared changes | Jest PBT in 3 shards; shard 1 also runs backup suites and PBT guardrails |
 | Backend PBT Tests | `backend-pbt-tests` | Backend or shared changes | Aggregates the shard results |
 | Backend Tests Status | `backend-tests-status` | Every run | **Required check** — passes if backend tests passed or were legitimately skipped |
 | Frontend Tests | `frontend-tests` | Frontend or shared changes | Vitest, test-naming and raw-fetch checks, runtime budget |
 | Frontend Tests Status | `frontend-tests-status` | Every run | **Required check** — passes if frontend tests passed or were legitimately skipped |
-| Test Health Report | `test-health-report` | Every run | Writes test-file counts by category to the workflow summary |
+| Test Health Report | `test-health-report` | Every run | Reports inventory plus actual files, tests, skips, retries, unhandled errors, duration, and slowest files from uploaded JSON artifacts |
 | Build and Push to GHCR | `build-and-push-ghcr` | Push / `workflow_dispatch` on `main` only, when both status aggregators pass | Build, Trivy scan, push to GHCR, GitHub release |
 | Deployment Health Check | `deployment-health-check` | After `build-and-push-ghcr` succeeds | Boots the image, health-checks it, rollback check, deployment record |
 
@@ -261,13 +261,17 @@ security-audit:
 backend-unit-tests:
   runs-on: ubuntu-latest
   needs: path-filter
+  strategy:
+    fail-fast: false
+    matrix:
+      shard: ['1/2', '2/2']
   working-directory: backend
 ```
 
-- **Node.js**: Version 22, npm cache, `npm install`
-- **Checks**: `npx jest --config ../scripts/jest.config.js` (unit tests for the CI enforcement scripts in `scripts/__tests__/`)
-- **Test Command**: `npx cross-env NODE_ENV=test CI=true jest --bail --testPathIgnorePatterns=pbt --testPathIgnorePatterns="backup.*(integration|pbt)"` (backup suites run in PBT shard 1)
-- **Runtime budget**: `check-test-budget.js backend-unit-tests` (see [Runtime Budgets](#runtime-budgets))
+- **Node.js**: Version 22, npm cache, `npm ci`
+- **Checks**: shard 1 runs `npx jest --config ../scripts/jest.config.js` for the CI enforcement scripts in `scripts/__tests__/`
+- **Test Command**: Jest non-PBT tests with `--shard=N/2`, `--json`, and a per-shard output file (backup suites run in PBT shard 1)
+- **Runtime budget**: `check-test-budget.js backend-unit-tests` per shard (see [Runtime Budgets](#runtime-budgets))
 - **Conditional Execution**: Runs only if backend or shared files changed (or no filter matched, or path-filter failed)
 
 #### Backend PBT Tests (Sharded)
@@ -278,13 +282,13 @@ backend-pbt-shards:
   runs-on: ubuntu-latest
   needs: path-filter
   strategy:
-    fail-fast: true
+    fail-fast: false
     matrix:
       shard: ['1/3', '2/3', '3/3']
 ```
 
-- **Node.js**: Version 22, npm cache, `npm install`
-- **Test Command**: `npx cross-env NODE_ENV=test CI=true FAST_CHECK_NUM_RUNS=15 jest --bail --testPathPatterns=pbt --testPathIgnorePatterns="backup" --shard=N/3`
+- **Node.js**: Version 22, npm cache, `npm ci`
+- **Test Command**: `npx cross-env NODE_ENV=test CI=true FAST_CHECK_NUM_RUNS=15 jest --testPathPatterns=pbt --testPathIgnorePatterns="backup" --shard=N/3 --json ...`
 - **Shard 1 only**: `npm run test:backup:ci` (backup integration and PBT suites, `--runInBand`), then `node ../scripts/validate-pbt-guardrails.js`
 - **Runtime budget**: `check-test-budget.js backend-pbt-shard` per shard; shard 1's elapsed time includes the backup suites and guardrail check
 - **Summary Job**: `Backend PBT Tests` fails unless all shards succeeded
@@ -314,10 +318,11 @@ frontend-tests:
   working-directory: frontend
 ```
 
-- **Node.js**: Version 22, npm cache, `npm install`
+- **Node.js**: Version 22, npm cache, `npm ci`
 - **Checks**: `node ../scripts/validate-no-raw-fetch.js`
-- **Test Command**: `npx vitest --run --exclude '**/App.performance.test.jsx'`
-- **CI settings** (`vitest.config.js` with `CI=true`): 2 forks, `retry: 2`, `bail: 1`, verbose reporter
+- **Network safety**: the test API base URL is a reserved `.test.invalid` host and setup installs a fail-closed fetch mock before test modules load
+- **Test Command**: `npx vitest --run --exclude '**/App.performance.test.jsx' --reporter=default --reporter=json --outputFile.json=...`
+- **CI settings** (`vitest.config.js` with `CI=true`): isolated fork pool with 4 workers; retries and bail are disabled so first-attempt failures remain visible
 - **Runtime budget**: `check-test-budget.js frontend-tests`
 - **Conditional Execution**: Runs only if frontend or shared files changed (or no filter matched, or path-filter failed)
 
@@ -345,8 +350,8 @@ test-health-report:
   if: always()
 ```
 
-- Runs `node scripts/report-test-health.js >> $GITHUB_STEP_SUMMARY`
-- Counts test files by category (unit, integration, PBT, transition `*.test.*`) — informational only
+- Downloads each test job's JSON artifact and runs `node scripts/report-test-health.js --results ... >> $GITHUB_STEP_SUMMARY`
+- Reports static inventory and actual files, passed/failed/skipped tests, retries, unhandled errors, aggregate duration, and the slowest files
 
 ### Runtime Budgets
 
@@ -371,15 +376,16 @@ The frontend tests exclude `App.performance.test.jsx` because:
 To run performance tests locally:
 ```bash
 cd frontend
-npx vitest run App.performance.test.jsx
+npm run test:performance
 ```
 
 ### Parallel Execution
 
-The test jobs (backend unit, three PBT shards, frontend) run simultaneously for fast feedback:
+The test jobs (two backend unit shards, three PBT shards, frontend) run simultaneously for fast feedback:
 - **Backend**: Jest runs test files across parallel workers. Each worker uses its own SQLite database (`test-expenses-worker-{JEST_WORKER_ID}.db`) inside the isolated `backend/.test-config/` tree that `jest.globalSetup.js` recreates at the start of every run
+- **Backend unit**: split across 2 shards with `--shard`
 - **Backend PBT**: split across 3 shards with `--shard`, each with parallel workers
-- **Frontend**: Vitest `forks` pool, capped at 2 forks in CI
+- **Frontend**: isolated Vitest `forks` pool, capped at 4 forks in CI; `--no-isolate` is unsafe because module mocks leak between files
 
 ## Checking CI Status on PRs
 

@@ -11,7 +11,13 @@ const fs = require('fs');
 const os = require('os');
 
 const { hasInvariantComment, hasDirectDbImport, isUnitTestFile, validatePbtGuardrails } = require('../validate-pbt-guardrails');
-const { classifyFile, generateReport, formatMarkdown, formatPlainText } = require('../report-test-health');
+const {
+  classifyFile,
+  generateReport,
+  formatMarkdown,
+  formatPlainText,
+  parseTestResult
+} = require('../report-test-health');
 const { checkBudget, loadBudget } = require('../check-test-budget');
 const { scanFileForRawFetch, validateNoRawFetch, isTestFile, isAllowedFile } = require('../validate-no-raw-fetch');
 
@@ -259,6 +265,79 @@ describe('report-test-health', () => {
       expect(text).toContain('Test Health Report');
       expect(text).toContain('Total test files: 5');
       expect(text).toContain('PBT percentage: 20.0%');
+    });
+  });
+
+  describe('execution results', () => {
+    test('counts passes, failures, skips, retries, unhandled errors, and durations', () => {
+      const result = parseTestResult({
+        success: false,
+        startTime: 1000,
+        numUnhandledErrors: 1,
+        testResults: [{
+          name: 'backend/services/example.test.js',
+          status: 'failed',
+          startTime: 1000,
+          endTime: 2400,
+          assertionResults: [
+            { status: 'passed', duration: 100, invocations: 2, retryReasons: [] },
+            { status: 'failed', duration: 200, invocations: 1, retryReasons: ['transient'] },
+            { status: 'pending', duration: 0 }
+          ]
+        }]
+      }, process.cwd());
+
+      expect(result).toMatchObject({
+        files: 1,
+        tests: 3,
+        passed: 1,
+        failed: 1,
+        skipped: 1,
+        retries: 2,
+        unhandledErrors: 1,
+        durationMs: 1400,
+        success: false
+      });
+      expect(result.slowFiles[0].file).toContain('example.test.js');
+    });
+
+    test('includes execution health in markdown output', () => {
+      const report = {
+        total: 1,
+        counts: { 'Unit (transition)': 1 },
+        areaCounts: {
+          Backend: { 'Unit (transition)': 1 },
+          Frontend: {}
+        },
+        execution: {
+          runs: [{
+            name: 'backend',
+            runner: 'jest',
+            files: 1,
+            passed: 2,
+            failed: 0,
+            skipped: 1,
+            retries: 0,
+            unhandledErrors: 0,
+            durationMs: 2500,
+            slowFiles: []
+          }],
+          totals: {
+            tests: 3,
+            files: 1,
+            runs: 1,
+            durationMs: 2500,
+            success: true
+          },
+          slowFiles: []
+        }
+      };
+
+      const markdown = formatMarkdown(report);
+
+      expect(markdown).toContain('### Test Execution Health');
+      expect(markdown).toContain('**Overall result:** PASS');
+      expect(markdown).toContain('| backend | jest | 1 | 2 | 0 | 1 | 0 | 0 | 2.5s |');
     });
   });
 });

@@ -34,7 +34,7 @@ vi.mock('../../config', () => ({
     PLACE_NAMES_STANDARDIZE: '/api/expenses/place-names/standardize',
     REMINDER_STATUS: (year, month) => `/api/reminders/status/${year}/${month}`
   },
-  default: 'http://localhost:2424'
+  default: 'http://expense-tracker.test.invalid'
 }));
 
 import * as peopleApi from '../../services/peopleApi';

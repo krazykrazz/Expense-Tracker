@@ -1,10 +1,10 @@
 {
   "overridePattern": "\\[skip-budget\\]",
-  "//": "Budgets catch a suite getting materially slower, not slow runners. Each is ~2x the observed median so a real regression trips it while normal runner variance does not. Derived 2026-09-14 from job durations across 15 successful CI runs.",
+  "//": "Budgets catch a suite or shard getting materially slower, not ordinary runner variance. Update the description with measured evidence whenever the test topology changes.",
   "budgets": {
     "backend-unit-tests": {
       "maxSeconds": 180,
-      "description": "Backend unit tests (backup suites run in backend-pbt shard 1). Observed 2026-09-14 across 15 successful runs: min 72s, median 81s, max 99s. The previous 90s budget sat BELOW the observed successful range; one run took 166s on a slow runner with all 2215 tests passing."
+      "description": "Per backend unit shard (backup suites run in backend-pbt shard 1). The two shards keep the integration-heavy unit surface below this budget while preserving per-worker SQLite isolation."
     },
     "backend-pbt-shard": {
       "maxSeconds": 210,
@@ -12,7 +12,7 @@
     },
     "frontend-tests": {
       "maxSeconds": 480,
-      "description": "Frontend Vitest suite (parallel forks). Observed 2026-09-14: min 288s, median 327s, max 335s. The previous 360s budget left only 7% headroom over the observed max."
+      "description": "Frontend Vitest suite (isolated fork pool with 4 CI workers). The budget still leaves headroom for runner variance; file-isolation is required because --no-isolate breaks shared module mocks."
     }
   }
 }

@@ -13,7 +13,7 @@ Full CI reference: `docs/development/GITHUB_ACTIONS_CICD.md`.
 | `validate-no-raw-fetch.js` | Frontend Tests | bare `fetch(` in `frontend/src` source |
 | `validate-pbt-guardrails.js` | Backend PBT Shard 1/3 | missing invariant comment, PBT share > 48%, unit test importing `database/db` |
 | `check-test-budget.js <job> <seconds>` | every test job (last step) | elapsed > `budgets.<job>.maxSeconds` in `test-budget.json`, even if all tests passed |
-| `report-test-health.js` | Test Health Report | (never; writes test-file counts to the run summary) |
+| `report-test-health.js` | Test Health Report | (never; reports inventory plus uploaded pass/fail/skip/retry/unhandled/duration data) |
 
 Tests for these scripts live in `scripts/__tests__/` and run in Backend Unit Tests via `npx jest --config ../scripts/jest.config.js` (from `backend/`, which supplies jest and fast-check). Run the same command locally after changing a script.
 

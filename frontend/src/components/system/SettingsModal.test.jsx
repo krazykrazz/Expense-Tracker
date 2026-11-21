@@ -32,7 +32,7 @@ vi.mock('../../config', () => ({
     BACKUP_CONFIG: '/api/backup/config',
     ACTIVITY_LOGS_SETTINGS: '/api/activity-logs/settings'
   },
-  default: 'http://localhost:2424'
+  default: 'http://expense-tracker.test.invalid'
 }));
 
 // Mock activityLogApi (used by SettingsModal for retention settings)

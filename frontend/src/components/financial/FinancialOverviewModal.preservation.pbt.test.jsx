@@ -32,7 +32,7 @@ vi.mock('../../config', () => ({
   API_ENDPOINTS: {
     REMINDER_STATUS: (year, month) => `/api/reminders/status/${year}/${month}`,
   },
-  default: 'http://localhost:2424'
+  default: 'http://expense-tracker.test.invalid'
 }));
 
 vi.mock('../../utils/logger', () => ({

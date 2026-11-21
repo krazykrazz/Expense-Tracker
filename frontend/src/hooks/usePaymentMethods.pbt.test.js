@@ -116,7 +116,7 @@ describe('usePaymentMethods Property-Based Tests', () => {
             unmount();
           }
         ),
-        pbtOptions({ numRuns: 100 })
+        pbtOptions()
       );
     });
 
@@ -154,7 +154,7 @@ describe('usePaymentMethods Property-Based Tests', () => {
             unmount();
           }
         ),
-        pbtOptions({ numRuns: 100 })
+        pbtOptions()
       );
     });
 
@@ -191,7 +191,7 @@ describe('usePaymentMethods Property-Based Tests', () => {
             unmount();
           }
         ),
-        pbtOptions({ numRuns: 100 })
+        pbtOptions()
       );
     });
   });

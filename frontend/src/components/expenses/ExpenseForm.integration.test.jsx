@@ -19,7 +19,7 @@ vi.mock('../../config', () => ({
     INVOICE_UPLOAD: '/api/invoices/upload',
     INVOICE_FILE: (expenseId, invoiceId) => `/api/invoices/${expenseId}/${invoiceId}/file`
   },
-  default: 'http://localhost:2424'
+  default: 'http://expense-tracker.test.invalid'
 }));
 
 import * as peopleApi from '../../services/peopleApi';

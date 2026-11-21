@@ -15,7 +15,7 @@ vi.mock('../../config', () => ({
     ACTIVITY_LOGS_STATS: '/api/activity-logs/stats',
     ACTIVITY_LOGS_SETTINGS: '/api/activity-logs/settings'
   },
-  default: 'http://localhost:2424'
+  default: 'http://expense-tracker.test.invalid'
 }));
 
 // Mock logger

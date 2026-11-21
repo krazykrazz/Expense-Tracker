@@ -17,6 +17,7 @@ import { render, waitFor, fireEvent, cleanup, act } from '@testing-library/react
 import userEvent from '@testing-library/user-event';
 import * as fc from 'fast-check';
 import ExpenseForm from './ExpenseForm';
+import { uiPbtOptions } from '../../test/pbtArbitraries';
 
 vi.mock('../../contexts/ModalContext', () => ({
   ModalProvider: ({ children }) => children,
@@ -409,7 +410,7 @@ describe('ExpenseForm Property-Based Tests', () => {
           unmount();
         }
       ),
-      { numRuns: 100 }
+      uiPbtOptions()
     );
   });
 
@@ -673,7 +674,7 @@ describe('ExpenseForm Property-Based Tests', () => {
           sessionStorage.clear();
         }
       ),
-      { numRuns: 100 }
+      uiPbtOptions()
     );
   });
 
@@ -1044,7 +1045,7 @@ describe('ExpenseForm Property-Based Tests', () => {
           unmount();
         }
       ),
-      { numRuns: 100 }
+      uiPbtOptions()
     );
   });
 
@@ -1202,7 +1203,7 @@ describe('ExpenseForm Property-Based Tests', () => {
           unmount();
         }
       ),
-      { numRuns: 100 }
+      uiPbtOptions()
     );
   });
 });

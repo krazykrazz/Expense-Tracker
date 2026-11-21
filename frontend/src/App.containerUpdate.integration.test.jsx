@@ -7,8 +7,7 @@ vi.mock('./utils/fetchProvider', () => ({
   setFetchFn: vi.fn(),
 }));
 
-import { render, screen, act, cleanup, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, screen, act, cleanup, fireEvent } from '@testing-library/react';
 import App from './App';
 
 vi.mock('./utils/tabId.js', () => ({
@@ -73,6 +72,7 @@ describe('App Container Update Integration Tests', () => {
   let originalLocation;
 
   beforeEach(() => {
+    vi.useFakeTimers();
     MockEventSource.reset();
     vi.stubGlobal('EventSource', MockEventSource);
     currentVersionResponse = { ...INITIAL_VERSION };
@@ -83,34 +83,42 @@ describe('App Container Update Integration Tests', () => {
     window.location = { ...originalLocation, reload: vi.fn() };
     vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'debug').mockImplementation(() => {});
   });
 
   afterEach(() => {
     cleanup();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
+    vi.useRealTimers();
     window.location = originalLocation;
   });
 
   async function waitForAppReady() {
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /expense tracker/i })).toBeInTheDocument();
+    await act(async () => {
+      await Promise.resolve();
     });
-    await waitFor(() => {
-      expect(MockEventSource._instances.length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByRole('heading', { name: /expense tracker/i })).toBeInTheDocument();
+    expect(MockEventSource._instances.length).toBeGreaterThanOrEqual(1);
+    await act(async () => {
+      MockEventSource.latest().onopen?.();
+      await Promise.resolve();
     });
-    act(() => { MockEventSource.latest().onopen?.(); });
-    await new Promise(r => setTimeout(r, 200));
   }
 
   async function simulateSseReconnect() {
     const countBefore = MockEventSource._instances.length;
-    act(() => { MockEventSource.latest().onerror?.(); });
-    await waitFor(() => {
-      expect(MockEventSource._instances.length).toBeGreaterThan(countBefore);
-      expect(MockEventSource.latest().closed).toBe(false);
-    }, { timeout: 5000 });
-    act(() => { MockEventSource.latest().onopen?.(); });
+    await act(async () => {
+      MockEventSource.latest().onerror?.();
+      await vi.advanceTimersByTimeAsync(3000);
+    });
+    expect(MockEventSource._instances.length).toBeGreaterThan(countBefore);
+    expect(MockEventSource.latest().closed).toBe(false);
+
+    await act(async () => {
+      MockEventSource.latest().onopen?.();
+      await vi.advanceTimersByTimeAsync(5000);
+    });
   }
 
   it('shows update banner when version changes after SSE reconnect', async () => {
@@ -121,9 +129,7 @@ describe('App Container Update Integration Tests', () => {
     currentVersionResponse = { ...CHANGED_VERSION };
     await simulateSseReconnect();
 
-    await waitFor(() => {
-      expect(screen.getByTestId('update-banner')).toBeInTheDocument();
-    }, { timeout: 8000 });
+    expect(screen.getByTestId('update-banner')).toBeInTheDocument();
 
     const banner = screen.getByTestId('update-banner');
     expect(banner).toHaveAttribute('role', 'alert');
@@ -131,28 +137,23 @@ describe('App Container Update Integration Tests', () => {
   }, 15000);
 
   it('re-shows banner after dismiss when another mismatch is detected', async () => {
-    const user = userEvent.setup();
     render(<App />);
     await waitForAppReady();
 
     currentVersionResponse = { ...CHANGED_VERSION };
     await simulateSseReconnect();
 
-    await waitFor(() => {
-      expect(screen.getByTestId('update-banner')).toBeInTheDocument();
-    }, { timeout: 8000 });
+    expect(screen.getByTestId('update-banner')).toBeInTheDocument();
 
     const dismissBtn = screen.getByLabelText('Dismiss update notification');
-    await user.click(dismissBtn);
-    await waitFor(() => {
-      expect(screen.queryByTestId('update-banner')).not.toBeInTheDocument();
+    act(() => {
+      fireEvent.click(dismissBtn);
     });
+    expect(screen.queryByTestId('update-banner')).not.toBeInTheDocument();
 
     await simulateSseReconnect();
 
-    await waitFor(() => {
-      expect(screen.getByTestId('update-banner')).toBeInTheDocument();
-    }, { timeout: 8000 });
+    expect(screen.getByTestId('update-banner')).toBeInTheDocument();
     expect(screen.getByTestId('update-banner').textContent).toContain('5.13.0');
   }, 30000);
 
@@ -160,20 +161,22 @@ describe('App Container Update Integration Tests', () => {
     versionShouldFail = true;
     render(<App />);
 
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /expense tracker/i })).toBeInTheDocument();
+    await act(async () => {
+      await Promise.resolve();
     });
-    await waitFor(() => {
-      expect(MockEventSource._instances.length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByRole('heading', { name: /expense tracker/i })).toBeInTheDocument();
+    expect(MockEventSource._instances.length).toBeGreaterThanOrEqual(1);
+    await act(async () => {
+      MockEventSource.latest().onopen?.();
+      await Promise.resolve();
     });
-    act(() => { MockEventSource.latest().onopen?.(); });
 
-    await new Promise(r => setTimeout(r, 8000));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(7000);
+    });
     expect(screen.queryByTestId('update-banner')).not.toBeInTheDocument();
 
     await simulateSseReconnect();
-    await new Promise(r => setTimeout(r, 6000));
-
     expect(screen.queryByTestId('update-banner')).not.toBeInTheDocument();
   }, 25000);
 });

@@ -12,7 +12,10 @@ Details: `docs/development/FRONTEND_TESTING_GUIDELINES.md`, `docs/development/CI
   - Fast validation: `npm run test:unit:parallel` then `npm run test:backup:ci`
   - One file: `npm test -- --testPathPatterns <name>` (plural flag)
   - `npm test` runs everything including PBT serially (very slow); CI's 3 PBT shards are the authoritative PBT signal
+  - Coverage diagnostics: `npm run test:coverage` (non-gating unit/integration JSON + text summary; PBT remains in dedicated shards)
 - Frontend (Vitest, from `frontend/`): `npx vitest --run <pattern>`. Before pushing, validate with CI settings: `npx cross-env CI=true npx vitest --run`.
+  - Coverage diagnostics: `npm run test:coverage`
+  - Local performance test: `npm run test:performance`
 - Full suites together: `.\scripts\run-test-summary.ps1` (writes `test-failure-summary.txt` and raw output files, gitignored).
 
 ## Choosing a Test Type
@@ -44,3 +47,4 @@ Don't write PBT over mocked return values, booleans/tiny enums, or random props 
 - Vitest exits non-zero on unhandled errors even when all tests pass — check the exit code.
 - Date helpers: call `setDate(1)` before `setMonth()` to avoid month-end overflow; avoid comparing "current month" data on the 1st (end-exclusive windows).
 - Frontend tests needing context: `render`/`renderHook` from `@testing-library/react` with a wrapper from `test-utils/wrappers.jsx`. Mock service modules rather than `fetch`.
+- Frontend tests must never contact a live service: setup blocks `fetch` before imports and uses a reserved `.test.invalid` base URL. Treat a `Network access is disabled in frontend tests` error as a missing mock.

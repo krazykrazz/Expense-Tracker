@@ -7,7 +7,7 @@ vi.mock('./utils/fetchProvider', () => ({
   setFetchFn: vi.fn(),
 }));
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from './App';
 
@@ -47,6 +47,7 @@ vi.mock('./config', () => {
       PAYMENT_METHODS: `${API_BASE_URL}/api/payment-methods`,
       PAYMENT_METHOD_ACTIVE: `${API_BASE_URL}/api/payment-methods/active`,
       PAYMENT_METHOD_BY_ID: (id) => `${API_BASE_URL}/api/payment-methods/${id}`,
+      AUTO_LOG_SUGGESTIONS: () => `${API_BASE_URL}/api/fixed-expenses/auto-log-suggestions`,
       REMINDER_STATUS: (year, month) => `${API_BASE_URL}/api/reminders/status/${year}/${month}`,
       BACKUP_CONFIG: `${API_BASE_URL}/api/backup/config`,
       BACKUP_LIST: `${API_BASE_URL}/api/backup/list`,
@@ -176,6 +177,12 @@ describe('App Performance Tests', () => {
           json: () => Promise.resolve({ needsReminder: false })
         });
       }
+      if (urlStr.includes('/auto-log-suggestions')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([])
+        });
+      }
       if (urlStr.includes('/api/investments')) {
         return Promise.resolve({
           ok: true,
@@ -243,7 +250,9 @@ describe('App Performance Tests', () => {
     await user.type(searchInput, 'Store');
     
     // Wait for debounce delay (300ms)
-    await new Promise(resolve => setTimeout(resolve, 400));
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 400));
+    });
     
     const fetchCallsAfter = global.fetch.mock.calls.length;
     
@@ -282,8 +291,7 @@ describe('App Performance Tests', () => {
     const endTime = performance.now();
     const filterTime = endTime - startTime;
     
-    // Filtering should complete in reasonable time (under 120 seconds - increased for CI/slow machines)
-    expect(filterTime).toBeLessThan(120000);
+    expect(filterTime).toBeLessThan(5000);
   }, 150000);
 
   it('should handle rapid filter changes efficiently', async () => {
@@ -317,9 +325,7 @@ describe('App Performance Tests', () => {
     const endTime = performance.now();
     const totalTime = endTime - startTime;
     
-    // Multiple rapid filter changes should complete in reasonable time (under 120 seconds)
-    // Increased threshold to account for system load variations and CI environments
-    expect(totalTime).toBeLessThan(120000);
+    expect(totalTime).toBeLessThan(5000);
   }, 150000);
 
   it('should efficiently clear all filters on large dataset', async () => {
@@ -349,7 +355,9 @@ describe('App Performance Tests', () => {
     await user.type(searchInput, 'Store');
     
     // Wait for debounce
-    await new Promise(resolve => setTimeout(resolve, 400));
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 400));
+    });
     
     // Clear all filters
     const startTime = performance.now();
@@ -360,8 +368,6 @@ describe('App Performance Tests', () => {
     const endTime = performance.now();
     const clearTime = endTime - startTime;
     
-    // Clearing should be reasonably fast (under 10 seconds)
-    // Increased threshold to account for system load variations
-    expect(clearTime).toBeLessThan(10000);
+    expect(clearTime).toBeLessThan(1000);
   }, 120000);
 });

@@ -13,7 +13,6 @@
  * 
  * CI RELIABILITY FEATURES:
  * - Increased timeouts for CI environments
- * - Retry logic for flaky tests (jest.retryTimes)
  * - Console suppression to reduce noise
  * - Directory initialization for file-based tests
  */
@@ -29,11 +28,6 @@ const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
 // Global test timeout - longer in CI due to slower runners
 const baseTimeout = isCI ? 45000 : 30000;
 jest.setTimeout(baseTimeout);
-
-// Enable retry for flaky tests in CI (retry failed tests up to 2 times)
-if (isCI) {
-  jest.retryTimes(2, { logErrorsBeforeRetry: true });
-}
 
 // Ensure required directories exist for file-based tests
 const ensureTestDirectories = () => {

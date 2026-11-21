@@ -16,7 +16,8 @@
 const fc = require('fast-check');
 const sqlite3 = require('sqlite3').verbose();
 const { dbPbtOptions } = require('../test/pbtArbitraries');
-const { ALL_STATEMENTS, TABLE_STATEMENTS, INDEX_STATEMENTS, TRIGGER_STATEMENTS } = require('./schema');
+const { runMigrations } = require('./migrations');
+const { ALL_STATEMENTS, FRESH_SCHEMA_STATEMENTS } = require('./schema');
 
 // ─── Helpers ───
 
@@ -52,9 +53,24 @@ function get(db, sql, params = []) {
 }
 
 async function applySchema(db) {
+  for (const stmt of FRESH_SCHEMA_STATEMENTS) {
+    await run(db, stmt);
+  }
+}
+
+async function applyProductionSchema(db) {
   for (const stmt of ALL_STATEMENTS) {
     await run(db, stmt);
   }
+}
+
+function normalizeSchemaSql(sql) {
+  return sql
+    .replace(/["`]/g, '')
+    .replace(/\bIF NOT EXISTS\b/gi, '')
+    .replace(/\s+/g, ' ')
+    .replace(/\s*([(),])\s*/g, '$1')
+    .trim();
 }
 
 
@@ -104,30 +120,22 @@ const TABLE_NAMES = Object.keys(EXPECTED_TABLES);
 // ─── Property 1: Schema completeness ───
 
 describe('Feature: migration-consolidation, Property 1: Schema completeness', () => {
-  test('For any table name from the expected 25, columns match the documented schema', async () => {
-    await fc.assert(
-      fc.asyncProperty(
-        fc.constantFrom(...TABLE_NAMES),
-        async (tableName) => {
-          const db = await openDb();
-          try {
-            await applySchema(db);
-            const columns = await all(db, `PRAGMA table_info("${tableName}")`);
-            const columnNames = columns.map(c => c.name);
-            const expected = EXPECTED_TABLES[tableName];
+  test.each(TABLE_NAMES)(
+    'table %s has exactly the documented columns',
+    async (tableName) => {
+      const db = await openDb();
+      try {
+        await applySchema(db);
+        const columns = await all(db, `PRAGMA table_info("${tableName}")`);
 
-            // Verify exact column set
-            expect(columnNames).toEqual(expected);
-            // Verify column count
-            expect(columns.length).toBe(expected.length);
-          } finally {
-            await closeDb(db);
-          }
-        }
-      ),
-      dbPbtOptions({ numRuns: 100 })
-    );
-  }, 120000);
+        expect(columns.map(c => c.name)).toEqual(EXPECTED_TABLES[tableName]);
+        expect(columns.length).toBe(EXPECTED_TABLES[tableName].length);
+      } finally {
+        await closeDb(db);
+      }
+    },
+    120000
+  );
 
   test('Schema creates exactly 35 tables', async () => {
     const db = await openDb();
@@ -162,57 +170,47 @@ describe('Feature: migration-consolidation, Property 2: Schema idempotency', () 
   };
 
   const insertableTableNames = Object.keys(insertFns);
+  const idempotencyCases = insertableTableNames.flatMap((tableName) =>
+    [1, 2, 3, 4, 5].map((insertCount) => [tableName, insertCount])
+  );
 
-  test('For any database with data, executing schema twice preserves data and schema', async () => {
-    await fc.assert(
-      fc.asyncProperty(
-        fc.constantFrom(...insertableTableNames),
-        fc.integer({ min: 1, max: 5 }),
-        async (tableName, insertCount) => {
-          const db = await openDb();
+  test.each(idempotencyCases)(
+    'reapplying the schema preserves %s with %i insert attempts',
+    async (tableName, insertCount) => {
+      const db = await openDb();
+      try {
+        await applySchema(db);
+
+        for (let i = 0; i < insertCount; i++) {
           try {
-            // First schema application
-            await applySchema(db);
-
-            // Insert data
-            for (let i = 0; i < insertCount; i++) {
-              try {
-                await insertFns[tableName](db);
-              } catch (e) {
-                // UNIQUE constraint violations are expected for some tables on repeat inserts
-                if (!e.message.includes('UNIQUE constraint')) throw e;
-              }
-            }
-
-            // Count data and schema objects before second run
-            const countBefore = await get(db, `SELECT COUNT(*) as c FROM "${tableName}"`);
-            const tablesBefore = await all(db, "SELECT name FROM sqlite_master WHERE type='table' AND name != 'sqlite_sequence'");
-            const indexesBefore = await all(db, "SELECT name FROM sqlite_master WHERE type='index' AND sql IS NOT NULL");
-            const triggersBefore = await all(db, "SELECT name FROM sqlite_master WHERE type='trigger'");
-
-            // Second schema application — should not error or lose data
-            await applySchema(db);
-
-            // Verify data preserved
-            const countAfter = await get(db, `SELECT COUNT(*) as c FROM "${tableName}"`);
-            expect(countAfter.c).toBe(countBefore.c);
-
-            // Verify schema unchanged
-            const tablesAfter = await all(db, "SELECT name FROM sqlite_master WHERE type='table' AND name != 'sqlite_sequence'");
-            const indexesAfter = await all(db, "SELECT name FROM sqlite_master WHERE type='index' AND sql IS NOT NULL");
-            const triggersAfter = await all(db, "SELECT name FROM sqlite_master WHERE type='trigger'");
-
-            expect(tablesAfter.length).toBe(tablesBefore.length);
-            expect(indexesAfter.length).toBe(indexesBefore.length);
-            expect(triggersAfter.length).toBe(triggersBefore.length);
-          } finally {
-            await closeDb(db);
+            await insertFns[tableName](db);
+          } catch (e) {
+            if (!e.message.includes('UNIQUE constraint')) throw e;
           }
         }
-      ),
-      dbPbtOptions({ numRuns: 100 })
-    );
-  }, 120000);
+
+        const countBefore = await get(db, `SELECT COUNT(*) as c FROM "${tableName}"`);
+        const tablesBefore = await all(db, "SELECT name FROM sqlite_master WHERE type='table' AND name != 'sqlite_sequence'");
+        const indexesBefore = await all(db, "SELECT name FROM sqlite_master WHERE type='index' AND sql IS NOT NULL");
+        const triggersBefore = await all(db, "SELECT name FROM sqlite_master WHERE type='trigger'");
+
+        await applySchema(db);
+
+        const countAfter = await get(db, `SELECT COUNT(*) as c FROM "${tableName}"`);
+        const tablesAfter = await all(db, "SELECT name FROM sqlite_master WHERE type='table' AND name != 'sqlite_sequence'");
+        const indexesAfter = await all(db, "SELECT name FROM sqlite_master WHERE type='index' AND sql IS NOT NULL");
+        const triggersAfter = await all(db, "SELECT name FROM sqlite_master WHERE type='trigger'");
+
+        expect(countAfter.c).toBe(countBefore.c);
+        expect(tablesAfter).toEqual(tablesBefore);
+        expect(indexesAfter).toEqual(indexesBefore);
+        expect(triggersAfter).toEqual(triggersBefore);
+      } finally {
+        await closeDb(db);
+      }
+    },
+    120000
+  );
 });
 
 
@@ -296,7 +294,7 @@ describe('Feature: migration-consolidation, Property 4: Constraint enforcement',
           }
         }
       ),
-      dbPbtOptions({ numRuns: 100 })
+      dbPbtOptions()
     );
   }, 120000);
 });
@@ -306,82 +304,89 @@ describe('Feature: migration-consolidation, Property 4: Constraint enforcement',
 // ─── Property 3: Test-production schema parity ───
 
 describe('Feature: migration-consolidation, Property 3: Test-production schema parity', () => {
-  test('For any table name, test and production databases have identical schema', async () => {
-    await fc.assert(
-      fc.asyncProperty(
-        fc.constantFrom(...TABLE_NAMES),
-        async (tableName) => {
-          // Create two independent databases simulating production and test paths
-          // Both use ALL_STATEMENTS from schema.js (same as db.js now does)
-          const prodDb = await openDb();
-          const testDb = await openDb();
-          try {
-            await applySchema(prodDb);
-            await applySchema(testDb);
-
-            // Compare table_info (columns, types, defaults, constraints)
-            const prodColumns = await all(prodDb, `PRAGMA table_info("${tableName}")`);
-            const testColumns = await all(testDb, `PRAGMA table_info("${tableName}")`);
-
-            expect(testColumns.length).toBe(prodColumns.length);
-            for (let i = 0; i < prodColumns.length; i++) {
-              expect(testColumns[i].name).toBe(prodColumns[i].name);
-              expect(testColumns[i].type).toBe(prodColumns[i].type);
-              expect(testColumns[i].dflt_value).toBe(prodColumns[i].dflt_value);
-              expect(testColumns[i].notnull).toBe(prodColumns[i].notnull);
-              expect(testColumns[i].pk).toBe(prodColumns[i].pk);
-            }
-          } finally {
-            await closeDb(prodDb);
-            await closeDb(testDb);
-          }
-        }
-      ),
-      dbPbtOptions({ numRuns: 30 })
-    );
-  }, 120000);
-
-  test('Test and production databases have identical indexes', async () => {
+  test('fresh test schema matches the migrated production schema for every table', async () => {
     const prodDb = await openDb();
     const testDb = await openDb();
     try {
-      await applySchema(prodDb);
+      await applyProductionSchema(prodDb);
+      await runMigrations(prodDb);
+      await applySchema(testDb);
+
+      for (const tableName of TABLE_NAMES) {
+        const prodColumns = await all(prodDb, `PRAGMA table_info("${tableName}")`);
+        const testColumns = await all(testDb, `PRAGMA table_info("${tableName}")`);
+        const prodForeignKeys = await all(prodDb, `PRAGMA foreign_key_list("${tableName}")`);
+        const testForeignKeys = await all(testDb, `PRAGMA foreign_key_list("${tableName}")`);
+        const prodTable = await get(
+          prodDb,
+          "SELECT sql FROM sqlite_master WHERE type='table' AND name=?",
+          [tableName]
+        );
+        const testTable = await get(
+          testDb,
+          "SELECT sql FROM sqlite_master WHERE type='table' AND name=?",
+          [tableName]
+        );
+
+        expect(testColumns).toEqual(prodColumns);
+        expect(testForeignKeys).toEqual(prodForeignKeys);
+        expect(normalizeSchemaSql(testTable.sql)).toBe(normalizeSchemaSql(prodTable.sql));
+      }
+    } finally {
+      await closeDb(prodDb);
+      await closeDb(testDb);
+    }
+  }, 120000);
+
+  test('fresh and migrated databases have identical indexes', async () => {
+    const prodDb = await openDb();
+    const testDb = await openDb();
+    try {
+      await applyProductionSchema(prodDb);
+      await runMigrations(prodDb);
       await applySchema(testDb);
 
       const prodIndexes = await all(prodDb, "SELECT name, tbl_name, sql FROM sqlite_master WHERE type='index' AND sql IS NOT NULL ORDER BY name");
       const testIndexes = await all(testDb, "SELECT name, tbl_name, sql FROM sqlite_master WHERE type='index' AND sql IS NOT NULL ORDER BY name");
 
-      expect(testIndexes.length).toBe(prodIndexes.length);
-      for (let i = 0; i < prodIndexes.length; i++) {
-        expect(testIndexes[i].name).toBe(prodIndexes[i].name);
-        expect(testIndexes[i].tbl_name).toBe(prodIndexes[i].tbl_name);
-        expect(testIndexes[i].sql).toBe(prodIndexes[i].sql);
-      }
+      expect(testIndexes.map(index => ({
+        name: index.name,
+        table: index.tbl_name,
+        sql: normalizeSchemaSql(index.sql)
+      }))).toEqual(prodIndexes.map(index => ({
+        name: index.name,
+        table: index.tbl_name,
+        sql: normalizeSchemaSql(index.sql)
+      })));
     } finally {
       await closeDb(prodDb);
       await closeDb(testDb);
     }
-  });
+  }, 120000);
 
-  test('Test and production databases have identical triggers', async () => {
+  test('fresh and migrated databases have identical triggers', async () => {
     const prodDb = await openDb();
     const testDb = await openDb();
     try {
-      await applySchema(prodDb);
+      await applyProductionSchema(prodDb);
+      await runMigrations(prodDb);
       await applySchema(testDb);
 
       const prodTriggers = await all(prodDb, "SELECT name, tbl_name, sql FROM sqlite_master WHERE type='trigger' ORDER BY name");
       const testTriggers = await all(testDb, "SELECT name, tbl_name, sql FROM sqlite_master WHERE type='trigger' ORDER BY name");
 
-      expect(testTriggers.length).toBe(prodTriggers.length);
-      for (let i = 0; i < prodTriggers.length; i++) {
-        expect(testTriggers[i].name).toBe(prodTriggers[i].name);
-        expect(testTriggers[i].tbl_name).toBe(prodTriggers[i].tbl_name);
-        expect(testTriggers[i].sql).toBe(prodTriggers[i].sql);
-      }
+      expect(testTriggers.map(trigger => ({
+        name: trigger.name,
+        table: trigger.tbl_name,
+        sql: normalizeSchemaSql(trigger.sql)
+      }))).toEqual(prodTriggers.map(trigger => ({
+        name: trigger.name,
+        table: trigger.tbl_name,
+        sql: normalizeSchemaSql(trigger.sql)
+      })));
     } finally {
       await closeDb(prodDb);
       await closeDb(testDb);
     }
-  });
+  }, 120000);
 });

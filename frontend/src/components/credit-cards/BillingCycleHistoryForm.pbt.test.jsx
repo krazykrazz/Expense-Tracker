@@ -16,6 +16,7 @@ vi.mock('../../utils/fetchProvider', async () => {
 import { render, waitFor, fireEvent, cleanup, act } from '@testing-library/react';
 import * as fc from 'fast-check';
 import BillingCycleHistoryForm from './BillingCycleHistoryForm';
+import { uiPbtOptions } from '../../test/pbtArbitraries';
 
 // Mock fetch globally
 global.fetch = vi.fn();
@@ -189,7 +190,7 @@ describe('BillingCycleHistoryForm Property-Based Tests', () => {
           unmount();
         }
       ),
-      { numRuns: 100 }
+      uiPbtOptions()
     );
   });
 
@@ -273,7 +274,7 @@ describe('BillingCycleHistoryForm Property-Based Tests', () => {
           unmount();
         }
       ),
-      { numRuns: 100 }
+      uiPbtOptions()
     );
   });
 });

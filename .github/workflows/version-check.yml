@@ -46,23 +46,14 @@ jobs:
               fi
             fi
           done
-
-          for lockfile in backend/package-lock.json frontend/package-lock.json; do
-            if echo "$CHANGED_FILES" | grep -q "^$lockfile$"; then
-              BASE_LOCK_VER=$(git show "origin/main:$lockfile" | jq -r .version)
-              HEAD_LOCK_VER=$(jq -r .version "$lockfile")
-              if [ "$BASE_LOCK_VER" != "$HEAD_LOCK_VER" ]; then
-                VERSION_CHANGED=true
-                echo "Version change detected in lockfile: $lockfile"
-              fi
-            fi
-          done
           
-          if [ "$VERSION_CHANGED" = true ]; then
-            echo "version_changed=true" >> $GITHUB_OUTPUT
-          else
-            echo "version_changed=false" >> $GITHUB_OUTPUT
-          fi
+          {
+            if [ "$VERSION_CHANGED" = true ]; then
+              echo "version_changed=true"
+            else
+              echo "version_changed=false"
+            fi
+          } >> "$GITHUB_OUTPUT"
       
       - name: Fail if version bump in PR
         if: steps.version_check.outputs.version_changed == 'true'
@@ -96,23 +87,12 @@ jobs:
 
       - name: Check all version locations match
         run: |
-          echo "## Version Consistency Check" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-
           # Extract versions from each source
           BACKEND_VER=$(jq -r .version backend/package.json)
           FRONTEND_VER=$(jq -r .version frontend/package.json)
           BACKEND_LOCK_VER=$(jq -r .version backend/package-lock.json)
           FRONTEND_LOCK_VER=$(jq -r .version frontend/package-lock.json)
           CHANGELOG_JS_VER=$(grep -oP "version: '\K[0-9]+\.[0-9]+\.[0-9]+" frontend/src/utils/changelog.js | head -1)
-          
-          echo "| Location | Version |" >> $GITHUB_STEP_SUMMARY
-          echo "|----------|---------|" >> $GITHUB_STEP_SUMMARY
-          echo "| backend/package.json | $BACKEND_VER |" >> $GITHUB_STEP_SUMMARY
-          echo "| frontend/package.json | $FRONTEND_VER |" >> $GITHUB_STEP_SUMMARY
-          echo "| backend/package-lock.json | $BACKEND_LOCK_VER |" >> $GITHUB_STEP_SUMMARY
-          echo "| frontend/package-lock.json | $FRONTEND_LOCK_VER |" >> $GITHUB_STEP_SUMMARY
-          echo "| frontend/src/utils/changelog.js | $CHANGELOG_JS_VER |" >> $GITHUB_STEP_SUMMARY
           
           ERRORS=0
 
@@ -154,11 +134,25 @@ jobs:
             ERRORS=$((ERRORS + 1))
           fi
 
-          if [ $ERRORS -gt 0 ]; then
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "❌ **$ERRORS version inconsistencies found**" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## Version Consistency Check"
+            echo ""
+            echo "| Location | Version |"
+            echo "|----------|---------|"
+            echo "| backend/package.json | $BACKEND_VER |"
+            echo "| frontend/package.json | $FRONTEND_VER |"
+            echo "| backend/package-lock.json | $BACKEND_LOCK_VER |"
+            echo "| frontend/package-lock.json | $FRONTEND_LOCK_VER |"
+            echo "| frontend/src/utils/changelog.js | $CHANGELOG_JS_VER |"
+            echo ""
+
+            if [ "$ERRORS" -gt 0 ]; then
+              echo "❌ **$ERRORS version inconsistencies found**"
+            else
+              echo "✅ **All 8 version locations consistent: v$BACKEND_VER**"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$ERRORS" -gt 0 ]; then
             exit 1
           fi
-
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "✅ **All 8 version locations consistent: v$BACKEND_VER**" >> $GITHUB_STEP_SUMMARY

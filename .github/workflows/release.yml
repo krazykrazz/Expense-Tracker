@@ -68,11 +68,15 @@ jobs:
           esac
           
           NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
-          echo "current=$CURRENT" >> $GITHUB_OUTPUT
-          echo "new=$NEW_VERSION" >> $GITHUB_OUTPUT
-          echo "branch=release/v${NEW_VERSION}" >> $GITHUB_OUTPUT
-          echo "## Version Bump" >> $GITHUB_STEP_SUMMARY
-          echo "**$CURRENT** → **$NEW_VERSION** (${{ inputs.bump_type }})" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "current=$CURRENT"
+            echo "new=$NEW_VERSION"
+            echo "branch=release/v${NEW_VERSION}"
+          } >> "$GITHUB_OUTPUT"
+          {
+            echo "## Version Bump"
+            echo "**$CURRENT** → **$NEW_VERSION** (${{ inputs.bump_type }})"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Create release branch
         run: |
@@ -195,9 +199,11 @@ jobs:
             --title "Release v${NEW_VERSION}: ${DESCRIPTION}" \
             --body "$PR_BODY")
           
-          echo "pr_url=$PR_URL" >> $GITHUB_OUTPUT
-          echo "## Pull Request Created" >> $GITHUB_STEP_SUMMARY
-          echo "[$PR_URL]($PR_URL)" >> $GITHUB_STEP_SUMMARY
+          echo "pr_url=$PR_URL" >> "$GITHUB_OUTPUT"
+          {
+            echo "## Pull Request Created"
+            echo "[$PR_URL]($PR_URL)"
+          } >> "$GITHUB_STEP_SUMMARY"
         env:
           # RELEASE_PAT attributes the PR to the repository owner so CI starts
           # without waiting for approval of a github-actions[bot] author.
@@ -212,6 +218,6 @@ jobs:
         if: inputs.auto_merge
         run: |
           gh pr merge "${{ steps.version.outputs.branch }}" --auto --merge --delete-branch
-          echo "✅ Auto-merge enabled — PR will merge when CI passes" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Auto-merge enabled — PR will merge when CI passes" >> "$GITHUB_STEP_SUMMARY"
         env:
           GH_TOKEN: ${{ secrets.RELEASE_PAT }}

@@ -387,6 +387,22 @@ describe('plaid routes', () => {
     expect(plaidReimbursementService.unlink).toHaveBeenCalledWith(3, 'tab-5');
   });
 
+  test.each([
+    ['post', '/api/plaid/inbox/12abc/ignore'],
+    ['post', '/api/plaid/inbox/0/add'],
+    ['put', '/api/plaid/accounts/-3'],
+    ['delete', '/api/plaid/items/1.5'],
+    ['post', '/api/plaid/card-balances/abc/use-bank-limit']
+  ])('%s %s rejects an id that is not a positive integer without calling a service', async (method, url) => {
+    const res = await request(app)[method](url).send({});
+
+    expect(res.status).toBe(400);
+    expect(plaidReviewService.ignore).not.toHaveBeenCalled();
+    expect(plaidReviewService.addAsExpense).not.toHaveBeenCalled();
+    expect(plaidService.updateAccountMapping).not.toHaveBeenCalled();
+    expect(plaidService.disconnectItem).not.toHaveBeenCalled();
+  });
+
   test('split endpoints (spec 3.9) pass the row and expenses, and reject non-integer ids', async () => {
     plaidSplitService.candidates.mockResolvedValue({ candidates: [] });
     plaidSplitService.apply.mockResolvedValue({ expenseIds: [8, 9] });

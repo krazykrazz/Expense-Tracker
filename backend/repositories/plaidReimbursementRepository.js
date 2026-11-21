@@ -116,23 +116,28 @@ class PlaidReimbursementRepository {
   }
 
   /**
-   * Bank reimbursements of expenses, oldest first, for the expense list and form. All of them in one query: the
-   * table only holds expenses repaid through the bank, far fewer than the expense list.
+   * Bank reimbursements of the given expenses, oldest first, for the expense list and form.
    * @returns {Promise<Map<number, Array<{plaidTransactionId: number, kind: string, amount: number, date: string, name: string}>>>}
    */
-  async findReimbursementsByExpense() {
+  async findReimbursementsByExpense(expenseIds) {
     const byExpense = new Map();
-    const rows = await dbHelper.queryAll(
-      `SELECT l.expense_id AS expenseId, l.plaid_transaction_id AS plaidTransactionId, l.kind, l.amount,
-              pt.date, COALESCE(pt.merchant_name, pt.name) AS name
-       FROM plaid_reimbursement_links l
-       JOIN plaid_transactions pt ON pt.id = l.plaid_transaction_id
-       ORDER BY l.id`
-    );
-    for (const { expenseId, ...reimbursement } of rows) {
-      const list = byExpense.get(expenseId) || [];
-      list.push(reimbursement);
-      byExpense.set(expenseId, list);
+    const CHUNK = 500;
+    for (let i = 0; i < expenseIds.length; i += CHUNK) {
+      const chunk = expenseIds.slice(i, i + CHUNK);
+      const rows = await dbHelper.queryAll(
+        `SELECT l.expense_id AS expenseId, l.plaid_transaction_id AS plaidTransactionId, l.kind, l.amount,
+                pt.date, COALESCE(pt.merchant_name, pt.name) AS name
+         FROM plaid_reimbursement_links l
+         JOIN plaid_transactions pt ON pt.id = l.plaid_transaction_id
+         WHERE l.expense_id IN (${placeholders(chunk)})
+         ORDER BY l.id`,
+        chunk
+      );
+      for (const { expenseId, ...reimbursement } of rows) {
+        const list = byExpense.get(expenseId) || [];
+        list.push(reimbursement);
+        byExpense.set(expenseId, list);
+      }
     }
     return byExpense;
   }

@@ -56,7 +56,8 @@ try {
 }
 
 # Get git metadata
-$gitSha = git rev-parse --short HEAD 2>$null
+# Same length as CI's image tag (ci.yml): a full clone abbreviates to more characters once the repo is large enough
+$gitSha = git rev-parse --short=7 HEAD 2>$null
 $gitBranch = git rev-parse --abbrev-ref HEAD 2>$null
 $version = (Get-Content backend/package.json | ConvertFrom-Json).version
 

@@ -747,6 +747,28 @@ Closes the loop on medical insurance claims (see [`MEDICAL_INSURANCE_TRACKING.md
 
 **Open:** Q22. **Tests:** apply to a row to review (exact total, primary = largest, status, all links); refusals (under or over the total, one expense, another payment method, an expense already linked or already a part, a pending row, a credit, a row already reviewed) change nothing; completing a reviewed row one expense at a time and never over; removing a part, and the primary with others left; deleting a part, and the primary with others left (promotion) and the last one (row returns to the Inbox); the exclusivity triggers; Match candidates and the balance check skip parts; the cycle check with a complete and a partial split; `bankLink.split` on the list; posted dates; routes; mutation check of the sum rule.
 
+#### Related corner case: one expense, several bank charges (not built; workaround accepted)
+
+> **Status: not planned** (owner, 2026-11-21: "the w/a is just to log them individually which is fine but we should note this corner case in the spec"). The mirror image of the split above: **one** expense entered for what the bank shows as **several** charges, typically an Amazon order whose items ship from different vendors and are charged separately.
+
+**Seen on production (October 2026, WS VISA):**
+
+| Expense | Amount | Bank charges (all `Amazon`) | Bank rows |
+|---|---|---|---|
+| 25368 Amazon.ca, Oct 21 | $20.60 | $8.40 + $12.20 (both Oct 21) | 56, 57, both **ignored** |
+| 25367 Amazon.ca, Oct 24 | $68.58 | $51.64 (Oct 24) + $16.94 (Oct 25) | 47, 46, both **ignored** |
+
+**Why it isn't linkable:** a bank row links to one expense (`plaid_transactions.expense_id`, unique index `idx_plaid_transactions_expense`), and an expense to **one** bank row, which is also how every reader of the link (the expense pill, the balance and cycle checks, the delete trigger, settlement) finds its bank row. **Match** therefore offers an expense only against a charge of about the same amount, so neither $8.40 nor $12.20 can match $20.60.
+
+**What happens today (acceptable):**
+- The bank rows stay in the Inbox, and the owner **ignores** them, as above. The expense has no bank link and keeps the grey pill.
+- Nothing reconciles wrongly: the card balance check already pairs one tracker entry with **two bank rows that add up to it**, ignored ones included (4.2, `splitCharges`: "split Amazon charges"), so there is no false cause. The billing cycle check does the same (`pairUp`).
+- Ignored rows are deleted after 2 months (2.5.1, by purchase date), after which the expense is just an unlinked entry older than the bank history the checks look at.
+
+**Workaround:** log each bank charge as its own expense (**Add** from the Inbox, one per charge, each with its own category and notes), and keep a combined expense out of it. That makes every charge link and show green, and it is the more precise record when the vendors differ.
+
+**If it is ever built** (open: Q23): the link is the hard part. The symmetrical design is a table of extra bank rows per expense (like `plaid_split_links` the other way round) with the first row staying in `plaid_transactions.expense_id`, but a bank row can then belong to an expense that is not its `expense_id`, which every reader above would have to learn, and a pill compares the expense's amount with the **sum** of its bank rows (the mirror of 3.9's pill rule). A lighter alternative is a pairing-only mark: **Ignore as part of expense N** keeps the rows out of the Inbox and records which expense they paid, without changing the links or the pill. Neither is needed while the workaround is fine.
+
 ### Phase 3 exit criteria
 - [ ] Inbox shows To review / Not expenses. *(Built with 2.1; tick once in production.)*
 - [x] A real card payment recorded from the card side, with the chequing side linked. *(WS VISA $3,471.31 and CIBC MC $4,104.59 on Oct 30, both sides linked.)*
@@ -1027,3 +1049,4 @@ Every PR updates the docs its change touches. Recheck after each phase.
 | Q20 | Near-miss Match tolerance (this PR): is max($1.00, 1%) right, or should a typo like a transposed digit ($43.00 vs $34.00) be offered too? | **Decided (2026-11-17):** max($1.00, 1%); bigger differences stay out (too many false candidates); revisit with real examples |
 | Q21 | 4.1: write the bank balance into the monthly investment values straight away, or first only show it? | **Decided (owner, 2026-11-20):** show it first (4.1a), as a smaller and less intrusive addition; writing values is 4.1b |
 | Q22 | 3.9: must a split add up to the bank charge to the cent, or may it be partial? | **Decided:** a charge to review must be matched with a complete set (to the cent, at least two expenses); a reviewed one may be completed one expense at a time, never above the charge. Same-cent rule as deposits (3.8) |
+| Q23 | 3.9, reverse case: should one expense be linkable to several bank charges (an Amazon order charged per vendor)? | **Open; not planned (owner, 2026-11-21).** Workaround: log each bank charge as its own expense, or ignore the extra rows (the balance and cycle checks already pair them). See "one expense, several bank charges" under 3.9 |

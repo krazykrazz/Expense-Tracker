@@ -9,13 +9,17 @@ Full process: `docs/deployment/DEPLOYMENT_WORKFLOW.md`.
 ## Rules
 
 - Never bump versions on `feature/*` or `hotfix/*` branches (blocked by `scripts/git-hooks/pre-commit` and flagged by `version-check.yml`). Versions change only on `release/vX.Y.Z` branches created by the Release workflow.
-- The root `package.json` has no version. The six version locations, all updated together by the workflow:
+- The root `package.json` has no version. The release workflow updates package/changelog locations together:
   1. `frontend/package.json`
   2. `backend/package.json` (source of `/api/version` and the `vX.Y.Z` image tag)
-  3. `frontend/src/components/system/BackupSettings.jsx` (in-app changelog)
-  4. `frontend/src/components/system/SystemModal.jsx` (Updates tab changelog)
-  5. `CHANGELOG.md` (new `## [X.Y.Z] - YYYY-MM-DD` + `### description` under `# Changelog`)
-  6. `frontend/src/utils/changelog.js` (`changelogEntries`, used by the upgrade modal)
+  3. `frontend/package-lock.json`
+  4. `backend/package-lock.json`
+  5. `frontend/src/components/system/BackupSettings.jsx` (in-app changelog)
+  6. `frontend/src/components/system/SystemModal.jsx` (Updates tab changelog)
+  7. `CHANGELOG.md` (new `## [X.Y.Z] - YYYY-MM-DD` + `### description` under `# Changelog`)
+  8. `frontend/src/utils/changelog.js` (`changelogEntries`, used by the upgrade modal)
+- Release file updates are performed by `scripts/update-release-files.js`, not fragile inline `sed` commands.
+- `RELEASE_PAT` is required for release PR creation and PAT-based auto-merge.
 - Semver: MAJOR breaking, MINOR features, PATCH fixes.
 
 ## Commands

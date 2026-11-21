@@ -15,6 +15,7 @@ Image `ghcr.io/krazykrazz/expense-tracker`; tags `<short-sha>`, `vX.Y.Z`, `stagi
 
 - Don't rename `expense-tracker` / `expense-tracker-test`: `scripts/build-and-push.ps1` deploys those names.
 - All persistent data lives under `/config`; the container listens on 2424 and runs as non-root `node` (UID 1000), so mounts must be writable by UID 1000.
+- Docker builds use `npm ci` for frontend/backend dependencies. Use `npm ci --omit=dev` only for the production backend dependency stage.
 - Keep both `docker-compose.yml` services in sync: `stop_grace_period: 15s`, `security_opt: [no-new-privileges:true]`, `cap_drop: [ALL]`, `deploy.resources.limits` (`memory: 512M`, `cpus: '1.0'`) and `NODE_OPTIONS=--max-old-space-size=384`. Change the heap flag whenever the memory limit changes.
 - Production runs from a compose file outside this repo; changes to these settings must be mirrored there by hand.
 - `.dockerignore` must use `**/node_modules` (bare `node_modules` only matches the root).

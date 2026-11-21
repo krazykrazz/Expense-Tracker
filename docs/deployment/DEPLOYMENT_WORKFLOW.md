@@ -17,7 +17,7 @@ The `Build and Push to GHCR` job (`build-and-push-ghcr`) in `.github/workflows/c
 
 - Runs only on a push to `main` (or `workflow_dispatch` on `main`), after `Backend Tests Status` and `Frontend Tests Status` succeed. **Pull requests never build or push images.** Runs triggered by `dependabot[bot]` skip it.
 - Builds the root `Dockerfile` (linux/amd64) with build args `IMAGE_TAG` and `GIT_COMMIT` (both the 7-character short SHA, `git rev-parse --short=7`) and `BUILD_DATE`.
-- Scans the image with Trivy; any CRITICAL finding fails the job before anything is pushed.
+- Scans the image with Trivy; any CRITICAL or HIGH finding fails the job before anything is pushed, and the scan artifact includes a CycloneDX SBOM.
 - Pushes `:<short-sha>` always, and `:v<version>` (version read from `backend/package.json`) only if that tag does not exist yet. The first build of a version is the release merge commit, so a release tag keeps pointing at the image built from its release commit; later `main` builds at the same version get only their SHA tag. If the check cannot reach GHCR the job fails instead of pushing.
 - Creates the GitHub Release `v<version>` (which also creates the git tag) if it does not exist yet, attaching a version-pinned `docker-compose-v<version>.yml`; if the release already exists, it re-uploads that asset.
 

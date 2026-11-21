@@ -30,6 +30,9 @@ on:
         default: '10'
         type: string
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -38,6 +41,9 @@ jobs:
   path-filter:
     name: Detect Changed Paths
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       frontend: ${{ steps.filter.outputs.frontend }}
@@ -83,18 +89,20 @@ jobs:
 
       - name: Generate filtering summary
         run: |
-          echo "## Path-Based Test Filtering" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Component | Changed | Tests Will Run |" >> $GITHUB_STEP_SUMMARY
-          echo "|-----------|---------|----------------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Backend | ${{ steps.filter.outputs.backend }} | ${{ steps.filter.outputs.backend == 'true' || steps.filter.outputs.shared == 'true' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Frontend | ${{ steps.filter.outputs.frontend }} | ${{ steps.filter.outputs.frontend == 'true' || steps.filter.outputs.shared == 'true' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Shared Infrastructure | ${{ steps.filter.outputs.shared }} | N/A |" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          
-          if [ "${{ steps.filter.outputs.shared }}" = "true" ]; then
-            echo "⚠️ **Shared infrastructure changed - running all tests**" >> $GITHUB_STEP_SUMMARY
-          fi
+          {
+            echo "## Path-Based Test Filtering"
+            echo ""
+            echo "| Component | Changed | Tests Will Run |"
+            echo "|-----------|---------|----------------|"
+            echo "| Backend | ${{ steps.filter.outputs.backend }} | ${{ steps.filter.outputs.backend == 'true' || steps.filter.outputs.shared == 'true' }} |"
+            echo "| Frontend | ${{ steps.filter.outputs.frontend }} | ${{ steps.filter.outputs.frontend == 'true' || steps.filter.outputs.shared == 'true' }} |"
+            echo "| Shared Infrastructure | ${{ steps.filter.outputs.shared }} | N/A |"
+            echo ""
+
+            if [ "${{ steps.filter.outputs.shared }}" = "true" ]; then
+              echo "⚠️ **Shared infrastructure changed - running all tests**"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
 
       # empty_pr (kept as the output name): something other than documentation changed, but it isn't backend,
       # frontend or shared infrastructure (e.g. an unrecognised config file). Run every test to be safe.
@@ -103,20 +111,23 @@ jobs:
         id: empty_check
         run: |
           if [ "${{ steps.code_filter.outputs.code }}" = "false" ]; then
-            echo "empty_pr=false" >> $GITHUB_OUTPUT
-            echo "📝 **Documentation-only change - tests skipped**" >> $GITHUB_STEP_SUMMARY
+            echo "empty_pr=false" >> "$GITHUB_OUTPUT"
+            echo "📝 **Documentation-only change - tests skipped**" >> "$GITHUB_STEP_SUMMARY"
           elif [ "${{ steps.filter.outputs.backend }}" = "false" ] && \
              [ "${{ steps.filter.outputs.frontend }}" = "false" ] && \
              [ "${{ steps.filter.outputs.shared }}" = "false" ]; then
-            echo "empty_pr=true" >> $GITHUB_OUTPUT
-            echo "⚠️ **Changes outside backend/frontend/shared detected - will run all tests**" >> $GITHUB_STEP_SUMMARY
+            echo "empty_pr=true" >> "$GITHUB_OUTPUT"
+            echo "⚠️ **Changes outside backend/frontend/shared detected - will run all tests**" >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "empty_pr=false" >> $GITHUB_OUTPUT
+            echo "empty_pr=false" >> "$GITHUB_OUTPUT"
           fi
 
   lockfile-integrity:
     name: Lockfile Integrity
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -139,9 +150,53 @@ jobs:
             echo "::endgroup::"
           done
 
+  workflow-validation:
+    name: Workflow Syntax
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Run actionlint
+        run: |
+          set -euo pipefail
+          curl -sSfL --retry 3 \
+            -o /tmp/actionlint.tar.gz \
+            https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz
+          echo "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  /tmp/actionlint.tar.gz" | sha256sum -c -
+          tar -xzf /tmp/actionlint.tar.gz -C /tmp actionlint
+          /tmp/actionlint -color
+
+  lint:
+    name: ESLint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Run ESLint
+        run: npm run lint -- --max-warnings=587
+
   backend-unit-tests:
     name: Backend Unit Tests ${{ matrix.shard }}
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: path-filter
     if: |
       needs.path-filter.outputs.backend == 'true' ||
@@ -179,7 +234,7 @@ jobs:
 
       - name: Record test start time
         id: test_start
-        run: echo "start=$(date +%s)" >> $GITHUB_OUTPUT
+        run: echo "start=$(date +%s)" >> "$GITHUB_OUTPUT"
 
       - name: Run unit tests
         run: |
@@ -212,6 +267,7 @@ jobs:
   backend-pbt-shards:
     name: Backend PBT Shard ${{ matrix.shard }}
     runs-on: ubuntu-latest
+    timeout-minutes: 40
     needs: path-filter
     if: |
       needs.path-filter.outputs.backend == 'true' ||
@@ -242,7 +298,7 @@ jobs:
 
       - name: Record PBT start time
         id: pbt_start
-        run: echo "start=$(date +%s)" >> $GITHUB_OUTPUT
+        run: echo "start=$(date +%s)" >> "$GITHUB_OUTPUT"
 
       - name: Run PBT tests (shard ${{ matrix.shard }})
         run: |
@@ -281,6 +337,7 @@ jobs:
   backend-pbt-tests:
     name: Backend PBT Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: [path-filter, backend-pbt-shards]
     if: |
       always() && (
@@ -301,13 +358,31 @@ jobs:
   backend-tests-status:
     name: Backend Tests Status
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     if: always()
-    needs: [path-filter, backend-unit-tests, backend-pbt-tests]
+    needs: [path-filter, backend-unit-tests, backend-pbt-tests, lint, workflow-validation, lockfile-integrity, security-audit]
     steps:
       - name: Check backend test results
         run: |
           BACKEND_NEEDED="${{ needs.path-filter.outputs.backend == 'true' || needs.path-filter.outputs.shared == 'true' || needs.path-filter.outputs.empty_pr == 'true' || needs.path-filter.result == 'failure' }}"
-          
+
+          if [ "${{ needs.lint.result }}" != "success" ]; then
+            echo "ESLint failed"
+            exit 1
+          fi
+          if [ "${{ needs.workflow-validation.result }}" != "success" ]; then
+            echo "Workflow validation failed"
+            exit 1
+          fi
+          if [ "${{ needs.lockfile-integrity.result }}" != "success" ]; then
+            echo "Lockfile integrity failed"
+            exit 1
+          fi
+          if [ "${{ needs.security-audit.result }}" != "success" ]; then
+            echo "Security audit failed"
+            exit 1
+          fi
+
           if [ "$BACKEND_NEEDED" = "true" ]; then
             # Tests ran - check if they passed
             if [ "${{ needs.backend-unit-tests.result }}" != "success" ] || \
@@ -324,6 +399,7 @@ jobs:
   frontend-tests:
     name: Frontend Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     needs: path-filter
     if: |
       needs.path-filter.outputs.frontend == 'true' ||
@@ -353,7 +429,7 @@ jobs:
 
       - name: Record test start time
         id: test_start
-        run: echo "start=$(date +%s)" >> $GITHUB_OUTPUT
+        run: echo "start=$(date +%s)" >> "$GITHUB_OUTPUT"
 
       - name: Run tests
         run: |
@@ -379,16 +455,94 @@ jobs:
         env:
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
 
+  frontend-build:
+    name: Frontend Production Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: path-filter
+    if: |
+      needs.path-filter.outputs.frontend == 'true' ||
+      needs.path-filter.outputs.shared == 'true' ||
+      needs.path-filter.outputs.empty_pr == 'true' ||
+      needs.path-filter.result == 'failure'
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Build frontend
+        run: npm run build
+
+  docker-build-smoke:
+    name: Docker Build Smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: path-filter
+    if: |
+      github.event_name == 'pull_request' &&
+      (
+        needs.path-filter.outputs.backend == 'true' ||
+        needs.path-filter.outputs.frontend == 'true' ||
+        needs.path-filter.outputs.shared == 'true' ||
+        needs.path-filter.outputs.empty_pr == 'true' ||
+        needs.path-filter.result == 'failure'
+      )
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          load: true
+          push: false
+          tags: expense-tracker:ci-smoke
+          cache-from: type=gha,scope=docker-smoke
+          cache-to: type=gha,mode=max,scope=docker-smoke
+
   frontend-tests-status:
     name: Frontend Tests Status
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     if: always()
-    needs: [path-filter, frontend-tests]
+    needs: [path-filter, frontend-tests, frontend-build, docker-build-smoke]
     steps:
       - name: Check frontend test results
         run: |
           FRONTEND_NEEDED="${{ needs.path-filter.outputs.frontend == 'true' || needs.path-filter.outputs.shared == 'true' || needs.path-filter.outputs.empty_pr == 'true' || needs.path-filter.result == 'failure' }}"
-          
+          DOCKER_NEEDED="${{ github.event_name == 'pull_request' && (needs.path-filter.outputs.backend == 'true' || needs.path-filter.outputs.frontend == 'true' || needs.path-filter.outputs.shared == 'true' || needs.path-filter.outputs.empty_pr == 'true' || needs.path-filter.result == 'failure') }}"
+
+          if [ "$FRONTEND_NEEDED" = "true" ] && [ "${{ needs.frontend-build.result }}" != "success" ]; then
+            echo "Frontend production build failed"
+            exit 1
+          fi
+          if [ "$DOCKER_NEEDED" = "true" ] && [ "${{ needs.docker-build-smoke.result }}" != "success" ]; then
+            echo "Docker build smoke test failed"
+            exit 1
+          fi
+
           if [ "$FRONTEND_NEEDED" = "true" ]; then
             # Tests ran - check if they passed
             if [ "${{ needs.frontend-tests.result }}" != "success" ]; then
@@ -404,6 +558,9 @@ jobs:
   security-audit:
     name: Security Audit
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout code
@@ -419,48 +576,54 @@ jobs:
             frontend/package-lock.json
 
       - name: Install backend dependencies
-        run: npm install --ignore-scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
         working-directory: backend
 
       - name: Install frontend dependencies
-        run: npm install --ignore-scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
         working-directory: frontend
 
       - name: Run backend security audit
         id: backend_audit
         run: |
-          echo "## Security Audit Results" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Backend Dependencies" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          if npm audit --audit-level=high 2>&1 | tee audit-output.txt; then
-            echo "✅ No high or critical vulnerabilities found" >> $GITHUB_STEP_SUMMARY
-            echo "backend_status=pass" >> $GITHUB_OUTPUT
-          else
-            echo "❌ High or critical vulnerabilities detected:" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            cat audit-output.txt >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            echo "backend_status=fail" >> $GITHUB_OUTPUT
-          fi
+          BACKEND_STATUS=pass
+          {
+            echo "## Security Audit Results"
+            echo ""
+            echo "### Backend Dependencies"
+            echo ""
+            if npm audit --audit-level=high 2>&1 | tee audit-output.txt; then
+              echo "✅ No high or critical vulnerabilities found"
+            else
+              BACKEND_STATUS=fail
+              echo "❌ High or critical vulnerabilities detected:"
+              echo '```'
+              cat audit-output.txt
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "backend_status=$BACKEND_STATUS" >> "$GITHUB_OUTPUT"
         working-directory: backend
         continue-on-error: true
 
       - name: Run frontend security audit
         id: frontend_audit
         run: |
-          echo "### Frontend Dependencies" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          if npm audit --audit-level=high 2>&1 | tee audit-output.txt; then
-            echo "✅ No high or critical vulnerabilities found" >> $GITHUB_STEP_SUMMARY
-            echo "frontend_status=pass" >> $GITHUB_OUTPUT
-          else
-            echo "❌ High or critical vulnerabilities detected:" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            cat audit-output.txt >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            echo "frontend_status=fail" >> $GITHUB_OUTPUT
-          fi
+          FRONTEND_STATUS=pass
+          {
+            echo "### Frontend Dependencies"
+            echo ""
+            if npm audit --audit-level=high 2>&1 | tee audit-output.txt; then
+              echo "✅ No high or critical vulnerabilities found"
+            else
+              FRONTEND_STATUS=fail
+              echo "❌ High or critical vulnerabilities detected:"
+              echo '```'
+              cat audit-output.txt
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "frontend_status=$FRONTEND_STATUS" >> "$GITHUB_OUTPUT"
         working-directory: frontend
         continue-on-error: true
 
@@ -473,6 +636,7 @@ jobs:
   test-health-report:
     name: Test Health Report
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     if: always()
     needs: [backend-unit-tests, backend-pbt-tests, frontend-tests]
     steps:
@@ -498,9 +662,9 @@ jobs:
           shopt -s nullglob
           results=(test-results/*.json)
           if [ ${#results[@]} -eq 0 ]; then
-            node scripts/report-test-health.js >> $GITHUB_STEP_SUMMARY
+            node scripts/report-test-health.js >> "$GITHUB_STEP_SUMMARY"
           else
-            node scripts/report-test-health.js --results "${results[@]}" >> $GITHUB_STEP_SUMMARY
+            node scripts/report-test-health.js --results "${results[@]}" >> "$GITHUB_STEP_SUMMARY"
           fi
         env:
           GITHUB_ACTIONS: true
@@ -508,7 +672,8 @@ jobs:
   build-and-push-ghcr:
     name: Build and Push to GHCR
     runs-on: ubuntu-latest
-    needs: [backend-tests-status, frontend-tests-status]
+    timeout-minutes: 60
+    needs: [backend-tests-status, frontend-tests-status, lockfile-integrity, security-audit]
     # Deploy jobs keep the dependabot guard: their GITHUB_TOKEN is read-only on
     # dependabot events, so a run here could only fail. Test jobs need no write scope.
     # `!cancelled()` is required: without a status function GitHub applies an implicit
@@ -521,7 +686,9 @@ jobs:
       github.actor != 'dependabot[bot]' &&
       (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
       needs.backend-tests-status.result == 'success' &&
-      needs.frontend-tests-status.result == 'success'
+      needs.frontend-tests-status.result == 'success' &&
+      needs.lockfile-integrity.result == 'success' &&
+      needs.security-audit.result == 'success'
     permissions:
       contents: write
       packages: write
@@ -543,9 +710,11 @@ jobs:
       - name: Extract metadata
         id: meta
         run: |
-          echo "sha_short=$(git rev-parse --short=7 HEAD)" >> $GITHUB_OUTPUT
-          echo "version=$(jq -r .version backend/package.json)" >> $GITHUB_OUTPUT
-          echo "build_date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
+          {
+            echo "sha_short=$(git rev-parse --short=7 HEAD)"
+            echo "version=$(jq -r .version backend/package.json)"
+            echo "build_date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          } >> "$GITHUB_OUTPUT"
       
       - name: Build and load Docker image
         uses: docker/build-push-action@v7
@@ -585,7 +754,8 @@ jobs:
             docker run --rm \
               -v /var/run/docker.sock:/var/run/docker.sock \
               -v "$PWD:/work" -w /work \
-              aquasec/trivy:${TRIVY_VERSION} image \
+              -v trivy-cache:/root/.cache/trivy \
+              "aquasec/trivy:${TRIVY_VERSION}" image \
               --db-repository "$1" \
               --format json \
               --output trivy-results.json \
@@ -595,10 +765,13 @@ jobs:
               "$IMAGE"
           }
 
-          DB_REPOS="ghcr.io/aquasecurity/trivy-db:2 mirror.gcr.io/aquasec/trivy-db:2"
+          DB_REPOS=(
+            "ghcr.io/aquasecurity/trivy-db:2"
+            "mirror.gcr.io/aquasec/trivy-db:2"
+          )
           scanned=false
           for attempt in 1 2 3; do
-            for repo in $DB_REPOS; do
+            for repo in "${DB_REPOS[@]}"; do
               if scan "$repo"; then
                 scanned=true
                 break
@@ -619,20 +792,45 @@ jobs:
           fi
 
           docker run --rm -v "$PWD:/work" -w /work \
-            aquasec/trivy:${TRIVY_VERSION} convert \
+            "aquasec/trivy:${TRIVY_VERSION}" convert \
             --format table --output trivy-results.txt trivy-results.json
 
-          for sev in CRITICAL HIGH MEDIUM LOW; do
-            count=$(jq --arg s "$sev" \
-              '[.Results[]?.Vulnerabilities[]? | select(.Severity == $s)] | length' \
-              trivy-results.json)
-            echo "$(echo "$sev" | tr '[:upper:]' '[:lower:]')=$count" >> $GITHUB_OUTPUT
-            echo "${sev}: ${count}"
-          done
+          if ! jq empty trivy-results.json >/dev/null 2>&1; then
+            echo "::error::Trivy produced invalid JSON"
+            exit 1
+          fi
+
+          {
+            for sev in CRITICAL HIGH MEDIUM LOW; do
+              count=$(jq --arg s "$sev" \
+                '[.Results[]?.Vulnerabilities[]? | select(.Severity == $s)] | length' \
+                trivy-results.json)
+              key=$(printf '%s' "$sev" | tr '[:upper:]' '[:lower:]')
+              echo "${key}=$count"
+              echo "${sev}: ${count}" >&2
+            done
+          } >> "$GITHUB_OUTPUT"
 
           CRITICAL=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "CRITICAL")] | length' trivy-results.json)
-          if [ "$CRITICAL" -gt 0 ]; then
-            echo "::error::Trivy found ${CRITICAL} CRITICAL vulnerabilities in the image"
+          HIGH=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "HIGH")] | length' trivy-results.json)
+          if [ "$CRITICAL" -gt 0 ] || [ "$HIGH" -gt 0 ]; then
+            echo "::error::Trivy found ${CRITICAL} CRITICAL and ${HIGH} HIGH vulnerabilities in the image"
+            exit 1
+          fi
+
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$PWD:/work" -w /work \
+            -v trivy-cache:/root/.cache/trivy \
+            "aquasec/trivy:${TRIVY_VERSION}" image \
+            --skip-db-update \
+            --format cyclonedx \
+            --output trivy-sbom.cdx.json \
+            --exit-code 0 \
+            "$IMAGE"
+
+          if ! jq empty trivy-sbom.cdx.json >/dev/null 2>&1; then
+            echo "::error::Trivy failed to generate a valid CycloneDX SBOM"
             exit 1
           fi
 
@@ -644,27 +842,34 @@ jobs:
           path: |
             trivy-results.txt
             trivy-results.json
+            trivy-sbom.cdx.json
           retention-days: 30
 
       - name: Write Trivy summary
         if: always()
         run: |
-          echo "## Docker Image Vulnerability Scan" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Image:** \`ghcr.io/${{ github.repository_owner }}/expense-tracker:${{ steps.meta.outputs.sha_short }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          if [ -f trivy-results.json ]; then
-            echo "| Severity | Count |" >> $GITHUB_STEP_SUMMARY
-            echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
-            for sev in CRITICAL HIGH MEDIUM LOW; do
-              count=$(jq --arg s "$sev" \
-                '[.Results[]?.Vulnerabilities[]? | select(.Severity == $s)] | length' \
-                trivy-results.json)
-              echo "| $sev | $count |" >> $GITHUB_STEP_SUMMARY
-            done
-          else
-            echo "⚠️ Trivy did not produce a report - the scan failed to run, so this image has **not** been assessed." >> $GITHUB_STEP_SUMMARY
-          fi
+          {
+            echo "## Docker Image Vulnerability Scan"
+            echo ""
+            echo "**Image:** \`ghcr.io/${{ github.repository_owner }}/expense-tracker:${{ steps.meta.outputs.sha_short }}\`"
+            echo ""
+            if [ -f trivy-results.json ]; then
+              echo "| Severity | Count |"
+              echo "|----------|-------|"
+              for sev in CRITICAL HIGH MEDIUM LOW; do
+                count=$(jq --arg s "$sev" \
+                  '[.Results[]?.Vulnerabilities[]? | select(.Severity == $s)] | length' \
+                  trivy-results.json)
+                echo "| $sev | $count |"
+              done
+            else
+              echo "⚠️ Trivy did not produce a report - the scan failed to run, so this image has **not** been assessed."
+            fi
+            if [ -f trivy-sbom.cdx.json ]; then
+              echo ""
+              echo "A CycloneDX SBOM is attached to the Trivy scan artifact."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Push Docker image to GHCR
         run: |
@@ -696,9 +901,9 @@ jobs:
         id: check_release
         run: |
           if gh release view "v${{ steps.meta.outputs.version }}" &>/dev/null; then
-            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "exists=true" >> "$GITHUB_OUTPUT"
           else
-            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -713,24 +918,26 @@ jobs:
             gh release upload "$VERSION" "$ASSET" --clobber
           else
             echo "Creating new release $VERSION..."
-            echo "## Pre-Built Container Image Available" > release_notes.md
-            echo "" >> release_notes.md
-            echo "This release is available as a pre-built Docker image at GitHub Container Registry." >> release_notes.md
-            echo "" >> release_notes.md
-            echo "### Quick Start" >> release_notes.md
-            echo "" >> release_notes.md
-            echo "Download the docker-compose file:" >> release_notes.md
-            echo "https://github.com/${{ github.repository }}/releases/download/$VERSION/$ASSET" >> release_notes.md
-            echo "" >> release_notes.md
-            echo "Then run: docker-compose -f $ASSET up -d" >> release_notes.md
-            echo "" >> release_notes.md
-            echo "### Container Images" >> release_notes.md
-            echo "" >> release_notes.md
-            echo "- ghcr.io/${{ github.repository_owner }}/expense-tracker:$VERSION (this release)" >> release_notes.md
-            echo "- ghcr.io/${{ github.repository_owner }}/expense-tracker:${{ steps.meta.outputs.sha_short }} (commit SHA)" >> release_notes.md
-            echo "- ghcr.io/${{ github.repository_owner }}/expense-tracker:latest (latest main)" >> release_notes.md
-            echo "" >> release_notes.md
-            echo "See CHANGELOG.md for detailed changes." >> release_notes.md
+            {
+              echo "## Pre-Built Container Image Available"
+              echo ""
+              echo "This release is available as a pre-built Docker image at GitHub Container Registry."
+              echo ""
+              echo "### Quick Start"
+              echo ""
+              echo "Download the docker-compose file:"
+              echo "https://github.com/${{ github.repository }}/releases/download/$VERSION/$ASSET"
+              echo ""
+              echo "Then run: docker-compose -f $ASSET up -d"
+              echo ""
+              echo "### Container Images"
+              echo ""
+              echo "- ghcr.io/${{ github.repository_owner }}/expense-tracker:$VERSION (this release)"
+              echo "- ghcr.io/${{ github.repository_owner }}/expense-tracker:${{ steps.meta.outputs.sha_short }} (commit SHA)"
+              echo "- ghcr.io/${{ github.repository_owner }}/expense-tracker:latest (latest main)"
+              echo ""
+              echo "See CHANGELOG.md for detailed changes."
+            } > release_notes.md
 
             # Handle race condition: deploy script may create the release between
             # the check and this step. If gh release create fails because the release
@@ -755,6 +962,7 @@ jobs:
   deployment-health-check:
     name: Deployment Health Check
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: [build-and-push-ghcr]
     # Explicit result check: the implicit success() would also be false when a
     # test job further up the chain was skipped by the path filter.
@@ -781,8 +989,10 @@ jobs:
       - name: Extract image metadata
         id: meta
         run: |
-          echo "sha_short=$(git rev-parse --short=7 HEAD)" >> $GITHUB_OUTPUT
-          echo "image=ghcr.io/${{ github.repository_owner }}/expense-tracker:$(git rev-parse --short=7 HEAD)" >> $GITHUB_OUTPUT
+          {
+            echo "sha_short=$(git rev-parse --short=7 HEAD)"
+            echo "image=ghcr.io/${{ github.repository_owner }}/expense-tracker:$(git rev-parse --short=7 HEAD)"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Store previous deployment SHA
         id: previous
@@ -806,9 +1016,11 @@ jobs:
             echo "No previous deployment found at :latest tag"
           fi
 
-          echo "previous_sha=$PREVIOUS_SHA" >> $GITHUB_OUTPUT
-          echo "registry=$REGISTRY" >> $GITHUB_OUTPUT
-          echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
+          {
+            echo "previous_sha=$PREVIOUS_SHA"
+            echo "registry=$REGISTRY"
+            echo "image_name=$IMAGE_NAME"
+          } >> "$GITHUB_OUTPUT"
           echo "Current SHA: $CURRENT_SHA"
           echo "Previous deployment SHA: $PREVIOUS_SHA"
 
@@ -821,7 +1033,7 @@ jobs:
           CONFIG_DIR=$(mktemp -d)
           # Make writable by container's node user (UID 1000) without requiring root
           chmod -R 777 "$CONFIG_DIR"
-          echo "config_dir=$CONFIG_DIR" >> $GITHUB_OUTPUT
+          echo "config_dir=$CONFIG_DIR" >> "$GITHUB_OUTPUT"
           docker run -d \
             --name expense-tracker-health-check \
             -p 2424:2424 \
@@ -835,37 +1047,39 @@ jobs:
 
       - name: Run backend health check
         id: backend_health
-        run: |
-          RETRIES=${{ inputs.health_check_retries || '10' }}
-          TIMEOUT=${{ inputs.health_check_timeout || '30' }}
-          ./scripts/health-check.sh http://localhost:2424/api/health "$RETRIES" 3 "$TIMEOUT"
+        env:
+          RETRIES: ${{ inputs.health_check_retries || '10' }}
+          TIMEOUT: ${{ inputs.health_check_timeout || '30' }}
+        run: ./scripts/health-check.sh http://localhost:2424/api/health "$RETRIES" 3 "$TIMEOUT"
         continue-on-error: true
 
       - name: Run frontend health check
         id: frontend_health
-        run: |
-          RETRIES=${{ inputs.health_check_retries || '10' }}
-          TIMEOUT=${{ inputs.health_check_timeout || '30' }}
-          ./scripts/health-check.sh http://localhost:2424/ "$RETRIES" 3 "$TIMEOUT"
+        env:
+          RETRIES: ${{ inputs.health_check_retries || '10' }}
+          TIMEOUT: ${{ inputs.health_check_timeout || '30' }}
+        run: ./scripts/health-check.sh http://localhost:2424/ "$RETRIES" 3 "$TIMEOUT"
         continue-on-error: true
 
       - name: Report health check results
         if: always()
         run: |
-          echo "## Deployment Health Check Results" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Image:** \`${{ steps.meta.outputs.image }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ steps.backend_health.outcome }}" = "success" ]; then
-            echo "✅ Backend health check: **PASSED**" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "❌ Backend health check: **FAILED**" >> $GITHUB_STEP_SUMMARY
-          fi
-          if [ "${{ steps.frontend_health.outcome }}" = "success" ]; then
-            echo "✅ Frontend health check: **PASSED**" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "❌ Frontend health check: **FAILED**" >> $GITHUB_STEP_SUMMARY
-          fi
+          {
+            echo "## Deployment Health Check Results"
+            echo ""
+            echo "**Image:** \`${{ steps.meta.outputs.image }}\`"
+            echo ""
+            if [ "${{ steps.backend_health.outcome }}" = "success" ]; then
+              echo "✅ Backend health check: **PASSED**"
+            else
+              echo "❌ Backend health check: **FAILED**"
+            fi
+            if [ "${{ steps.frontend_health.outcome }}" = "success" ]; then
+              echo "✅ Frontend health check: **PASSED**"
+            else
+              echo "❌ Frontend health check: **FAILED**"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Collect container logs on failure
         if: steps.backend_health.outcome == 'failure' || steps.frontend_health.outcome == 'failure'
@@ -901,7 +1115,7 @@ jobs:
 
           if [ "${{ steps.previous.outputs.previous_sha }}" = "none" ]; then
             echo "::error::[$ROLLBACK_TIMESTAMP] No previous deployment available for rollback"
-            echo "rollback_result=no_previous" >> $GITHUB_OUTPUT
+            echo "rollback_result=no_previous" >> "$GITHUB_OUTPUT"
             exit 1
           fi
 
@@ -916,10 +1130,10 @@ jobs:
           # Capture config_dir from rollback script output for cleanup
           ROLLBACK_CONFIG_DIR=$(echo "$ROLLBACK_OUTPUT" | grep '^config_dir=' | tail -1 | cut -d= -f2-)
           if [ -n "$ROLLBACK_CONFIG_DIR" ]; then
-            echo "rollback_config_dir=$ROLLBACK_CONFIG_DIR" >> $GITHUB_OUTPUT
+            echo "rollback_config_dir=$ROLLBACK_CONFIG_DIR" >> "$GITHUB_OUTPUT"
           fi
 
-          echo "rollback_result=deployed" >> $GITHUB_OUTPUT
+          echo "rollback_result=deployed" >> "$GITHUB_OUTPUT"
         continue-on-error: true
 
       - name: Run health checks on rolled-back deployment
@@ -939,11 +1153,11 @@ jobs:
           COMPLETION_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
           if [ "$BACKEND_OK" = "true" ] && [ "$FRONTEND_OK" = "true" ]; then
             echo "[$COMPLETION_TIMESTAMP] ✓ Rollback health checks passed"
-            echo "rollback_health=passed" >> $GITHUB_OUTPUT
+            echo "rollback_health=passed" >> "$GITHUB_OUTPUT"
           else
             echo "[$COMPLETION_TIMESTAMP] ✗ Rollback health checks failed"
             echo "  Backend: $BACKEND_OK, Frontend: $FRONTEND_OK"
-            echo "rollback_health=failed" >> $GITHUB_OUTPUT
+            echo "rollback_health=failed" >> "$GITHUB_OUTPUT"
             exit 1
           fi
         continue-on-error: true
@@ -952,23 +1166,25 @@ jobs:
         if: steps.rollback.outcome == 'success' || steps.rollback.outcome == 'failure'
         run: |
           TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## Rollback Results" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Trigger:** Health check failure for SHA \`${{ steps.meta.outputs.sha_short }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "**Previous SHA:** \`${{ steps.previous.outputs.previous_sha }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "**Timestamp:** $TIMESTAMP" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          {
+            echo ""
+            echo "## Rollback Results"
+            echo ""
+            echo "**Trigger:** Health check failure for SHA \`${{ steps.meta.outputs.sha_short }}\`"
+            echo "**Previous SHA:** \`${{ steps.previous.outputs.previous_sha }}\`"
+            echo "**Timestamp:** $TIMESTAMP"
+            echo ""
 
-          if [ "${{ steps.rollback.outputs.rollback_result }}" = "no_previous" ]; then
-            echo "❌ Rollback: **SKIPPED** (no previous deployment available)" >> $GITHUB_STEP_SUMMARY
-          elif [ "${{ steps.rollback_health.outputs.rollback_health }}" = "passed" ]; then
-            echo "✅ Rollback: **SUCCESSFUL**" >> $GITHUB_STEP_SUMMARY
-            echo "✅ Rollback health checks: **PASSED**" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "❌ Rollback: **FAILED**" >> $GITHUB_STEP_SUMMARY
-            echo "⚠️ **Manual intervention required**" >> $GITHUB_STEP_SUMMARY
-          fi
+            if [ "${{ steps.rollback.outputs.rollback_result }}" = "no_previous" ]; then
+              echo "❌ Rollback: **SKIPPED** (no previous deployment available)"
+            elif [ "${{ steps.rollback_health.outputs.rollback_health }}" = "passed" ]; then
+              echo "✅ Rollback: **SUCCESSFUL**"
+              echo "✅ Rollback health checks: **PASSED**"
+            else
+              echo "❌ Rollback: **FAILED**"
+              echo "⚠️ **Manual intervention required**"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Clean up rollback config directory
         if: always()
@@ -1027,7 +1243,7 @@ jobs:
           echo "Deployment metadata generated:"
           cat deployment-record.json
 
-          echo "deploy_status=$DEPLOY_STATUS" >> $GITHUB_OUTPUT
+          echo "deploy_status=$DEPLOY_STATUS" >> "$GITHUB_OUTPUT"
 
       - name: Upload deployment record
         if: always()
@@ -1040,15 +1256,17 @@ jobs:
       - name: Report deployment state in summary
         if: always()
         run: |
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## Deployment State" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Status:** \`${{ steps.deployment_metadata.outputs.deploy_status }}\`" >> $GITHUB_STEP_SUMMARY
-          if [ -f deployment-record.json ]; then
-            echo '```json' >> $GITHUB_STEP_SUMMARY
-            cat deployment-record.json >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-          fi
+          {
+            echo ""
+            echo "## Deployment State"
+            echo ""
+            echo "**Status:** \`${{ steps.deployment_metadata.outputs.deploy_status }}\`"
+            if [ -f deployment-record.json ]; then
+              echo '```json'
+              cat deployment-record.json
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Fail on health check failure
         if: steps.backend_health.outcome == 'failure' || steps.frontend_health.outcome == 'failure'

@@ -29,6 +29,10 @@ jobs:
   create-release-pr:
     name: Bump Version & Create PR
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      pull-requests: write
 
     steps:
       - name: Checkout main
@@ -36,6 +40,15 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
+
+      - name: Validate release credentials
+        env:
+          RELEASE_PAT: ${{ secrets.RELEASE_PAT }}
+        run: |
+          if [ -z "$RELEASE_PAT" ]; then
+            echo "::error::RELEASE_PAT is required to create and merge release pull requests"
+            exit 1
+          fi
 
       - name: Set up Node.js
         uses: actions/setup-node@v7
@@ -55,11 +68,15 @@ jobs:
           esac
           
           NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
-          echo "current=$CURRENT" >> $GITHUB_OUTPUT
-          echo "new=$NEW_VERSION" >> $GITHUB_OUTPUT
-          echo "branch=release/v${NEW_VERSION}" >> $GITHUB_OUTPUT
-          echo "## Version Bump" >> $GITHUB_STEP_SUMMARY
-          echo "**$CURRENT** → **$NEW_VERSION** (${{ inputs.bump_type }})" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "current=$CURRENT"
+            echo "new=$NEW_VERSION"
+            echo "branch=release/v${NEW_VERSION}"
+          } >> "$GITHUB_OUTPUT"
+          {
+            echo "## Version Bump"
+            echo "**$CURRENT** → **$NEW_VERSION** (${{ inputs.bump_type }})"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Create release branch
         run: |
@@ -68,58 +85,21 @@ jobs:
           # GitHub API can add a verified commit to it in the commit step.
           git push -u origin "${{ steps.version.outputs.branch }}"
 
-      - name: Bump version in package.json files
+      - name: Update release files
+        env:
+          NEW_VERSION: ${{ steps.version.outputs.new }}
+          RELEASE_DESCRIPTION: ${{ inputs.description }}
         run: |
-          NEW_VERSION="${{ steps.version.outputs.new }}"
-          
-          # backend/package.json
-          jq --arg v "$NEW_VERSION" '.version = $v' backend/package.json > tmp.json && mv tmp.json backend/package.json
-          
-          # frontend/package.json
-          jq --arg v "$NEW_VERSION" '.version = $v' frontend/package.json > tmp.json && mv tmp.json frontend/package.json
-
-      - name: Update CHANGELOG.md
-        run: |
-          NEW_VERSION="${{ steps.version.outputs.new }}"
-          DATE=$(date +%Y-%m-%d)
-          DESCRIPTION="${{ inputs.description }}"
-          
-          # Insert new entry after "# Changelog" header
-          sed -i "s/^# Changelog$/# Changelog\n\n## [$NEW_VERSION] - $DATE\n\n### $DESCRIPTION/" CHANGELOG.md
-
-      - name: Update changelog.js
-        run: |
-          NEW_VERSION="${{ steps.version.outputs.new }}"
-          DATE=$(date +'%B %-d, %Y')
-          DESCRIPTION="${{ inputs.description }}"
-          
-          # Insert new entry at the top of changelogEntries array
-          sed -i "s/const changelogEntries = \[/const changelogEntries = [\n  {\n    version: '$NEW_VERSION',\n    date: '$DATE',\n    added: [],\n    changed: ['$DESCRIPTION'],\n    fixed: [],\n    removed: [],\n  },/" frontend/src/utils/changelog.js
-
-      - name: Update BackupSettings.jsx
-        run: |
-          NEW_VERSION="${{ steps.version.outputs.new }}"
-          DATE=$(date +'%B %-d, %Y')
-          DESCRIPTION="${{ inputs.description }}"
-          
-          NEW_ENTRY='              <div className="changelog-entry">\n                <div className="changelog-version">v'"$NEW_VERSION"'<\/div>\n                <div className="changelog-date">'"$DATE"'<\/div>\n                <ul className="changelog-items">\n                  <li>'"$DESCRIPTION"'<\/li>\n                <\/ul>\n              <\/div>'
-          
-          sed -i 's|<div className="changelog">|<div className="changelog">\n'"$NEW_ENTRY"'|' frontend/src/components/system/BackupSettings.jsx
-
-      - name: Update SystemModal.jsx
-        run: |
-          NEW_VERSION="${{ steps.version.outputs.new }}"
-          DATE=$(date +'%B %-d, %Y')
-          DESCRIPTION="${{ inputs.description }}"
-          
-          NEW_ENTRY='            <div className="changelog-entry">\n              <div className="changelog-version">\n                v'"$NEW_VERSION"'\n                {isCurrentVersion('"'"'v'"$NEW_VERSION"''"'"') \&\& <span className="current-version-badge">Current Version<\/span>}\n              <\/div>\n              <div className="changelog-date">'"$DATE"'<\/div>\n              <ul className="changelog-items">\n                <li>'"$DESCRIPTION"'<\/li>\n              <\/ul>\n            <\/div>'
-          
-          sed -i 's|<div className="changelog">|<div className="changelog">\n'"$NEW_ENTRY"'|' frontend/src/components/system/SystemModal.jsx
+          DATE=$(date -u +%Y-%m-%d)
+          node scripts/update-release-files.js \
+            --version "$NEW_VERSION" \
+            --date "$DATE" \
+            --description "$RELEASE_DESCRIPTION"
 
       - name: Build frontend
         run: |
           cd frontend
-          npm ci
+          npm ci --no-audit --no-fund
           npm run build
 
       # Commit via the GitHub API (GraphQL createCommitOnBranch) so the commit
@@ -189,16 +169,13 @@ jobs:
       - name: Create Pull Request
         id: create_pr
         run: |
-          NEW_VERSION="${{ steps.version.outputs.new }}"
-          DESCRIPTION="${{ inputs.description }}"
-          
           PR_BODY="## Release v${NEW_VERSION}
 
           ${DESCRIPTION}
 
-          ### Version Bump (${{ inputs.bump_type }})
-          - \`backend/package.json\`
-          - \`frontend/package.json\`
+          ### Version Bump (${BUMP_TYPE})
+          - \`backend/package.json\`, \`backend/package-lock.json\`
+          - \`frontend/package.json\`, \`frontend/package-lock.json\`
           - \`CHANGELOG.md\`
           - \`frontend/src/utils/changelog.js\`
           - \`frontend/src/components/system/BackupSettings.jsx\`
@@ -215,18 +192,23 @@ jobs:
           
           PR_URL=$(gh pr create \
             --base main \
-            --head "${{ steps.version.outputs.branch }}" \
+            --head "$BRANCH" \
             --title "Release v${NEW_VERSION}: ${DESCRIPTION}" \
             --body "$PR_BODY")
           
-          echo "pr_url=$PR_URL" >> $GITHUB_OUTPUT
-          echo "## Pull Request Created" >> $GITHUB_STEP_SUMMARY
-          echo "[$PR_URL]($PR_URL)" >> $GITHUB_STEP_SUMMARY
+          echo "pr_url=$PR_URL" >> "$GITHUB_OUTPUT"
+          {
+            echo "## Pull Request Created"
+            echo "[$PR_URL]($PR_URL)"
+          } >> "$GITHUB_STEP_SUMMARY"
         env:
-          # A PR opened with GITHUB_TOKEN is authored by github-actions[bot], which the repo's fork PR
-          # approval policy ("all external contributors") treats as external: its CI waits for a manual
-          # approval. Opened with RELEASE_PAT it is authored by the owner and CI runs straight away.
-          GH_TOKEN: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+          NEW_VERSION: ${{ steps.version.outputs.new }}
+          BRANCH: ${{ steps.version.outputs.branch }}
+          BUMP_TYPE: ${{ inputs.bump_type }}
+          DESCRIPTION: ${{ inputs.description }}
+          # RELEASE_PAT attributes the PR to the repository owner so CI starts
+          # without waiting for approval of a github-actions[bot] author.
+          GH_TOKEN: ${{ secrets.RELEASE_PAT }}
 
       # Enable auto-merge with a PAT (not GITHUB_TOKEN). When auto-merge completes
       # under GITHUB_TOKEN, the resulting push to main does NOT trigger downstream
@@ -237,6 +219,6 @@ jobs:
         if: inputs.auto_merge
         run: |
           gh pr merge "${{ steps.version.outputs.branch }}" --auto --merge --delete-branch
-          echo "✅ Auto-merge enabled — PR will merge when CI passes" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Auto-merge enabled — PR will merge when CI passes" >> "$GITHUB_STEP_SUMMARY"
         env:
           GH_TOKEN: ${{ secrets.RELEASE_PAT }}

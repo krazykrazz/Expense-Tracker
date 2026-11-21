@@ -25,11 +25,15 @@ The repository restricts which actions can run. Allowed: GitHub-owned actions (`
 | Detect Changed Paths | `path-filter` | Every run | Decides which test jobs run |
 | Lockfile Integrity | `lockfile-integrity` | Every run | `npm ci` in root, `backend/` and `frontend/` |
 | Security Audit | `security-audit` | Every run | `npm audit --audit-level=high` for backend and frontend |
+| Workflow Syntax | `workflow-validation` | Every run | Runs pinned `actionlint` against `.github/workflows/` |
+| ESLint | `lint` | Every run | Runs the repository lint script with a warning ceiling |
 | Backend Unit Tests 1/2, 2/2 | `backend-unit-tests` | Backend or shared changes | Jest (non-PBT) in 2 shards; shard 1 runs enforcement-script tests |
 | Backend PBT Shard 1/3, 2/3, 3/3 | `backend-pbt-shards` | Backend or shared changes | Jest PBT in 3 shards; shard 1 also runs backup suites and PBT guardrails |
 | Backend PBT Tests | `backend-pbt-tests` | Backend or shared changes | Aggregates the shard results |
 | Backend Tests Status | `backend-tests-status` | Every run | **Required check** — passes if backend tests passed or were legitimately skipped |
 | Frontend Tests | `frontend-tests` | Frontend or shared changes | Vitest, test-naming and raw-fetch checks, runtime budget |
+| Frontend Production Build | `frontend-build` | Frontend or shared changes | Runs `npm run build` for the production frontend bundle |
+| Docker Build Smoke | `docker-build-smoke` | Relevant PR changes | Loads a Docker image locally without pushing |
 | Frontend Tests Status | `frontend-tests-status` | Every run | **Required check** — passes if frontend tests passed or were legitimately skipped |
 | Test Health Report | `test-health-report` | Every run | Reports inventory plus actual files, tests, skips, retries, unhandled errors, duration, and slowest files from uploaded JSON artifacts |
 | Build and Push to GHCR | `build-and-push-ghcr` | Push / `workflow_dispatch` on `main` only, when both status aggregators pass | Build, Trivy scan, push to GHCR, GitHub release |
@@ -47,7 +51,7 @@ The repository restricts which actions can run. Allowed: GitHub-owned actions (`
 - Merge commits only — squash and rebase are disabled
 - No force pushes or branch deletion
 
-> **Note**: The individual test jobs (`Backend Unit Tests`, `Backend PBT Shard 1/3`, etc.) are not required status checks. The aggregator jobs handle branch protection, allowing tests to be skipped when irrelevant files change while still satisfying branch protection requirements. `Security Audit`, `Lockfile Integrity` and `Test Health Report` are not required either — a failure there is visible on the PR but does not block the merge button.
+> **Note**: The individual test jobs (`Backend Unit Tests`, `Backend PBT Shard 1/3`, etc.) are not separate required status checks. The aggregator jobs handle branch protection, allowing tests to be skipped when irrelevant files change. `workflow-validation`, `lint`, `lockfile-integrity`, `security-audit`, `frontend-build`, and `docker-build-smoke` are enforced through the required backend/frontend status aggregators where applicable.
 
 When you create a PR (using `promote-feature.ps1` or `create-pr-from-main.ps1`):
 1. GitHub Actions triggers the CI workflow
@@ -66,7 +70,7 @@ A `security-audit` job runs `npm audit --audit-level=high` on both backend and f
 - Each audit step uses `continue-on-error`; a final step fails the job if either audit found `high` or `critical` vulnerabilities
 - `low` and `moderate` findings don't fail the job
 - Results are reported in the GitHub Actions workflow summary
-- It is not a required status check, and `build-and-push-ghcr` does not depend on it — a failing audit blocks neither merging nor the image push
+- The backend status aggregator requires this job to pass, and `build-and-push-ghcr` depends on it
 
 ### Docker Image Scanning (Trivy)
 
@@ -76,9 +80,9 @@ The `build-and-push-ghcr` job scans every Docker image with Trivy before pushing
 
 1. **Build + Load** — `docker/build-push-action@v7` with `load: true`, `push: false` builds the image once into the local Docker daemon (tagged with the short SHA and `v<version>`), using the GitHub Actions build cache
 2. **Scan** — a single Trivy run with `--format json --exit-code 0`, severities `CRITICAL,HIGH,MEDIUM,LOW`, vuln types `os,library`. The vulnerability DB is fetched from `ghcr.io/aquasecurity/trivy-db:2` with `mirror.gcr.io/aquasec/trivy-db:2` as fallback — up to 3 attempts across both, with 15s/30s backoff
-3. **Gate** — `jq` counts findings per severity in `trivy-results.json`; the job fails if there is **any CRITICAL** finding. HIGH, MEDIUM and LOW findings are reported but don't block
+3. **Gate** — `jq` validates `trivy-results.json` and counts findings by severity; the job fails on any CRITICAL or HIGH finding. MEDIUM and LOW findings are reported but do not block
 4. **Table Report** — `trivy convert` writes `trivy-results.txt` from the JSON
-5. **Artifact Upload** — `actions/upload-artifact@v7` uploads `trivy-scan-<sha>` (`trivy-results.txt` + `trivy-results.json`) with 30-day retention (`if: always()`)
+5. **Artifact Upload** — `actions/upload-artifact@v7` uploads `trivy-scan-<sha>` (`trivy-results.txt`, `trivy-results.json`, and a CycloneDX SBOM) with 30-day retention (`if: always()`)
 6. **Workflow Summary** — vulnerability counts by severity; if no report exists, the summary states the image was not assessed
 7. **Push** — `docker push` pushes the already-built SHA tag, and the version tag only if it does not exist in GHCR yet (no rebuild); only reached if the gate passed
 
@@ -88,8 +92,8 @@ Because the scan itself always exits 0, a scanner failure can't masquerade as a 
 
 | Result | Job | Push | Artifact |
 |--------|-----|------|----------|
-| One or more CRITICAL | ❌ Fails | Blocked | ✅ Uploaded |
-| HIGH / MEDIUM / LOW only | ✅ Passes | Proceeds | ✅ Uploaded |
+| One or more CRITICAL or HIGH | ❌ Fails | Blocked | ✅ Uploaded |
+| MEDIUM / LOW only | ✅ Passes | Proceeds | ✅ Uploaded |
 | No vulnerabilities | ✅ Passes | Proceeds | ✅ Uploaded |
 | Trivy could not run (3 attempts × 2 DB sources) | ❌ Fails | Blocked | No report |
 
@@ -299,7 +303,7 @@ backend-pbt-shards:
 ```yaml
 backend-tests-status:
   runs-on: ubuntu-latest
-  needs: [path-filter, backend-unit-tests, backend-pbt-tests]
+  needs: [path-filter, backend-unit-tests, backend-pbt-tests, lint, workflow-validation, lockfile-integrity, security-audit]
   if: always()
 ```
 
@@ -331,7 +335,7 @@ frontend-tests:
 ```yaml
 frontend-tests-status:
   runs-on: ubuntu-latest
-  needs: [path-filter, frontend-tests]
+  needs: [path-filter, frontend-tests, frontend-build, docker-build-smoke]
   if: always()
 ```
 
@@ -491,7 +495,7 @@ Integrated into `.github/workflows/ci.yml` as the `build-and-push-ghcr` job.
 | `push` | `main` | Runs after tests pass when code is merged to main |
 | `workflow_dispatch` | `main` | Manual run on main |
 
-The job requires `Backend Tests Status` and `Frontend Tests Status` to succeed and never runs for `dependabot[bot]` or on `pull_request` events. It does not wait for `Security Audit` or `Lockfile Integrity`.
+The job requires `Backend Tests Status`, `Frontend Tests Status`, `Lockfile Integrity`, and `Security Audit` to succeed and never runs for `dependabot[bot]` or on `pull_request` events.
 
 ### What It Does
 
@@ -499,7 +503,7 @@ The job requires `Backend Tests Status` and `Frontend Tests Status` to succeed a
 2. Sets up Docker Buildx
 3. Authenticates to GHCR
 4. Builds the Docker image once and loads it into the local Docker daemon (tagged `<short-sha>` and `v<version>` from `backend/package.json`)
-5. Runs the Trivy scan and gate — fails on any CRITICAL finding (see [Docker Image Scanning](#docker-image-scanning-trivy))
+5. Runs the Trivy scan and gate — fails on any CRITICAL or HIGH finding (see [Docker Image Scanning](#docker-image-scanning-trivy))
 6. Uploads the scan artifact and writes the workflow summary
 7. Pushes the already-built SHA tag to `ghcr.io/krazykrazz/expense-tracker` (no rebuild), plus `v<version>` when that tag does not exist yet. The first build of a version is the release merge commit, so release tags are immutable; later `main` builds at the same version only get a SHA tag. A GHCR error other than "manifest unknown" fails the step
 8. Generates `docker-compose-v<version>.yml` from `docker-compose.ghcr.yml` and creates GitHub release `v<version>` with it attached (or uploads the asset if the release already exists)
@@ -558,10 +562,10 @@ GHCR is the single registry. CI pushes the SHA tag on every merge to main and th
 
 It:
 1. Creates `release/vX.Y.Z` from `main` and pushes it
-2. Bumps `backend/package.json` and `frontend/package.json`, and inserts a new entry into `CHANGELOG.md`, `frontend/src/utils/changelog.js`, `frontend/src/components/system/BackupSettings.jsx` and `frontend/src/components/system/SystemModal.jsx`
+2. Uses `scripts/update-release-files.js` to update `backend/package.json`, `frontend/package.json`, both package lockfiles, `CHANGELOG.md`, `frontend/src/utils/changelog.js`, `frontend/src/components/system/BackupSettings.jsx`, and `frontend/src/components/system/SystemModal.jsx`
 3. Builds the frontend (`npm ci && npm run build`)
 4. Commits through the GitHub API (`gh api graphql` → `createCommitOnBranch`) so the commit is signed by GitHub and shows as **Verified**, as the ruleset requires. A plain `git push` from CI would be unsigned; a third-party commit action would be blocked by the Actions allowlist
-5. Opens the PR with `gh pr create`, using the `RELEASE_PAT` secret (falls back to `GITHUB_TOKEN` when it isn't set). The repo requires approval before workflows run for **all external contributors**, and a PR opened with `GITHUB_TOKEN` is authored by `github-actions[bot]`, which counts as external: its CI and Version Consistency Check would wait for a manual **Approve and run**. Opened with the PAT, the PR is authored by the owner and its checks start at once
+5. Validates `RELEASE_PAT` and opens the PR with `gh pr create`. This ensures the PR is authored by the repository owner so CI starts without waiting for approval of a `github-actions[bot]` author
 6. If `auto_merge` is set, enables auto-merge (merge commit, delete branch) using the `RELEASE_PAT` secret. A merge performed with `GITHUB_TOKEN` would not trigger the `push` CI run on `main`, so the GHCR image would never be built
 
 After the merge, CI builds and pushes the image; promote it locally with `.\scripts\build-and-push.ps1 -Environment staging` and then `-Environment latest`. See [Deployment Workflow](../deployment/DEPLOYMENT_WORKFLOW.md).
@@ -570,8 +574,8 @@ After the merge, CI builds and pushes the image; promote it locally with `.\scri
 
 `.github/workflows/version-check.yml` runs on PRs to `main` that touch `frontend/package.json`, `backend/package.json`, `BackupSettings.jsx`, `SystemModal.jsx`, `frontend/src/utils/changelog.js` or `CHANGELOG.md`:
 
-- **Non-`release/*` branches** — `Guard Against PR Version Bumps` fails if the diff adds a version string to any of those files except `CHANGELOG.md`. Version bumps belong in the Release workflow
-- **`release/*` branches** — `Validate Version Consistency` checks that `backend/package.json`, `frontend/package.json` and `changelog.js` agree, and that `CHANGELOG.md`, `BackupSettings.jsx` and `SystemModal.jsx` contain the version
+- **Non-`release/*` branches** — `Guard Against PR Version Bumps` fails if the diff adds a version string to any of those files except `CHANGELOG.md`. Version bumps belong in the Release workflow. Lockfiles are not inspected: dependency updates add `"version"` lines to them
+- **`release/*` branches** — `Validate Version Consistency` checks that `backend/package.json`, `frontend/package.json`, both lockfiles and `changelog.js` agree, and that `CHANGELOG.md`, `BackupSettings.jsx` and `SystemModal.jsx` contain the version
 
 The same rule is enforced locally by the pre-commit hook (`scripts/git-hooks/pre-commit`, installed with `.\scripts\install-git-hooks.ps1`), which blocks staged version changes on `feature/*` and `hotfix/*` branches.
 
@@ -635,9 +639,9 @@ When you open a PR:
 2. Verify the aggregator jobs ran and reported success
 3. Check workflow logs for the aggregator job output
 
-#### Required Checks Pending on a Docs-Only PR
+#### Docs-Only PR Checks
 
-CI is skipped entirely by `paths-ignore` when a PR only changes `docs/**`, root `*.md` files or `CHANGELOG.md`. GitHub leaves required checks from a workflow skipped by path filtering in a pending state, so `Backend Tests Status` and `Frontend Tests Status` are never reported for such a PR.
+Pull requests always run CI. For a docs-only PR, backend/frontend test jobs are skipped by the path filter and both required status aggregators report success. Workflow syntax and lockfile/security checks still run.
 
 #### Runtime Budget Exceeded
 
@@ -722,7 +726,7 @@ Vitest fails the run when it reports **Unhandled Errors** (e.g. a rejected promi
 
 If `npm audit` itself fails (registry or network error), the audit step is marked failed and the job fails the same way; check the step log to tell the two apart.
 
-#### Trivy reports CRITICAL vulnerabilities
+#### Trivy reports CRITICAL or HIGH vulnerabilities
 
 1. Download the `trivy-scan-<sha>` artifact from the workflow run
 2. Review which packages/layers are affected
@@ -819,11 +823,11 @@ cache: 'npm'
 cache-dependency-path: backend/package-lock.json  # or frontend/
 ```
 
-Cache is invalidated when `package-lock.json` changes. Lockfile Integrity runs without a cache. Docker layers use the GitHub Actions cache (`cache-from/cache-to: type=gha`).
+Cache is invalidated when `package-lock.json` changes. Lockfile Integrity runs without a cache. Docker layers use the GitHub Actions cache (`cache-from/cache-to: type=gha`). PR smoke builds use the `docker-smoke` cache scope.
 
 ### Timeouts
 
-Default GitHub Actions timeout: 6 hours per job (no job overrides it)
+Job runtimes are bounded explicitly in `.github/workflows/ci.yml`, `.github/workflows/release.yml`, `.github/workflows/version-check.yml`, and `.github/workflows/ghcr-cleanup.yml` (most CI jobs use 10-60 minutes).
 
 Individual test timeouts:
 - Jest (backend, `jest.setup.js`): 30s locally, 45s in CI

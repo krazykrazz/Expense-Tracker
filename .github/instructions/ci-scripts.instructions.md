@@ -19,7 +19,7 @@ Tests for these scripts live in `scripts/__tests__/` and run in Backend Unit Tes
 
 New scripts: `process.exit(1)` on failure, export logic and guard with `if (require.main === module) main();`, add a step in `ci.yml`, add tests in `scripts/__tests__/`.
 
-Other scripts: `health-check.sh` and `rollback.sh` (used by the Deployment Health Check job), `build-and-push.ps1`, `deploy-feature-preview.ps1`, `create-feature-branch.ps1`, `promote-feature.ps1`, `create-pr-from-main.ps1`, `run-test-summary.ps1`, `install-git-hooks.ps1` + `git-hooks/pre-commit`.
+Other scripts: `health-check.sh` and `rollback.sh` (used by the Deployment Health Check job), `update-release-files.js` (used by `release.yml` to update every version/changelog location), `build-and-push.ps1`, `deploy-feature-preview.ps1`, `create-feature-branch.ps1`, `promote-feature.ps1`, `create-pr-from-main.ps1`, `run-test-summary.ps1`, `install-git-hooks.ps1` + `git-hooks/pre-commit`.
 
 ## Workflow Facts
 

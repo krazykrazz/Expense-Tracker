@@ -4,13 +4,14 @@
 # Performs HTTP health checks with exponential backoff retry logic.
 # Designed to run in CI (ubuntu runners), not on local Windows dev machines.
 #
-# Usage: ./scripts/health-check.sh <endpoint_url> [max_retries] [retry_delay] [timeout]
+# Usage: ./scripts/health-check.sh <endpoint_url> [max_retries] [retry_delay] [timeout] [max_wait]
 #
 # Parameters:
 #   endpoint_url  - Required. The URL to check (e.g., http://localhost:2424/api/health)
 #   max_retries   - Optional. Number of retry attempts (default: 10)
 #   retry_delay   - Optional. Initial delay between retries in seconds (default: 5)
 #   timeout        - Optional. HTTP request timeout in seconds (default: 30)
+#   max_wait       - Optional. Maximum delay between retries in seconds (default: 60)
 #
 # Exit codes:
 #   0 - Health check passed (HTTP 200)
@@ -23,9 +24,30 @@ ENDPOINT="${1:-}"
 MAX_RETRIES="${2:-10}"
 RETRY_DELAY="${3:-5}"
 TIMEOUT="${4:-30}"
+MAX_WAIT="${5:-60}"
 
 if [ -z "$ENDPOINT" ]; then
-  echo "::error::Usage: health-check.sh <endpoint_url> [max_retries] [retry_delay] [timeout]"
+  echo "::error::Usage: health-check.sh <endpoint_url> [max_retries] [retry_delay] [timeout] [max_wait]"
+  exit 2
+fi
+
+if ! [[ "$MAX_RETRIES" =~ ^[1-9][0-9]*$ ]] || [ "$MAX_RETRIES" -gt 30 ]; then
+  echo "::error::max_retries must be an integer between 1 and 30"
+  exit 2
+fi
+
+if ! [[ "$RETRY_DELAY" =~ ^[0-9]+$ ]] || [ "$RETRY_DELAY" -gt 300 ]; then
+  echo "::error::retry_delay must be an integer between 0 and 300"
+  exit 2
+fi
+
+if ! [[ "$TIMEOUT" =~ ^[1-9][0-9]*$ ]] || [ "$TIMEOUT" -gt 300 ]; then
+  echo "::error::timeout must be an integer between 1 and 300"
+  exit 2
+fi
+
+if ! [[ "$MAX_WAIT" =~ ^[1-9][0-9]*$ ]] || [ "$MAX_WAIT" -gt 300 ]; then
+  echo "::error::max_wait must be an integer between 1 and 300"
   exit 2
 fi
 
@@ -34,6 +56,7 @@ echo "  Endpoint:    $ENDPOINT"
 echo "  Max retries: $MAX_RETRIES"
 echo "  Retry delay: ${RETRY_DELAY}s (with exponential backoff)"
 echo "  Timeout:     ${TIMEOUT}s"
+echo "  Max wait:    ${MAX_WAIT}s"
 echo ""
 
 for i in $(seq 1 "$MAX_RETRIES"); do
@@ -57,6 +80,9 @@ for i in $(seq 1 "$MAX_RETRIES"); do
 
   if [ "$i" -lt "$MAX_RETRIES" ]; then
     WAIT_TIME=$((RETRY_DELAY * (2 ** (i - 1))))
+    if [ "$WAIT_TIME" -gt "$MAX_WAIT" ]; then
+      WAIT_TIME="$MAX_WAIT"
+    fi
     echo "  Waiting ${WAIT_TIME}s before retry (exponential backoff)..."
     sleep "$WAIT_TIME"
   fi

@@ -4,6 +4,7 @@ const activityLogService = require('./activityLogService');
 const settingsService = require('./settingsService');
 const activityLogRepository = require('../repositories/activityLogRepository');
 const { getDatabase } = require('../database/db');
+const { waitForLogging } = require('../test/activityLogTestHelpers');
 
 describe('Activity Log Service - Settings Integration', () => {
   let db;
@@ -43,7 +44,8 @@ describe('Activity Log Service - Settings Integration', () => {
       // Configure custom retention settings (30 days)
       await settingsService.updateRetentionSettings(30, 1000);
 
-      // Clear activity logs created by updateRetentionSettings
+      // Clear activity logs created by updateRetentionSettings (logged fire-and-forget: drain first)
+      await waitForLogging();
       await new Promise((resolve, reject) => {
         db.run('DELETE FROM activity_logs', (err) => err ? reject(err) : resolve());
       });
@@ -89,7 +91,8 @@ describe('Activity Log Service - Settings Integration', () => {
       // Configure custom retention settings (max 150 events)
       await settingsService.updateRetentionSettings(90, 150);
 
-      // Clear activity logs created by updateRetentionSettings
+      // Clear activity logs created by updateRetentionSettings (logged fire-and-forget: drain first)
+      await waitForLogging();
       await new Promise((resolve, reject) => {
         db.run('DELETE FROM activity_logs', (err) => err ? reject(err) : resolve());
       });
@@ -161,7 +164,8 @@ describe('Activity Log Service - Settings Integration', () => {
       // Configure custom settings
       await settingsService.updateRetentionSettings(60, 500);
 
-      // Clear activity logs created by updateRetentionSettings
+      // Clear activity logs created by updateRetentionSettings (logged fire-and-forget: drain first)
+      await waitForLogging();
       await new Promise((resolve, reject) => {
         db.run('DELETE FROM activity_logs', (err) => err ? reject(err) : resolve());
       });
@@ -247,7 +251,8 @@ describe('Activity Log Service - Settings Integration', () => {
       // Set initial settings (60 days)
       await settingsService.updateRetentionSettings(60, 1000);
 
-      // Clear activity logs created by updateRetentionSettings
+      // Clear activity logs created by updateRetentionSettings (logged fire-and-forget: drain first)
+      await waitForLogging();
       await new Promise((resolve, reject) => {
         db.run('DELETE FROM activity_logs', (err) => err ? reject(err) : resolve());
       });
@@ -285,7 +290,8 @@ describe('Activity Log Service - Settings Integration', () => {
       // Update settings to 40 days
       await settingsService.updateRetentionSettings(40, 1000);
 
-      // Clear activity logs created by updateRetentionSettings
+      // Clear activity logs created by updateRetentionSettings (logged fire-and-forget: drain first)
+      await waitForLogging();
       await new Promise((resolve, reject) => {
         db.run('DELETE FROM activity_logs WHERE event_type = \'settings_updated\'', (err) => err ? reject(err) : resolve());
       });

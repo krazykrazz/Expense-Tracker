@@ -8,6 +8,7 @@ import { createLogger } from '../../utils/logger';
 import { authAwareFetch } from '../../utils/fetchProvider';
 import SecuritySettings from './SecuritySettings';
 import PlaidSettings from '../bank-import/PlaidSettings';
+import NotificationSettings from './NotificationSettings';
 import './SettingsModal.css';
 
 const logger = createLogger('SettingsModal');
@@ -448,6 +449,12 @@ const SettingsModal = () => {
           >
             🏦 Bank Import
           </button>
+          <button 
+            className={`tab-button ${activeTab === 'notifications' ? 'active' : ''}`}
+            onClick={() => setActiveTab('notifications')}
+          >
+            🔔 Notifications
+          </button>
         </div>
 
         <div className="tab-content">
@@ -869,6 +876,12 @@ const SettingsModal = () => {
           {activeTab === 'bank-import' && (
             <div className="tab-panel">
               <PlaidSettings />
+            </div>
+          )}
+
+          {activeTab === 'notifications' && (
+            <div className="tab-panel">
+              <NotificationSettings />
             </div>
           )}
 

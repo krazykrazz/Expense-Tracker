@@ -7,6 +7,7 @@ const investmentRepository = require('../repositories/investmentRepository');
 const settingsRepository = require('../repositories/settingsRepository');
 const activityLogService = require('./activityLogService');
 const plaidSyncService = require('./plaidSyncService');
+const notificationService = require('./notificationService');
 const { encrypt, decrypt } = require('../utils/tokenCrypto');
 const logger = require('../config/logger');
 const { fail } = require('../utils/httpError');
@@ -378,6 +379,7 @@ class PlaidService {
 
     const removedRows = await plaidRepository.deleteItemWithUnreviewed(id);
     plaidSyncService.clearAttempt(id);
+    notificationService.forgetBank(id);
 
     await activityLogService.logEvent(
       'plaid_item_deleted',

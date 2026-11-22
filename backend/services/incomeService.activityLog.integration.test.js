@@ -36,6 +36,7 @@ describe('Income Service Activity Logging - Integration Tests', () => {
       expect(created).toBeDefined();
       expect(created.id).toBeDefined();
 
+      await waitForLogging();
       const events = await activityLogRepository.findRecent(10, 0);
       const { event, metadata } = findEventWithMetadata(events, 'income_source_added', created.id);
 
@@ -66,6 +67,7 @@ describe('Income Service Activity Logging - Integration Tests', () => {
       });
       expect(updated).toBeDefined();
 
+      await waitForLogging();
       const events = await activityLogRepository.findRecent(10, 0);
       const { event, metadata } = findEventWithMetadata(events, 'income_source_updated', created.id);
 
@@ -105,6 +107,7 @@ describe('Income Service Activity Logging - Integration Tests', () => {
       const deleted = await incomeService.deleteIncomeSource(created.id);
       expect(deleted).toBe(true);
 
+      await waitForLogging();
       const events = await activityLogRepository.findRecent(10, 0);
       const { event, metadata } = findEventWithMetadata(events, 'income_source_deleted', created.id);
 
@@ -134,6 +137,7 @@ describe('Income Service Activity Logging - Integration Tests', () => {
       const copied = await incomeService.copyFromPreviousMonth(TEST_YEAR, 7);
       expect(copied.length).toBe(2);
 
+      await waitForLogging();
       const events = await activityLogRepository.findRecent(10, 0);
       const { event, metadata } = findEventWithMetadata(events, 'income_sources_copied');
 

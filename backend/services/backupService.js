@@ -655,6 +655,9 @@ class BackupService {
           logger.warn('Failed to reload Plaid settings after restore:', plaidError.message);
         }
 
+        // Remembered notification states belong to the backup's moment, not now (never throws)
+        await require('./notificationService').resetState();
+
         // Log backup restoration event (fire-and-forget, don't let logging failures affect restore)
         try {
           await activityLogService.logEvent(

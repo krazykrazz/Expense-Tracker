@@ -165,6 +165,8 @@ export const API_ENDPOINTS = {
 
   // Settings
   SETTINGS_TIMEZONE: `${API_BASE_URL}/api/settings/timezone`,
+  SETTINGS_NOTIFICATIONS: `${API_BASE_URL}/api/settings/notifications`,
+  SETTINGS_NOTIFICATIONS_TEST: `${API_BASE_URL}/api/settings/notifications/test`,
 
   // Plaid bank connections + Import Inbox
   PLAID_STATUS: `${API_BASE_URL}/api/plaid/status`,

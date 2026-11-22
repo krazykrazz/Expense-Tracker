@@ -30,15 +30,25 @@ describe('notification privacy (property)', () => {
     );
   });
 
-  test('describeError never contains a file path', () => {
+  test('describeError never contains a file path, quoted or not, with or without spaces', () => {
     const pathLike = fc.tuple(
-      fc.constantFrom('/config/backups/', 'C:\\config\\db\\', '/app/', '\\\\server\\share\\'),
+      fc.constantFrom('/config/backups/', 'C:\\config\\db\\', '/app/', '\\\\server\\share\\', '/config/My Drive/', 'G:\\My Drive\\'),
       fc.stringMatching(/^[a-z0-9._-]{1,12}$/)
     ).map(([dir, file]) => `${dir}${file}`);
+    const quote = fc.constantFrom("'", '"');
     fc.assert(
-      fc.property(pathLike, fc.constantFrom('open', 'EACCES: permission denied, open', 'ENOENT: no such file,'), (filePath, prefix) => {
-        const text = describeError(new Error(`${prefix} '${filePath}'`));
-        return !text.includes('config') && !text.includes('/app/') && !/[A-Za-z]:\\/.test(text) && text.includes('<path>');
+      fc.property(pathLike, quote, fc.constantFrom('open', 'EACCES: permission denied, open', 'ENOENT: no such file,'), (filePath, q, prefix) => {
+        const text = describeError(new Error(`${prefix} ${q}${filePath}${q}`));
+        return !text.includes('config') && !text.includes('/app/') && !text.includes('Drive') && !/[A-Za-z]:\\/.test(text)
+          && text.includes('<path>');
+      }),
+      pbtOptions()
+    );
+    // Unquoted paths can't contain spaces (the space ends them), so only space-free ones are generated
+    fc.assert(
+      fc.property(pathLike.filter(p => !p.includes(' ')), (filePath) => {
+        const text = describeError(new Error(`open ${filePath} failed`));
+        return !text.includes('config') && !text.includes('/app/') && text.includes('<path>');
       }),
       pbtOptions()
     );

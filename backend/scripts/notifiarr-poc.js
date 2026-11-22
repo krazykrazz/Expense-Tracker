@@ -31,7 +31,7 @@ function buildBody({ update, event, color, title, description, fields, content, 
       color,
       ping: { pingUser: 0, pingRole: 0 },
       images: { thumbnail: thumbnail || '', image: '' },
-      text: { title, icon: ICON_URL, content: content || '', description: description || '', fields, footer: 'Expense Tracker v1.31.0' },
+      text: { title, icon: ICON_URL, content: content || '', description: description || '', fields, footer: `Expense Tracker v${require('../package.json').version}` },
       ids: { channel: PLACEHOLDER }
     }
   });

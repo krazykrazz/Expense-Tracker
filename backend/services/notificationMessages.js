@@ -9,7 +9,7 @@ const STATUS_LABELS = { needs_login: 'Needs login', gone: 'Connection removed', 
 const PLAID_ACTIONS = {
   needs_login: 'Connections tab → **Reconnect**. Keeps the same connection: no new Trial slot, nothing re-imported.',
   gone: 'The bank or Plaid no longer recognises this connection. Disconnect it, then connect the bank again.',
-  error: 'Usually temporary at the bank; automatic sync keeps retrying.',
+  error: 'Has lasted over an hour. Often temporary at the bank: automatic sync keeps retrying. If it persists, check the Connections tab.',
   stale: 'Some banks (CIBC) only send new data when you log in. Use **Log in again** on the Connections tab, or import a file. Don\'t disconnect.'
 };
 
@@ -25,7 +25,9 @@ function safeName(value) {
 function describeError(error) {
   const code = /^[A-Z][A-Z0-9_]{2,}$/.test(error?.code || '') ? error.code : null;
   const message = String(error?.message ?? error ?? '')
-    .replace(/(^|[\s'"(])(?:[A-Za-z]:)?[\\/][^\s'")]+/g, '$1<path>')
+    // Quoted paths first: they can contain spaces ('/config/My Drive/backups')
+    .replace(/(['"])(?:[A-Za-z]:)?[\\/][^'"]*\1/g, '$1<path>$1')
+    .replace(/(^|[\s'"(])(?:[A-Za-z]:)?[\\/][^\s'")]+/g, (match, lead) => (match.slice(lead.length) === '<path>' ? match : `${lead}<path>`))
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, 200);
@@ -69,7 +71,12 @@ function formatBytes(bytes) {
   return `${unit === 0 ? value : value.toFixed(2)} ${units[unit]}`;
 }
 
-const money = (n) => `$${Number(n).toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+/** "-$12.50", not "$-12.50"; the sign is decided on the rounded value so -0.001 is "$0.00". */
+const money = (n) => {
+  const cents = Math.round(Number(n) * 100);
+  const text = (Math.abs(cents) / 100).toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return `${cents < 0 ? '-' : ''}$${text}`;
+};
 const triggerLabel = (trigger) => (trigger === 'manual' ? 'Manual' : 'Scheduled');
 
 const BUILDERS = {

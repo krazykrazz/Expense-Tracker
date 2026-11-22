@@ -2,7 +2,7 @@ const settingsRepository = require('../repositories/settingsRepository');
 const activityLogService = require('./activityLogService');
 const notifiarrProvider = require('./notifiarrProvider');
 const { buildMessage } = require('./notificationMessages');
-const { EVENTS, EVENT_KEYS, DEFAULT_EVENT_KEYS } = require('./notificationEvents');
+const { EVENTS, EVENT_KEYS, DEFAULT_EVENT_KEYS, STATE_KEY } = require('./notificationEvents');
 const timeBoundaryService = require('./timeBoundaryService');
 const { encrypt, decrypt } = require('../utils/tokenCrypto');
 const { fail } = require('../utils/httpError');
@@ -83,6 +83,12 @@ class NotificationSettingsService {
    * an empty one clears it) and validate.
    */
   _resolve(input, current) {
+    // Discord IDs exceed Number.MAX_SAFE_INTEGER: a JSON number has already lost digits and must not be saved
+    for (const name of ['apiKey', 'channelId', 'pingUserId']) {
+      if (input[name] !== undefined && input[name] !== null && typeof input[name] !== 'string') {
+        throw fail(`${name} must be a string`, 400);
+      }
+    }
     const apiKey = isBlank(input.apiKey) ? current.apiKey : input.apiKey.trim();
     const text = (value, saved) => (value === undefined ? saved : String(value ?? '').trim());
     const channelId = text(input.channelId, current.channelId);
@@ -137,6 +143,8 @@ class NotificationSettingsService {
       events = EVENT_KEYS.filter(key => input.events.includes(key));
     }
     if (enabled && !(next.apiKey && next.channelId)) {
+      // The saved key exists but can't be read: say so rather than asking for a key the user already entered
+      if (!next.apiKey && current.keyError) throw fail(KEY_UNREADABLE, 400);
       throw fail('Enter the Notifiarr API key and the Discord channel ID before turning notifications on', 400);
     }
 
@@ -163,6 +171,27 @@ class NotificationSettingsService {
       { section: 'notifications', enabled, changes, tabId }
     );
 
+    return this.getSettings();
+  }
+
+  /**
+   * Remove the API key, channel and ping user and turn notifications off. The event selection is kept. The
+   * remembered states are cleared too: their messages are in a channel that may not be used again.
+   */
+  async clearSettings(tabId = null) {
+    for (const key of [KEYS.apiKey, KEYS.channelId, KEYS.pingUserId]) {
+      await settingsRepository.setSetting(key, '');
+    }
+    await settingsRepository.setSetting(KEYS.enabled, '0');
+    await settingsRepository.setSetting(STATE_KEY, '{}');
+
+    await activityLogService.logEvent(
+      'settings_updated',
+      'settings',
+      null,
+      'Removed notification settings',
+      { section: 'notifications', enabled: false, changes: ['credentials removed'], tabId }
+    );
     return this.getSettings();
   }
 }

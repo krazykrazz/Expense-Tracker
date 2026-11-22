@@ -102,6 +102,10 @@ describe('notificationSettingsService', () => {
     ['non-numeric channel', { channelId: 'general' }],
     ['channel too short', { channelId: '12345' }],
     ['bad ping user', { pingUserId: '12ab' }],
+    // What a client sending the IDs as JSON numbers produces: the last digits are already wrong
+    ['channel sent as a JSON number (digits already lost)', { channelId: JSON.parse('1234567890123456789') }],
+    ['ping user sent as a number', { pingUserId: JSON.parse('543077981707436033') }],
+    ['API key that is not a string', { apiKey: 12345 }],
     ['enabled that is not a boolean', { enabled: 'yes' }]
   ])('rejects %s', async (_name, input) => {
     await expect(save(input)).rejects.toMatchObject({ statusCode: 400 });
@@ -129,9 +133,28 @@ describe('notificationSettingsService', () => {
       const settings = await service.getSettings();
 
       expect(settings).toMatchObject({ configured: false, keyHint: null, keyError: expect.stringContaining('Re-enter the API key') });
+      // Saving anything else while on says why, instead of asking for a key the user already entered
+      await expect(service.saveSettings({ events: ['plaid_stale'] })).rejects.toMatchObject({
+        statusCode: 400, message: expect.stringContaining('cannot be decrypted')
+      });
     } finally {
       delete process.env.PLAID_TOKEN_KEY;
     }
+  });
+
+  test('clearSettings removes the credentials and remembered states, turns off, and keeps the events', async () => {
+    await save({ pingUserId: USER, events: ['plaid_stale'] });
+    await run("INSERT OR REPLACE INTO settings (key, value) VALUES ('notifications_state', '{\"plaid:3\":{\"state\":\"stale\"}}')");
+
+    const settings = await service.clearSettings();
+
+    expect(settings).toMatchObject({ enabled: false, configured: false, keyHint: null, channelId: '', pingUserId: '' });
+    expect(settings.events.filter(e => e.enabled).map(e => e.key)).toEqual(['plaid_stale']);
+    expect((await get("SELECT value FROM settings WHERE key = 'notifications_notifiarr_key_enc'")).value).toBe('');
+    expect((await get("SELECT value FROM settings WHERE key = 'notifications_state'")).value).toBe('{}');
+    expect(activityLogService.logEvent).toHaveBeenLastCalledWith(
+      'settings_updated', 'settings', null, 'Removed notification settings', expect.objectContaining({ section: 'notifications' })
+    );
   });
 
   describe('sendTest', () => {

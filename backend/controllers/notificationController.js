@@ -24,4 +24,9 @@ const sendTest = asyncHandler(async (req, res) => {
   res.json(await notificationSettingsService.sendTest(req.body || {}));
 });
 
-module.exports = { getSettings, saveSettings, sendTest };
+/** DELETE /api/settings/notifications: removes the API key, channel and ping user and turns notifications off */
+const clearSettings = asyncHandler(async (req, res) => {
+  res.json(await notificationSettingsService.clearSettings(tabIdOf(req)));
+});
+
+module.exports = { getSettings, saveSettings, sendTest, clearSettings };

@@ -3,8 +3,8 @@
  * `defaultOn` applies until the user saves their own selection.
  */
 const EVENTS = [
-  { key: 'plaid_needs_attention', label: 'Bank needs login, was removed, or has a sync error', defaultOn: true },
-  { key: 'plaid_stale', label: 'Bank not updating (Plaid has had no new data for over 12 hours)', defaultOn: true },
+  { key: 'plaid_needs_attention', label: 'Bank needs login or was removed, or a sync error lasted over an hour', defaultOn: true },
+  { key: 'plaid_stale', label: 'Bank not updating (Plaid has had no new data for over 24 hours)', defaultOn: true },
   { key: 'plaid_recovered', label: 'Bank recovered', defaultOn: true },
   { key: 'plaid_sync_changes', label: 'A bank sync brought new, changed or removed transactions, or balance changes', defaultOn: false },
   { key: 'backup_failed', label: 'Backup failed (and recovered)', defaultOn: true },
@@ -18,5 +18,7 @@ const TOGGLE_OF = { backup_recovered: 'backup_failed' };
 const EVENT_KEYS = EVENTS.map(event => event.key);
 const DEFAULT_EVENT_KEYS = EVENTS.filter(event => event.defaultOn).map(event => event.key);
 const toggleFor = (eventKey) => TOGGLE_OF[eventKey] || eventKey;
+/** Settings key holding the last notified state of each bank and of the backup (notificationService). */
+const STATE_KEY = 'notifications_state';
 
-module.exports = { EVENTS, EVENT_KEYS, DEFAULT_EVENT_KEYS, toggleFor };
+module.exports = { EVENTS, EVENT_KEYS, DEFAULT_EVENT_KEYS, toggleFor, STATE_KEY };

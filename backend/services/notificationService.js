@@ -1,19 +1,23 @@
 /**
  * Sends the notifications of specs/discord-notifications/spec.md. Failure-type events fire on a state change only:
- * one message when a bank (or the backup) goes bad, edited in place while it stays bad or changes problem, and
- * edited again when it recovers. The last notified state is kept in the settings table, so a restart (every
- * deploy) does not announce the same broken bank again. Nothing here ever throws: a notification must not
- * affect the sync or backup that triggered it.
+ * one message when a bank (or the backup) goes bad or changes problem, and one when it recovers. Every message is a
+ * new one (in-place edits are deferred; traffic is low). The last notified state is kept in the settings table, so
+ * a restart (every deploy) does not announce the same broken bank again. Nothing here ever throws: a notification
+ * must not affect the sync or backup that triggered it.
  */
 const settingsRepository = require('../repositories/settingsRepository');
+const plaidRepository = require('../repositories/plaidRepository');
 const notificationSettingsService = require('./notificationSettingsService');
 const notifiarrProvider = require('./notifiarrProvider');
 const timeBoundaryService = require('./timeBoundaryService');
 const { buildMessage, safeName } = require('./notificationMessages');
-const { toggleFor } = require('./notificationEvents');
+const { toggleFor, STATE_KEY } = require('./notificationEvents');
 const logger = require('../config/logger');
 
-const STATE_KEY = 'notifications_state';
+/** A sync error is usually temporary at the bank: it is only announced once it has lasted this long. */
+const ERROR_HOLD_MS = 60 * 60 * 1000;
+/** Plaid can fetch a bank as rarely as once a day: "not updating" is only announced past this age (the UI uses 12 h). */
+const NOTIFY_STALE_AFTER_HOURS = 24;
 
 class NotificationService {
   constructor() {
@@ -46,16 +50,12 @@ class NotificationService {
     return { sent: false, reason: result.reason };
   }
 
-  /** @returns {Promise<{ok: boolean, reason?: string}>} an edit that fails falls back to a new message */
-  async _post(config, eventKey, data, { eventId, update }) {
+  /** @returns {Promise<{ok: boolean, reason?: string}>} */
+  async _post(config, eventKey, data, eventId) {
     const timezone = await timeBoundaryService.getBusinessTimezone();
     const message = buildMessage(eventKey, data, { timezone });
     const credentials = { apiKey: config.apiKey, channelId: config.channelId, pingUserId: config.pingUserId };
-    const result = await notifiarrProvider.send(credentials, message, { event: eventId, update });
-    if (!result.ok && update) {
-      return notifiarrProvider.send(credentials, message, { event: eventId, update: false });
-    }
-    return result;
+    return notifiarrProvider.send(credentials, message, { event: eventId, update: false });
   }
 
   /**
@@ -67,38 +67,61 @@ class NotificationService {
    * @param {string} spec.state e.g. 'ok', 'needs_login', 'stale', 'failed'
    * @param {(string|null)} spec.problemEvent event for a problem state; null when `state` is the normal state
    * @param {string} spec.recoveryEvent event sent when going from a problem back to normal
-   * @param {string} spec.eventId names the message and keys edits ("CIBC", "Backup")
+   * @param {string} spec.eventId names the message ("CIBC", "Backup")
    * @param {object} spec.data event data (see notificationMessages)
+   * @param {number} [spec.holdMs] only announce the problem once it has been reported for this long
+   * @param {number} [spec.now]
    * @returns {Promise<{sent: boolean, reason?: string}>}
    */
-  _transition({ stateKey, state, problemEvent, recoveryEvent, eventId, data }) {
+  _transition({ stateKey, state, problemEvent, recoveryEvent, eventId, data, holdMs = 0, now = Date.now() }) {
     return this._serial(async () => {
       try {
         const config = await notificationSettingsService.getConfig();
         if (!config.enabled || !config.configured) return { sent: false, reason: 'off' };
 
         const states = await this._loadStates();
-        const previous = states[stateKey];
-        if (previous && previous.state === state) return { sent: false, reason: 'unchanged' };
-        const previousIsProblem = Boolean(previous) && previous.state !== 'ok';
+        const previous = states[stateKey] || {};
+        // A problem being held back that has gone away (or changed) is forgotten
+        if (previous.pending && previous.pending.state !== state) {
+          delete previous.pending;
+          states[stateKey] = previous;
+          await this._saveStates(states);
+        }
+        if (previous.state === state) return { sent: false, reason: 'unchanged' };
+        const previousIsProblem = Boolean(previous.state) && previous.state !== 'ok';
 
         if (!problemEvent) {
-          states[stateKey] = { state };
-          await this._saveStates(states);
-          if (!previousIsProblem) return { sent: false, reason: 'no_problem' };
-          if (!config.events.has(toggleFor(recoveryEvent))) return { sent: false, reason: 'event_off' };
+          if (!previousIsProblem || !config.events.has(toggleFor(recoveryEvent))) {
+            states[stateKey] = { state };
+            await this._saveStates(states);
+            return { sent: false, reason: previousIsProblem ? 'event_off' : 'no_problem' };
+          }
           const result = await this._post(config, recoveryEvent,
-            { ...data, previousState: previous.state, since: previous.since }, { eventId, update: true });
+            { ...data, previousState: previous.state, since: previous.since }, eventId);
+          // Like a problem, a recovery is only remembered once delivered, so the next report retries it
+          if (result.ok) {
+            states[stateKey] = { state };
+            await this._saveStates(states);
+          }
           return this._outcome(result, recoveryEvent);
         }
 
+        let startedAt = previousIsProblem ? previous.since : new Date(now).toISOString();
+        if (holdMs > 0) {
+          if (!previous.pending) {
+            states[stateKey] = { ...previous, pending: { state, since: new Date(now).toISOString() } };
+            await this._saveStates(states);
+            return { sent: false, reason: 'holding' };
+          }
+          if (now - Date.parse(previous.pending.since) < holdMs) return { sent: false, reason: 'holding' };
+          if (!previousIsProblem) startedAt = previous.pending.since;
+        }
+
         if (!config.events.has(toggleFor(problemEvent))) return { sent: false, reason: 'event_off' };
-        // A problem that follows another one edits that message; a new problem after a recovery is a new message
-        const result = await this._post(config, problemEvent, { ...data, status: state },
-          { eventId, update: previousIsProblem });
+        const result = await this._post(config, problemEvent, { ...data, status: state }, eventId);
         if (!result.ok) return this._outcome(result, problemEvent);
         // Only a delivered message is remembered, so a failed one is retried on the next sync
-        states[stateKey] = { state, since: previousIsProblem ? previous.since : new Date().toISOString() };
+        states[stateKey] = { state, since: startedAt };
         await this._saveStates(states);
         return { sent: true };
       } catch (err) {
@@ -109,19 +132,82 @@ class NotificationService {
   }
 
   /**
+   * The name a bank's messages go under ("CIBC"). When two connections have banks with the same name the connection
+   * id is added ("CIBC #3"), so their messages can be told apart.
+   */
+  async _bankMessageId(bank) {
+    const name = safeName(bank.institutionName);
+    try {
+      const items = await plaidRepository.findAllItems();
+      const sameName = items.some(item => item.id !== bank.id && safeName(item.institutionName) === name);
+      return sameName ? `${name} #${bank.id}` : name;
+    } catch {
+      return name;
+    }
+  }
+
+  /**
    * A bank connection's health after a sync.
    * @param {{id: number, institutionName: string, status: ('ok'|'stale'|'needs_login'|'gone'|'error'),
    *   errorCode?: (string|null), lastSyncedAt?: (string|null), bankUpdatedAt?: (string|null), institutionStatus?: (string|null)}} bank
    */
-  reportBankStatus(bank) {
-    const problemEvent = bank.status === 'ok' ? null : bank.status === 'stale' ? 'plaid_stale' : 'plaid_needs_attention';
+  async reportBankStatus(bank, now = Date.now()) {
+    let status = bank.status;
+    // Stale for the UI (12 h) but not yet for a notification: no problem to announce, and a stale bank that got new
+    // data within the day counts as recovered
+    if (status === 'stale') {
+      const updated = Date.parse(bank.bankUpdatedAt);
+      if (!Number.isNaN(updated) && now - updated <= NOTIFY_STALE_AFTER_HOURS * 3600 * 1000) status = 'ok';
+    }
+    const problemEvent = status === 'ok' ? null : status === 'stale' ? 'plaid_stale' : 'plaid_needs_attention';
     return this._transition({
       stateKey: `plaid:${bank.id}`,
-      state: bank.status,
+      state: status,
       problemEvent,
       recoveryEvent: 'plaid_recovered',
-      eventId: safeName(bank.institutionName),
-      data: bank
+      eventId: await this._bankMessageId(bank),
+      data: bank,
+      holdMs: status === 'error' ? ERROR_HOLD_MS : 0,
+      now
+    });
+  }
+
+  /**
+   * A sync that brought new, changed or removed transactions or balance changes. Posted under its own name
+   * ("CIBC activity") so it reads apart from the bank's problem messages.
+   * @param {{id: number, institutionName: string}} bank
+   * @param {{added: number, updated: number, removed: number, balances?: Array<object>}} changes
+   */
+  async reportSyncChanges(bank, changes) {
+    const eventId = `${await this._bankMessageId(bank)} activity`;
+    return this.notifyOccurrence('plaid_sync_changes', { ...changes, institutionName: bank.institutionName }, eventId);
+  }
+
+  /** A disconnected bank's state is dropped, so a later connection with the same id starts clean. Never throws. */
+  forgetBank(id) {
+    return this._serial(async () => {
+      try {
+        const states = await this._loadStates();
+        if (!(`plaid:${id}` in states)) return;
+        delete states[`plaid:${id}`];
+        await this._saveStates(states);
+      } catch (err) {
+        logger.warn('Clearing notification state failed', { plaidItemId: id, error: err.message });
+      }
+    });
+  }
+
+  /**
+   * Forget every remembered state. After a restore the stored states describe the backup's moment, not now: keeping
+   * them would announce recoveries that already happened. A bank that is broken now is announced again. Never throws.
+   */
+  resetState() {
+    return this._serial(async () => {
+      try {
+        await this._saveStates({});
+      } catch (err) {
+        logger.warn('Resetting notification state failed', { error: err.message });
+      }
     });
   }
 
@@ -133,14 +219,19 @@ class NotificationService {
   }
 
   /**
-   * A backup completed: ends a failure (edits its message), then announces the backup when that is switched on.
+   * A backup completed: ends a failure ("recovered"), then announces the backup when that is switched on.
    * @param {{trigger: ('manual'|'scheduled'), filename: string, size: number}} data
    */
   async reportBackupSucceeded(data) {
     await this._transition({
       stateKey: 'backup', state: 'ok', problemEvent: null, recoveryEvent: 'backup_recovered', eventId: 'Backup', data
     });
-    return this.notifyOccurrence('backup_succeeded', data, 'Backup');
+    return this.notifyOccurrence('backup_succeeded', data, 'Backup completed');
+  }
+
+  /** @param {{filename: string}} data */
+  reportBackupRestored(data) {
+    return this.notifyOccurrence('backup_restored', data, 'Backup restored');
   }
 
   /**
@@ -153,7 +244,7 @@ class NotificationService {
         const config = await notificationSettingsService.getConfig();
         if (!config.enabled || !config.configured) return { sent: false, reason: 'off' };
         if (!config.events.has(toggleFor(eventKey))) return { sent: false, reason: 'event_off' };
-        const result = await this._post(config, eventKey, data, { eventId, update: false });
+        const result = await this._post(config, eventKey, data, eventId);
         return this._outcome(result, eventKey);
       } catch (err) {
         logger.warn('Notification failed', { eventKey, error: err.message });
@@ -165,3 +256,5 @@ class NotificationService {
 
 module.exports = new NotificationService();
 module.exports.NotificationService = NotificationService;
+module.exports.ERROR_HOLD_MS = ERROR_HOLD_MS;
+module.exports.NOTIFY_STALE_AFTER_HOURS = NOTIFY_STALE_AFTER_HOURS;

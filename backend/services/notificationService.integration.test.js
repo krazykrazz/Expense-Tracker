@@ -67,24 +67,24 @@ describe('bank status changes', () => {
     expect(sent()).toEqual([{ title: '🔴 Bank needs login', event: 'CIBC', update: false }]);
   });
 
-  test('recovery edits the problem message in place, then the next problem is a new message', async () => {
+  test('recovery and the next problem are each a new message', async () => {
     await service.reportBankStatus(cibc('needs_login'));
     await service.reportBankStatus(cibc('ok'));
-    await service.reportBankStatus(cibc('stale', { bankUpdatedAt: '2026-11-21T11:16:07Z' }));
+    await service.reportBankStatus(cibc('stale', { bankUpdatedAt: '2026-11-21T11:16:07Z' }), Date.parse('2026-11-22T16:00:00Z'));
 
     expect(sent()).toEqual([
       { title: '🔴 Bank needs login', event: 'CIBC', update: false },
-      { title: '🟢 Bank recovered', event: 'CIBC', update: true },
+      { title: '🟢 Bank recovered', event: 'CIBC', update: false },
       { title: '🟡 Bank not updating', event: 'CIBC', update: false }
     ]);
   });
 
-  test('a bank that moves from one problem to another edits its message and keeps the original start time', async () => {
+  test('a bank that moves from one problem to another gets a new message and keeps the original start time', async () => {
     await service.reportBankStatus(cibc('stale'));
     const { since } = (await storedState())['plaid:3'];
     await service.reportBankStatus(cibc('needs_login'));
 
-    expect(sent()[1]).toEqual({ title: '🔴 Bank needs login', event: 'CIBC', update: true });
+    expect(sent()[1]).toEqual({ title: '🔴 Bank needs login', event: 'CIBC', update: false });
     expect((await storedState())['plaid:3']).toEqual({ state: 'needs_login', since });
   });
 
@@ -105,16 +105,102 @@ describe('bank status changes', () => {
     expect(sent().map(s => s.event)).toEqual(['CIBC', 'Wealthsimple (Canada)']);
   });
 
-  test('a failed edit is retried as a new message', async () => {
+  test('a recovery that could not be delivered is retried on the next report', async () => {
     await service.reportBankStatus(cibc('needs_login'));
-    notifiarrProvider.send.mockResolvedValueOnce({ ok: false, reason: 'HTTP 404: message not found' });
+    notifiarrProvider.send.mockResolvedValueOnce({ ok: false, reason: 'down' });
+
+    expect(await service.reportBankStatus(cibc('ok'))).toEqual({ sent: false, reason: 'down' });
+    expect((await storedState())['plaid:3'].state).toBe('needs_login');
 
     expect(await service.reportBankStatus(cibc('ok'))).toEqual({ sent: true });
+    expect((await storedState())['plaid:3']).toEqual({ state: 'ok' });
+  });
 
-    expect(sent().slice(1)).toEqual([
-      { title: '🟢 Bank recovered', event: 'CIBC', update: true },
-      { title: '🟢 Bank recovered', event: 'CIBC', update: false }
-    ]);
+  describe('sync errors are held for an hour', () => {
+    const T0 = Date.parse('2026-11-22T12:00:00Z');
+    const at = (minutes) => T0 + minutes * 60000;
+    const error = () => cibc('error', { errorCode: 'INSTITUTION_DOWN' });
+
+    test('an error that clears within the hour sends nothing', async () => {
+      expect(await service.reportBankStatus(error(), at(0))).toEqual({ sent: false, reason: 'holding' });
+      expect(await service.reportBankStatus(error(), at(30))).toEqual({ sent: false, reason: 'holding' });
+      await service.reportBankStatus(cibc('ok'), at(45));
+      // A new error starts a new hour
+      expect(await service.reportBankStatus(error(), at(70))).toEqual({ sent: false, reason: 'holding' });
+
+      expect(notifiarrProvider.send).not.toHaveBeenCalled();
+    });
+
+    test('an error still there after an hour is announced once, counted from when it began', async () => {
+      await service.reportBankStatus(error(), at(0));
+      expect(await service.reportBankStatus(error(), at(60))).toEqual({ sent: true });
+      expect(await service.reportBankStatus(error(), at(90))).toEqual({ sent: false, reason: 'unchanged' });
+
+      expect(sent()).toEqual([{ title: '🔴 Bank sync problem', event: 'CIBC', update: false }]);
+      expect((await storedState())['plaid:3']).toEqual({ state: 'error', since: new Date(at(0)).toISOString() });
+    });
+
+    test('the hold survives a restart', async () => {
+      await service.reportBankStatus(error(), at(0));
+      expect(await new NotificationService().reportBankStatus(error(), at(61))).toEqual({ sent: true });
+    });
+
+    test('login problems are not held', async () => {
+      expect(await service.reportBankStatus(cibc('needs_login'), at(0))).toEqual({ sent: true });
+    });
+  });
+
+  test('"not updating" is only announced once Plaid\'s data is over 24 hours old; newer data counts as recovered', async () => {
+    const now = Date.parse('2026-11-22T12:00:00Z');
+    const hoursAgo = (h) => new Date(now - h * 3600000).toISOString();
+
+    expect(await service.reportBankStatus(cibc('stale', { bankUpdatedAt: hoursAgo(20) }), now)).toEqual({ sent: false, reason: 'no_problem' });
+    expect(await service.reportBankStatus(cibc('stale', { bankUpdatedAt: hoursAgo(25) }), now)).toEqual({ sent: true });
+    expect(await service.reportBankStatus(cibc('stale', { bankUpdatedAt: hoursAgo(13) }), now)).toEqual({ sent: true });
+
+    expect(sent().map(s => s.title)).toEqual(['🟡 Bank not updating', '🟢 Bank recovered']);
+  });
+
+  test('two banks with the same name get separate messages', async () => {
+    const insert = (id) => run(
+      "INSERT INTO plaid_items (id, item_id, institution_name, access_token_enc, environment) VALUES (?, ?, 'CIBC', 'x', 'sandbox')",
+      [id, `item-${id}`]
+    );
+    await run('DELETE FROM plaid_items');
+    await insert(3);
+    await insert(4);
+    try {
+      await service.reportBankStatus(cibc('needs_login'));
+      await service.reportBankStatus({ id: 4, institutionName: 'CIBC', status: 'needs_login' });
+      expect(sent().map(s => s.event)).toEqual(['CIBC #3', 'CIBC #4']);
+    } finally {
+      await run('DELETE FROM plaid_items');
+    }
+  });
+
+  test('sync activity is posted under its own name', async () => {
+    await settingsService.saveSettings({ events: ['plaid_needs_attention', 'plaid_recovered', 'plaid_sync_changes'] });
+    await service.reportBankStatus(cibc('needs_login'));
+    await service.reportSyncChanges(cibc('ok'), { added: 2, updated: 0, removed: 0 });
+    await service.reportBankStatus(cibc('ok'));
+
+    expect(sent().map(s => s.event)).toEqual(['CIBC', 'CIBC activity', 'CIBC']);
+  });
+
+  test('forgetBank drops a disconnected bank, so its id starts clean', async () => {
+    await service.reportBankStatus(cibc('needs_login'));
+    await service.forgetBank(3);
+
+    expect(await storedState()).toEqual({});
+    expect(await service.reportBankStatus(cibc('needs_login'))).toEqual({ sent: true });
+  });
+
+  test('resetState (after a restore) forgets everything: no recovery for a problem from the backup\'s moment', async () => {
+    await service.reportBankStatus(cibc('needs_login'));
+    await service.resetState();
+
+    expect(await service.reportBankStatus(cibc('ok'))).toEqual({ sent: false, reason: 'no_problem' });
+    expect(sent()).toHaveLength(1);
   });
 
   test('a problem that could not be delivered is not remembered, so the next sync tries again', async () => {
@@ -159,14 +245,14 @@ describe('backup', () => {
   const failure = () => ({ trigger: 'scheduled', error: new Error('disk full') });
   const success = { trigger: 'scheduled', filename: 'b.tar.gz', size: 1024 };
 
-  test('a failure is announced once; the next success edits it into "recovered"', async () => {
+  test('a failure is announced once; the next success announces the recovery', async () => {
     await service.reportBackupFailed(failure());
     await service.reportBackupFailed(failure());
     await service.reportBackupSucceeded(success);
 
     expect(sent()).toEqual([
       { title: '🔴 Backup failed', event: 'Backup', update: false },
-      { title: '🟢 Backup recovered', event: 'Backup', update: true }
+      { title: '🟢 Backup recovered', event: 'Backup', update: false }
     ]);
   });
 
@@ -176,24 +262,24 @@ describe('backup', () => {
 
     await settingsService.saveSettings({ events: ['backup_succeeded'] });
     await service.reportBackupSucceeded(success);
-    expect(sent()).toEqual([{ title: '🔵 Backup completed', event: 'Backup', update: false }]);
+    expect(sent()).toEqual([{ title: '🔵 Backup completed', event: 'Backup completed', update: false }]);
   });
 
   test('restores are announced every time', async () => {
-    await service.notifyOccurrence('backup_restored', { filename: 'b.tar.gz' }, 'Backup');
-    await service.notifyOccurrence('backup_restored', { filename: 'b.tar.gz' }, 'Backup');
+    await service.reportBackupRestored({ filename: 'b.tar.gz' });
+    await service.reportBackupRestored({ filename: 'b.tar.gz' });
     expect(sent()).toHaveLength(2);
   });
 });
 
 describe('occurrences', () => {
   test('sync changes are off by default and sent every time once switched on', async () => {
-    const data = { institutionName: 'CIBC', added: 2, updated: 0, removed: 0 };
-    expect(await service.notifyOccurrence('plaid_sync_changes', data, 'CIBC')).toEqual({ sent: false, reason: 'event_off' });
+    const data = { added: 2, updated: 0, removed: 0 };
+    expect(await service.reportSyncChanges(cibc('ok'), data)).toEqual({ sent: false, reason: 'event_off' });
 
     await settingsService.saveSettings({ events: ['plaid_sync_changes'] });
-    await service.notifyOccurrence('plaid_sync_changes', data, 'CIBC');
-    await service.notifyOccurrence('plaid_sync_changes', data, 'CIBC');
+    await service.reportSyncChanges(cibc('ok'), data);
+    await service.reportSyncChanges(cibc('ok'), data);
 
     expect(sent()).toHaveLength(2);
   });

@@ -22,8 +22,8 @@ Plaid stopped updating, a failed backup. Nothing reaches the user unless the app
 
    | Key | When | Default |
    |---|---|---|
-   | `plaid_needs_attention` | A bank enters `needs_login`, `gone` or `error` | on |
-   | `plaid_stale` | A bank goes `stale` (Plaid has had no new data for over 12 h) | on |
+   | `plaid_needs_attention` | A bank enters `needs_login` or `gone`, or an `error` lasts over an hour | on |
+   | `plaid_stale` | Plaid has had no new data from a bank for over 24 h (the UI flags it at 12 h) | on |
    | `plaid_recovered` | A bank returns to `ok` after any of the above | on |
    | `plaid_sync_changes` | A sync brought new/updated/removed transactions or balance changes | off |
    | `backup_failed` | A manual or scheduled backup fails | on |
@@ -37,9 +37,8 @@ Plaid stopped updating, a failed backup. Nothing reaches the user unless the app
    a sync or backup and is only logged (`logger.warn`, without the API key).
 6. **Test button:** Settings has "Send test message" that posts using the saved (or just-entered) key and channel and
    reports success or the failure reason.
-7. **Update in place:** when a failure message was sent for a bank (or the backup), the matching recovery edits that
-   message (`notification.update: true`, same `event` id) instead of posting a second one. If the update fails
-   (message deleted, Notifiarr error), it falls back to a new message.
+7. **No in-place edits (deferred):** a recovery is a new message, not an edit of the failure message. Traffic is low;
+   Notifiarr supports edits (`notification.update: true`, same `event`) if this is wanted later.
 
 ## Design
 
@@ -62,13 +61,22 @@ Plaid stopped updating, a failed backup. Nothing reaches the user unless the app
   `notifications_enabled`, `notifications_notifiarr_key_enc`, `notifications_channel_id`,
   `notifications_ping_user_id`, `notifications_events` (JSON of enabled keys).
   Saving emits a `settings_updated` activity-log event (`section: 'notifications'`) with the key redacted.
-- **De-dupe state:** one `notifications_state` settings key (JSON map `stateKey -> { state, since }`, e.g.
-  `plaid:3 -> { state: 'stale', since }`). While a bank stays in a problem state (even a different one) its single
-  message is edited in place; a new problem after a recovery posts a new message. Only delivered messages are
-  remembered, so a failed delivery is retried on the next sync. No schema change, so no migration. `notify` skips when the state is unchanged; a recovery
-  message is sent only when the previous state was a problem. State survives restarts (needed: the container restarts
-  on every deploy and would otherwise re-announce every broken bank).
-- **HTTP:** Node `fetch` with a 5 s `AbortController` timeout. No retries in v1 (state is only recorded after a
+- **De-dupe state:** one `notifications_state` settings key (JSON map `stateKey -> { state, since, pending? }`, e.g.
+  `plaid:3 -> { state: 'stale', since }`). `notify` skips when the state is unchanged; a recovery is sent only when
+  the previous state was a problem. Every message is a new one (no in-place edits). Only delivered messages are
+  remembered, so a failed delivery (problem or recovery) is retried on the next report. State survives restarts
+  (the container restarts on every deploy and would otherwise re-announce every broken bank). No schema change, so
+  no migration. Disconnecting a bank drops its state (`forgetBank`); a restore resets all states (`resetState`),
+  since they describe the backup's moment.
+- **Noise rules:** a sync `error` is only announced once it has lasted an hour (`pending` records when it began,
+  so the hold survives restarts; an error that clears within the hour sends nothing). "Not updating" is only
+  announced once Plaid's data is over 24 hours old (the UI flags it at 12 h); a bank between 12 and 24 h counts as ok.
+- **Message names** (Notifiarr `event`, shown after the app name): a bank's problems and recoveries use its name
+  (`CIBC`, or `CIBC #3` when two connections share a name), the backup uses `Backup`; one-off messages use
+  `CIBC activity`, `Backup completed`, `Backup restored`.
+- **Hooks must not await notifications:** a send can take up to 5 s and sends run one at a time. Call them without
+  `await` (they never reject). Report bank status with values read after `_refreshHealth`.
+- **HTTP:** Node `fetch` with a 5 s `AbortController` timeout. No retries (state is only recorded after a
   successful post, so the next sync retries naturally).
 
 ### Message layout
@@ -110,6 +118,7 @@ Not every notifiable event is an activity-log event (stale has none), and not ev
 | GET | `/api/settings/notifications` | Masked settings (`keyHint`, `channelId`, `pingUserId`, `enabled`, `events`) |
 | PUT | `/api/settings/notifications` | Save key (blank keeps the saved one), channel, ping user, enabled flag, event toggles |
 | POST | `/api/settings/notifications/test` | Send a test message |
+| DELETE | `/api/settings/notifications` | Remove key, channel and ping user; turn off (events kept) |
 
 Route -> `notificationController` -> `notificationSettingsService`. Add `API_ENDPOINTS` entries and rows in the
 Endpoint Reference of `docs/API_DOCUMENTATION.md`.
@@ -126,14 +135,21 @@ channel ID, optional ping user ID, master switch, one checkbox per event, Save, 
    post a failure then update it to recovered with the same `event` id, check the success response, and confirm
    channel-ID number precision. Run once locally and once via `docker exec` in the production container.
 1. [x] `notificationSettingsService` + validation + encrypted storage + tests
-2. [x] `notificationService` + `notifiarrProvider` (payload mapping, success check, de-dupe state, update-in-place with
-   fallback, never throws, 4+ digit redaction) + tests, including restart persistence and "stays broken, no repeat"
+2. [x] `notificationService` + `notifiarrProvider` (payload mapping, success check, de-dupe state, 1 h error hold,
+   24 h stale threshold, never throws, 4+ digit redaction) + tests, including restart persistence and "stays broken,
+   no repeat"
 3. [x] Routes, controller, `API_ENDPOINTS`, API docs
 4. [ ] Hook Plaid sync (needs attention / stale / recovered / changes)
 5. [ ] Hook backup (failed / succeeded / restored)
 6. [ ] Settings UI + tests
 7. [ ] Docs: `docs/features/` page, `docs/DATABASE_SCHEMA.md` (settings keys), `docs/guides/USER_GUIDE.md`, README
 8. [ ] Full validation with `.\scripts\run-test-summary.ps1`; `npm run lint`
+
+## Deferred
+
+- **Pinging a user:** `pingUser` is sent as a string (a Discord ID can't be a JS number). Notifiarr's docs show an
+  integer and this is untested; confirm with Send test message and a ping user set before relying on it.
+- **In-place edits** (requirement 7).
 
 ## Open questions
 
@@ -142,5 +158,4 @@ channel ID, optional ping user ID, master switch, one checkbox per event, Save, 
 - Does Notifiarr need the Passthrough integration enabled / a channel configured in its dashboard before the API
   accepts the call? The PoC succeeded; to confirm whether any dashboard setup was already in place.
 - PoC result (2026-11-22): from the dev machine and from inside the production container, all three posts (test,
-  failure, update-in-place) returned HTTP 200 with `Pass through payload processed.` in under 2 s. Whether the update
-  replaced the earlier message in Discord is for the user to confirm visually.
+  failure, update-in-place) returned HTTP 200 with `Pass through payload processed.` in under 2 s.

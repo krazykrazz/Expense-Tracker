@@ -51,6 +51,19 @@ describe('buildMessage', () => {
     expect(JSON.stringify(message)).not.toContain('1234');
   });
 
+  test('a negative balance puts the sign before the $', () => {
+    const message = buildMessage('plaid_sync_changes', {
+      institutionName: 'CIBC', balances: [{ name: 'Visa', field: 'balance', from: 5, to: -12.5 }, { name: 'LOC', field: 'balance', from: -0.001, to: -1234.5 }]
+    }, ctx);
+    expect(text(message, 'Balances')).toBe('Visa balance: $5.00 → -$12.50\nLOC balance: $0.00 → -$1,234.50');
+  });
+
+  test('a quoted path with spaces is hidden whole', () => {
+    expect(describeError(new Error("EACCES: permission denied, open '/config/My Drive/backups/x.tar.gz'")))
+      .toBe("EACCES: permission denied, open '<path>'");
+    expect(describeError(new Error('cannot write "G:\\My Drive\\backups"'))).toBe('cannot write "<path>"');
+  });
+
   test('backup failed: the error has no file path', () => {
     const error = Object.assign(new Error("ENOSPC: no space left on device, write '/config/backups/x.tar.gz'"), { code: 'ENOSPC' });
     const message = buildMessage('backup_failed', { trigger: 'scheduled', error, lastBackup: '2026-11-21T07:00:00Z' }, ctx);

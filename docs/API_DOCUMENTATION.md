@@ -251,8 +251,9 @@ Discord notifications through Notifiarr Passthrough (Settings → Notifications)
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/settings/notifications` | `{ enabled, configured, keyHint, keyError, channelId, pingUserId, events: [{ key, label, enabled }] }` |
-| PUT | `/api/settings/notifications` | Save: body `{ apiKey?, channelId?, pingUserId?, enabled?, events? }` (`events` is the list of enabled event keys; a blank `apiKey` keeps the saved key; an empty `channelId` / `pingUserId` clears it). Logged as `settings_updated` (`section: 'notifications'`, no key). 400 when invalid or when turning on without an API key and channel |
+| PUT | `/api/settings/notifications` | Save: body `{ apiKey?, channelId?, pingUserId?, enabled?, events? }` (strings; Discord IDs must be strings because they exceed JavaScript's safe integer range;`events` is the list of enabled event keys; a blank `apiKey` keeps the saved key; an empty `channelId` / `pingUserId` clears it). Logged as `settings_updated` (`section: 'notifications'`, no key). 400 when invalid or when turning on without an API key and channel |
 | POST | `/api/settings/notifications/test` | Post a test message with the given or saved credentials (same body, nothing saved): `{ ok, message }` |
+| DELETE | `/api/settings/notifications` | Remove the API key, channel and ping user and turn notifications off (the event selection is kept). Logged as `settings_updated` |
 
 ### Plaid Bank Import — `plaidRoutes.js`
 

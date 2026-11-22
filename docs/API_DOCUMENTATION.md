@@ -244,6 +244,16 @@ Request/response details for the plan and allocation endpoints: [Budget Plan End
 | GET | `/api/version/check-update` | Check GitHub Releases for a newer version |
 | GET | `/api/sync/events` | Server-Sent Events stream for real-time sync |
 
+### Notifications — `notificationRoutes.js`
+
+Discord notifications through Notifiarr Passthrough (Settings → Notifications). The API key is stored encrypted and only returned as a masked hint.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/settings/notifications` | `{ enabled, configured, keyHint, keyError, channelId, pingUserId, events: [{ key, label, enabled }] }` |
+| PUT | `/api/settings/notifications` | Save: body `{ apiKey?, channelId?, pingUserId?, enabled?, events? }` (`events` is the list of enabled event keys; a blank `apiKey` keeps the saved key; an empty `channelId` / `pingUserId` clears it). Logged as `settings_updated` (`section: 'notifications'`, no key). 400 when invalid or when turning on without an API key and channel |
+| POST | `/api/settings/notifications/test` | Post a test message with the given or saved credentials (same body, nothing saved): `{ ok, message }` |
+
 ### Plaid Bank Import — `plaidRoutes.js`
 
 Every route except `/status` and `/settings` returns `503` until Plaid is configured (Settings → Bank Import, or `PLAID_*` environment variables). Plaid API failures return `502` with Plaid's error code in the message. See [Plaid Bank Import](features/PLAID_INTEGRATION.md).

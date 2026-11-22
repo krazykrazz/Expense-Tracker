@@ -33,6 +33,7 @@ const settingsRoutes = require('./routes/settingsRoutes');
 const syncRoutes = require('./routes/syncRoutes');
 const authRoutes = require('./routes/authRoutes');
 const plaidRoutes = require('./routes/plaidRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 const { logPlaidStatus } = require('./config/plaid');
 const plaidSettingsService = require('./services/plaidSettingsService');
 const backupService = require('./services/backupService');
@@ -234,6 +235,7 @@ app.use('/api/activity-logs', activityLogRoutes);
 
 // Settings API routes
 app.use('/api/settings/timezone', settingsRoutes);
+app.use('/api/settings/notifications', notificationRoutes);
 
 // Plaid bank connections and Import Inbox (503 unless PLAID_* env vars are configured)
 app.use('/api/plaid', plaidRoutes);

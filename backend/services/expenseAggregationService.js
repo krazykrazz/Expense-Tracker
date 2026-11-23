@@ -9,6 +9,17 @@ const { validateYearMonth } = require('../utils/validators');
 const { previousMonth } = require('../utils/monthlyRows');
 const logger = require('../config/logger');
 
+/**
+ * The first date of a year and of the next one, for `date >= ? AND date < ?`. Unlike `strftime('%Y', date) = ?`
+ * this uses idx_date instead of scanning every expense.
+ * @param {number|string} year
+ * @returns {[string, string]}
+ */
+const yearBounds = (year) => {
+  const y = Number(year);
+  return [`${String(y).padStart(4, '0')}-01-01`, `${String(y + 1).padStart(4, '0')}-01-01`];
+};
+
 class ExpenseAggregationService {
   /**
    * Get summary for a specific month, optionally including previous month
@@ -331,12 +342,12 @@ class ExpenseAggregationService {
           CAST(strftime('%m', date) AS INTEGER) as month,
           SUM(amount) as total
         FROM expenses
-        WHERE strftime('%Y', date) = ?
+        WHERE date >= ? AND date < ?
         GROUP BY strftime('%m', date)
         ORDER BY month
       `;
       
-      db.all(query, [year.toString()], (err, rows) => {
+      db.all(query, yearBounds(year), (err, rows) => {
         if (err) reject(err);
         else resolve(rows || []);
       });
@@ -406,10 +417,10 @@ class ExpenseAggregationService {
       const query = `
         SELECT COUNT(*) as count
         FROM expenses
-        WHERE strftime('%Y', date) = ?
+        WHERE date >= ? AND date < ?
       `;
       
-      db.get(query, [year.toString()], (err, row) => {
+      db.get(query, yearBounds(year), (err, row) => {
         if (err) reject(err);
         else resolve(row?.count || 0);
       });
@@ -459,12 +470,12 @@ class ExpenseAggregationService {
       const query = `
         SELECT type, SUM(amount) as total
         FROM expenses
-        WHERE strftime('%Y', date) = ?
+        WHERE date >= ? AND date < ?
         GROUP BY type
         ORDER BY total DESC
       `;
       
-      db.all(query, [year.toString()], (err, rows) => {
+      db.all(query, yearBounds(year), (err, rows) => {
         if (err) reject(err);
         else resolve(rows || []);
       });
@@ -543,12 +554,12 @@ class ExpenseAggregationService {
       const query = `
         SELECT method, SUM(amount) as total
         FROM expenses
-        WHERE strftime('%Y', date) = ?
+        WHERE date >= ? AND date < ?
         GROUP BY method
         ORDER BY total DESC
       `;
       
-      db.all(query, [year.toString()], (err, rows) => {
+      db.all(query, yearBounds(year), (err, rows) => {
         if (err) reject(err);
         else resolve(rows || []);
       });

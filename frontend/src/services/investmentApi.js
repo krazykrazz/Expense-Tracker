@@ -5,19 +5,20 @@
 
 import { API_ENDPOINTS } from '../config.js';
 import { apiGet, apiPost, apiPut, apiDelete, logApiError } from '../utils/apiClient.js';
+import { shareInFlight } from '../utils/shareInFlight.js';
 
 /**
- * Get all investments with current values
+ * Get all investments with current values. Concurrent calls share one request.
  * @returns {Promise<Array>} Array of investment objects with current values
  */
-export const getAllInvestments = async () => {
+export const getAllInvestments = shareInFlight(async () => {
   try {
     return await apiGet(API_ENDPOINTS.INVESTMENTS, 'fetch investments');
   } catch (error) {
     logApiError('fetching investments', error);
     throw error;
   }
-};
+});
 
 /**
  * Create a new investment

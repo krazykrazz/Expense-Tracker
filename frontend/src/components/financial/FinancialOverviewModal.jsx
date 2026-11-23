@@ -84,20 +84,18 @@ const CreditCardSummary = ({ paymentMethods, onPaymentRecorded, onViewDetails })
       creditCards.map(async (card) => {
         let statementBalance = null;
         let cycleBalance = null;
-        try {
-          const cycleStatus = await getCurrentCycleStatus(card.id).catch(() => null);
-          // Use same logic as CreditCardDetailView: prefer actual balance, fall back to calculated balance
-          // Both use calculateCycleBalance which includes previous cycle carry-forward
-          if (cycleStatus?.hasActualBalance) {
-            statementBalance = cycleStatus.actualBalance;
-          } else if (cycleStatus?.calculatedBalance != null) {
-            statementBalance = cycleStatus.calculatedBalance;
-          }
-        } catch { /* silent */ }
-        try {
-          const method = await getPaymentMethod(card.id);
-          cycleBalance = method?.current_cycle?.total_amount ?? null;
-        } catch { /* silent */ }
+        const [cycleStatus, method] = await Promise.all([
+          getCurrentCycleStatus(card.id).catch(() => null),
+          getPaymentMethod(card.id).catch(() => null)
+        ]);
+        // Use same logic as CreditCardDetailView: prefer actual balance, fall back to calculated balance
+        // Both use calculateCycleBalance which includes previous cycle carry-forward
+        if (cycleStatus?.hasActualBalance) {
+          statementBalance = cycleStatus.actualBalance;
+        } else if (cycleStatus?.calculatedBalance != null) {
+          statementBalance = cycleStatus.calculatedBalance;
+        }
+        cycleBalance = method?.current_cycle?.total_amount ?? null;
         return { id: card.id, name: card.display_name, currentBalance: card.current_balance, statementBalance, cycleBalance };
       })
     );
@@ -213,20 +211,18 @@ const PaymentMethodsSection = ({ paymentMethods, loading, onPaymentRecorded, onV
         // Skip balance fetches for inactive cards — they may not have billing_cycle_day
         // configured, which causes validation errors on getCurrentCycleStatus
         if (activeTab === 'active') {
-          try {
-            const cycleStatus = await getCurrentCycleStatus(card.id).catch(() => null);
-            // Use same logic as CreditCardDetailView: prefer actual balance, fall back to calculated balance
-            // Both use calculateCycleBalance which includes previous cycle carry-forward
-            if (cycleStatus?.hasActualBalance) {
-              statementBalance = cycleStatus.actualBalance;
-            } else if (cycleStatus?.calculatedBalance != null) {
-              statementBalance = cycleStatus.calculatedBalance;
-            }
-          } catch { /* silent */ }
-          try {
-            const method = await getPaymentMethod(card.id);
-            cycleBalance = method?.current_cycle?.total_amount ?? null;
-          } catch { /* silent */ }
+          const [cycleStatus, method] = await Promise.all([
+            getCurrentCycleStatus(card.id).catch(() => null),
+            getPaymentMethod(card.id).catch(() => null)
+          ]);
+          // Use same logic as CreditCardDetailView: prefer actual balance, fall back to calculated balance
+          // Both use calculateCycleBalance which includes previous cycle carry-forward
+          if (cycleStatus?.hasActualBalance) {
+            statementBalance = cycleStatus.actualBalance;
+          } else if (cycleStatus?.calculatedBalance != null) {
+            statementBalance = cycleStatus.calculatedBalance;
+          }
+          cycleBalance = method?.current_cycle?.total_amount ?? null;
         }
         return { id: card.id, name: card.display_name, currentBalance: card.current_balance, statementBalance, cycleBalance };
       })
@@ -441,7 +437,8 @@ const LoansSection = ({ year, month, onUpdate, highlightIds = [], onTotalDebtCha
       const data = await getAllLoans();
       const loanList = data || [];
       setLoans(loanList);
-      await fetchFixedExpenseCounts(loanList);
+      // Badge counts fill in when they arrive; the list and totals don't wait on one request per loan
+      fetchFixedExpenseCounts(loanList);
       const totalDebt = loanList
         .filter(l => !l.is_paid_off)
         .reduce((sum, l) => sum + (l.currentBalance || 0), 0);
@@ -1097,7 +1094,8 @@ const FinancialOverviewModal = ({
   useEffect(() => {
     if (!isOpen) return;
 
-    const fetchOnOpen = async () => {
+    // The three requests are independent, so run them together: the card list shouldn't wait on loans/investments
+    const fetchReminders = async () => {
       try {
         const response = await authAwareFetch(API_ENDPOINTS.REMINDER_STATUS(year, month));
         if (response.ok) {
@@ -1108,8 +1106,10 @@ const FinancialOverviewModal = ({
       } catch (err) {
         logger.error('Error fetching reminder status in FinancialOverviewModal:', err);
       }
+    };
 
-      // Fetch totals independently so NetWorthSummary is correct
+    // Fetch totals independently so NetWorthSummary is correct
+    const fetchTotals = async () => {
       try {
         const [loansData, investmentsData] = await Promise.all([
           getAllLoans(),
@@ -1128,8 +1128,9 @@ const FinancialOverviewModal = ({
       } catch (err) {
         logger.error('Error fetching totals in FinancialOverviewModal:', err);
       }
+    };
 
-      // Fetch credit card payment methods
+    const fetchCreditCards = async () => {
       try {
         const pmData = await getPaymentMethods();
         setCreditCardMethods(pmData || []);
@@ -1137,6 +1138,8 @@ const FinancialOverviewModal = ({
         logger.error('Error fetching payment methods in FinancialOverviewModal:', err);
       }
     };
+
+    const fetchOnOpen = () => Promise.all([fetchReminders(), fetchTotals(), fetchCreditCards()]);
 
     fetchOnOpen();
   }, [isOpen, year, month, _testNetWorth]);

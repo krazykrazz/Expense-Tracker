@@ -5,19 +5,20 @@
 
 import { API_ENDPOINTS } from '../config.js';
 import { apiGet, apiPost, apiPut, apiDelete, logApiError } from '../utils/apiClient.js';
+import { shareInFlight } from '../utils/shareInFlight.js';
 
 /**
- * Get all loans with current balances
+ * Get all loans with current balances. Concurrent calls share one request.
  * @returns {Promise<Array>} Array of loan objects with current balances
  */
-export const getAllLoans = async () => {
+export const getAllLoans = shareInFlight(async () => {
   try {
     return await apiGet(API_ENDPOINTS.LOANS, 'fetch loans');
   } catch (error) {
     logApiError('fetching loans', error);
     throw error;
   }
-};
+});
 
 /**
  * Create a new loan

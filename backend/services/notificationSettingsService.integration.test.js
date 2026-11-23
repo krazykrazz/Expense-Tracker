@@ -164,10 +164,9 @@ describe('notificationSettingsService', () => {
 
       expect(await service.sendTest()).toEqual({ ok: true, message: expect.stringContaining('Test message sent') });
 
-      const [credentials, message, options] = notifiarrProvider.send.mock.calls[0];
+      const [credentials, message] = notifiarrProvider.send.mock.calls[0];
       expect(credentials).toEqual({ apiKey: API_KEY, channelId: CHANNEL, pingUserId: USER });
-      expect(message).toMatchObject({ title: '🔵 Test message', ping: true });
-      expect(options).toEqual({ event: 'Test', update: false });
+      expect(message).toMatchObject({ name: 'Expense Tracker: Test Message', description: 'Notifications are working.', ping: true });
     });
 
     test('tests values that are not saved yet, and saves nothing', async () => {

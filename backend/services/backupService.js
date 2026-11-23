@@ -285,6 +285,7 @@ class BackupService {
 
       // Clean up old backups
       this.cleanupOldBackups(backupPath);
+      const backupsKept = this.countBackups(backupPath);
 
       // Log backup creation event (fire-and-forget, don't let logging failures affect backup)
       try {
@@ -303,7 +304,7 @@ class BackupService {
       }
 
       if (trigger) {
-        sendQuietly(() => notifications().reportBackupSucceeded({ trigger, filename, size: archiveResult.size }));
+        sendQuietly(() => notifications().reportBackupSucceeded({ trigger, filename, size: archiveResult.size, backupsKept }));
       }
 
       return {
@@ -370,6 +371,20 @@ class BackupService {
     } catch (error) {
       logger.warn('Error counting statement files:', error.message);
       return 0;
+    }
+  }
+
+  /**
+   * How many backup archives are in a directory (null when it can't be read).
+   */
+  countBackups(backupPath) {
+    try {
+      return fs.readdirSync(backupPath)
+        .filter(file => file.startsWith('expense-tracker-backup-') && (file.endsWith('.tar.gz') || file.endsWith('.db')))
+        .length;
+    } catch (error) {
+      logger.warn('Could not count backups:', error.message);
+      return null;
     }
   }
 

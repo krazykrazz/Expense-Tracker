@@ -3,7 +3,10 @@ const packageJson = require('../package.json');
 
 const API_KEY = '00000000-1111-2222-3333-444444444444';
 const CHANNEL = '1234567890123456789';
-const MESSAGE = { title: '🔴 Bank needs login', color: 'E74C3C', ping: true, fields: [{ title: 'Bank', text: 'CIBC', inline: true }] };
+const MESSAGE = {
+  name: 'Expense Tracker: Bank Needs Login', title: 'CIBC', description: 'Use Reconnect.', color: 'E74C3C', ping: true,
+  fields: [{ title: 'Error code', text: 'ITEM_LOGIN_REQUIRED', inline: true }]
+};
 const CREDENTIALS = { apiKey: API_KEY, channelId: CHANNEL, pingUserId: '' };
 
 const reply = (status, body) => ({ ok: status >= 200 && status < 300, status, text: async () => (typeof body === 'string' ? body : JSON.stringify(body)) });
@@ -15,16 +18,24 @@ afterEach(() => { global.fetch = originalFetch; });
 
 describe('buildPayload', () => {
   test('keeps the channel ID a string (it exceeds Number.MAX_SAFE_INTEGER) and adds app icon and footer', () => {
-    const payload = buildPayload(MESSAGE, { event: 'CIBC', update: false, channelId: CHANNEL });
+    const payload = buildPayload(MESSAGE, { channelId: CHANNEL });
 
     expect(payload.discord.ids.channel).toBe(CHANNEL);
     expect(JSON.stringify(payload)).toContain(`"channel":"${CHANNEL}"`);
-    expect(payload.notification).toEqual({ update: false, name: 'Expense Tracker', event: 'CIBC' });
-    expect(payload.discord.text).toMatchObject({ icon: ICON_URL, footer: `Expense Tracker v${packageJson.version}`, title: MESSAGE.title, fields: MESSAGE.fields });
+    expect(payload.discord.text).toMatchObject({ icon: ICON_URL, footer: `Expense Tracker v${packageJson.version}`, fields: MESSAGE.fields });
+  });
+
+  test('the message supplies the header line, subject and description; the event is empty unless asked for', () => {
+    const payload = buildPayload(MESSAGE, { channelId: CHANNEL });
+
+    expect(payload.notification).toEqual({ update: false, name: 'Expense Tracker: Bank Needs Login', event: '' });
+    expect(payload.discord.text).toMatchObject({ title: 'CIBC', description: 'Use Reconnect.' });
+    expect(buildPayload({ ...MESSAGE, title: undefined, description: undefined, name: undefined }, { channelId: CHANNEL, event: 'x' }))
+      .toMatchObject({ notification: { name: 'Expense Tracker', event: 'x' }, discord: { text: { title: '', description: '' } } });
   });
 
   test('pings the user only for messages that ask for it', () => {
-    const ping = (message) => buildPayload(message, { event: 'x', update: false, channelId: CHANNEL, pingUserId: '123456789012345678' }).discord.ping.pingUser;
+    const ping = (message) => buildPayload(message, { channelId: CHANNEL, pingUserId: '123456789012345678' }).discord.ping.pingUser;
     expect(ping(MESSAGE)).toBe('123456789012345678');
     expect(ping({ ...MESSAGE, ping: false })).toBe(0);
   });

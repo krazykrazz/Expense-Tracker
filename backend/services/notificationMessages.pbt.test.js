@@ -20,11 +20,11 @@ describe('notification privacy (property)', () => {
     );
   });
 
-  test('every field of a bank message hides digit runs in the bank name', () => {
+  test('a bank message hides digit runs in the bank name, wherever it is shown', () => {
     fc.assert(
       fc.property(textWithDigits, (name) => {
         const message = buildMessage('plaid_needs_attention', { institutionName: name, status: 'needs_login' });
-        return !/\d{4,}/.test(JSON.stringify(message.fields.filter(f => f.title === 'Bank')));
+        return !/\d{4,}/.test(JSON.stringify([message.name, message.title, message.description, message.fields]));
       }),
       pbtOptions()
     );

@@ -17,22 +17,24 @@ const API_KEY_PATTERN = /^[A-Za-z0-9-]{16,64}$/;
 const SNOWFLAKE_PATTERN = /^\d{17,20}$/;
 
 /**
- * @param {{title: string, color: string, ping?: boolean, fields: Array<{title: string, text: string, inline: boolean}>}} message
- * @param {{event: string, update: boolean, channelId: string, pingUserId?: string}} options
- *   `event` names the message ("CIBC"); with `update` the message with the same event is edited instead of posted
+ * @param {{name?: string, title: string, description?: string, color: string, ping?: boolean,
+ *   fields: Array<{title: string, text: string, inline: boolean}>}} message
+ *   `name` is the header line next to the icon; `title` the bold subject; `description` a sentence under it
+ * @param {{event?: string, update?: boolean, channelId: string, pingUserId?: string}} options
+ *   `event` is only needed to edit a message later (`update`); it is shown after the name, so it is empty by default
  */
-function buildPayload(message, { event, update, channelId, pingUserId }) {
+function buildPayload(message, { event = '', update = false, channelId, pingUserId }) {
   return {
-    notification: { update, name: APP_NAME, event },
+    notification: { update, name: message.name || APP_NAME, event },
     discord: {
       color: message.color,
       ping: { pingUser: message.ping && pingUserId ? pingUserId : 0, pingRole: 0 },
       images: { thumbnail: '', image: '' },
       text: {
-        title: message.title,
+        title: message.title || '',
         icon: ICON_URL,
         content: '',
-        description: '',
+        description: message.description || '',
         fields: message.fields,
         footer: `${APP_NAME} v${packageJson.version}`
       },
@@ -48,7 +50,7 @@ const withoutKey = (text, apiKey) => String(text).split(apiKey).join('•••'
  * @param {{apiKey: string, channelId: string, pingUserId?: string}} credentials
  * @returns {Promise<{ok: boolean, reason?: string}>}
  */
-async function send({ apiKey, channelId, pingUserId }, message, { event, update = false }) {
+async function send({ apiKey, channelId, pingUserId }, message, { event = '', update = false } = {}) {
   try {
     const response = await fetch(ENDPOINT + apiKey, {
       method: 'POST',

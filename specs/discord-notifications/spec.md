@@ -72,9 +72,8 @@ Plaid stopped updating, a failed backup. Nothing reaches the user unless the app
 - **Noise rules:** a sync `error` is only announced once it has lasted an hour (`pending` records when it began,
   so the hold survives restarts; an error that clears within the hour sends nothing). "Not updating" is only
   announced once Plaid's data is over 24 hours old (the UI flags it at 12 h); a bank between 12 and 24 h counts as ok.
-- **Message names** (Notifiarr `event`, shown after the app name): a bank's problems and recoveries use its name
-  (`CIBC`, or `CIBC #3` when two connections share a name), the backup uses `Backup`; one-off messages use
-  `CIBC activity`, `Backup completed`, `Backup restored`.
+- **Message names:** the message type is in the header line (see Message layout), so no per-message `event` id is used;
+  two connections with the same bank name are told apart only by their messages' timing.
 - **Hooks must not await notifications:** a send can take up to 5 s and sends run one at a time. Call them without
   `await` (they never reject). Report bank status with values read after `_refreshHealth`.
 - **HTTP:** Node `fetch` with a 5 s `AbortController` timeout. No retries (state is only recorded after a
@@ -82,13 +81,22 @@ Plaid stopped updating, a failed backup. Nothing reaches the user unless the app
 
 ### Message layout
 
-Modelled on the Sonarr notification the user shared; validated by `backend/scripts/notifiarr-poc.js`.
+Modelled on Notifiarr's own notifications (the Sonarr "New Backup Created" and "Deleted Episode" messages the user
+shared); every message type decides its own layout in `notificationMessages.js`, and
+`backend/scripts/notifiarr-poc.js` posts one sample of each, built with the real builders.
 
-- **Title:** status emoji + short title (`🔴 Bank needs login`, `🟡 Bank not updating`, `🟢 Bank recovered`,
-  `🔵 Backup completed`, `🔴 Backup failed`), with the app icon (`discord.text.icon`) beside it.
-- **Fields:** inline fields in rows of three (bank, status, error code, ages, sizes, counts), then one full-width
-  field for the action to take or the error text. Colour bar matches the status (red / amber / green / blue).
-- **Footer:** `Expense Tracker v<version>`; Notifiarr/Discord adds the time.
+- **Header line** (`notification.name`, next to the app icon): `Expense Tracker: <Type>`, e.g. `Bank Needs Login`,
+  `Bank Not Updating`, `Bank Recovered`, `New Bank Activity`, `Balances Changed`, `Backup Created`, `Backup Failed`,
+  `Backup Recovered`, `Backup Restored`, `Test Message`. The `event` is left empty (Notifiarr shows it after the name;
+  it is only needed to edit a message later).
+- **Title** (bold subject): the bank's name for bank messages; none for backups.
+- **Description:** one sentence of context where it helps (what to do for a login or stale bank, how long Plaid has had
+  no data, that a restore replaced the database).
+- **Fields:** only what fits the type: a bank problem shows error code / last good sync / auto sync; a sync shows the
+  non-zero counts and one field per account whose balance moved; a backup shows type, size, backups kept and file name.
+  No empty or bare-`0` field text (Notifiarr shows those as "Missing Value"); a field that has no value is left out.
+- **No emoji:** the colour bar carries severity: red problem, amber warning or restore, green created or recovered,
+  blue information. Footer `Expense Tracker v<version>`; Discord adds the time.
 - **Icon:** `frontend/public/notification-icon.png` (256 px PNG rendered from `favicon.svg`; Discord does not render
   SVG). Notifiarr fetches it from a public URL, so the provider uses
   `https://raw.githubusercontent.com/krazykrazz/Expense-Tracker/main/frontend/public/notification-icon.png` (the repo

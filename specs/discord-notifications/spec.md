@@ -1,6 +1,6 @@
 # Discord Notifications
 
-**Status:** Draft, awaiting review.
+**Status:** Implemented (v1), pending release. Deferred: pinging a user, in-place edits, batching (see below).
 
 ## Problem
 
@@ -12,7 +12,8 @@ Plaid stopped updating, a failed backup. Nothing reaches the user unless the app
 1. **Destination:** Discord via [Notifiarr Passthrough](https://notifiarr.wiki/pages/integrations/passthrough/)
    (`POST https://notifiarr.com/api/v1/notification/passthrough/<API_KEY>`). Notifiarr is the only provider in v1; the
    sending code sits behind a small provider interface so a direct Discord webhook can be added later.
-2. **Configuration:** Settings UI: Notifiarr API key, Discord channel ID, optional ping user ID. The API key is a
+2. **Configuration:** Settings UI: Notifiarr API key and Discord channel ID (the optional ping user ID is in the API but
+   deferred in the UI). The API key is a
    secret: stored encrypted (`utils/tokenCrypto`, like the Plaid secret), never returned by the API (masked hint
    only), never logged. The host is fixed (`notifiarr.com`), so there is no user-supplied URL.
 3. **Privacy:** messages pass through a third party. They carry institution names, account names, event types and
@@ -99,17 +100,19 @@ Modelled on the Sonarr notification the user shared; validated by `backend/scrip
 ### Hook points (explicit calls, not a generic hook on `logEvent`)
 
 Not every notifiable event is an activity-log event (stale has none), and not every log event is notifiable.
+Implemented (all through a quiet wrapper that never awaits and swallows throws and rejections):
 
-- `plaidSyncService.syncItem` catch block: already guards on `item.lastError !== code`. Call `notify` there with
-  `plaid:<id>` and state `needs_login | gone | error` (via `connectionStatus`).
-- `plaidSyncService.syncItem` success path, after `_refreshHealth`: compute `connectionStatus` for the item and call
-  `notify` with `plaid:<id>` and state `ok` or `stale`. A transition into `ok` from a problem state sends
-  `plaid_recovered`. The recovery decision uses the previous *notified* state, not `item.lastError`, because
-  `last_error` is cleared during the sync. `plaid_sync_changes` is called from `_logSync`, which already builds the
-  human-readable summary.
-- `plaid_sync_changes`: balance changes use institution and account name only (no mask / last-4), per the privacy rule.
-- `backupService.performBackup` and the scheduled-backup catch: `backup_failed` with `stateKey: 'backup'`, state
-  `failed`; a later success (`backup_succeeded` or not) clears that state. `backup_restored` after the restore commits.
+- `plaidSyncService.reportStatus(id)` re-reads the stored bank row (the sync has just cleared or set `last_error`
+  and refreshed Plaid's health) and reports `connectionStatus` with the error code, last sync, Plaid's last fetch and
+  institution status. Called after every successful sync (after `_logSync`), after a Plaid error in `syncItem`
+  (after `setItemError`), and from `plaidService.requestRefresh` when "Log in again" finds the bank needs a login
+  (automatic sync skips such banks, so nothing else would tell the user). A non-Plaid failure (network) reports nothing.
+- `plaidSyncService._logSync`: `reportSyncChanges` when a sync brought new, updated or removed transactions or balance
+  changes (re-attached rows alone are not news). Balance changes use the account name only (no mask / last-4).
+- `plaidService.disconnectItem`: `forgetBank`. `backupService.restoreBackup`: `resetState`, then `reportBackupRestored`.
+- `backupService.performBackup(targetPath, { trigger })`: only with a `trigger` (`manual` from the controller,
+  `scheduled` from the scheduler) is a backup reported (`reportBackupSucceeded` / `reportBackupFailed`). The browser
+  download passes none: it is a temporary archive.
 
 ### API
 
@@ -125,9 +128,10 @@ Endpoint Reference of `docs/API_DOCUMENTATION.md`.
 
 ### Frontend
 
-A `NotificationSettings.jsx` section next to `PlaidSettings.jsx` in Settings: API key field (masked hint when saved),
-channel ID, optional ping user ID, master switch, one checkbox per event, Save, Send test message. Uses `apiClient` /
-`API_ENDPOINTS` and `createLogger`; no bare `fetch`.
+`components/system/NotificationSettings.jsx` (tab "🔔 Notifications" in `SettingsModal`): API key field (masked hint
+when saved, blank keeps it), channel ID, master switch, one checkbox per event, Send test message, Save, Remove.
+The ping user is not offered in the UI yet (deferred). Uses `services/notificationApi.js` (`apiClient`) and
+`API_ENDPOINTS`; no bare `fetch`.
 
 ## Tasks
 
@@ -139,10 +143,10 @@ channel ID, optional ping user ID, master switch, one checkbox per event, Save, 
    24 h stale threshold, never throws, 4+ digit redaction) + tests, including restart persistence and "stays broken,
    no repeat"
 3. [x] Routes, controller, `API_ENDPOINTS`, API docs
-4. [ ] Hook Plaid sync (needs attention / stale / recovered / changes)
-5. [ ] Hook backup (failed / succeeded / restored)
-6. [ ] Settings UI + tests
-7. [ ] Docs: `docs/features/` page, `docs/DATABASE_SCHEMA.md` (settings keys), `docs/guides/USER_GUIDE.md`, README
+4. [x] Hook Plaid sync (needs attention / stale / recovered / changes)
+5. [x] Hook backup (failed / succeeded / restored)
+6. [x] Settings UI + tests
+7. [x] Docs: `docs/features/` page, `docs/DATABASE_SCHEMA.md` (settings keys), `docs/guides/USER_GUIDE.md`, README
 8. [ ] Full validation with `.\scripts\run-test-summary.ps1`; `npm run lint`
 
 ## Deferred

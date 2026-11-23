@@ -22,6 +22,7 @@ Some feature documents still mention labels like `v4.x` or `v5.x`. Those are pre
 - [Generic Expense Reimbursement](GENERIC_EXPENSE_REIMBURSEMENT.md) - Original cost vs out-of-pocket for non-medical expenses
 - [Sticky Summary Scrolling](STICKY_SUMMARY_SCROLLING.md) - Main page layout and sticky summary column
 - [Plaid Bank Import](PLAID_INTEGRATION.md) - Optional: connect banks via Plaid; automatic sync into an Import Inbox (add, match, confirm fixed expenses and income, record credit card payments from both the card and the account that paid it, pending charges)
+- [Discord Notifications](NOTIFICATIONS.md) - Optional: Discord messages (via Notifiarr) when a bank needs a login or stops updating, and for backups
 
 ### Payment Methods and Credit Cards
 - [Configurable Payment Methods](CONFIGURABLE_PAYMENT_METHODS.md) - Payment methods table, credit card balances

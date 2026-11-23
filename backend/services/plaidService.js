@@ -130,6 +130,8 @@ class PlaidService {
       }
       // Expected for banks that only update during a login: no activity log entry (the login that follows logs)
       await plaidRepository.setItemError(item.id, code);
+      // Automatic sync skips a bank that needs a login, so nothing else would tell the user it is waiting
+      await plaidSyncService.reportStatus(item.id);
       return { status: 'needs_login', item: await this.getItem(item.id) };
     }
   }

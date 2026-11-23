@@ -5,14 +5,28 @@ const activityLogService = require('./activityLogService');
 const plaidSettlementService = require('./plaidSettlementService');
 const plaidCardBalanceService = require('./plaidCardBalanceService');
 const plaidBackfillService = require('./plaidBackfillService');
+const notificationService = require('./notificationService');
 const { runWithTabId } = require('../utils/requestContext');
 const { decrypt } = require('../utils/tokenCrypto');
 const logger = require('../config/logger');
 const { fail } = require('../utils/httpError');
-const { NEEDS_USER_CODES, plaidErrorOf, toServiceError, plaidClient } = require('./plaidConnectionSupport');
+const { NEEDS_USER_CODES, connectionStatus, plaidErrorOf, toServiceError, plaidClient } = require('./plaidConnectionSupport');
 
 const MAX_SYNC_RESTARTS = 3;
 const SYNC_PAGE_SIZE = 500;
+
+/**
+ * Notifications are never awaited: a slow or failing Notifiarr must not slow down or fail a sync. The service
+ * does not reject by design; this is a second guard (it also tolerates a throw or a mock that returns nothing).
+ */
+const sendQuietly = (send) => {
+  const failed = (err) => logger.warn('Notification report failed', { error: err.message });
+  try {
+    Promise.resolve(send()).catch(failed);
+  } catch (err) {
+    failed(err);
+  }
+};
 
 /** SQLite CURRENT_TIMESTAMP ('YYYY-MM-DD HH:MM:SS', UTC) → epoch ms; 0 when missing. */
 const sqliteUtcMs = (value) => {
@@ -34,6 +48,28 @@ class PlaidSyncService {
   /** Forget a bank's last attempt (it was reconnected or removed), so automatic sync picks it up again. */
   clearAttempt(id) {
     this._lastAttemptAt.delete(id);
+  }
+
+  /**
+   * Tell the notification service how a bank stands now, from its stored row (so after the sync cleared or set
+   * `last_error` and refreshed Plaid's health). Not awaited by callers beyond the row read; never throws.
+   */
+  async reportStatus(id) {
+    try {
+      const item = await plaidRepository.findItemById(id);
+      if (!item) return;
+      sendQuietly(() => notificationService.reportBankStatus({
+        id: item.id,
+        institutionName: item.institutionName,
+        status: connectionStatus(item),
+        errorCode: item.lastError,
+        lastSyncedAt: item.lastSyncedAt,
+        bankUpdatedAt: item.bankUpdatedAt,
+        institutionStatus: item.institutionStatus
+      }));
+    } catch (err) {
+      logger.warn('Reading a bank\'s status for notifications failed', { plaidItemId: id, error: err.message });
+    }
   }
 
   /**
@@ -73,6 +109,7 @@ class PlaidSyncService {
             plaidItemId: id, ...counts, settled: settlements.length, balancesChanged: balanceChanges.length
           });
           await this._logSync(item, source, counts, balanceChanges);
+          await this.reportStatus(id);
           if (settlements.length > 0) {
             // After the batch is committed: expense updates go through expenseService (validation, card balance, log),
             // outside any request's tab context so every tab (including one that pressed Sync now) refreshes
@@ -103,6 +140,8 @@ class PlaidSyncService {
                 { institutionName: item.institutionName, errorCode: code }
               );
             }
+            // Every failure is reported: the service decides when it is worth a message (an error is held for an hour)
+            await this.reportStatus(id);
           }
           throw toServiceError(err, 'sync');
         }
@@ -316,6 +355,13 @@ class PlaidSyncService {
       `Bank sync (${source.replace('_', ' ')}) ${item.institutionName}: ${parts.join('; ')}`,
       { source, institutionName: item.institutionName, added, updated, removed, reattached, balances: balanceChanges }
     );
+    // Re-attached rows alone aren't news to the user (the message has no count for them)
+    if (added + updated + removed + balanceChanges.length > 0) {
+      sendQuietly(() => notificationService.reportSyncChanges(
+        { id: item.id, institutionName: item.institutionName },
+        { added, updated, removed, balances: balanceChanges }
+      ));
+    }
   }
 }
 

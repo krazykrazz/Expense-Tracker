@@ -68,6 +68,7 @@ See **[Startup Guide](./docs/guides/STARTUP_GUIDE.md)** for detailed development
 - 🔒 **Optional Password** - Off by default; enable a password gate from Settings
 - 🌐 **Multi-Device Access** - Access from any device on your local network, kept in sync in real time
 - 🏦 **Bank Import (optional)** - Connect banks through Plaid; transactions sync automatically into an inbox where you add, match or confirm them (including pending charges, fixed expenses, income and credit card payments). Off until Plaid keys are added
+- 🔔 **Discord Notifications (optional)** - Get a Discord message (through Notifiarr) when a bank needs a login or stops updating, and for failed backups. Off until configured in Settings → Notifications
 
 For a complete feature list, see **[Feature Documentation](./docs/features/)**.
 

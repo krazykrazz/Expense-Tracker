@@ -75,7 +75,7 @@ async function updateBackupConfig(req, res) {
  */
 async function performManualBackup(req, res) {
   try {
-    const result = await backupService.performBackup();
+    const result = await backupService.performBackup(null, { trigger: 'manual' });
     res.status(200).json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });

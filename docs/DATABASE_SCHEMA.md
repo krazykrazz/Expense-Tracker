@@ -723,8 +723,8 @@ Key-value store for application settings (e.g., retention policy configuration, 
 
 | Field | Type | Description |
 |-------|------|-------------|
-| key | TEXT PRIMARY KEY | Setting identifier (`activity_log_max_age_days`, `activity_log_max_count`, `business_timezone`, `last_known_version`, `jwt_secret`, Plaid: `plaid_client_id`, `plaid_secret_enc`, `plaid_environment`, `plaid_production_items_created`, `plaid_retention_months`, `plaid_capture_backfill_done`, `plaid_posted_date_backfill_done`) |
-| value | TEXT NOT NULL | Setting value (stored as text, parsed by service layer). `plaid_secret_enc` is AES-256-GCM encrypted with the key in `<CONFIG_DIR>/secrets/plaid.key` (or `PLAID_TOKEN_KEY`); an empty string means "not set" |
+| key | TEXT PRIMARY KEY | Setting identifier (`activity_log_max_age_days`, `activity_log_max_count`, `business_timezone`, `last_known_version`, `jwt_secret`, Plaid: `plaid_client_id`, `plaid_secret_enc`, `plaid_environment`, `plaid_production_items_created`, `plaid_retention_months`, `plaid_capture_backfill_done`, `plaid_posted_date_backfill_done`, Notifications: `notifications_enabled`, `notifications_notifiarr_key_enc`, `notifications_channel_id`, `notifications_ping_user_id`, `notifications_events`, `notifications_state`) |
+| value | TEXT NOT NULL | Setting value (stored as text, parsed by service layer). `plaid_secret_enc` is AES-256-GCM encrypted with the key in `<CONFIG_DIR>/secrets/plaid.key` (or `PLAID_TOKEN_KEY`); an empty string means "not set". `notifications_notifiarr_key_enc` is encrypted the same way. `notifications_events` is a JSON array of enabled event keys; `notifications_state` a JSON map of the last notified state per bank (`plaid:<id>`) and for the backup (see [Discord Notifications](features/NOTIFICATIONS.md)) |
 | updated_at | TEXT | Last update timestamp |
 
 ### schema_migrations

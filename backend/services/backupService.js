@@ -6,6 +6,19 @@ const logger = require('../config/logger');
 const archiveUtils = require('../utils/archiveUtils');
 const activityLogService = require('./activityLogService');
 
+/** Loaded on use: the notification service pulls in the settings and Plaid layers. */
+const notifications = () => require('./notificationService');
+
+/** Notifications are never awaited: Notifiarr being slow or down must not delay or fail a backup. */
+const sendQuietly = (send) => {
+  const failed = (err) => logger.warn('Notification report failed:', err.message);
+  try {
+    Promise.resolve(send()).catch(failed);
+  } catch (err) {
+    failed(err);
+  }
+};
+
 class BackupService {
   constructor() {
     this.scheduledJob = null;
@@ -129,9 +142,11 @@ class BackupService {
    * Perform a comprehensive backup
    * Creates tar.gz archive with database, invoices, and config
    * @param {string} targetPath - Optional custom backup path
+   * @param {{trigger?: ('manual'|'scheduled'|null)}} [options] `trigger` names a real backup: it is reported to the
+   *   notification service. A browser download (no trigger) is a temporary archive and is not.
    * @returns {Promise<{success: boolean, filename: string, path: string, timestamp: string, size: number}>}
    */
-  async performBackup(targetPath = null) {
+  async performBackup(targetPath = null, { trigger = null } = {}) {
     try {
       // Check if database exists
       if (!fs.existsSync(DB_PATH)) {
@@ -287,6 +302,10 @@ class BackupService {
         logger.warn('Failed to log backup creation event:', logError);
       }
 
+      if (trigger) {
+        sendQuietly(() => notifications().reportBackupSucceeded({ trigger, filename, size: archiveResult.size }));
+      }
+
       return {
         success: true,
         filename,
@@ -296,6 +315,9 @@ class BackupService {
       };
     } catch (error) {
       logger.error('Backup error:', error);
+      if (trigger) {
+        sendQuietly(() => notifications().reportBackupFailed({ trigger, error, lastBackup: this.config.lastBackup }));
+      }
       throw error;
     }
   }
@@ -447,7 +469,7 @@ class BackupService {
 
         logger.info('Performing scheduled backup...');
         try {
-          const result = await this.performBackup();
+          const result = await this.performBackup(null, { trigger: 'scheduled' });
           logger.info('Scheduled backup completed:', result.filename);
         } catch (error) {
           logger.error('Scheduled backup failed:', error);
@@ -656,7 +678,7 @@ class BackupService {
         }
 
         // Remembered notification states belong to the backup's moment, not now (never throws)
-        await require('./notificationService').resetState();
+        await notifications().resetState();
 
         // Log backup restoration event (fire-and-forget, don't let logging failures affect restore)
         try {
@@ -673,6 +695,7 @@ class BackupService {
         } catch (logError) {
           logger.warn('Failed to log backup restoration event:', logError);
         }
+        sendQuietly(() => notifications().reportBackupRestored({ filename: path.basename(backupPath) }));
 
         return {
           success: true,

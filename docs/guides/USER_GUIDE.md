@@ -8,6 +8,7 @@ Complete guide to using the Expense Tracker application.
 - [Expense Management](#expense-management)
 - [Payment Methods](#payment-methods)
 - [Bank Import (optional)](#bank-import-optional)
+- [Notifications (optional)](#notifications-optional)
 - [Income & Fixed Expenses](#income--fixed-expenses)
 - [Loans & Lines of Credit](#loans--lines-of-credit)
 - [Investment Tracking](#investment-tracking)
@@ -229,9 +230,25 @@ Don't use **Disconnect** for this. If a bank was disconnected anyway, connecting
 
 ### When a Bank Stops Updating
 
-Sometimes Plaid itself can't get new data from a bank for a while. When that lasts over 12 hours, the bank icon gets an **amber dot**, and on **Connections** the bank shows **Not updating** with when Plaid last got data from it. Usually it catches up on its own and nothing is lost. Some banks (CIBC) only send new data when you log in: click **Log in again**. It asks Plaid to fetch, and if the bank needs a login for that, Plaid's login opens (same connection, no new Trial connection) and what's new comes in right after. Don't disconnect.
+Sometimes Plaid itself can't get new data from a bank for a while. When that lasts over 12 hours, the bank icon gets an **amber dot**, and on **Connections** the bank shows **Not updating** with when Plaid last got data from it. Usually it catches up on its own and nothing is lost. Some banks (CIBC) only send new data when you log in: click **Log in again**. It asks Plaid to fetch, and if the bank needs a login for that, Plaid's login opens (same connection, no new Trial connection) and what's new comes in right after. Don't disconnect. To be told without opening the app, see [Notifications](#notifications-optional).
 
 To get the missing transactions sooner, download your recent activity from the bank's website as a CSV (Wealthsimple: Activity → Export; CIBC: Download transactions → CSV), then on **Connections** click **Import file** next to the account and choose it. The preview shows what's new; transactions already received from the bank are matched rather than added again, and when Plaid catches up it takes over the imported ones, so nothing is counted twice. Whichever source has more detail is kept (for example, a CIBC file can settle a charge Plaid still shows as pending).
+
+## Notifications (optional)
+
+Get a Discord message when something needs your attention, without opening the app. It uses [Notifiarr](https://notifiarr.wiki/pages/integrations/passthrough/) to post to a Discord channel, and is off until you set it up. Full reference: [Discord Notifications](../features/NOTIFICATIONS.md).
+
+### Setting It Up
+
+1. Have a Notifiarr account with its bot in your Discord server, and copy your **API key** (notifiarr.com → Profile).
+2. In Discord, turn on Developer Mode (User Settings → Advanced), right-click the channel to post to and choose **Copy Channel ID**.
+3. **⚙️ Settings → Notifications:** enter both, press **Send test message** (a message should appear in the channel), tick **Send notifications** and **Save**.
+
+### What You'll Get
+
+Tick or untick each kind under **Notify me about**: a bank needs a login, was removed or has a sync error; a bank isn't updating; a bank recovered; backup failed (and recovered), completed or restored; and, off by default, a summary of each bank sync that brought something new.
+
+You are told when something **changes**, once: a bank that stays broken is announced one time and then again when it recovers. A sync error is only announced if it lasts an hour, and "not updating" once Plaid has had no data for 24 hours (the bank icon flags it earlier, at 12). Messages contain bank and account names, error codes and amounts, never card or account numbers. A problem sending a message never affects syncing or backups; **Remove** in the Notifications tab deletes the key and channel.
 
 ## Income & Fixed Expenses
 

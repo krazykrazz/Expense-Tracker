@@ -19,7 +19,8 @@
 .settings-modal {
   background: var(--bg-card, white);
   border-radius: var(--radius-xl, 16px);
-  max-width: 700px;
+  /* Six tabs need about 810px to sit on one line each (see .settings-tabs below) */
+  max-width: 860px;
   width: 90%;
   max-height: 90vh;
   overflow-y: auto;
@@ -129,6 +130,26 @@
 .tab-button:focus {
   outline: none;
   box-shadow: var(--focus-ring);
+}
+
+/*
+ * Keep every tab label on one line. Where the modal is narrower than the tabs (tablets, phones) the bar scrolls
+ * sideways instead of wrapping labels into tall tabs or spilling out of the modal. Scoped to the Settings modal:
+ * .settings-tabs / .tab-button are also defined by SystemModal.css and BackupSettings.css.
+ */
+.settings-modal .settings-tabs {
+  gap: var(--spacing-1, 4px);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+
+/* No -2px overlap onto the bar's border here: a scrolling bar would clip the active underline */
+.settings-modal .tab-button {
+  flex-shrink: 0;
+  white-space: nowrap;
+  padding: var(--spacing-3, 12px);
+  margin-bottom: 0;
 }
 
 /* Tab Content */

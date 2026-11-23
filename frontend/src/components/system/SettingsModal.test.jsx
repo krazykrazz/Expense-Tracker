@@ -59,6 +59,9 @@ vi.mock('../../services/peopleApi', () => ({
   deletePerson: vi.fn()
 }));
 
+// The Notifications panel has its own tests; here it only needs to render
+vi.mock('./NotificationSettings', () => ({ default: () => <div>Notification settings panel</div> }));
+
 import SettingsModal from './SettingsModal';
 
 describe('SettingsModal', () => {
@@ -111,6 +114,23 @@ describe('SettingsModal', () => {
       expect(screen.getByText('🔒 Security')).toBeInTheDocument();
       expect(screen.getByText('🏦 Bank Import')).toBeInTheDocument();
       expect(screen.getByText('🔔 Notifications')).toBeInTheDocument();
+    });
+
+    it('should keep the active tab in view where the tab bar scrolls sideways', async () => {
+      // jsdom has no scrollIntoView
+      const scrollIntoView = vi.fn();
+      Element.prototype.scrollIntoView = scrollIntoView;
+      mockActiveTab = 'notifications';
+
+      try {
+        render(<SettingsModal />);
+        await waitForLoaded();
+
+        await waitFor(() => expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest', inline: 'nearest' }));
+        expect(scrollIntoView.mock.contexts.at(-1)).toHaveTextContent('🔔 Notifications');
+      } finally {
+        delete Element.prototype.scrollIntoView;
+      }
     });
 
     it('should default to General tab', async () => {

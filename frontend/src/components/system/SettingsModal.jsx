@@ -56,6 +56,7 @@ const SettingsModal = () => {
   
   // Track timeouts for cleanup on unmount
   const messageTimerRef = useRef(null);
+  const tabsRef = useRef(null);
   
   // Cleanup timers on unmount
   useEffect(() => {
@@ -65,6 +66,12 @@ const SettingsModal = () => {
       }
     };
   }, []);
+
+  // Where the tab bar scrolls sideways (narrow screens), keep the active tab in view: the tab restored from an
+  // earlier visit can be off-screen. The bar only exists once loading is done.
+  useEffect(() => {
+    tabsRef.current?.querySelector('.tab-button.active')?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+  }, [activeTab, loading]);
 
   // Fetch initial data
   useEffect(() => {
@@ -418,7 +425,7 @@ const SettingsModal = () => {
           </button>
         </div>
         
-        <div className="settings-tabs">
+        <div className="settings-tabs" ref={tabsRef}>
           <button 
             className={`tab-button ${activeTab === 'general' ? 'active' : ''}`}
             onClick={() => setActiveTab('general')}

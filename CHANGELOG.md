@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.32.1] - 2026-11-23
+
+### Per-type Discord notification layouts, zero-count fix, faster Financial window and Annual Summary, dependency updates
+
 ## [1.32.0] - 2026-11-23
 
 ### Discord notifications via Notifiarr for bank problems and backups (Settings → Notifications), a wider Settings window, Plaid audit fixes, CI and release hardening

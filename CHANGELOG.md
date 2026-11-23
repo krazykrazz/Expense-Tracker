@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.32.0] - 2026-11-23
+
+### Discord notifications via Notifiarr for bank problems and backups (Settings → Notifications), a wider Settings window, Plaid audit fixes, CI and release hardening
+
 ## [1.31.0] - 2026-11-21
 
 ### Match one bank charge to several expenses

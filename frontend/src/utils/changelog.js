@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.32.0',
+    date: "November 23, 2026",
+    added: [],
+    changed: ["Discord notifications via Notifiarr for bank problems and backups (Settings → Notifications), a wider Settings window, Plaid audit fixes, CI and release hardening"],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.31.0',
     date: 'November 21, 2026',
     added: [],

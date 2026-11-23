@@ -693,4 +693,33 @@ describe('ExpenseService - Annual Summary Unit Tests', () => {
     expect(summary.netIncome).toBe(0);
     expect(summary.monthlyTotals).toHaveLength(12);
   });
+
+  test('should only count expenses dated inside the requested year', async () => {
+    const testYear = 9996;
+    const run = (sql, params = []) => new Promise((resolve, reject) => {
+      db.run(sql, params, (err) => err ? reject(err) : resolve());
+    });
+    const cleanup = () => run('DELETE FROM expenses WHERE date >= "9995-01-01" AND date < "9998-01-01"');
+
+    await cleanup();
+    try {
+      const rows = [
+        ['9995-12-31', 1], [`${testYear}-01-01`, 10], [`${testYear}-12-31`, 100], ['9997-01-01', 1000]
+      ];
+      for (const [date, amount] of rows) {
+        await run(
+          'INSERT INTO expenses (date, place, amount, type, week, method) VALUES (?, ?, ?, ?, ?, ?)',
+          [date, 'Edge', amount, 'Other', 1, 'Cash']
+        );
+      }
+
+      const summary = await expenseService.getAnnualSummary(testYear);
+
+      expect(summary.totalVariableExpenses).toBe(110);
+      expect(summary.monthlyTotals.find(m => m.month === 1).variableExpenses).toBe(10);
+      expect(summary.monthlyTotals.find(m => m.month === 12).variableExpenses).toBe(100);
+    } finally {
+      await cleanup();
+    }
+  });
 });

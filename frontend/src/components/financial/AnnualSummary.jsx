@@ -166,10 +166,15 @@ const AnnualSummary = ({ year }) => {
     setError(null);
 
     try {
-      // Fetch current year and previous year in parallel
-      const [currentResponse, previousResponse] = await Promise.all([
+      // Fetch current year, previous year and income categories in parallel
+      const categoryRequest = getAnnualIncomeByCategory(year).then(
+        (categoryData) => ({ categoryData }),
+        (categoryErr) => ({ categoryErr })
+      );
+      const [currentResponse, previousResponse, categoryResult] = await Promise.all([
         authAwareFetch(`/api/expenses/annual-summary?year=${year}`),
-        authAwareFetch(`/api/expenses/annual-summary?year=${year - 1}`)
+        authAwareFetch(`/api/expenses/annual-summary?year=${year - 1}`),
+        categoryRequest
       ]);
       
       if (!currentResponse.ok) {
@@ -187,14 +192,12 @@ const AnnualSummary = ({ year }) => {
         setPreviousYearSummary(null);
       }
 
-      // Fetch income by category
-      try {
-        const categoryData = await getAnnualIncomeByCategory(year);
-        setIncomeByCategory(categoryData);
-      } catch (categoryErr) {
-        logger.error('Error fetching income by category:', categoryErr);
-        // Don't fail the whole component if category data fails
+      // Income by category is optional - don't fail the whole component if it fails
+      if (categoryResult.categoryErr) {
+        logger.error('Error fetching income by category:', categoryResult.categoryErr);
         setIncomeByCategory(null);
+      } else {
+        setIncomeByCategory(categoryResult.categoryData);
       }
     } catch (err) {
       setError(err.message);

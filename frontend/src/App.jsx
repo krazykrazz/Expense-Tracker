@@ -14,14 +14,16 @@ import ErrorBoundary from './components/shared/ErrorBoundary';
 import VersionUpgradeModal from './components/system/VersionUpgradeModal';
 
 // Lazy-loaded modals — only fetched when opened
+const loadAnnualSummary = () => import('./components/financial/AnnualSummary');
+const loadFinancialOverviewModal = () => import('./components/financial/FinancialOverviewModal');
 const SettingsModal = lazy(() => import('./components/system/SettingsModal'));
 const SystemModal = lazy(() => import('./components/system/SystemModal'));
-const AnnualSummary = lazy(() => import('./components/financial/AnnualSummary'));
+const AnnualSummary = lazy(loadAnnualSummary);
 const TaxDeductible = lazy(() => import('./components/tax/TaxDeductible'));
 const BudgetsModal = lazy(() => import('./components/financial/BudgetsModal'));
 const PeopleManagementModal = lazy(() => import('./components/tax/PeopleManagementModal'));
 const AnalyticsHubModal = lazy(() => import('./components/analytics/AnalyticsHubModal'));
-const FinancialOverviewModal = lazy(() => import('./components/financial/FinancialOverviewModal'));
+const FinancialOverviewModal = lazy(loadFinancialOverviewModal);
 const CreditCardDetailView = lazy(() => import('./components/credit-cards/CreditCardDetailView'));
 import { useDataSync } from './hooks/useDataSync';
 import { useContainerUpdateCheck } from './hooks/useContainerUpdateCheck';
@@ -137,6 +139,17 @@ function SharedDataBridge({ onPaymentMethodsUpdate }) {
 }
 
 function AppContent({ onPaymentMethodsUpdate }) {
+  // Warm the two heaviest modals once the page is idle so the first open doesn't wait on a chunk download
+  useEffect(() => {
+    const prefetch = () => { loadFinancialOverviewModal().catch(() => {}); loadAnnualSummary().catch(() => {}); };
+    if (typeof window.requestIdleCallback === 'function') {
+      const id = window.requestIdleCallback(prefetch, { timeout: 5000 });
+      return () => window.cancelIdleCallback(id);
+    }
+    const id = setTimeout(prefetch, 2000);
+    return () => clearTimeout(id);
+  }, []);
+
   // Consume filter state from context (Requirements 4.2, 4.3, 4.4)
   const {
     searchText,

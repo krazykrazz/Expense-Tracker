@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.32.1',
+    date: "November 23, 2026",
+    added: [],
+    changed: ["Per-type Discord notification layouts, zero-count fix, faster Financial window and Annual Summary, dependency updates"],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.32.0',
     date: "November 23, 2026",
     added: [],

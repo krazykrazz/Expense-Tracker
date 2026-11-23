@@ -18,17 +18,17 @@ A backup restored on another machine cannot decrypt the saved key (the encryptio
 
 Each can be switched on or off in Settings.
 
-| Event | Message | Default |
-|---|---|---|
-| Bank needs login, was removed, or has a sync error | 🔴 Bank needs login / Bank connection removed / Bank sync problem | on |
-| Bank not updating | 🟡 Bank not updating | on |
-| Bank recovered | 🟢 Bank recovered | on |
-| A bank sync brought new activity | 🔵 Bank sync: new activity (counts, plus balance changes of accounts that import into a payment method) | off |
-| Backup failed (and recovered) | 🔴 Backup failed, then 🟢 Backup recovered | on |
-| Backup completed | 🔵 Backup completed | off |
-| Backup restored | 🟡 Backup restored | on |
+| Event | Message (header line) | Shown | Default |
+|---|---|---|---|
+| Bank needs login, was removed, or has a sync error | `Bank Needs Login` / `Bank Connection Removed` / `Bank Sync Problem` | the bank, what to do, error code, last good sync, whether auto sync is paused | on |
+| Bank not updating | `Bank Not Updating` | the bank, how long Plaid has had no data and what to do, when Plaid last got data, Plaid's status for the bank | on |
+| Bank recovered | `Bank Recovered` | the bank, what the problem was, how long it lasted | on |
+| A bank sync brought new activity | `New Bank Activity` or `Balances Changed` | the bank, the non-zero counts of new / updated / removed transactions, and one line per account whose balance moved (old → new amount) | off |
+| Backup failed (and recovered) | `Backup Failed`, then `Backup Recovered` | type (manual / scheduled), last good backup, the error; or type, size, how long it was failing, file name | on |
+| Backup completed | `Backup Created` | type, size, how many backups are kept, file name | off |
+| Backup restored | `Backup Restored` | the file name restored | on |
 
-Each message has a coloured bar (red problem, amber warning, green recovered, blue information), the app icon, three-column details (bank, status, error code, how old Plaid's data is, size…), a full-width line with what to do, and the app version as footer.
+Each message type has its own layout, in the style of Notifiarr's own notifications: a header line next to the app icon (`Expense Tracker: Backup Created`), the subject in bold under it (the bank), a sentence of context where useful, and only the details that make sense for that type. The colour bar shows the severity (red problem, amber warning or restore, green created or recovered, blue information) and the app version is the footer; Discord adds the time.
 
 ## When Messages Are Sent
 
@@ -41,7 +41,7 @@ Problems are announced when something **changes**, not every time it is seen:
 - Backups are reported for the scheduled and manual backups, not for the temporary archive made by the browser download. A failure is announced once until a backup succeeds again.
 - What the app last told you is remembered, so a restart or a new version does not repeat it. A message that could not be delivered is tried again at the next sync or backup. Disconnecting a bank forgets it, and restoring a backup resets everything (the saved states describe the backup's moment, not now): a bank that is broken right after a restore is announced again.
 
-Every message is a new Discord message (editing the earlier one in place is possible with Notifiarr but not used). Each is named after the bank (`CIBC`, or `CIBC #3` when two connections have the same name) or the backup, which is how Notifiarr labels it next to the app name.
+Every message is a new Discord message (editing the earlier one in place is possible with Notifiarr but not used).
 
 ## Privacy
 

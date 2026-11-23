@@ -7,10 +7,10 @@ const COLORS = { red: 'E74C3C', amber: 'F39C12', green: '2ECC71', blue: '3498DB'
 
 const STATUS_LABELS = { needs_login: 'Needs login', gone: 'Connection removed', error: 'Sync problem', stale: 'Not updating', ok: 'Syncing' };
 const PLAID_ACTIONS = {
-  needs_login: 'Connections tab → **Reconnect**. Keeps the same connection: no new Trial slot, nothing re-imported.',
+  needs_login: 'The bank needs you to log in again. On the Connections tab use **Reconnect**: it keeps the same connection (no new Trial slot, nothing re-imported).',
   gone: 'The bank or Plaid no longer recognises this connection. Disconnect it, then connect the bank again.',
-  error: 'Has lasted over an hour. Often temporary at the bank: automatic sync keeps retrying. If it persists, check the Connections tab.',
-  stale: 'Some banks (CIBC) only send new data when you log in. Use **Log in again** on the Connections tab, or import a file. Don\'t disconnect.'
+  error: 'The sync has been failing for over an hour. This is often temporary at the bank and automatic sync keeps retrying; if it persists, check the Connections tab.',
+  stale: 'Some banks (CIBC) only send new data when you log in: use **Log in again** on the Connections tab, or import a file. Don\'t disconnect.'
 };
 
 const field = (title, text, inline = true) => ({ title, text: String(text ?? '') || '—', inline });
@@ -79,85 +79,97 @@ const money = (n) => {
 };
 const triggerLabel = (trigger) => (trigger === 'manual' ? 'Manual' : 'Scheduled');
 
+/**
+ * Every message type decides its own layout: `name` is the header line next to the app icon ("Expense Tracker:
+ * Backup Created"), `title` the subject in bold under it (the bank), `description` a sentence of context, and
+ * `fields` only what matters for that type. No emoji: the colour bar carries the severity.
+ */
 const BUILDERS = {
   plaid_needs_attention: (d, ctx) => ({
-    title: d.status === 'error' ? '🔴 Bank sync problem' : d.status === 'gone' ? '🔴 Bank connection removed' : '🔴 Bank needs login',
+    name: d.status === 'error' ? 'Expense Tracker: Bank Sync Problem'
+      : d.status === 'gone' ? 'Expense Tracker: Bank Connection Removed' : 'Expense Tracker: Bank Needs Login',
+    title: safeName(d.institutionName),
+    description: PLAID_ACTIONS[d.status] || PLAID_ACTIONS.error,
     color: COLORS.red,
     ping: true,
     fields: [
-      field('Bank', safeName(d.institutionName)),
-      field('Status', STATUS_LABELS[d.status] || 'Problem'),
-      field('Error code', safeCode(d.errorCode) || '—'),
+      ...(safeCode(d.errorCode) ? [field('Error code', safeCode(d.errorCode))] : []),
       field('Last good sync', formatWhen(d.lastSyncedAt, ctx.timezone)),
-      field('Auto sync', d.status === 'error' ? 'Retrying' : 'Paused'),
-      field('Action', PLAID_ACTIONS[d.status] || PLAID_ACTIONS.error, false)
+      field('Auto sync', d.status === 'error' ? 'Retrying' : 'Paused')
     ]
   }),
 
   plaid_stale: (d, ctx) => {
     const updated = toDate(d.bankUpdatedAt);
+    const age = updated ? formatDuration(ctx.now - updated.getTime()) : null;
     return {
-      title: '🟡 Bank not updating',
+      name: 'Expense Tracker: Bank Not Updating',
+      title: safeName(d.institutionName),
+      description: `${age ? `Plaid has had no new data from this bank for ${age}.` : 'Plaid has had no new data from this bank.'} The app's own sync is working. ${PLAID_ACTIONS.stale}`,
       color: COLORS.amber,
       ping: false,
       fields: [
-        field('Bank', safeName(d.institutionName)),
-        field('Status', STATUS_LABELS.stale),
-        field('Plaid data age', updated ? formatDuration(ctx.now - updated.getTime()) : 'Unknown'),
-        field('Plaid last got data', formatWhen(d.bankUpdatedAt, ctx.timezone)),
-        field('Plaid status', d.institutionStatus || 'Unknown'),
-        field('Our sync', 'Working'),
-        field('Action', PLAID_ACTIONS.stale, false)
+        field('Last data from bank', formatWhen(d.bankUpdatedAt, ctx.timezone)),
+        field('Plaid status', d.institutionStatus || 'Unknown')
       ]
     };
   },
 
   plaid_recovered: (d, ctx) => ({
-    title: '🟢 Bank recovered',
+    name: 'Expense Tracker: Bank Recovered',
+    title: safeName(d.institutionName),
+    description: 'Syncing normally again.',
     color: COLORS.green,
     ping: false,
     fields: [
-      field('Bank', safeName(d.institutionName)),
-      field('Status', STATUS_LABELS.ok),
       field('Was', STATUS_LABELS[d.previousState] || 'Problem'),
       ...(toDate(d.since) ? [field('Down for', formatDuration(ctx.now - toDate(d.since).getTime()))] : [])
     ]
   }),
 
   plaid_sync_changes: (d) => {
-    const balances = (d.balances || []).slice(0, 10).map(change =>
-      `${safeName(change.name)} ${change.field === 'available' ? 'available credit' : 'balance'}: ${money(change.from)} → ${money(change.to)}`);
+    // Only counts above zero: Notifiarr shows a field whose text is just "0" as "Missing Value"
+    const counts = [[d.added, 'new'], [d.updated, 'updated'], [d.removed, 'removed']]
+      .filter(([count]) => count > 0)
+      .map(([count, label]) => `${count} ${label}`);
+    // One field per account, like the attributes of a Sonarr message: "RRSP balance  $183,793.51 → $184,222.87"
+    const balances = (d.balances || []).slice(0, 12).map(change =>
+      field(`${safeName(change.name)} ${change.field === 'available' ? 'available credit' : 'balance'}`, `${money(change.from)} → ${money(change.to)}`));
     return {
-      title: '🔵 Bank sync: new activity',
+      name: counts.length > 0 ? 'Expense Tracker: New Bank Activity' : 'Expense Tracker: Balances Changed',
+      title: safeName(d.institutionName),
+      // Notifiarr needs a description or fields
+      description: counts.length === 0 && balances.length === 0 ? 'Sync completed.' : '',
       color: COLORS.blue,
       ping: false,
       fields: [
-        field('Bank', safeName(d.institutionName)),
-        field('New', d.added || 0),
-        field('Updated', d.updated || 0),
-        field('Removed', d.removed || 0),
-        ...(balances.length ? [field('Balances', balances.join('\n'), false)] : [])
+        ...(counts.length > 0 ? [field('Transactions', counts.join(' · '))] : []),
+        ...balances
       ]
     };
   },
 
   backup_failed: (d, ctx) => ({
-    title: '🔴 Backup failed',
+    name: 'Expense Tracker: Backup Failed',
+    title: '',
+    description: '',
     color: COLORS.red,
     ping: true,
     fields: [
-      field('Trigger', triggerLabel(d.trigger)),
+      field('Type', triggerLabel(d.trigger)),
       field('Last good backup', d.lastBackup ? formatWhen(d.lastBackup, ctx.timezone) : 'None'),
       field('Error', describeError(d.error), false)
     ]
   }),
 
   backup_recovered: (d, ctx) => ({
-    title: '🟢 Backup recovered',
+    name: 'Expense Tracker: Backup Recovered',
+    title: '',
+    description: '',
     color: COLORS.green,
     ping: false,
     fields: [
-      field('Trigger', triggerLabel(d.trigger)),
+      field('Type', triggerLabel(d.trigger)),
       field('Size', formatBytes(d.size)),
       ...(toDate(d.since) ? [field('Failing for', formatDuration(ctx.now - toDate(d.since).getTime()))] : []),
       ...(d.filename ? [field('Filename', d.filename, false)] : [])
@@ -165,34 +177,35 @@ const BUILDERS = {
   }),
 
   backup_succeeded: (d) => ({
-    title: '🔵 Backup completed',
-    color: COLORS.blue,
+    name: 'Expense Tracker: Backup Created',
+    title: '',
+    description: '',
+    color: COLORS.green,
     ping: false,
     fields: [
+      field('Type', triggerLabel(d.trigger)),
       field('Size', formatBytes(d.size)),
-      field('Trigger', triggerLabel(d.trigger)),
+      ...(Number.isInteger(d.backupsKept) && d.backupsKept > 0 ? [field('Backups Kept', d.backupsKept)] : []),
       ...(d.filename ? [field('Filename', d.filename, false)] : [])
     ]
   }),
 
-  backup_restored: (d, ctx) => ({
-    title: '🟡 Backup restored',
+  backup_restored: (d) => ({
+    name: 'Expense Tracker: Backup Restored',
+    title: '',
+    description: 'The database was restored from this backup.',
     color: COLORS.amber,
     ping: false,
-    fields: [
-      field('When', formatWhen(ctx.now, ctx.timezone)),
-      ...(d.filename ? [field('Filename', d.filename, false)] : [])
-    ]
+    fields: d.filename ? [field('Filename', d.filename, false)] : []
   }),
 
-  test: (d, ctx) => ({
-    title: '🔵 Test message',
+  test: (d) => ({
+    name: 'Expense Tracker: Test Message',
+    title: '',
+    description: 'Notifications are working.',
     color: COLORS.blue,
     ping: Boolean(d.ping),
-    fields: [
-      field('Status', 'Notifications are working'),
-      field('Sent', formatWhen(ctx.now, ctx.timezone))
-    ]
+    fields: []
   })
 };
 
@@ -200,7 +213,8 @@ const BUILDERS = {
  * @param {string} eventKey one of EVENT_KEYS, 'backup_recovered' or 'test'
  * @param {object} data event data (see BUILDERS)
  * @param {{timezone?: string, now?: number}} [context]
- * @returns {{title: string, color: string, ping: boolean, fields: Array<{title: string, text: string, inline: boolean}>}}
+ * @returns {{name: string, title: string, description: string, color: string, ping: boolean,
+ *   fields: Array<{title: string, text: string, inline: boolean}>}}
  */
 function buildMessage(eventKey, data = {}, { timezone = 'America/Toronto', now = Date.now() } = {}) {
   const builder = BUILDERS[eventKey];

@@ -39,7 +39,9 @@ describe('BackupService - notification reports', () => {
     const result = await backupService.performBackup(testBackupPath, { trigger });
 
     expect(result.success).toBe(true);
-    expect(notificationService.reportBackupSucceeded).toHaveBeenCalledWith({ trigger, filename: result.filename, size: result.size });
+    expect(notificationService.reportBackupSucceeded).toHaveBeenCalledWith({
+      trigger, filename: result.filename, size: result.size, backupsKept: 1
+    });
     expect(notificationService.reportBackupFailed).not.toHaveBeenCalled();
   });
 

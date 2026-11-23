@@ -6,11 +6,10 @@
  * must not affect the sync or backup that triggered it.
  */
 const settingsRepository = require('../repositories/settingsRepository');
-const plaidRepository = require('../repositories/plaidRepository');
 const notificationSettingsService = require('./notificationSettingsService');
 const notifiarrProvider = require('./notifiarrProvider');
 const timeBoundaryService = require('./timeBoundaryService');
-const { buildMessage, safeName } = require('./notificationMessages');
+const { buildMessage } = require('./notificationMessages');
 const { toggleFor, STATE_KEY } = require('./notificationEvents');
 const logger = require('../config/logger');
 
@@ -51,11 +50,11 @@ class NotificationService {
   }
 
   /** @returns {Promise<{ok: boolean, reason?: string}>} */
-  async _post(config, eventKey, data, eventId) {
+  async _post(config, eventKey, data) {
     const timezone = await timeBoundaryService.getBusinessTimezone();
     const message = buildMessage(eventKey, data, { timezone });
     const credentials = { apiKey: config.apiKey, channelId: config.channelId, pingUserId: config.pingUserId };
-    return notifiarrProvider.send(credentials, message, { event: eventId, update: false });
+    return notifiarrProvider.send(credentials, message);
   }
 
   /**
@@ -67,13 +66,12 @@ class NotificationService {
    * @param {string} spec.state e.g. 'ok', 'needs_login', 'stale', 'failed'
    * @param {(string|null)} spec.problemEvent event for a problem state; null when `state` is the normal state
    * @param {string} spec.recoveryEvent event sent when going from a problem back to normal
-   * @param {string} spec.eventId names the message ("CIBC", "Backup")
    * @param {object} spec.data event data (see notificationMessages)
    * @param {number} [spec.holdMs] only announce the problem once it has been reported for this long
    * @param {number} [spec.now]
    * @returns {Promise<{sent: boolean, reason?: string}>}
    */
-  _transition({ stateKey, state, problemEvent, recoveryEvent, eventId, data, holdMs = 0, now = Date.now() }) {
+  _transition({ stateKey, state, problemEvent, recoveryEvent, data, holdMs = 0, now = Date.now() }) {
     return this._serial(async () => {
       try {
         const config = await notificationSettingsService.getConfig();
@@ -97,7 +95,7 @@ class NotificationService {
             return { sent: false, reason: previousIsProblem ? 'event_off' : 'no_problem' };
           }
           const result = await this._post(config, recoveryEvent,
-            { ...data, previousState: previous.state, since: previous.since }, eventId);
+            { ...data, previousState: previous.state, since: previous.since });
           // Like a problem, a recovery is only remembered once delivered, so the next report retries it
           if (result.ok) {
             states[stateKey] = { state };
@@ -118,7 +116,7 @@ class NotificationService {
         }
 
         if (!config.events.has(toggleFor(problemEvent))) return { sent: false, reason: 'event_off' };
-        const result = await this._post(config, problemEvent, { ...data, status: state }, eventId);
+        const result = await this._post(config, problemEvent, { ...data, status: state });
         if (!result.ok) return this._outcome(result, problemEvent);
         // Only a delivered message is remembered, so a failed one is retried on the next sync
         states[stateKey] = { state, since: startedAt };
@@ -129,21 +127,6 @@ class NotificationService {
         return { sent: false, reason: 'error' };
       }
     });
-  }
-
-  /**
-   * The name a bank's messages go under ("CIBC"). When two connections have banks with the same name the connection
-   * id is added ("CIBC #3"), so their messages can be told apart.
-   */
-  async _bankMessageId(bank) {
-    const name = safeName(bank.institutionName);
-    try {
-      const items = await plaidRepository.findAllItems();
-      const sameName = items.some(item => item.id !== bank.id && safeName(item.institutionName) === name);
-      return sameName ? `${name} #${bank.id}` : name;
-    } catch {
-      return name;
-    }
   }
 
   /**
@@ -165,7 +148,6 @@ class NotificationService {
       state: status,
       problemEvent,
       recoveryEvent: 'plaid_recovered',
-      eventId: await this._bankMessageId(bank),
       data: bank,
       holdMs: status === 'error' ? ERROR_HOLD_MS : 0,
       now
@@ -173,14 +155,12 @@ class NotificationService {
   }
 
   /**
-   * A sync that brought new, changed or removed transactions or balance changes. Posted under its own name
-   * ("CIBC activity") so it reads apart from the bank's problem messages.
+   * A sync that brought new, changed or removed transactions or balance changes.
    * @param {{id: number, institutionName: string}} bank
    * @param {{added: number, updated: number, removed: number, balances?: Array<object>}} changes
    */
-  async reportSyncChanges(bank, changes) {
-    const eventId = `${await this._bankMessageId(bank)} activity`;
-    return this.notifyOccurrence('plaid_sync_changes', { ...changes, institutionName: bank.institutionName }, eventId);
+  reportSyncChanges(bank, changes) {
+    return this.notifyOccurrence('plaid_sync_changes', { ...changes, institutionName: bank.institutionName });
   }
 
   /** A disconnected bank's state is dropped, so a later connection with the same id starts clean. Never throws. */
@@ -214,37 +194,37 @@ class NotificationService {
   /** @param {{trigger: ('manual'|'scheduled'), error: Error, lastBackup?: (string|null)}} data */
   reportBackupFailed(data) {
     return this._transition({
-      stateKey: 'backup', state: 'failed', problemEvent: 'backup_failed', recoveryEvent: 'backup_recovered', eventId: 'Backup', data
+      stateKey: 'backup', state: 'failed', problemEvent: 'backup_failed', recoveryEvent: 'backup_recovered', data
     });
   }
 
   /**
    * A backup completed: ends a failure ("recovered"), then announces the backup when that is switched on.
-   * @param {{trigger: ('manual'|'scheduled'), filename: string, size: number}} data
+   * @param {{trigger: ('manual'|'scheduled'), filename: string, size: number, backupsKept?: (number|null)}} data
    */
   async reportBackupSucceeded(data) {
     await this._transition({
-      stateKey: 'backup', state: 'ok', problemEvent: null, recoveryEvent: 'backup_recovered', eventId: 'Backup', data
+      stateKey: 'backup', state: 'ok', problemEvent: null, recoveryEvent: 'backup_recovered', data
     });
-    return this.notifyOccurrence('backup_succeeded', data, 'Backup completed');
+    return this.notifyOccurrence('backup_succeeded', data);
   }
 
   /** @param {{filename: string}} data */
   reportBackupRestored(data) {
-    return this.notifyOccurrence('backup_restored', data, 'Backup restored');
+    return this.notifyOccurrence('backup_restored', data);
   }
 
   /**
    * An event that is sent every time it happens (sync changes, a completed or restored backup).
    * @returns {Promise<{sent: boolean, reason?: string}>}
    */
-  notifyOccurrence(eventKey, data, eventId) {
+  notifyOccurrence(eventKey, data) {
     return this._serial(async () => {
       try {
         const config = await notificationSettingsService.getConfig();
         if (!config.enabled || !config.configured) return { sent: false, reason: 'off' };
         if (!config.events.has(toggleFor(eventKey))) return { sent: false, reason: 'event_off' };
-        const result = await this._post(config, eventKey, data, eventId);
+        const result = await this._post(config, eventKey, data);
         return this._outcome(result, eventKey);
       } catch (err) {
         logger.warn('Notification failed', { eventKey, error: err.message });

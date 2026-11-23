@@ -117,7 +117,7 @@ class NotificationSettingsService {
     }
     const timezone = await timeBoundaryService.getBusinessTimezone();
     const message = buildMessage('test', { ping: Boolean(credentials.pingUserId) }, { timezone });
-    const result = await notifiarrProvider.send(credentials, message, { event: 'Test', update: false });
+    const result = await notifiarrProvider.send(credentials, message);
     return result.ok
       ? { ok: true, message: 'Test message sent. Check your Discord channel.' }
       : { ok: false, message: `Notifiarr did not accept the message: ${result.reason}` };

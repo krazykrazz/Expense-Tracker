@@ -203,6 +203,7 @@ describe('Settings Service - Integration Tests', () => {
       await settingsService.updateRetentionSettings(365, 100);
 
       // Clear activity logs created by updateRetentionSettings
+      await waitForLogging();
       await new Promise((resolve, reject) => {
         db.run('DELETE FROM activity_logs', (err) => err ? reject(err) : resolve());
       });

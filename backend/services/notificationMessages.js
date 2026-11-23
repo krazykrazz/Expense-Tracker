@@ -127,16 +127,18 @@ const BUILDERS = {
   plaid_sync_changes: (d) => {
     const balances = (d.balances || []).slice(0, 10).map(change =>
       `${safeName(change.name)} ${change.field === 'available' ? 'available credit' : 'balance'}: ${money(change.from)} → ${money(change.to)}`);
+    // Only counts above zero: Notifiarr shows a field whose text is just "0" as "Missing Value"
+    const counts = [[d.added, 'new'], [d.updated, 'updated'], [d.removed, 'removed']]
+      .filter(([count]) => count > 0)
+      .map(([count, label]) => `${count} ${label}`);
     return {
-      title: '🔵 Bank sync: new activity',
+      title: counts.length > 0 ? '🔵 Bank sync: new activity' : '🔵 Bank sync: balances changed',
       color: COLORS.blue,
       ping: false,
       fields: [
         field('Bank', safeName(d.institutionName)),
-        field('New', d.added || 0),
-        field('Updated', d.updated || 0),
-        field('Removed', d.removed || 0),
-        ...(balances.length ? [field('Balances', balances.join('\n'), false)] : [])
+        ...(counts.length > 0 ? [field('Transactions', counts.join(' · '))] : []),
+        ...(balances.length > 0 ? [field('Balances', balances.join('\n'), false)] : [])
       ]
     };
   },

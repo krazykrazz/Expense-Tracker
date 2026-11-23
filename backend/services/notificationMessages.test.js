@@ -45,10 +45,31 @@ describe('buildMessage', () => {
       balances: [{ name: 'Dividend Visa 123456', mask: '1234', field: 'available', from: 1204.5, to: 1180.1 }]
     }, ctx);
 
-    expect(text(message, 'New')).toBe('3');
+    expect(text(message, 'Transactions')).toBe('3 new · 1 updated');
     const balances = text(message, 'Balances');
     expect(balances).toBe('Dividend Visa •••• available credit: $1,204.50 → $1,180.10');
     expect(JSON.stringify(message)).not.toContain('1234');
+  });
+
+  test('a sync that only changed balances has no counts and says so in the title', () => {
+    const message = buildMessage('plaid_sync_changes', {
+      institutionName: 'Wealthsimple (Canada)', added: 0, updated: 0, removed: 0,
+      balances: [{ name: 'RRSP', field: 'balance', from: 183793.51, to: 184222.87 }]
+    }, ctx);
+
+    expect(message.title).toBe('🔵 Bank sync: balances changed');
+    expect(message.fields.map(f => f.title)).toEqual(['Bank', 'Balances']);
+  });
+
+  // Notifiarr shows a field whose text is just "0" as "Missing Value"
+  test.each([
+    ['all zero', { added: 0, updated: 0, removed: 0 }],
+    ['missing counts', {}],
+    ['some zero', { added: 2, updated: 0, removed: 0 }],
+    ['only removed', { added: 0, updated: 0, removed: 4 }]
+  ])('sync changes never send a bare 0 (%s)', (_name, counts) => {
+    const message = buildMessage('plaid_sync_changes', { institutionName: 'CIBC', ...counts, balances: [] }, ctx);
+    expect(message.fields.filter(f => f.text.trim() === '0')).toEqual([]);
   });
 
   test('a negative balance puts the sign before the $', () => {

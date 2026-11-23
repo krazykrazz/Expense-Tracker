@@ -23,7 +23,7 @@ Each can be switched on or off in Settings.
 | Bank needs login, was removed, or has a sync error | 🔴 Bank needs login / Bank connection removed / Bank sync problem | on |
 | Bank not updating | 🟡 Bank not updating | on |
 | Bank recovered | 🟢 Bank recovered | on |
-| A bank sync brought new activity | 🔵 Bank sync: new activity (counts, plus balance changes of accounts that import into a payment method) | off |
+| A bank sync brought new activity | 🔵 Bank sync: new activity (the non-zero counts of new / updated / removed transactions) or 🔵 Bank sync: balances changed, plus balance changes of accounts that import into a payment method | off |
 | Backup failed (and recovered) | 🔴 Backup failed, then 🟢 Backup recovered | on |
 | Backup completed | 🔵 Backup completed | off |
 | Backup restored | 🟡 Backup restored | on |

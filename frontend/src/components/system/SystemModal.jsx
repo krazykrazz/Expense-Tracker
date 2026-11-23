@@ -452,6 +452,16 @@ const SystemModal = () => {
           <div className="changelog">
             <div className="changelog-entry">
               <div className="changelog-version">
+                v1.32.0
+                {isCurrentVersion('v1.32.0') && <span className="current-version-badge">Current Version</span>}
+              </div>
+              <div className="changelog-date">November 23, 2026</div>
+              <ul className="changelog-items">
+                <li>Discord notifications via Notifiarr for bank problems and backups (Settings → Notifications), a wider Settings window, Plaid audit fixes, CI and release hardening</li>
+              </ul>
+            </div>
+            <div className="changelog-entry">
+              <div className="changelog-version">
                 v1.31.0
                 {isCurrentVersion('v1.31.0') && <span className="current-version-badge">Current Version</span>}
               </div>

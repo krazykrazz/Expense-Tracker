@@ -51,9 +51,19 @@ describe('reimbursement rules', () => {
     expect(only.tags).toEqual([]);
   });
 
+  test('deposits: a reimbursement entered by hand is tagged when it covers the deposit, in part or whole', () => {
+    const txn = { name: 'Interac e-Transfer from Sam' };
+    const expense = { id: 1, date: '2026-11-01', place: 'Group dinner', notes: null, amount: 125, originalCost: 500, repaidByBank: 0 };
+    expect(rankDeposit([expense], 7500, txn)[0].tags).toEqual(['entered']);
+    expect(rankDeposit([expense], 37500, txn)[0].tags).toEqual(['entered']);
+    expect(rankDeposit([expense], 37501, txn)[0].tags).toEqual([]);
+    expect(rankDeposit([{ ...expense, repaidByBank: 450 }], 7500, txn)[0].tags).toEqual([]);
+  });
+
   test('what to pre-fill: the deposit, or what is left, or the entered amount as it is', () => {
     expect(suggestedAmount({ amount: 80, originalCost: null, tags: [] }, 2500)).toBe(25);
     expect(suggestedAmount({ amount: 10, originalCost: null, tags: [] }, 2500)).toBe(10);
     expect(suggestedAmount({ amount: 75, originalCost: 100, tags: ['entered'] }, 2500)).toBe(25);
+    expect(suggestedAmount({ amount: 125, originalCost: 500, tags: ['entered'] }, 7500)).toBe(75);
   });
 });

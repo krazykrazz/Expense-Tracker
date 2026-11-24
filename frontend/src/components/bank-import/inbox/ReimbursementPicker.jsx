@@ -5,7 +5,7 @@ import { afterRepaying, allocateDeposit, toCents } from './reimbursementSplit';
 
 const TAG_LABELS = {
   learned: { text: 'Same sender before', title: 'An earlier deposit with this description was applied to an expense with this place' },
-  entered: { text: 'Entered by hand', title: 'You already entered this reimbursement on the expense: applying leaves it as it is' },
+  entered: { text: 'Entered by hand', title: 'You already entered a reimbursement on the expense that covers this amount' },
   exact: { text: 'Exact', title: 'What the expense cost you equals this amount' },
   half: { text: 'Half', title: 'What the expense cost you is twice this amount (a split bill)' },
   name: { text: 'Name', title: 'The description shares a name with the place or notes' },
@@ -29,6 +29,7 @@ const ReimbursementPicker = ({ txn, busy, onCancel, onApply }) => {
   const [loadError, setLoadError] = useState(null);
   const [selected, setSelected] = useState([]);
   const [amounts, setAmounts] = useState({});
+  const [entered, setEntered] = useState({});
   const bankCents = Math.abs(toCents(txn.amount));
 
   useEffect(() => {
@@ -52,7 +53,16 @@ const ReimbursementPicker = ({ txn, busy, onCancel, onApply }) => {
   }, [txn.id, all]);
 
   const candidates = useMemo(() => data?.candidates ?? [], [data]);
-  const picked = selected.map(id => candidates.find(c => c.expenseId === id)).filter(Boolean);
+  // Counting against a reimbursement entered by hand: the person's choice, else what the server suggests
+  const withMode = (candidate) => ({ ...candidate, alreadyEntered: entered[candidate.expenseId] ?? candidate.alreadyEntered });
+  const picked = selected.map(id => candidates.find(c => c.expenseId === id)).filter(Boolean).map(withMode);
+
+  const reallocate = (ids, modes) => {
+    const split = allocateDeposit(bankCents, ids
+      .map(id => candidates.find(c => c.expenseId === id)).filter(Boolean)
+      .map(candidate => ({ ...candidate, alreadyEntered: modes[candidate.expenseId] ?? candidate.alreadyEntered })));
+    setAmounts(Object.fromEntries(Object.entries(split).map(([id, amount]) => [id, amount.toFixed(2)])));
+  };
 
   const toggle = (candidate) => {
     if (isRefund) {
@@ -64,8 +74,13 @@ const ReimbursementPicker = ({ txn, busy, onCancel, onApply }) => {
       ? selected.filter(id => id !== candidate.expenseId)
       : [...selected, candidate.expenseId];
     setSelected(next);
-    const split = allocateDeposit(bankCents, next.map(id => candidates.find(c => c.expenseId === id)).filter(Boolean));
-    setAmounts(Object.fromEntries(Object.entries(split).map(([id, amount]) => [id, amount.toFixed(2)])));
+    reallocate(next, entered);
+  };
+
+  const setMode = (candidate, value) => {
+    const modes = { ...entered, [candidate.expenseId]: value };
+    setEntered(modes);
+    if (!isRefund) reallocate(selected, modes);
   };
 
   const rows = picked.map(candidate => {
@@ -125,6 +140,17 @@ const ReimbursementPicker = ({ txn, busy, onCancel, onApply }) => {
                 </label>
                 {isPicked && row && (
                   <div className="insurance-claim-split">
+                    {candidate.enteredPool > 0 && (
+                      <label className="inbox-inline-check">
+                        <input
+                          type="checkbox"
+                          checked={row.candidate.alreadyEntered}
+                          onChange={(event) => setMode(candidate, event.target.checked)}
+                          disabled={busy}
+                        />
+                        {' '}Count against the {formatCurrency(candidate.enteredPool)} reimbursement I entered
+                      </label>
+                    )}
                     {!isRefund && (
                       <label>
                         Repaid{' '}
@@ -140,11 +166,15 @@ const ReimbursementPicker = ({ txn, busy, onCancel, onApply }) => {
                       </label>
                     )}
                     {row.after.over ? (
-                      <span className="bank-import-error">More than is left to repay on this expense</span>
+                      <span className="bank-import-error">
+                        {row.candidate.alreadyEntered
+                          ? `More than the ${formatCurrency(row.candidate.enteredPool)} entered as reimbursed`
+                          : 'More than is left to repay on this expense'}
+                      </span>
                     ) : (
                       <span className="bank-import-muted" data-testid="reimbursement-preview">
                         {row.after.unchanged
-                          ? 'Already entered as reimbursed: the expense stays as it is'
+                          ? 'Counted against the reimbursement you entered: the expense stays as it is'
                           : `Out of pocket after: ${formatCurrency(row.after.outOfPocket)}`}
                       </span>
                     )}

@@ -22,12 +22,14 @@ describe('allocateDeposit / afterRepaying', () => {
     expect(allocateDeposit(3000, [{ expenseId: 1, amount: 40 }])).toEqual({ 1: 30 });
     expect(allocateDeposit(9000, [{ expenseId: 1, amount: 40 }, { expenseId: 2, amount: 20 }])).toEqual({ 1: 40, 2: 20 });
     expect(allocateDeposit(2500, [{ expenseId: 1, amount: 75, alreadyEntered: true }])).toEqual({ 1: 25 });
+    expect(allocateDeposit(7500, [{ expenseId: 1, amount: 125, alreadyEntered: true, enteredPool: 50 }])).toEqual({ 1: 50 });
   });
 
   it('what an expense becomes, and when more than is left is asked', () => {
     expect(afterRepaying({ amount: 50 }, 13.74)).toEqual({ outOfPocket: 36.26, over: false, unchanged: false });
     expect(afterRepaying({ amount: 10 }, 10.01)).toEqual({ outOfPocket: 0, over: true, unchanged: false });
     expect(afterRepaying({ amount: 36.26 }, 13.74, true)).toEqual({ outOfPocket: 36.26, over: false, unchanged: true });
+    expect(afterRepaying({ amount: 125, enteredPool: 50 }, 75, true)).toEqual({ outOfPocket: 125, over: true, unchanged: true });
   });
 });
 
@@ -64,7 +66,7 @@ describe('ReimbursementPicker: a refund on a card', () => {
     const onApply = vi.fn();
     renderPicker(refundTxn, { onApply });
 
-    expect(await screen.findByTestId('reimbursement-preview')).toHaveTextContent('Already entered as reimbursed: the expense stays as it is');
+    expect(await screen.findByTestId('reimbursement-preview')).toHaveTextContent('Counted against the reimbursement you entered: the expense stays as it is');
     expect(screen.getByText('Entered by hand')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Apply refund' }));
 
@@ -145,6 +147,44 @@ describe('ReimbursementPicker: a deposit', () => {
     fireEvent.change(screen.getByLabelText('Repaid on Movie night 2026-11-12'), { target: { value: '60' } });
 
     expect(within(items[1]).getByText('More than is left to repay on this expense')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Apply to expenses' })).toBeDisabled();
+  });
+
+  it('a part payment is counted against the reimbursement entered by hand, unless you choose to lower the cost instead', async () => {
+    plaidApi.getReimbursementCandidates.mockResolvedValue({
+      kind: 'deposit', row: { id: 7, amount: 75 },
+      candidates: [candidate(61, { place: 'Group dinner', amount: 125, originalCost: 500, charged: 500, reimbursed: 375, enteredPool: 375, tags: ['entered'], alreadyEntered: true })],
+      suggestion: [{ expenseId: 61, amount: 75, alreadyEntered: true }], moreAvailable: false
+    });
+    const onApply = vi.fn();
+    renderPicker({ ...depositTxn, id: 7, amount: -75 }, { onApply });
+
+    const item = await screen.findByTestId('reimbursement-candidate');
+    const counted = within(item).getByLabelText('Count against the $375.00 reimbursement I entered');
+    expect(counted).toBeChecked();
+    expect(within(item).getByTestId('reimbursement-preview')).toHaveTextContent('the expense stays as it is');
+    fireEvent.click(screen.getByRole('button', { name: 'Apply to expenses' }));
+    expect(onApply).toHaveBeenLastCalledWith([{ expenseId: 61, amount: 75, alreadyEntered: true }]);
+
+    fireEvent.click(counted);
+    expect(within(item).getByTestId('reimbursement-preview')).toHaveTextContent('Out of pocket after: $50.00');
+    fireEvent.click(screen.getByRole('button', { name: 'Apply to expenses' }));
+    expect(onApply).toHaveBeenLastCalledWith([{ expenseId: 61, amount: 75 }]);
+  });
+
+  it('refuses more than is left of the reimbursement entered by hand', async () => {
+    plaidApi.getReimbursementCandidates.mockResolvedValue({
+      kind: 'deposit', row: { id: 7, amount: 75 },
+      candidates: [candidate(61, { place: 'Group dinner', amount: 125, originalCost: 500, charged: 500, reimbursed: 375, enteredPool: 50, tags: [], alreadyEntered: false })],
+      suggestion: null, moreAvailable: false
+    });
+    renderPicker({ ...depositTxn, id: 7, amount: -75 });
+
+    const item = await screen.findByTestId('reimbursement-candidate');
+    fireEvent.click(within(item).getByRole('checkbox'));
+    fireEvent.click(within(item).getByLabelText('Count against the $50.00 reimbursement I entered'));
+    fireEvent.change(within(item).getByLabelText('Repaid on Group dinner 2026-11-12'), { target: { value: '75' } });
+    expect(within(item).getByText('More than the $50.00 entered as reimbursed')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Apply to expenses' })).toBeDisabled();
   });
 

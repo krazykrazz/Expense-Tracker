@@ -9,7 +9,7 @@ const { isDeposit, isCardCredit, descriptionKey, transactionDate, shiftDate } = 
 const { kindFor } = require('../utils/plaidClassification');
 const { buildLearnedPlaces, buildPlaceIndex, suggestPlace } = require('../utils/placeSuggestion');
 const {
-  WINDOW_DAYS, chargedOf, planApply, rankDeposit, rankRefund, suggestedAmount
+  WINDOW_DAYS, chargedOf, enteredPoolCents, planApply, rankDeposit, rankRefund, suggestedAmount
 } = require('../utils/reimbursement');
 const { fail, asInputError, money, defaultPlace, describeTxn, exclusive, requireNew, logReview } = require('./plaidInboxSupport');
 
@@ -68,7 +68,9 @@ class PlaidReimbursementService {
       charged: chargedOf(candidate),
       reimbursed: round2(chargedOf(candidate) - candidate.amount),
       tags: candidate.tags,
-      alreadyEntered: candidate.tags.includes('entered')
+      alreadyEntered: candidate.tags.includes('entered'),
+      // What was entered by hand as reimbursed and no bank row accounts for yet: a deposit can claim part of it
+      enteredPool: enteredPoolCents(candidate) / 100
     };
   }
 

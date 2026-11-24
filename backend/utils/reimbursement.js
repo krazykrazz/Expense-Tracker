@@ -32,6 +32,12 @@ function enteredPoolCents(expense) {
   return Math.max(0, toCents(expense.originalCost) - toCents(expense.amount) - toCents(expense.repaidByBank || 0));
 }
 
+/** Whether a reimbursement entered by hand is large enough to account for a bank row of `bankCents` (a part payment too). */
+const coversBankRow = (expense, bankCents) => {
+  const pool = enteredPoolCents(expense);
+  return pool > 0 && pool >= bankCents;
+};
+
 /**
  * What applying `amountCents` from a bank row does to an expense.
  * @param {{amount: number, originalCost: (number|null), repaidByBank?: number}} expense
@@ -85,7 +91,7 @@ function sameMerchant(expense, txn, txnPlace) {
 function depositTags(expense, depositCents, txn, learnedPlaces) {
   const tags = [];
   if (expense.place && learnedPlaces.has(String(expense.place).trim().toLowerCase())) tags.push('learned');
-  if (enteredPoolCents(expense) === depositCents) tags.push('entered');
+  if (coversBankRow(expense, depositCents)) tags.push('entered');
   const outOfPocket = toCents(expense.amount);
   if (outOfPocket === depositCents) tags.push('exact');
   else if (outOfPocket === depositCents * 2) tags.push('half');
@@ -97,8 +103,9 @@ const TAG_WEIGHT = { learned: 16, entered: 8, exact: 4, half: 2, name: 1 };
 const scoreOf = (tags) => tags.reduce((sum, tag) => sum + TAG_WEIGHT[tag], 0);
 
 /**
- * Expenses a deposit could have repaid, best first: learned sender, already entered by hand, exact amount (or half
- * of it, a split bill), name overlap, then the most recent. Only expenses with something left to reimburse.
+ * Expenses a deposit could have repaid, best first: learned sender, a reimbursement entered by hand that the deposit
+ * is all or part of, exact amount (or half of it, a split bill), name overlap, then the most recent. Only expenses
+ * with something left to reimburse.
  * @param {{name?: string, merchantName?: string}} txn the bank row (description)
  * @param {Set<string>} learnedPlaces lower-cased places earlier deposits with the same description were applied to
  * @returns {Array<object>} candidates with `tags`
@@ -114,7 +121,7 @@ function rankDeposit(expenses, depositCents, txn, learnedPlaces = new Set()) {
 }
 
 /**
- * Purchases a refund could be for, best first: one the user already entered the reimbursement for (to the cent),
+ * Purchases a refund could be for, best first: one the user already entered a reimbursement of at least the refund for,
  * then the same merchant, then the closest date before the refund. Only purchases charged at least the refund.
  * @param {string} txnPlace the place the Inbox suggests for the refund's description
  * @param {{all?: boolean}} options `all`: also purchases at other merchants
@@ -123,7 +130,7 @@ function rankRefund(expenses, refundCents, txn, txnPlace, { all = false } = {}) 
   return expenses
     .filter(expense => toCents(chargedOf(expense)) >= refundCents)
     .map(expense => {
-      const entered = enteredPoolCents(expense) === refundCents;
+      const entered = coversBankRow(expense, refundCents);
       const merchant = sameMerchant(expense, txn, txnPlace);
       return { expense, merchant, tags: [entered && 'entered', merchant && 'merchant'].filter(Boolean) };
     })

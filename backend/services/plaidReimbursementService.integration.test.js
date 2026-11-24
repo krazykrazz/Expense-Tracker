@@ -371,6 +371,27 @@ describe('deposits from people and businesses (3.8)', () => {
     expect(suggestion).toEqual([{ expenseId: learnedPlace, amount: 25, alreadyEntered: false }]);
   });
 
+  test('a part payment counts against a reimbursement entered by hand, and the rest of it stays available', async () => {
+    const group = await expense({ place: 'Group dinner', amount: 125, originalCost: 500, date: '2026-11-14', paymentMethodId: DEBIT, method: 'Debit' });
+    const partial = await depositRow('d1', 75, { date: '2026-11-24' });
+    const rest = await depositRow('d2', 300, { date: '2026-11-25' });
+
+    const listed = await plaidReimbursementService.candidates(partial);
+    expect(listed.candidates[0]).toMatchObject({ expenseId: group, tags: ['entered'], alreadyEntered: true, enteredPool: 375 });
+    expect(listed.suggestion).toEqual([{ expenseId: group, amount: 75, alreadyEntered: true }]);
+
+    await plaidReimbursementService.apply(partial, listed.suggestion);
+    expect(await stateOf(group)).toEqual({ amount: 125, originalCost: 500 });
+    expect((await plaidReimbursementService.candidates(rest)).candidates[0]).toMatchObject({ expenseId: group, alreadyEntered: true, enteredPool: 300 });
+
+    await expect(plaidReimbursementService.apply(rest, [{ expenseId: group, amount: 300.01, alreadyEntered: true }])).rejects.toMatchObject({ statusCode: 400 });
+    await plaidReimbursementService.apply(rest, [{ expenseId: group, amount: 300, alreadyEntered: true }]);
+    expect(await stateOf(group)).toEqual({ amount: 125, originalCost: 500 });
+
+    await plaidReimbursementService.unlink(partial);
+    expect((await plaidReimbursementService.candidates(partial)).candidates[0]).toMatchObject({ enteredPool: 75 });
+  });
+
   test('only expenses from the 90 days before the deposit, with something left, are candidates', async () => {
     const inside = await expense({ place: 'Inside', date: '2026-08-20' });
     await expense({ place: 'Too old', date: '2026-08-10' });

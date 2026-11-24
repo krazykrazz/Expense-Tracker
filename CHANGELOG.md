@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.32.2] - 2026-11-24
+
+### Bank deposits can now be counted as a part payment against a reimbursement entered by hand
+
 ## [1.32.1] - 2026-11-23
 
 ### Per-type Discord notification layouts, zero-count fix, faster Financial window and Annual Summary, dependency updates

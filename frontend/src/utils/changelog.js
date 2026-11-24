@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.32.2',
+    date: "November 24, 2026",
+    added: [],
+    changed: ["Bank deposits can now be counted as a part payment against a reimbursement entered by hand"],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.32.1',
     date: "November 23, 2026",
     added: [],

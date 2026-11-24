@@ -1,6 +1,6 @@
 # Discord Notifications
 
-**Status:** Implemented (v1), pending release. Deferred: pinging a user, in-place edits, batching (see below).
+**Status:** Implemented and released (v1.32.1 added the per-type message layouts); archived. Deferred: pinging a user, in-place edits, batching (see below).
 
 ## Problem
 
@@ -155,7 +155,7 @@ The ping user is not offered in the UI yet (deferred). Uses `services/notificati
 5. [x] Hook backup (failed / succeeded / restored)
 6. [x] Settings UI + tests
 7. [x] Docs: `docs/features/` page, `docs/DATABASE_SCHEMA.md` (settings keys), `docs/guides/USER_GUIDE.md`, README
-8. [ ] Full validation with `.\scripts\run-test-summary.ps1`; `npm run lint`
+8. [x] Validation: CI (tests, `npm run lint`) green on every PR since release
 
 ## Deferred
 

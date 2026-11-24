@@ -2,7 +2,7 @@
 
 Optional: get a Discord message when something needs your attention (a bank that needs a login, a bank Plaid has stopped hearing from, a failed backup) without having the app open. Messages are sent through [Notifiarr's Passthrough integration](https://notifiarr.wiki/pages/integrations/passthrough/), which posts them to a Discord channel. Off until configured under **⚙️ Settings → Notifications**.
 
-Design and decisions: `specs/discord-notifications/spec.md`.
+Design and decisions: `specs/archive/discord-notifications/spec.md`.
 
 ## Setup
 

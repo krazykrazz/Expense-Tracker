@@ -1,5 +1,5 @@
 /**
- * Sends the notifications of specs/discord-notifications/spec.md. Failure-type events fire on a state change only:
+ * Sends the notifications of specs/archive/discord-notifications/spec.md. Failure-type events fire on a state change only:
  * one message when a bank (or the backup) goes bad or changes problem, and one when it recovers. Every message is a
  * new one (in-place edits are deferred; traffic is low). The last notified state is kept in the settings table, so
  * a restart (every deploy) does not announce the same broken bank again. Nothing here ever throws: a notification

@@ -1,6 +1,6 @@
 /**
  * Posts one sample of every notification type to a Discord channel through Notifiarr, built with the app's own
- * message builders and provider, so what you see is what the app sends (specs/discord-notifications/spec.md).
+ * message builders and provider, so what you see is what the app sends (specs/archive/discord-notifications/spec.md).
  * All values are made up.
  *
  *   NOTIFIARR_API_KEY=... NOTIFIARR_CHANNEL_ID=... node backend/scripts/notifiarr-poc.js

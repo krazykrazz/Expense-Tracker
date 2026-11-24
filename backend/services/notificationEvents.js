@@ -1,5 +1,5 @@
 /**
- * The notifications a user can switch on or off (Settings → Notifications). See specs/discord-notifications/spec.md.
+ * The notifications a user can switch on or off (Settings → Notifications). See specs/archive/discord-notifications/spec.md.
  * `defaultOn` applies until the user saves their own selection.
  */
 const EVENTS = [

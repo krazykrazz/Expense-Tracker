@@ -1,8 +1,8 @@
 import { Fragment } from 'react';
-import { formatDateTime } from '../../../utils/formatters';
+import { formatBankTime } from '../bankBalanceUtils';
 import BankFileImport from '../BankFileImport';
 import BankFreshness from './BankFreshness';
-import { STATUS_LABELS, STATUS_HELP } from './connectionStatus';
+import { STATUS_LABELS, STATUS_HELP, accountTypeLabel } from './connectionStatus';
 
 /**
  * One connected bank on the Connections tab: its status and freshness, Reconnect / Log in again / Disconnect, and
@@ -27,7 +27,7 @@ const BankConnectionCard = ({
             </span>
           )}
           <div className="bank-import-muted">
-            {item.lastSyncedAt ? `Last synced ${formatDateTime(item.lastSyncedAt.replace(' ', 'T') + 'Z')}` : 'Never synced'}
+            {item.lastSyncedAt ? `Last synced ${formatBankTime(item.lastSyncedAt.replace(' ', 'T') + 'Z')}` : 'Never synced'}
             {item.lastError && <span className="bank-connection-error"> · Last error: {item.lastError}</span>}
           </div>
           <BankFreshness item={item} />
@@ -60,7 +60,7 @@ const BankConnectionCard = ({
             <li className="bank-account">
               <span>
                 {account.name}{account.mask ? ` ••${account.mask}` : ''}
-                <span className="bank-import-muted"> {account.subtype || account.type}</span>
+                <span className="bank-import-muted"> {accountTypeLabel(account)}</span>
               </span>
               <span className="bank-account-controls">
                 {account.type === 'investment' ? (

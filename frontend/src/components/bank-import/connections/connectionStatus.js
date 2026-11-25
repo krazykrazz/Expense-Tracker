@@ -18,6 +18,19 @@ export const STATUS_HELP = {
 /** Plaid's view of the bank, shown only when it isn't healthy (its status data isn't always reliable). */
 export const INSTITUTION_STATUS_TEXT = { DOWN: 'down', DEGRADED: 'degraded' };
 
+/** Plaid account subtypes as Canadians write them (Plaid sends lower case and US spelling). */
+const ACCOUNT_TYPE_LABELS = {
+  checking: 'chequing',
+  rrsp: 'RRSP', tfsa: 'TFSA', resp: 'RESP', rrif: 'RRIF', lira: 'LIRA', lif: 'LIF', fhsa: 'FHSA', rdsp: 'RDSP',
+  gic: 'GIC', hsa: 'HSA', ira: 'IRA', roth: 'Roth IRA', '401k': '401(k)', cd: 'CD'
+};
+
+/** The account's kind for the Connections list: its subtype (else type), e.g. "chequing", "credit card", "RRSP". */
+export const accountTypeLabel = (account) => {
+  const kind = account.subtype || account.type || '';
+  return ACCOUNT_TYPE_LABELS[kind.toLowerCase()] || kind;
+};
+
 /** "3 new, 1 updated, 0 removed" plus failed banks and a note while Plaid is still preparing history. */
 export const describeSync = ({ totals, results }) => {
   const parts = [`${totals.added} new, ${totals.updated} updated, ${totals.removed} removed`];

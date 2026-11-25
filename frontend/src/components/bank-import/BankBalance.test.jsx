@@ -82,9 +82,10 @@ describe('bankBalanceText', () => {
 });
 
 describe('formatBankTime', () => {
-  it('is the time for today and the date with the time otherwise', () => {
+  it('is the time for today, the date with the time this year, and the year too before that', () => {
     expect(formatBankTime('2026-11-08T17:10:00Z', NOW)).toMatch(/^\d{1,2}:\d{2}/);
     expect(formatBankTime('2026-11-01T17:10:00Z', NOW)).toMatch(/^Nov 1, /);
+    expect(formatBankTime('2025-09-22T15:15:00Z', NOW)).toMatch(/^Sep 22, 2025, /);
     expect(formatBankTime('not a date', NOW)).toBeNull();
   });
 });

@@ -127,6 +127,29 @@
   cursor: not-allowed;
 }
 
+.bank-import-primary:not(:disabled):hover {
+  background: var(--color-primary-strong-hover);
+}
+
+.bank-import-secondary:not(:disabled):hover,
+.bank-import-secondary[aria-expanded='true'] {
+  background: var(--color-primary-light);
+}
+
+/* The action whose form or picker is open below the row */
+.bank-import-primary[aria-expanded='true'],
+.bank-import-secondary[aria-expanded='true'] {
+  box-shadow: inset 0 0 0 1px var(--color-primary);
+}
+
+.bank-import-primary:focus-visible,
+.bank-import-secondary:focus-visible,
+.bank-import-link:focus-visible,
+.bank-import-link-danger:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
 .bank-import-link,
 .bank-import-link-danger {
   background: none;
@@ -355,9 +378,23 @@
 .inbox-row-main {
   display: grid;
   /* Actions get their own line below (see .inbox-row-actions), so the description keeps the width */
-  grid-template-columns: 90px minmax(0, 1fr) 110px 120px;
+  grid-template-columns: 90px minmax(0, 1fr) 110px 170px;
   align-items: center;
   gap: var(--spacing-3, 12px);
+}
+
+/* Badges stack as whole pills: a pill never breaks across lines */
+.inbox-row-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.inbox-row-badges .inbox-badge {
+  margin-left: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .inbox-row-date {
@@ -396,6 +433,7 @@
   background: var(--bg-muted);
   color: var(--text-secondary);
   margin-left: 4px;
+  white-space: nowrap;
 }
 
 .inbox-badge.match {
@@ -502,6 +540,12 @@
   color: var(--text-primary);
 }
 
+/* A check inside a picked expense's split (e.g. count against the reimbursement entered by hand): the split's size */
+.insurance-claim-split .inbox-inline-check {
+  font-size: inherit;
+  font-weight: normal;
+}
+
 /* The loan payment choice under a fixed expense linked to a loan: one option per line, below the Confirm row */
 .inbox-loan-payment {
   flex-basis: 100%;
@@ -524,7 +568,7 @@
   font-size: 0.875em;
 }
 
-.insurance-claim-split input {
+.insurance-claim-split input[type='number'] {
   width: 7em;
 }
 
@@ -575,18 +619,45 @@
 }
 
 @media (max-width: 768px) {
+  /* Date and amount on the first line, the description under them, then badges and actions */
   .inbox-row-main {
-    grid-template-columns: 1fr auto;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'date amount'
+      'place place'
+      'badges badges'
+      'actions actions';
+    row-gap: var(--spacing-1, 4px);
   }
 
-  .inbox-row-badges,
+  .inbox-row-date { grid-area: date; }
+  .inbox-row-place { grid-area: place; }
+  .inbox-row-amount { grid-area: amount; }
+  .inbox-row-badges { grid-area: badges; }
+
   .inbox-row-actions {
-    grid-column: 1 / -1;
+    grid-area: actions;
     justify-content: flex-start;
   }
 
   .inbox-add-form {
     grid-template-columns: 1fr 1fr;
+  }
+
+  /* Connections: the account's name on its own line, its payment method and Import file under it */
+  .bank-account {
+    flex-wrap: wrap;
+    gap: var(--spacing-1, 4px) var(--spacing-3, 12px);
+  }
+
+  .bank-account-controls {
+    flex: 1 1 100%;
+    justify-content: flex-end;
+  }
+
+  .bank-account-mapping {
+    min-width: 0;
+    flex: 0 1 220px;
   }
 }
 

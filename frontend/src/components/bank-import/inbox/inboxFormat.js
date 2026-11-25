@@ -3,7 +3,11 @@ import { formatCurrency, formatDate } from '../../../utils/formatters';
 /** Amounts in another currency are shown with a badge; they are not converted. */
 export const EXPECTED_CURRENCY = 'CAD';
 
-export const formatSigned = (amount) => (amount < 0 ? `-${formatCurrency(Math.abs(amount))}` : formatCurrency(amount));
+/**
+ * A bank amount as people read it: money in (Plaid sends it negative: a deposit, a refund, a card payment received)
+ * as "+$13.54", money out as "$13.54".
+ */
+export const formatSigned = (amount) => (amount < 0 ? `+${formatCurrency(Math.abs(amount))}` : formatCurrency(amount));
 
 export const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 

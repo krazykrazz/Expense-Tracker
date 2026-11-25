@@ -66,6 +66,22 @@ describe('useBankAccountLinks', () => {
 
     await waitFor(() => expect(result.current.size).toBe(1));
   });
+
+  it('keeps the newest links when an earlier, slower load fails last', async () => {
+    getPlaidStatus.mockResolvedValue({ enabled: true });
+    let failFirst;
+    getBankConnections
+      .mockReturnValueOnce(new Promise((resolve, reject) => { failFirst = reject; }))
+      .mockResolvedValueOnce({ items });
+    const { result } = renderHook(() => useBankAccountLinks());
+    await waitFor(() => expect(getBankConnections).toHaveBeenCalledTimes(1));
+
+    act(() => { window.dispatchEvent(new CustomEvent('syncEvent', { detail: { entityType: 'plaid' } })); });
+    await waitFor(() => expect(result.current.size).toBe(1));
+    await act(async () => { failFirst(new Error('offline')); });
+
+    expect(result.current.size).toBe(1);
+  });
 });
 
 describe('useInvestmentBankLinks (spec 4.1a)', () => {

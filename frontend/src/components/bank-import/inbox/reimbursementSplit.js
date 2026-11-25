@@ -3,7 +3,7 @@
  * backend/utils/reimbursement.js (the server recomputes and validates on apply). Work in cents.
  */
 
-export const toCents = (amount) => Math.round(Number(amount) * 100);
+import { toCents } from '../../../utils/money';
 
 /**
  * Pre-filled amount per picked expense: the deposit goes to the expenses in order, each taking at most what it

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { getPlaidStatus, getCardBalanceChecks, PLAID_SETTINGS_CHANGED_EVENT } from '../services/plaidApi';
 import { useSyncEvent } from './useSyncEvent';
 
@@ -9,25 +9,29 @@ const EMPTY = new Map();
  * method id. Empty without calling the bank endpoints while Plaid is not configured, and on failure, so
  * screens behave the same with or without Plaid.
  * Reloads after bank syncs and credit card changes in any tab, and whenever `refreshKey` changes (pass the
- * data the screen already reloads, e.g. its payment method list, so a new expense or payment re-checks).
+ * data the screen already reloads, e.g. its payment method list, so a new expense or payment re-checks). Only
+ * the newest load may update the checks, so a slower earlier one can't overwrite them.
  * @param {*} [refreshKey]
  * @param {boolean} [enabled=true] false: no requests, empty Map (e.g. a view that is mounted but closed)
  * @returns {Map<number, object>}
  */
 export function useCardBalanceChecks(refreshKey, enabled = true) {
   const [checks, setChecks] = useState(() => new Map());
+  const requestRef = useRef(0);
 
   const load = useCallback(async (signal) => {
+    const request = ++requestRef.current;
+    const current = () => request === requestRef.current && !signal?.aborted;
     try {
       const status = await getPlaidStatus({ signal });
       if (!status || !status.enabled) {
-        setChecks(new Map());
+        if (current()) setChecks(new Map());
         return;
       }
       const { cards } = await getCardBalanceChecks({ signal });
-      if (!signal || !signal.aborted) setChecks(new Map((cards || []).map(card => [card.paymentMethodId, card])));
+      if (current()) setChecks(new Map((cards || []).map(card => [card.paymentMethodId, card])));
     } catch (err) {
-      if (err.name !== 'AbortError') setChecks(new Map());
+      if (err.name !== 'AbortError' && current()) setChecks(new Map());
     }
   }, []);
 

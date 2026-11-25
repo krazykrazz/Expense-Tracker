@@ -4,7 +4,7 @@ const expenseRepository = require('../repositories/expenseRepository');
 const creditCardPaymentService = require('./creditCardPaymentService');
 const activityLogService = require('./activityLogService');
 const dbHelper = require('../utils/dbHelper');
-const { toCents, round2 } = require('../utils/money');
+const { toCents, round2, hasAtMostTwoDecimals } = require('../utils/money');
 const { isDeposit, isCardCredit, descriptionKey, transactionDate, shiftDate } = require('../utils/plaidMatching');
 const { kindFor } = require('../utils/plaidClassification');
 const { buildLearnedPlaces, buildPlaceIndex, suggestPlace } = require('../utils/placeSuggestion');
@@ -17,8 +17,6 @@ const CHANGED = 'This bank transaction changed meanwhile. Refresh the Inbox and 
 /** Candidates listed when not asked for all of them. */
 const LIST_LIMIT = 40;
 const ALL_LIMIT = 300;
-
-const hasTwoDecimalsAtMost = (amount) => Math.abs(amount * 100 - Math.round(amount * 100)) < 1e-6;
 
 /**
  * Bank rows that paid part of an expense back (spec 3.6 and 3.8):
@@ -166,7 +164,7 @@ class PlaidReimbursementService {
       if (!Number.isInteger(expenseId) || expenseId <= 0) throw fail('Each expense needs a valid expenseId', 400);
       if (seen.has(expenseId)) throw fail('Each expense can only be picked once', 400);
       seen.add(expenseId);
-      if (!Number.isFinite(amount) || amount <= 0 || !hasTwoDecimalsAtMost(amount)) {
+      if (!Number.isFinite(amount) || amount <= 0 || !hasAtMostTwoDecimals(amount)) {
         throw fail('Each amount must be above $0.00, in dollars and cents', 400);
       }
       return { expenseId, amount: round2(amount), amountCents: toCents(amount), alreadyEntered: entry.alreadyEntered === true };

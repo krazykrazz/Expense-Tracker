@@ -17,17 +17,20 @@ const { fail } = require('../utils/httpError');
 
 const tabIdOf = (req) => req.headers['x-tab-id'] ?? null;
 /**
- * The :id of the route (a bank connection, account, card or bank transaction), which must be a positive integer:
- * parseInt would read "12abc" as 12 and act on another row.
+ * A positive integer id (a bank connection, account, card or bank transaction): parseInt would read "12abc" as 12
+ * and act on another row.
  * @throws 400 otherwise
  */
-const idParam = (req) => {
-  const id = Number(req.params.id);
+const positiveId = (value, name = 'id') => {
+  const id = Number(value);
   if (!Number.isInteger(id) || id <= 0) {
-    throw fail('id must be a positive integer', 400);
+    throw fail(`${name} must be a positive integer`, 400);
   }
   return id;
 };
+
+/** The route's :id. */
+const idParam = (req) => positiveId(req.params.id);
 
 /** GET /api/plaid/status */
 const getStatus = asyncHandler(async (req, res) => {
@@ -66,7 +69,7 @@ const clearSettings = asyncHandler(async (req, res) => {
  */
 const createLinkToken = asyncHandler(async (req, res) => {
   const { itemId } = req.body || {};
-  res.json(await plaidService.createLinkToken({ itemId: itemId === undefined || itemId === null ? undefined : itemId }));
+  res.json(await plaidService.createLinkToken({ itemId: itemId === undefined || itemId === null ? undefined : positiveId(itemId, 'itemId') }));
 });
 
 /** POST /api/plaid/items/:id/reconnected — the user logged in again through update mode */

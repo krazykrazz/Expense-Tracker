@@ -49,6 +49,7 @@ const { errorHandler } = require('./middleware/errorHandler');
 const { requestContextMiddleware } = require('./utils/requestContext');
 const { createGracefulShutdown } = require('./utils/gracefulShutdown');
 const { authMiddleware, sseAuthMiddleware } = require('./middleware/authMiddleware');
+const crossSiteGuard = require('./middleware/crossSiteGuard');
 
 // Wire SSE service into activityLogService (avoids circular dependency)
 activityLogService.setSseService(sseService);
@@ -156,6 +157,9 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 // Remember the originating tab (X-Tab-ID) so activity-log events can skip the sender on SSE broadcast
 app.use('/api', requestContextMiddleware);
+
+// Refuse state-changing requests sent by a page on another site (open mode accepts them without credentials)
+app.use('/api', crossSiteGuard);
 
 // Auth routes — registered BEFORE authMiddleware (public endpoints)
 app.use('/api/auth', authRoutes);

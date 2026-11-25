@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { getReimbursementCandidates } from '../../../services/plaidApi';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
-import { afterRepaying, allocateDeposit, toCents } from './reimbursementSplit';
+import { afterRepaying, allocateDeposit } from './reimbursementSplit';
+import { toCents } from '../../../utils/money';
 
 const TAG_LABELS = {
   learned: { text: 'Same sender before', title: 'An earlier deposit with this description was applied to an expense with this place' },

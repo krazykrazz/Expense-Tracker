@@ -8,6 +8,8 @@ const { fail: httpFail } = require('./httpError');
 
 /** transaction_id prefix of rows that came from a file (Plaid's own ids never contain ':'). */
 const FILE_ID_PREFIX = 'file:';
+/** Most transactions one file may hold: years of a household's activity, far below what slows the import. */
+const MAX_ROWS = 10000;
 
 /**
  * Minimal RFC 4180 CSV reader: quoted fields, doubled quotes, commas and line breaks inside quotes, CRLF/LF,
@@ -163,6 +165,10 @@ function parseBankFile(text, accountId) {
   if (!format) {
     throw fail(`Unrecognised file. Supported: ${SUPPORTED_TEXT} CSV exports.`);
   }
+  // Each row is paired against the rows already staged: keep one upload's work bounded
+  if (records.length > MAX_ROWS) {
+    throw fail(`The file has ${records.length} rows; import at most ${MAX_ROWS} at a time (export a shorter date range).`);
+  }
 
   const seen = new Map();
   const rows = [];
@@ -191,4 +197,4 @@ function parseBankFile(text, accountId) {
   };
 }
 
-module.exports = { parseCsv, parseBankFile, FORMATS, FILE_ID_PREFIX };
+module.exports = { parseCsv, parseBankFile, FORMATS, FILE_ID_PREFIX, MAX_ROWS };

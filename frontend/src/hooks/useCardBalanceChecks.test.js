@@ -55,4 +55,19 @@ describe('useCardBalanceChecks', () => {
     await waitFor(() => expect(getCardBalanceChecks).toHaveBeenCalled());
     expect(result.current.size).toBe(0);
   });
+
+  it('keeps the newest result when an earlier, slower load finishes last', async () => {
+    let resolveFirst;
+    getCardBalanceChecks
+      .mockReturnValueOnce(new Promise(resolve => { resolveFirst = resolve; }))
+      .mockResolvedValueOnce({ cards: [{ paymentMethodId: 4, status: 'differs' }] });
+    const { result } = renderHook(() => useCardBalanceChecks());
+    await waitFor(() => expect(getCardBalanceChecks).toHaveBeenCalledTimes(1));
+
+    act(() => { window.dispatchEvent(new CustomEvent('syncEvent', { detail: { entityType: 'plaid' } })); });
+    await waitFor(() => expect(result.current.get(4)).toMatchObject({ status: 'differs' }));
+    await act(async () => { resolveFirst({ cards: [{ paymentMethodId: 4, status: 'match' }] }); });
+
+    expect(result.current.get(4)).toMatchObject({ status: 'differs' });
+  });
 });

@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { getSplitCandidates } from '../../services/plaidApi';
 import { formatCurrency, formatDate } from '../../utils/formatters';
-
-const toCents = (amount) => Math.round(Number(amount) * 100);
+import { toCents } from '../../utils/money';
 
 /**
  * Link one bank charge to several expenses that were entered for it (spec 3.9): a charge to review is matched to a

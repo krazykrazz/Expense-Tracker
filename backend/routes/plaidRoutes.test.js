@@ -261,9 +261,13 @@ describe('plaid routes', () => {
 
     await request(app).post('/api/plaid/link-token').send({});
     await request(app).post('/api/plaid/link-token').send({ itemId: 2 });
+    const loose = await request(app).post('/api/plaid/link-token').send({ itemId: '2abc' });
 
     expect(plaidService.createLinkToken).toHaveBeenNthCalledWith(1, { itemId: undefined });
     expect(plaidService.createLinkToken).toHaveBeenNthCalledWith(2, { itemId: 2 });
+    // "2abc" must not be read as connection 2
+    expect(loose.status).toBe(400);
+    expect(plaidService.createLinkToken).toHaveBeenCalledTimes(2);
   });
 
   test('POST /items/:id/reconnected', async () => {

@@ -3,7 +3,8 @@
  * backend/utils/insuranceReimbursement.js (the server recomputes and validates on apply). Work in cents.
  */
 
-export const toCents = (amount) => Math.round(Number(amount) * 100);
+import { toCents } from '../../../utils/money';
+
 export const fromCents = (cents) => cents / 100;
 
 /**

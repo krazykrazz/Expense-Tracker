@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { getInsuranceCandidates } from '../../../services/plaidApi';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
-import { claimAfter, prefillSplit, toCents } from './insuranceSplit';
+import { claimAfter, prefillSplit } from './insuranceSplit';
+import { toCents } from '../../../utils/money';
 
 const STATUS_LABELS = { in_progress: 'In progress', not_claimed: 'Not claimed', paid: 'Paid' };
 const RANK_LABELS = {

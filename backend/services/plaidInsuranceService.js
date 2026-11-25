@@ -3,7 +3,7 @@ const plaidInsuranceRepository = require('../repositories/plaidInsuranceReposito
 const { INSURANCE_TYPE } = require('../repositories/plaidInsuranceRepository');
 const activityLogService = require('./activityLogService');
 const dbHelper = require('../utils/dbHelper');
-const { toCents, round2 } = require('../utils/money');
+const { toCents, round2, hasAtMostTwoDecimals } = require('../utils/money');
 const { shiftDate, transactionDate, isDeposit, descriptionKey } = require('../utils/plaidMatching');
 const {
   OPEN_STATUSES, expectedPayout, paidWithoutBank, outsideBankForFirstDeposit, rankClaims, prefillSplit,
@@ -46,8 +46,6 @@ function requireDeposit(txn) {
     throw fail('Only a settled deposit into a mapped bank account can be applied to insurance claims', 400);
   }
 }
-
-const hasTwoDecimalsAtMost = (amount) => Math.abs(amount * 100 - Math.round(amount * 100)) < 1e-6;
 
 /**
  * Insurer deposits applied to medical insurance claims (spec 3.7): one deposit can reimburse several claims and a
@@ -294,7 +292,7 @@ class PlaidInsuranceService {
         throw fail('Each claim can only be picked once', 400);
       }
       seen.add(expenseId);
-      if (!Number.isFinite(amount) || amount <= 0 || !hasTwoDecimalsAtMost(amount)) {
+      if (!Number.isFinite(amount) || amount <= 0 || !hasAtMostTwoDecimals(amount)) {
         throw fail('Each reimbursed amount must be above $0.00, in dollars and cents', 400);
       }
       return { expenseId, amount: round2(amount) };

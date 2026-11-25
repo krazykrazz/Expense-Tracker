@@ -8,4 +8,7 @@ const toCents = (amount) => Math.round(Number(amount) * 100);
 /** Rounded to the cent, for amounts that are stored or shown. */
 const round2 = (amount) => Math.round(Number(amount) * 100) / 100;
 
-module.exports = { toCents, round2 };
+/** Whether an amount entered in dollars has at most two decimals (12.5 and 12.50 yes, 12.505 no). */
+const hasAtMostTwoDecimals = (amount) => Math.abs(amount * 100 - Math.round(amount * 100)) < 1e-6;
+
+module.exports = { toCents, round2, hasAtMostTwoDecimals };

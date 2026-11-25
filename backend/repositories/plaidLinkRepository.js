@@ -83,6 +83,7 @@ class PlaidLinkRepository {
   async findFixedExpenseForMatching(id) {
     return dbHelper.queryOne(
       `SELECT fe.id, fe.year, fe.month, fe.name, fe.amount, fe.payment_due_day AS dueDay,
+              fe.linked_loan_id AS linkedLoanId,
               (SELECT pm.id FROM payment_methods pm
                WHERE pm.id = fe.payment_method_id OR (fe.payment_method_id IS NULL AND pm.display_name = fe.payment_type)
                LIMIT 1) AS paymentMethodId,
@@ -103,6 +104,71 @@ class PlaidLinkRepository {
   /** Undo linkFixedExpense (used when a follow-up step fails). */
   async unlinkFixedExpense(transactionId) {
     await unlinkTransaction('fixedExpense', transactionId, ['matched']);
+  }
+
+  /**
+   * Name the loan payment a bank payment confirming a loan's fixed expense is (spec 3.5). A payment another
+   * confirmation already names is a `UNIQUE constraint failed` error.
+   * @returns {Promise<boolean>} false when the transaction confirms no fixed expense
+   */
+  async setLoanPayment(transactionId, loanPaymentId) {
+    const { changes } = await dbHelper.execute(
+      'UPDATE plaid_fixed_expense_links SET loan_payment_id = ? WHERE plaid_transaction_id = ?',
+      [loanPaymentId, transactionId]
+    );
+    return changes > 0;
+  }
+
+  /**
+   * The loans (not paid off) and their payments, dated in [fromDate, toDate], that no confirmation names yet:
+   * what a bank payment can be recorded as or linked to.
+   * @returns {Promise<{loans: Map<number, {id: number, name: string, loanType: string, isPaidOff: boolean}>,
+   *   payments: Array<{id: number, loan_id: number, payment_date: string, amount: number}>}>}
+   */
+  async findLoanPaymentOffers(loanIds, fromDate, toDate) {
+    const marks = loanIds.map(() => '?').join(',');
+    const loans = await dbHelper.queryAll(
+      `SELECT id, name, loan_type AS loanType, is_paid_off AS isPaidOff FROM loans WHERE id IN (${marks})`,
+      loanIds
+    );
+    const payments = await dbHelper.queryAll(
+      `SELECT p.id, p.loan_id, p.payment_date, p.amount FROM loan_payments p
+       WHERE p.loan_id IN (${marks}) AND p.payment_date BETWEEN ? AND ?
+         AND NOT EXISTS (SELECT 1 FROM plaid_fixed_expense_links l WHERE l.loan_payment_id = p.id)`,
+      [...loanIds, fromDate, toDate]
+    );
+    return { loans: new Map(loans.map(loan => [loan.id, { ...loan, isPaidOff: Boolean(loan.isPaidOff) }])), payments };
+  }
+
+  /** One loan payment of a loan that no confirmation names yet, or null. */
+  async findUnclaimedLoanPayment(paymentId) {
+    return dbHelper.queryOne(
+      `SELECT p.id, p.loan_id, p.payment_date, p.amount FROM loan_payments p
+       WHERE p.id = ? AND NOT EXISTS (SELECT 1 FROM plaid_fixed_expense_links l WHERE l.loan_payment_id = p.id)`,
+      [paymentId]
+    );
+  }
+
+  /**
+   * Bank confirmations of the given loan payments (the fixed expense a bank payment confirmed, named for it).
+   * @returns {Promise<Map<number, {landedDate: string, amount: number, plannedAmount: (number|null), name: string, fixedExpenseName: string}>>}
+   */
+  async findConfirmationsForLoanPayments(loanPaymentIds) {
+    const confirmations = new Map();
+    if (loanPaymentIds.length === 0) return confirmations;
+    const rows = await dbHelper.queryAll(
+      `SELECT l.loan_payment_id AS loanPaymentId, l.landed_date AS landedDate, l.planned_amount AS plannedAmount,
+              pt.amount, COALESCE(pt.merchant_name, pt.name) AS name, fe.name AS fixedExpenseName
+       FROM plaid_fixed_expense_links l
+       JOIN plaid_transactions pt ON pt.id = l.plaid_transaction_id
+       JOIN fixed_expenses fe ON fe.id = l.fixed_expense_id
+       WHERE l.loan_payment_id IN (${loanPaymentIds.map(() => '?').join(',')})`,
+      loanPaymentIds
+    );
+    for (const { loanPaymentId, ...confirmation } of rows) {
+      confirmations.set(loanPaymentId, confirmation);
+    }
+    return confirmations;
   }
 
   /**

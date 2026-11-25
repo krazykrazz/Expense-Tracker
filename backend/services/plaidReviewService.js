@@ -7,6 +7,7 @@ const incomeRepository = require('../repositories/incomeRepository');
 const expenseService = require('./expenseService');
 const fixedExpenseService = require('./fixedExpenseService');
 const incomeService = require('./incomeService');
+const plaidLoanPaymentService = require('./plaidLoanPaymentService');
 const logger = require('../config/logger');
 const dbHelper = require('../utils/dbHelper');
 const { getDatabase } = require('../database/db');
@@ -175,8 +176,11 @@ class PlaidReviewService {
    * Confirm a planned fixed expense with a bank transaction and record when it actually landed.
    * When the bank amount differs from the planned amount, the fixed expense is updated to the bank amount
    * (through fixedExpenseService, so validation and the activity log apply).
+   * For a fixed expense linked to a loan, `loanChoice` can also record the bank payment as a loan payment
+   * (`loanPayment: 'log'`) or link the payment already logged (`'link'` with `loanPaymentId`); see plaidLoanPaymentService.
+   * @param {{loanPayment?: ('log'|'link'|'none'), loanPaymentId?: number}} [loanChoice]
    */
-  async matchToFixedExpense(id, fixedExpenseId, tabId = null) {
+  async matchToFixedExpense(id, fixedExpenseId, tabId = null, loanChoice = {}) {
     return exclusive(id, async () => {
       const txn = await requireNew(id, { settled: true });
       const parsedId = parseInt(fixedExpenseId, 10);
@@ -190,6 +194,7 @@ class PlaidReviewService {
       if (!isFixedCandidate(txn, fixed)) {
         throw fail('That fixed expense uses a different payment method or is not due around this transaction\'s date', 400);
       }
+      const loanPlan = await plaidLoanPaymentService.plan(fixed, txn, loanChoice);
 
       const landedDate = txn.date;
       const plannedAmount = fixed.amount;
@@ -218,12 +223,23 @@ class PlaidReviewService {
         }
       }
 
-      await logReview(txn, 'match_fixed', `Confirmed fixed expense "${fixed.name}" with bank transaction ${describeTxn(txn)}`, {
-        fixedExpenseId: fixed.id, amountUpdated: updated
+      let loanPayment = null;
+      if (loanPlan) {
+        try {
+          loanPayment = await plaidLoanPaymentService.apply(txn, fixed, loanPlan);
+        } catch (err) {
+          await plaidLinkRepository.unlinkFixedExpense(id);
+          throw asInputError(err);
+        }
+      }
+
+      await logReview(txn, 'match_fixed', `Confirmed fixed expense "${fixed.name}" with bank transaction ${describeTxn(txn)}${
+        loanPayment ? ` and ${loanPayment.created ? 'recorded' : 'linked'} the ${loanPayment.loanName} payment` : ''}`, {
+        fixedExpenseId: fixed.id, amountUpdated: updated, ...(loanPayment ? { loanPaymentId: loanPayment.id, loanPaymentCreated: loanPayment.created } : {})
       });
       return {
         transaction: await plaidRepository.findTransactionById(id),
-        fixedExpense: { id: fixed.id, name: fixed.name, plannedAmount, amount: round2(txn.amount), amountUpdated: updated, landedDate }
+        fixedExpense: { id: fixed.id, name: fixed.name, plannedAmount, amount: round2(txn.amount), amountUpdated: updated, landedDate, loanPayment }
       };
     });
   }

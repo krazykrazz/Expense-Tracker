@@ -502,6 +502,19 @@
   color: var(--text-primary);
 }
 
+/* The loan payment choice under a fixed expense linked to a loan: one option per line, below the Confirm row */
+.inbox-loan-payment {
+  flex-basis: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: var(--spacing-2, 8px);
+}
+
+.inbox-loan-payment .inbox-inline-check {
+  margin-left: 0;
+}
+
 .insurance-claim-split {
   display: flex;
   flex-wrap: wrap;

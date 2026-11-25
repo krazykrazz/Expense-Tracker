@@ -6,6 +6,7 @@ const plaidCardPaymentService = require('./plaidCardPaymentService');
 const plaidInsuranceService = require('./plaidInsuranceService');
 const plaidReimbursementService = require('./plaidReimbursementService');
 const plaidSplitService = require('./plaidSplitService');
+const plaidLoanPaymentService = require('./plaidLoanPaymentService');
 const {
   MATCH_WINDOW_DAYS, POSTING_LAG_DAYS, PENDING_AMOUNT_TOLERANCE, toCents, shiftDate, transactionDate, findMatchCandidates,
   fixedExpectedDate, findFixedCandidates, isDeposit, findIncomeCandidates, monthWindow, descriptionKey
@@ -210,6 +211,7 @@ class PlaidInboxService {
         linkedLoanId: fixed.linkedLoanId ?? null
       })));
     }
+    await plaidLoanPaymentService.attachOffers(charges, result);
     return result;
   }
 

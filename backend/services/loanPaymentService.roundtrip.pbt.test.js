@@ -19,6 +19,11 @@ jest.mock('../database/db', () => ({
   getDatabase: jest.fn(() => Promise.resolve(mockDb))
 }));
 
+// This hand-made database has no Plaid tables: no payment here is confirmed by the bank
+jest.mock('../repositories/plaidLinkRepository', () => ({
+  findConfirmationsForLoanPayments: jest.fn(() => Promise.resolve(new Map()))
+}));
+
 // Helper function to create an in-memory test database
 function createTestDatabase() {
   return new Promise((resolve, reject) => {

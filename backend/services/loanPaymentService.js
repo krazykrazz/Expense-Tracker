@@ -10,6 +10,7 @@
 const loanPaymentRepository = require('../repositories/loanPaymentRepository');
 const loanRepository = require('../repositories/loanRepository');
 const loanBalanceRepository = require('../repositories/loanBalanceRepository');
+const plaidLinkRepository = require('../repositories/plaidLinkRepository');
 const activityLogService = require('./activityLogService');
 const loanBalanceService = require('./loanBalanceService');
 const balanceCalculationService = require('./balanceCalculationService');
@@ -212,8 +213,10 @@ class LoanPaymentService {
     // Verify loan exists and is eligible
     await this.verifyLoanEligibility(loanId);
     
-    // Get payments ordered by payment_date DESC
-    return await loanPaymentRepository.findByLoanOrdered(loanId);
+    // Get payments ordered by payment_date DESC, each with the bank payment that confirmed it (or null)
+    const payments = await loanPaymentRepository.findByLoanOrdered(loanId);
+    const confirmations = await plaidLinkRepository.findConfirmationsForLoanPayments(payments.map(payment => payment.id));
+    return payments.map(payment => ({ ...payment, bankConfirmation: confirmations.get(payment.id) ?? null }));
   }
 
   /**

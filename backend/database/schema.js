@@ -416,7 +416,9 @@ const TABLE_STATEMENTS = [
   )`,
 
   // plaid_fixed_expense_links — a bank transaction confirming a (planned) fixed expense, with the
-  // date the payment actually landed. One link per transaction and per fixed expense.
+  // date the payment actually landed. One link per transaction and per fixed expense. For a fixed expense linked
+  // to a loan, `loan_payment_id` is the loan payment the bank payment is (one payment per link, a unique index);
+  // deleting the payment only clears it (the fixed expense stays confirmed).
   `CREATE TABLE IF NOT EXISTS plaid_fixed_expense_links (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     plaid_transaction_id INTEGER NOT NULL UNIQUE,
@@ -424,6 +426,7 @@ const TABLE_STATEMENTS = [
     landed_date TEXT NOT NULL,
     planned_amount REAL,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    loan_payment_id INTEGER REFERENCES loan_payments(id) ON DELETE SET NULL,
     FOREIGN KEY (plaid_transaction_id) REFERENCES plaid_transactions(id) ON DELETE CASCADE,
     FOREIGN KEY (fixed_expense_id) REFERENCES fixed_expenses(id) ON DELETE CASCADE
   )`,
@@ -798,7 +801,8 @@ const INDEX_STATEMENTS = [
 // end-state tables have been created.
 const POST_MIGRATION_INDEX_STATEMENTS = [
   'CREATE INDEX IF NOT EXISTS idx_dismissed_anomalies_anomaly_type ON dismissed_anomalies(anomaly_type)',
-  'CREATE INDEX IF NOT EXISTS idx_plaid_transactions_merchant_entity ON plaid_transactions(merchant_entity_id)'
+  'CREATE INDEX IF NOT EXISTS idx_plaid_transactions_merchant_entity ON plaid_transactions(merchant_entity_id)',
+  'CREATE UNIQUE INDEX IF NOT EXISTS idx_plaid_fixed_expense_links_loan_payment ON plaid_fixed_expense_links(loan_payment_id) WHERE loan_payment_id IS NOT NULL'
 ];
 
 // ─── Seed Statements ───

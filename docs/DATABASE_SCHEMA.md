@@ -510,6 +510,7 @@ A bank transaction confirming a planned fixed expense (Import Inbox â†’ Match â†
 | landed_date | TEXT NOT NULL | Date the payment actually landed (the transaction's posted date) |
 | planned_amount | REAL | Fixed expense amount before confirming (it is updated to the bank amount when they differed) |
 | created_at | TEXT NOT NULL | Timestamp |
+| loan_payment_id | INTEGER | For a fixed expense linked to a loan: the loan payment this bank payment is (foreign key to loan_payments, ON DELETE SET NULL, so deleting the payment leaves the confirmation); NULL = none. At most one confirmation per payment (partial unique index `idx_plaid_fixed_expense_links_loan_payment` on non-NULL values). Added by migration `plaid_fixed_expense_links_loan_payment_v1`, which also linked earlier confirmations to the one loan payment of their month where there was exactly one |
 
 Deleting a confirmed fixed expense puts its transaction back to `'new'` (trigger `plaid_transactions_unlink_on_fixed_expense_delete`) and removes the link (cascade).
 
@@ -737,7 +738,7 @@ Migration tracking for database schema changes.
 | migration_name | TEXT NOT NULL UNIQUE | Name of the migration |
 | applied_at | TEXT DEFAULT CURRENT_TIMESTAMP | When the migration was applied |
 
-Current entries written by `runMigrations()`: `consolidated_schema_v1`, `auth_infrastructure_v1`, `dismissed_anomalies_nullable_expense_id_v1`, `performance_compound_indexes_v1`, `analytics_hub_revamp_v1`, `fixed_expenses_payment_method_id_backfill_v1`, `plaid_transactions_pending_v1`, `plaid_account_balances_v1`, `plaid_item_freshness_v1`, `plaid_transactions_pfc_v1`, `plaid_capture_v1`, `plaid_accounts_investment_v1`, `plaid_transactions_split_links_v1`. See [Database Migrations](DATABASE_MIGRATIONS.md).
+Current entries written by `runMigrations()`: `consolidated_schema_v1`, `auth_infrastructure_v1`, `dismissed_anomalies_nullable_expense_id_v1`, `performance_compound_indexes_v1`, `analytics_hub_revamp_v1`, `fixed_expenses_payment_method_id_backfill_v1`, `plaid_transactions_pending_v1`, `plaid_account_balances_v1`, `plaid_item_freshness_v1`, `plaid_transactions_pfc_v1`, `plaid_capture_v1`, `plaid_accounts_investment_v1`, `plaid_transactions_split_links_v1`, `plaid_fixed_expense_links_loan_payment_v1`. See [Database Migrations](DATABASE_MIGRATIONS.md).
 
 ## Relationships
 
@@ -818,6 +819,7 @@ Foreign keys are enforced (`PRAGMA foreign_keys = ON` per connection):
   - plaid_accounts.investment_id (when investment deleted)
   - plaid_transactions.plaid_account_id (when bank account deleted, e.g. on disconnect)
   - plaid_transactions.expense_id (when expense deleted)
+  - plaid_fixed_expense_links.loan_payment_id (when loan payment deleted; the fixed expense stays confirmed)
 
 - **No action (delete is rejected while referenced)**
   - expenses.payment_method_id

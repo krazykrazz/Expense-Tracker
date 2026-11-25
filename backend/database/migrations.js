@@ -400,6 +400,45 @@ const MIGRATIONS = [
       await runSql(db, 'DROP TRIGGER IF EXISTS plaid_transactions_unlink_on_expense_delete');
       await runSql(db, UNLINK_ON_EXPENSE_DELETE_TRIGGER);
     }
+  },
+  {
+    // Spec 3.5: a fixed expense linked to a loan, confirmed by a bank payment, can name the loan payment that
+    // payment is (`loan_payment_id`, cleared when the payment is deleted). Confirmations made before this are
+    // matched to their loan payment when the fixed expense's month holds exactly one payment of that loan that no
+    // other confirmation claims; anything less certain stays unlinked.
+    name: 'plaid_fixed_expense_links_loan_payment_v1',
+    async apply(db) {
+      try {
+        await runSql(db, 'ALTER TABLE plaid_fixed_expense_links ADD COLUMN loan_payment_id INTEGER REFERENCES loan_payments(id) ON DELETE SET NULL');
+      } catch (err) {
+        if (!err.message.includes('duplicate column name')) throw err;
+      }
+      await runSql(db, 'CREATE UNIQUE INDEX IF NOT EXISTS idx_plaid_fixed_expense_links_loan_payment ON plaid_fixed_expense_links(loan_payment_id) WHERE loan_payment_id IS NOT NULL');
+
+      const links = await allSql(
+        db,
+        `SELECT l.id, fe.linked_loan_id AS loanId, fe.year, fe.month
+         FROM plaid_fixed_expense_links l
+         JOIN fixed_expenses fe ON fe.id = l.fixed_expense_id
+         WHERE l.loan_payment_id IS NULL AND fe.linked_loan_id IS NOT NULL
+         ORDER BY l.id`
+      );
+      let linked = 0;
+      for (const link of links) {
+        const prefix = `${link.year}-${String(link.month).padStart(2, '0')}-%`;
+        const payments = await allSql(
+          db,
+          `SELECT p.id FROM loan_payments p
+           WHERE p.loan_id = ? AND p.payment_date LIKE ?
+             AND NOT EXISTS (SELECT 1 FROM plaid_fixed_expense_links o WHERE o.loan_payment_id = p.id)`,
+          [link.loanId, prefix]
+        );
+        if (payments.length !== 1) continue;
+        await runSql(db, 'UPDATE plaid_fixed_expense_links SET loan_payment_id = ? WHERE id = ?', [payments[0].id, link.id]);
+        linked += 1;
+      }
+      logger.info('Added loan_payment_id to plaid_fixed_expense_links', { linked, candidates: links.length });
+    }
   }
 ];
 

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import { createLogger } from '../../utils/logger';
+import LoanPaymentBankIndicator from '../bank-import/LoanPaymentBankIndicator';
 import './LoanPaymentHistory.css';
 
 const logger = createLogger('LoanPaymentHistory');
@@ -77,8 +78,10 @@ const LoanPaymentHistory = ({
   const handleDelete = async (paymentId) => {
     if (disabled || deletingId) return;
 
+    const fromBank = payments.find(payment => payment.id === paymentId)?.bankConfirmation;
     const confirmed = window.confirm(
-      'Are you sure you want to delete this payment? This will recalculate the loan balance.'
+      `Are you sure you want to delete this payment? This will recalculate the loan balance.${
+        fromBank ? '\n\nThe bank payment stays confirmed on its fixed expense.' : ''}`
     );
 
     if (!confirmed) return;
@@ -165,6 +168,7 @@ const LoanPaymentHistory = ({
                   >
                     <td className="date-cell">
                       {formatDate(payment.payment_date)}
+                      <LoanPaymentBankIndicator payment={payment} />
                     </td>
                     <td className="amount-cell">
                       <span className="payment-amount">

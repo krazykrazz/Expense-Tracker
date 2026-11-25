@@ -299,4 +299,18 @@ describe('LoanPaymentHistory', () => {
       expect(btn.getAttribute('aria-label')).toMatch(/Delete payment from/);
     });
   });
+
+  it('marks a payment the bank confirmed, and says deleting it leaves the confirmation', () => {
+    const confirmation = { landedDate: '2026-02-03', amount: 500, plannedAmount: 500, name: 'LOAN PMT', fixedExpenseName: 'Home loan' };
+    const payments = [{ ...mockPayments[0], bankConfirmation: confirmation }, mockPayments[1]];
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    render(<LoanPaymentHistory {...defaultProps} payments={payments} />);
+
+    expect(screen.getAllByTestId('loan-payment-bank-indicator')).toHaveLength(1);
+    const [first, second] = screen.getAllByTitle('Delete payment');
+    fireEvent.click(second);
+    expect(confirm).toHaveBeenLastCalledWith(expect.not.stringContaining('stays confirmed'));
+    fireEvent.click(first);
+    expect(confirm).toHaveBeenLastCalledWith(expect.stringContaining('The bank payment stays confirmed on its fixed expense.'));
+  });
 });

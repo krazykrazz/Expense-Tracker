@@ -199,13 +199,15 @@ describe('plaid routes', () => {
     expect(plaidReviewService.matchToExpense).toHaveBeenNthCalledWith(2, 3, 4, { updateAmount: false });
   });
 
-  test('POST /inbox/:id/match-fixed passes the fixed expense and tab id', async () => {
+  test('POST /inbox/:id/match-fixed passes the fixed expense, the loan payment choice and the tab id', async () => {
     plaidReviewService.matchToFixedExpense.mockResolvedValue({ transaction: {}, fixedExpense: { id: 8 } });
 
     const res = await request(app).post('/api/plaid/inbox/3/match-fixed').set('X-Tab-ID', 'tab-2').send({ fixedExpenseId: 8 });
+    await request(app).post('/api/plaid/inbox/3/match-fixed').send({ fixedExpenseId: 8, loanPayment: 'link', loanPaymentId: 5 });
 
     expect(res.status).toBe(200);
-    expect(plaidReviewService.matchToFixedExpense).toHaveBeenCalledWith(3, 8, 'tab-2');
+    expect(plaidReviewService.matchToFixedExpense).toHaveBeenNthCalledWith(1, 3, 8, 'tab-2', { loanPayment: undefined, loanPaymentId: undefined });
+    expect(plaidReviewService.matchToFixedExpense).toHaveBeenNthCalledWith(2, 3, 8, null, { loanPayment: 'link', loanPaymentId: 5 });
   });
 
   test('POST /inbox/:id/match-income passes the income source, updateAmount and tab id', async () => {

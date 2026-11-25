@@ -190,9 +190,18 @@ export const matchInboxTransaction = (id, expenseId, { updateAmount = false } = 
     'match expense'
   ));
 
-/** Confirm a fixed expense with this transaction (updates its amount to the bank amount when they differ). */
-export const matchInboxTransactionToFixed = (id, fixedExpenseId) =>
-  call('matching bank transaction to fixed expense', () => apiPost(API_ENDPOINTS.PLAID_INBOX_ACTION(id, 'match-fixed'), { fixedExpenseId }, 'match fixed expense'));
+/**
+ * Confirm a fixed expense with this transaction (updates its amount to the bank amount when they differ).
+ * For a fixed expense linked to a loan, `loanPayment` also records the bank payment as a loan payment (`'log'`) or
+ * links the one already logged (`'link'`, with `loanPaymentId`); omitted or `'none'`: no loan payment is touched.
+ * @param {{loanPayment?: ('log'|'link'|'none'), loanPaymentId?: number}} [choice]
+ */
+export const matchInboxTransactionToFixed = (id, fixedExpenseId, { loanPayment, loanPaymentId } = {}) =>
+  call('matching bank transaction to fixed expense', () => apiPost(
+    API_ENDPOINTS.PLAID_INBOX_ACTION(id, 'match-fixed'),
+    { fixedExpenseId, ...(loanPayment && loanPayment !== 'none' ? { loanPayment, ...(loanPaymentId != null ? { loanPaymentId } : {}) } : {}) },
+    'match fixed expense'
+  ));
 
 /** Confirm expected income with this deposit; `updateAmount` sets the income amount to the deposit amount. */
 export const matchInboxTransactionToIncome = (id, { incomeSourceId, updateAmount = true }) =>

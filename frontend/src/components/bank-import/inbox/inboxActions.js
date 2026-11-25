@@ -21,7 +21,13 @@ export const INBOX_ACTIONS = {
       : matchInboxTransaction(id, payload)),
     changesData: true
   },
-  'match-fixed': { run: (id, fixedExpenseId) => matchInboxTransactionToFixed(id, fixedExpenseId), changesData: true },
+  // The payload is a fixed expense id, or { fixedExpenseId, loanPayment, loanPaymentId } to also record or link a loan payment
+  'match-fixed': {
+    run: (id, payload) => (typeof payload === 'object'
+      ? matchInboxTransactionToFixed(id, payload.fixedExpenseId, { loanPayment: payload.loanPayment, loanPaymentId: payload.loanPaymentId })
+      : matchInboxTransactionToFixed(id, payload)),
+    changesData: true
+  },
   'match-income': { run: (id, payload) => matchInboxTransactionToIncome(id, payload), changesData: true },
   'add-income': { run: (id, fields) => addInboxTransactionAsIncome(id, fields), changesData: true },
   'card-payment': { run: (id, body) => cardPaymentInboxTransaction(id, body), changesData: true },

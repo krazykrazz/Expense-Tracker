@@ -2,8 +2,7 @@ import { useState } from 'react';
 import { splitBankTransaction, removeSplitExpense } from '../../services/plaidApi';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import SplitPicker from '../bank-import/SplitPicker';
-
-const toCents = (amount) => Math.round(Number(amount) * 100);
+import { toCents } from '../../utils/money';
 
 /**
  * A bank charge entered as several expenses (spec 3.9), on the Edit Expense form of one of them: how much of the

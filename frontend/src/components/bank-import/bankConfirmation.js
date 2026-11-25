@@ -1,6 +1,5 @@
 import { formatCurrency, formatDate } from '../../utils/formatters';
-
-const toCents = (amount) => Math.round(Number(amount) * 100);
+import { toCents } from '../../utils/money';
 
 /**
  * @returns {'confirmed'|'differs'|'pending'|'cancelled'|null} how an expense compares to its linked bank

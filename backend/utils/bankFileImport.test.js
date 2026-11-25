@@ -2,6 +2,7 @@ const {
   parseCsv, parseBankFile, planFileImport, mergeFileIntoRow, mergePlaidIntoFileRow, sameTransaction, similarNames,
   isFileRow, FILE_ID_PREFIX
 } = require('./bankFileImport');
+const { MAX_ROWS } = require('./bankFileFormats');
 
 const CARD_HEADER = 'transaction_date,transaction_type,status,merchant,amount,currency,notes,category';
 const CHEQUING_HEADER = 'transaction_date,transaction_time,account_number,account_type,transaction_type,transaction_sub_type,status,payee,payee_email,amount,currency,notes';
@@ -91,6 +92,12 @@ describe('parseBankFile', () => {
   ])('refuses %s', (_, text, message) => {
     expect(() => parseBankFile(text, 7)).toThrow(expect.objectContaining({ statusCode: 400 }));
     expect(() => parseBankFile(text, 7)).toThrow(message);
+  });
+
+  test('refuses a file with more rows than one import handles, before any row is read', () => {
+    const line = '2026-11-04,Purchase,Completed,X,-1.00,CAD,,';
+    expect(parseBankFile(card(...Array(MAX_ROWS).fill(line)), 7).rows).toHaveLength(MAX_ROWS);
+    expect(() => parseBankFile(card(...Array(MAX_ROWS + 1).fill(line)), 7)).toThrow(/at most 10000 at a time/);
   });
 });
 

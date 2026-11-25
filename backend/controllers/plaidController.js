@@ -204,10 +204,11 @@ const matchToExpense = asyncHandler(async (req, res) => {
 
 /**
  * POST /api/plaid/inbox/:id/match-fixed
- * Body: { fixedExpenseId }
+ * Body: { fixedExpenseId, loanPayment?: 'log'|'link'|'none', loanPaymentId? }
  */
 const matchToFixedExpense = asyncHandler(async (req, res) => {
-  res.json(await plaidReviewService.matchToFixedExpense(idParam(req), (req.body || {}).fixedExpenseId, tabIdOf(req)));
+  const { fixedExpenseId, loanPayment, loanPaymentId } = req.body || {};
+  res.json(await plaidReviewService.matchToFixedExpense(idParam(req), fixedExpenseId, tabIdOf(req), { loanPayment, loanPaymentId }));
 });
 
 /**

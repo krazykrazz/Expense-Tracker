@@ -287,6 +287,52 @@ describe('Consolidated Schema – Unit Tests', () => {
     await dbRun(db, 'DELETE FROM plaid_items WHERE id = ?', [item.id]);
   });
 
+  test('plaid_fixed_expense_links_loan_payment_v1 adds loan_payment_id and links only a month with exactly one unclaimed payment', async () => {
+    await runMigrations(db);
+    await dbRun(db, 'DROP TABLE plaid_fixed_expense_links');
+    await dbRun(db, `CREATE TABLE plaid_fixed_expense_links (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, plaid_transaction_id INTEGER NOT NULL UNIQUE, fixed_expense_id INTEGER NOT NULL UNIQUE,
+      landed_date TEXT NOT NULL, planned_amount REAL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (plaid_transaction_id) REFERENCES plaid_transactions(id) ON DELETE CASCADE,
+      FOREIGN KEY (fixed_expense_id) REFERENCES fixed_expenses(id) ON DELETE CASCADE)`);
+    await dbRun(db, "DELETE FROM schema_migrations WHERE migration_name = 'plaid_fixed_expense_links_loan_payment_v1'");
+
+    const loan = (await dbRun(db, "INSERT INTO loans (name, initial_balance, start_date) VALUES ('Mig loan', 10000, '2025-01-01')")).lastID;
+    const payment = async (date) => (await dbRun(db, 'INSERT INTO loan_payments (loan_id, amount, payment_date) VALUES (?, 500, ?)', [loan, date])).lastID;
+    const confirm = async (key, { year, month, loanId }) => {
+      const fixed = (await dbRun(db, 'INSERT INTO fixed_expenses (year, month, name, amount, linked_loan_id) VALUES (?, ?, ?, 500, ?)', [year, month, key, loanId])).lastID;
+      const txn = (await dbRun(db, "INSERT INTO plaid_transactions (transaction_id, amount, date, name, status) VALUES (?, 500, ?, 'LOAN', 'matched')", [key, `${year}-${String(month).padStart(2, '0')}-02`])).lastID;
+      await dbRun(db, "INSERT INTO plaid_fixed_expense_links (plaid_transaction_id, fixed_expense_id, landed_date) VALUES (?, ?, ?)", [txn, fixed, `${year}-${String(month).padStart(2, '0')}-02`]);
+      return fixed;
+    };
+    const onlyPayment = await payment('2026-09-01');
+    await payment('2026-10-01');
+    await payment('2026-10-15');
+    const september = await confirm('lpm-sep', { year: 2026, month: 9, loanId: loan });
+    const october = await confirm('lpm-oct', { year: 2026, month: 10, loanId: loan });
+    const november = await confirm('lpm-nov', { year: 2026, month: 11, loanId: loan });
+    const plain = await confirm('lpm-plain', { year: 2026, month: 9, loanId: null });
+    const linkOf = async (fixed) => (await dbGet(db, 'SELECT loan_payment_id AS id FROM plaid_fixed_expense_links WHERE fixed_expense_id = ?', [fixed])).id;
+
+    await runMigrations(db);
+    await runMigrations(db);
+
+    expect(await checkMigrationApplied(db, 'plaid_fixed_expense_links_loan_payment_v1')).toBe(true);
+    expect(await linkOf(september)).toBe(onlyPayment);
+    expect(await linkOf(october)).toBeNull();     // two payments that month: not certain
+    expect(await linkOf(november)).toBeNull();    // none
+    expect(await linkOf(plain)).toBeNull();
+    // One payment is named by one confirmation, and deleting it leaves the confirmation
+    await expect(dbRun(db, 'UPDATE plaid_fixed_expense_links SET loan_payment_id = ? WHERE fixed_expense_id = ?', [onlyPayment, october])).rejects.toThrow(/UNIQUE/);
+    await dbRun(db, 'DELETE FROM loan_payments WHERE id = ?', [onlyPayment]);
+    expect(await linkOf(september)).toBeNull();
+    expect(await dbGet(db, 'SELECT COUNT(*) AS n FROM plaid_fixed_expense_links')).toEqual({ n: 4 });
+
+    await dbRun(db, "DELETE FROM plaid_transactions WHERE transaction_id LIKE 'lpm-%'");
+    await dbRun(db, "DELETE FROM fixed_expenses WHERE name LIKE 'lpm-%'");
+    await dbRun(db, 'DELETE FROM loans WHERE id = ?', [loan]);
+  });
+
   // ── Requirement 7.3: update_budgets_timestamp trigger exists and fires ──
 
   test('update_budgets_timestamp trigger exists', async () => {

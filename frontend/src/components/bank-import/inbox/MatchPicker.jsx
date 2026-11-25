@@ -1,6 +1,6 @@
 import { formatCurrency, formatDate } from '../../../utils/formatters';
 import IncomeCandidates from './IncomeCandidates';
-import { dueLabel } from './inboxFormat';
+import FixedCandidate from './FixedCandidate';
 
 /**
  * What a bank transaction could be: expected income (deposits), an expense already entered, or a planned fixed
@@ -66,15 +66,7 @@ const MatchPicker = ({ txn, onMatch, onMatchFixed, onMatchIncome, onSplit, onCan
         <div className="bank-import-muted">Fixed expenses: same payment method, due within 3 days before to 10 days after</div>
         <ul>
           {txn.fixedCandidates.map(fixed => (
-            <li key={`f-${fixed.id}`} data-testid="fixed-candidate">
-              <span>
-                {fixed.name} · {dueLabel(fixed)} · {formatCurrency(fixed.amount)}
-                {fixed.amountDiffers && (
-                  <span className="bank-import-muted"> (planned amount will be updated to {formatCurrency(txn.amount)})</span>
-                )}
-              </span>
-              <button className="bank-import-primary" onClick={() => onMatchFixed(fixed.id)} disabled={busy}>Confirm</button>
-            </li>
+            <FixedCandidate key={`f-${fixed.id}`} fixed={fixed} txn={txn} busy={busy} onConfirm={(loanChoice) => onMatchFixed(fixed.id, loanChoice)} />
           ))}
         </ul>
       </>

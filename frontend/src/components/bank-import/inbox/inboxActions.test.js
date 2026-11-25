@@ -43,6 +43,12 @@ describe('INBOX_ACTIONS', () => {
     expect(plaidApi.matchInboxTransaction).toHaveBeenCalledWith(7, 42, { updateAmount: true });
   });
 
+  it('match-fixed also accepts the loan payment choice for a fixed expense linked to a loan', async () => {
+    await INBOX_ACTIONS['match-fixed'].run(7, { fixedExpenseId: 9, loanPayment: 'link', loanPaymentId: 41 });
+
+    expect(plaidApi.matchInboxTransactionToFixed).toHaveBeenCalledWith(7, 9, { loanPayment: 'link', loanPaymentId: 41 });
+  });
+
   it.each([['ignore', 'ignoreInboxTransaction'], ['unignore', 'unignoreInboxTransaction']])('%s only moves the row', async (action, api) => {
     await INBOX_ACTIONS[action].run(7);
 

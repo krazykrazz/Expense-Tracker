@@ -162,7 +162,7 @@ const InboxRow = ({ txn, filter, expanded, onExpand, onAction, busy, error, unco
           busy={busy}
           onCancel={() => onExpand(null)}
           onMatch={(expenseId, options) => onAction('match', options ? { expenseId, ...options } : expenseId)}
-          onMatchFixed={(fixedExpenseId) => onAction('match-fixed', fixedExpenseId)}
+          onMatchFixed={(fixedExpenseId, loanChoice) => onAction('match-fixed', loanChoice ? { fixedExpenseId, ...loanChoice } : fixedExpenseId)}
           onMatchIncome={(payload) => onAction('match-income', payload)}
           onSplit={() => onExpand('split')}
         />

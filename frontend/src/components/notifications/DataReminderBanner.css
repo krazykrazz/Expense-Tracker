@@ -2,8 +2,7 @@
 /* Requirements: 2.1, 6.1 - Modern card and badge styling */
 
 .data-reminder-banner {
-  background-color: light-dark(#FFF4E6, hsl(34 55% 17%));
-  border: 1px solid light-dark(#FFB84D, hsl(36 45% 32%));
+  --banner-accent: var(--color-warning);
   border-radius: var(--radius-lg, 12px);
   padding: var(--spacing-3, 12px) var(--spacing-4, 16px);
   display: flex;
@@ -13,12 +12,9 @@
   transition: var(--transition-card);
   animation: fadeIn 0.3s ease-in;
   margin-bottom: var(--spacing-2, 8px);
-  box-shadow: var(--shadow-sm);
 }
 
 .data-reminder-banner:hover {
-  background-color: light-dark(#FFE8CC, hsl(33 55% 17%));
-  border-color: #FF9F1C;
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
 }
@@ -54,16 +50,6 @@
 /* Scoped so the brown text doesn't leak into other banners that share .reminder-message */
 .data-reminder-banner .reminder-message {
   color: light-dark(#8B4513, hsl(25 76% 78%));
-}
-
-:root[data-theme='dark'] .data-reminder-banner {
-  background-color: color-mix(in srgb, var(--color-warning) 12%, var(--bg-card));
-  border-color: color-mix(in srgb, var(--color-warning) 45%, transparent);
-}
-
-:root[data-theme='dark'] .data-reminder-banner:hover {
-  background-color: color-mix(in srgb, var(--color-warning) 18%, var(--bg-card));
-  border-color: var(--color-warning);
 }
 
 :root[data-theme='dark'] .data-reminder-banner .reminder-message {

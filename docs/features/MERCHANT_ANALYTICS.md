@@ -32,7 +32,7 @@ Merchant Analytics provides insights into spending by merchant (the expense `pla
 ## User Interface
 
 ### Main Navigation Access
-- **Entry Point**: Click the "📈 Analytics" button in the month selector, then select the "🏪 Merchants" tab of the Analytics Hub
+- **Entry Point**: Click the "Analytics" button in the month selector, then select the "🏪 Merchants" tab of the Analytics Hub
 - **Component**: `MerchantAnalyticsModal` is rendered embedded inside `AnalyticsHubModal`
 
 ### Merchant List View
@@ -155,7 +155,7 @@ interface MonthlyTrend {
 ## Usage Examples
 
 ### Analyzing Top Spending Locations
-1. Open "📈 Analytics" and select the "🏪 Merchants" tab
+1. Open "Analytics" and select the "🏪 Merchants" tab
 2. View the default list sorted by total spending
 3. Use the period filter to focus on "This Year", "Previous Year", or "This Month"
 4. **Optional**: Check "Include Fixed Expenses" to see total spending including recurring costs

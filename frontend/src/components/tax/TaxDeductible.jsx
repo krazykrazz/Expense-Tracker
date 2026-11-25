@@ -16,6 +16,7 @@ import InvoiceList from './InvoiceList';
 import InsuranceStatusIndicator from '../expenses/InsuranceStatusIndicator';
 import QuickStatusUpdate from '../expenses/QuickStatusUpdate';
 import { TAX_RATES } from '../../utils/taxRatesConfig';
+import Icon from '../shared/Icon';
 
 const TaxDeductible = ({ year, refreshTrigger }) => {
   const [taxDeductible, setTaxDeductible] = useState(null);
@@ -489,7 +490,7 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
     return (
       <div className="tax-deductible">
         <div className="tax-deductible-header">
-          <h2>💰 Tax Deductible Expenses {year}</h2>
+          <h2><Icon name="receipt" size={22} className="modal-title-icon" />Tax Deductible Expenses {year}</h2>
         </div>
         <div className="loading-message">Loading tax deductible data...</div>
       </div>
@@ -499,7 +500,7 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
   return (
     <div className="tax-deductible">
       <div className="tax-deductible-header">
-        <h2>💰 Tax Deductible Expenses {year}</h2>
+        <h2><Icon name="receipt" size={22} className="modal-title-icon" />Tax Deductible Expenses {year}</h2>
       </div>
 
       {!taxDeductible || taxDeductible.totalDeductible === 0 ? (

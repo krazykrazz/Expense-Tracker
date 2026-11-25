@@ -24,8 +24,8 @@
   justify-content: space-between;
   align-items: center;
   padding: var(--section-gap-lg, 24px);
-  background: linear-gradient(135deg, light-dark(#4b67e6, #667eea) 0%, #764ba2 100%);
-  color: white;
+  background: var(--bg-card);
+  color: var(--text-primary);
   border-radius: var(--radius-xl, 16px) var(--radius-xl, 16px) 0 0;
   position: sticky;
   top: 0;
@@ -36,15 +36,15 @@
   margin: 0;
   font-size: var(--heading-2, 20px);
   font-weight: var(--font-semibold, 600);
-  color: white;
+  color: var(--text-primary);
 }
 
 .budgets-modal-close {
-  background: rgba(255, 255, 255, 0.2);
+  background: transparent;
   border: none;
   font-size: 18px;
   cursor: pointer;
-  color: white;
+  color: var(--text-secondary);
   padding: 0;
   width: 36px;
   height: 36px;
@@ -56,8 +56,8 @@
 }
 
 .budgets-modal-close:hover {
-  background: rgba(255, 255, 255, 0.3);
-  transform: scale(1.05);
+  background: var(--bg-muted);
+  color: var(--text-primary);
 }
 
 .budgets-modal-close:active {
@@ -69,7 +69,7 @@
   display: flex;
   gap: var(--spacing-2, 8px);
   padding: 0 var(--spacing-5, 20px);
-  border-bottom: 2px solid light-dark(#e0e4ff, hsl(232 45% 32%));
+  border-bottom: 1px solid var(--border-default);
   background: var(--bg-card, white);
 }
 
@@ -84,13 +84,16 @@
   cursor: pointer;
   border-bottom: 3px solid transparent;
   transition: var(--transition-colors);
-  margin-bottom: -2px;
+  margin-bottom: -1px;
   border-radius: var(--radius-md, 8px) var(--radius-md, 8px) 0 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .budgets-tabs .tab-button:hover {
   color: var(--color-primary-text);
-  background: rgba(102, 126, 234, 0.05);
+  background: var(--bg-subtle);
 }
 
 .budgets-tabs .tab-button.active {
@@ -132,9 +135,13 @@
 .budget-copy-button {
   width: 100%;
   padding: var(--spacing-3, 12px);
-  background-color: #9c27b0;
-  color: white;
-  border: none;
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-strong);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-2, 8px);
   border-radius: var(--radius-md, 8px);
   cursor: pointer;
   font-size: var(--text-base, 14px);
@@ -144,9 +151,8 @@
 }
 
 .budget-copy-button:hover:not(:disabled) {
-  background-color: #7b1fa2;
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+  background-color: var(--bg-muted);
+  border-color: var(--color-primary);
 }
 
 .budget-copy-button:active:not(:disabled) {

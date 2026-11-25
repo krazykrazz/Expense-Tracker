@@ -1,85 +1,73 @@
+/* Phones and tablets only: on desktop the header's Add Expense button is always in reach */
 .floating-add-button {
-  position: fixed;
-  bottom: var(--spacing-6);
-  right: var(--spacing-6);
-  background: linear-gradient(135deg, var(--color-primary-strong) 0%, var(--color-primary-strong-hover) 100%);
-  color: var(--text-inverse);
-  border: none;
-  border-radius: var(--radius-full);
-  padding: var(--spacing-4) var(--spacing-6);
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-2);
-  font-size: var(--text-base);
-  font-weight: var(--font-semibold);
-  cursor: pointer;
-  box-shadow: var(--shadow-md);
-  transition: var(--transition-button);
-  z-index: var(--z-fixed);
-  min-height: 56px;
+  display: none;
 }
 
-.floating-add-button:hover {
-  background: linear-gradient(135deg, var(--color-primary-strong-hover) 0%, var(--color-primary-active) 100%);
-  box-shadow: var(--shadow-lg);
-  transform: translateY(-2px);
-}
+@media (max-width: 768px) {
+  .floating-add-button {
+    position: fixed;
+    right: var(--spacing-4);
+    /* Sits above the bottom tab bar */
+    bottom: calc(64px + var(--spacing-4) + env(safe-area-inset-bottom, 0px));
+    z-index: var(--z-fixed);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-2);
+    min-height: 52px;
+    padding: 0 var(--spacing-5) 0 var(--spacing-4);
+    color: var(--text-inverse);
+    background: var(--color-primary-strong);
+    border: none;
+    border-radius: var(--radius-full);
+    font-size: var(--text-sm);
+    font-weight: var(--font-semibold);
+    cursor: pointer;
+    box-shadow: 0 8px 20px -6px color-mix(in srgb, var(--color-primary-strong) 70%, transparent), var(--shadow-md);
+    transition: var(--transition-button);
+    animation: fabSlideIn 0.25s ease-out;
+    -webkit-tap-highlight-color: transparent;
+  }
 
-.floating-add-button:active {
-  transform: translateY(0);
-  box-shadow: var(--shadow-sm);
+  .floating-add-button:hover {
+    background: var(--color-primary-strong-hover);
+  }
+
+  .floating-add-button:active {
+    transform: scale(0.96);
+  }
+
+  .floating-add-button:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring-offset);
+  }
 }
 
 .fab-icon {
-  font-size: var(--text-2xl);
-  font-weight: 300;
-  line-height: 1;
+  display: inline-flex;
 }
 
 .fab-text {
   white-space: nowrap;
 }
 
-/* Mobile responsive */
-@media (max-width: 768px) {
-  .floating-add-button {
-    bottom: var(--spacing-4);
-    right: var(--spacing-4);
-    padding: var(--spacing-3) var(--spacing-5);
-    font-size: var(--text-sm);
-    border-radius: var(--radius-full);
-    min-height: 48px;
-  }
-  
-  .fab-icon {
-    font-size: var(--text-xl);
-  }
-}
-
-/* Compact version for smaller screens */
+/* Small phones: a round icon button */
 @media (max-width: 480px) {
   .floating-add-button {
-    padding: var(--spacing-3);
-    border-radius: 50%;
-    width: 48px;
-    height: 48px;
-    min-height: 48px;
+    width: 52px;
+    height: 52px;
+    padding: 0;
   }
-  
+
   .fab-text {
     display: none;
   }
-  
-  .fab-icon {
-    font-size: var(--text-2xl);
-  }
 }
 
-/* Animation for appearance */
 @keyframes fabSlideIn {
   from {
     opacity: 0;
-    transform: translateY(20px) scale(0.8);
+    transform: translateY(16px) scale(0.85);
   }
   to {
     opacity: 1;
@@ -87,19 +75,9 @@
   }
 }
 
-.floating-add-button {
-  animation: fabSlideIn 0.3s ease-out;
-}
-
-
-/* Accessibility: Respect reduced motion preferences */
 @media (prefers-reduced-motion: reduce) {
   .floating-add-button {
     animation: none;
     transition: none;
-  }
-  
-  .floating-add-button:hover {
-    transform: none;
   }
 }

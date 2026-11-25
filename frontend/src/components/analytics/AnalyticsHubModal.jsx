@@ -12,6 +12,7 @@ import MerchantAnalyticsModal from './MerchantAnalyticsModal';
 import ActivityInsightsView from './ActivityInsightsView';
 import TrendsView from './TrendsView';
 import PeriodAnalyticsPanel from './PeriodAnalyticsPanel';
+import Icon from '../shared/Icon';
 
 const TABS = [
   { id: 'monthly-summary', label: 'Monthly Summary', icon: '📋' },
@@ -112,7 +113,7 @@ const AnalyticsHubModal = ({
     <div className="modal-overlay" onClick={handleClose}>
       <div className="analytics-hub-container" onClick={(e) => e.stopPropagation()}>
         <div className="analytics-hub-header">
-          <h2>Analytics Hub</h2>
+          <h2><Icon name="trendingUp" size={22} className="modal-title-icon" />Analytics Hub</h2>
           <button className="analytics-hub-close" onClick={handleClose}>✕</button>
         </div>
 

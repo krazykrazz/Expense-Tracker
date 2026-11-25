@@ -24,7 +24,7 @@ Frontend: `frontend/src/components/financial/FinancialOverviewModal.jsx`, `front
 
 ### Payment Method Management
 
-Open the **💼 Financial** button in the month selector; payment methods appear in the **Payment Methods** section of the Financial Overview modal:
+Open the **Financial** button in the month selector; payment methods appear in the **Payment Methods** section of the Financial Overview modal:
 
 - **Active / Inactive tabs**; credit cards are listed in a summary grid (Card, Current, Statement, Cycle) with **View** and **Pay** buttons, followed by **Other Payment Methods**
 - **+ Add** opens `PaymentMethodForm` (Add/Edit Payment Method)
@@ -166,7 +166,7 @@ A new database is seeded (`backend/database/schema.js`) with: Cash (`cash`), Deb
 
 ### Creating a Payment Method
 
-1. Click **💼 Financial** in the month selector
+1. Click **Financial** in the month selector
 2. In the Payment Methods section, click **+ Add**
 3. Select the type and fill in Display Name; for credit cards also Full Name, Payment Due Day and Statement Closing Day (Credit Limit is optional)
 4. Click **Create**

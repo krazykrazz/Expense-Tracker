@@ -4,6 +4,7 @@ import { formatAmount, getMonthNameShort } from '../../utils/formatters';
 import { getAnnualIncomeByCategory } from '../../services/incomeApi';
 import { authAwareFetch } from '../../utils/fetchProvider';
 import { createLogger } from '../../utils/logger';
+import Icon from '../shared/Icon';
 
 const logger = createLogger('AnnualSummary');
 
@@ -211,7 +212,7 @@ const AnnualSummary = ({ year }) => {
     return (
       <div className="annual-summary">
         <div className="annual-summary-header">
-          <h2>📊 Annual Summary {year}</h2>
+          <h2><Icon name="barChart" size={22} className="modal-title-icon" />Annual Summary {year}</h2>
         </div>
         <div className="loading-message">Loading annual summary...</div>
       </div>
@@ -222,7 +223,7 @@ const AnnualSummary = ({ year }) => {
     return (
       <div className="annual-summary">
         <div className="annual-summary-header">
-          <h2>📊 Annual Summary {year}</h2>
+          <h2><Icon name="barChart" size={22} className="modal-title-icon" />Annual Summary {year}</h2>
         </div>
         <div className="error-message">Error: {error}</div>
       </div>
@@ -233,7 +234,7 @@ const AnnualSummary = ({ year }) => {
     return (
       <div className="annual-summary">
         <div className="annual-summary-header">
-          <h2>📊 Annual Summary {year}</h2>
+          <h2><Icon name="barChart" size={22} className="modal-title-icon" />Annual Summary {year}</h2>
         </div>
         <div className="empty-state">No expenses or income recorded for {year}</div>
       </div>
@@ -245,7 +246,7 @@ const AnnualSummary = ({ year }) => {
   return (
     <div className="annual-summary">
       <div className="annual-summary-header">
-        <h2>📊 Annual Summary {year}</h2>
+        <h2><Icon name="barChart" size={22} className="modal-title-icon" />Annual Summary {year}</h2>
       </div>
 
       <div className="summary-grid">

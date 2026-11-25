@@ -391,19 +391,6 @@
   }
 }
 
-/* Mid-width desktops: icon-only row actions (aria-label/title keep them identifiable)
-   so the table fits beside the summary panel without horizontal scrolling */
-@media (min-width: 769px) and (max-width: 1360px) {
-  .expense-table .action-label {
-    display: none;
-  }
-
-  .expense-table .edit-button,
-  .expense-table .delete-button {
-    padding: 5px 7px;
-  }
-}
-
 /* Card layout: date header becomes a plain label above the day's cards.
    Lives here (not mobile.css) because this file loads after mobile.css. */
 @media (max-width: 768px) {
@@ -1581,3 +1568,194 @@
     font-size: var(--text-xs);
   }
 }
+
+/* Row actions: quiet icon-only buttons (aria-label/title name them). Last in the file
+   because it must win over the phone card rules in mobile.css. */
+.expense-table .action-label {
+  display: none;
+}
+
+.expense-table .edit-button,
+.expense-table .delete-button {
+  min-width: 30px;
+  height: 30px;
+  padding: 0;
+  color: var(--text-secondary);
+  background: transparent;
+  border-color: transparent;
+  border-radius: var(--radius-md);
+}
+
+.expense-table .delete-button:disabled,
+.expense-table td:nth-child(7) .delete-button:disabled {
+  padding: 0 var(--spacing-2);
+}
+
+.expense-table .edit-button:hover:not(:disabled),
+.expense-table .delete-button:hover:not(:disabled),
+.expense-table .edit-button:focus-visible,
+.expense-table .delete-button:focus-visible {
+  color: var(--action-color);
+  background: color-mix(in srgb, var(--action-fill) 12%, transparent);
+  border-color: transparent;
+}
+
+/* With a mouse, actions appear on row hover or keyboard focus */
+@media (hover: hover) and (pointer: fine) and (min-width: 769px) {
+  .expense-table .action-buttons {
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+  }
+
+  .expense-table tbody tr:hover .action-buttons,
+  .expense-table tbody tr:focus-within .action-buttons,
+  .expense-table .action-buttons:has(:disabled) {
+    opacity: 1;
+  }
+}
+
+/* Phone cards: actions sit at the right of the Type · Method line */
+@media (max-width: 768px) {
+  .expense-table td:nth-child(7) {
+    order: 13;
+    width: auto;
+    margin: 0 0 0 auto;
+    padding-top: 2px;
+    border-top: none;
+  }
+
+  .expense-table td:nth-child(7) .action-buttons {
+    gap: 2px;
+  }
+
+  .expense-table td:nth-child(7) .edit-button,
+  .expense-table td:nth-child(7) .delete-button {
+    min-width: 32px;
+    height: 32px;
+    padding: 0;
+  }
+}
+
+/* Filters toggle: phones only */
+.filters-toggle {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  /* Heading, Filters and Add on one line; the opened filters drop to a full-width row */
+  .expense-list-header {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--spacing-2);
+  }
+
+  .expense-list-header h2 {
+    margin-right: auto;
+  }
+
+  .header-controls {
+    display: contents;
+  }
+
+  /* Cards: mobile.css lays out the cells; drop the table cell padding/height */
+  .expense-table td {
+    height: auto;
+    padding: 0;
+  }
+
+  /* Person/invoice chips wrap under the place name instead of being clipped */
+  .expense-table td:nth-child(1) {
+    white-space: normal;
+  }
+
+  .expense-table td:nth-child(1) .place-cell {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+
+  .filters-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 36px;
+    padding: 0 var(--spacing-3);
+    color: var(--text-primary);
+    background: var(--bg-card);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
+    cursor: pointer;
+  }
+
+  .filters-toggle[aria-expanded='true'] {
+    background: var(--bg-muted);
+    border-color: var(--border-strong);
+  }
+
+  .filters-toggle-count {
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    color: var(--text-inverse);
+    background: var(--color-primary-strong);
+    border-radius: var(--radius-full);
+    font-size: 11px;
+    font-weight: var(--font-bold);
+    line-height: 18px;
+    text-align: center;
+  }
+
+  .expense-list-container .add-expense-button {
+    width: auto;
+    min-height: 36px;
+  }
+
+  .filter-controls {
+    display: none;
+    order: 3;
+    width: 100%;
+  }
+
+  .filter-controls.open {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-2);
+  }
+
+  .filter-controls .filter-count-badge {
+    display: none;
+  }
+
+  .filter-controls .filter-select {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .filter-controls .clear-filters-btn {
+    grid-column: 1 / -1;
+  }
+
+  /* Quick views scroll sideways instead of wrapping */
+  .quick-view-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .quick-view-tabs {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .quick-view-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .quick-view-tab {
+    flex-shrink: 0;
+  }
+}
+

@@ -121,8 +121,8 @@ describe('App.jsx FilterContext Integration', () => {
       expect(screen.getByRole('heading', { name: /expense tracker/i })).toBeInTheDocument();
     });
 
-    // Initially in monthly view
-    expect(screen.getByText(/monthly view/i)).toBeInTheDocument();
+    // Initially in monthly view (no global view banner)
+    expect(screen.queryByText(/global view/i)).not.toBeInTheDocument();
 
     // Wait for payment methods to load into the dropdown
     const paymentFilter = await screen.findByLabelText(/filter by payment method/i);
@@ -173,8 +173,7 @@ describe('App.jsx FilterContext Integration', () => {
 
     // Should be back in monthly view (context's filterMethod was cleared, so isGlobalView is false)
     await waitFor(() => {
-      const monthlyBadge = screen.getByText(/monthly view/i);
-      expect(monthlyBadge).toBeInTheDocument();
+      expect(screen.queryByText(/global view/i)).not.toBeInTheDocument();
     });
 
     // Global view banner should be gone (proves context state was cleared)

@@ -27,6 +27,7 @@ import CreditCardDetailView from '../credit-cards/CreditCardDetailView';
 import LoanPaymentForm from '../loans/LoanPaymentForm';
 import ConfirmDialog from '../shared/ConfirmDialog';
 import './FinancialOverviewModal.css';
+import Icon from '../shared/Icon';
 
 const logger = createLogger('FinancialOverviewModal');
 
@@ -1194,7 +1195,7 @@ const FinancialOverviewModal = ({
       <div className="financial-modal-container" onClick={(e) => e.stopPropagation()}>
         <div className="financial-modal-header">
           <div className="financial-modal-header-top">
-            <h2>💼 Financial Overview</h2>
+            <h2><Icon name="briefcase" size={22} className="modal-title-icon" />Financial Overview</h2>
             <button className="financial-modal-close" onClick={handleClose} aria-label="Close">✕</button>
           </div>
           <NetWorthSummary totalInvestments={totalInvestments} totalDebt={totalDebt} totalPropertyValue={totalPropertyValue} />

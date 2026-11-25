@@ -28,7 +28,7 @@ On the main page the expense list (`.content-left`) and the summary column (`.co
 `FloatingAddButton` (`frontend/src/components/shared/FloatingAddButton.jsx`):
 
 - Rendered by `App.jsx` with `expenseCount={currentMonthExpenseCount}`; shown only when the count is above 10. The count comes from `ExpenseContext` (`GET /api/expenses/count` for the current calendar month), not from the list being viewed.
-- Fixed bottom-right; clicking opens the same expense form modal as the list's "+ Add Expense" button.
+- Phones and tablets only (≤ 768px; hidden on wider screens, where the list's "+ Add Expense" button is always in reach). Fixed bottom-right above the tab bar; a round plus button at ≤ 480px. Clicking opens the same expense form modal as the list's "+ Add Expense" button.
 - `aria-label`/`title` "Add new expense"; slide-in animation (disabled under reduced motion).
 
 ## Responsive Behaviour

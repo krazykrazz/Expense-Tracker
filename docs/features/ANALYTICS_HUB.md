@@ -8,7 +8,7 @@ Anomaly alerts are **not** part of the hub; they are shown in the Summary Panel 
 
 ## Access
 
-Click the **📈 Analytics** button in the month selector (`MonthSelector`). The hub opens on the **Monthly Summary** tab for the currently selected month and resets to it when closed.
+Click the **Analytics** button in the toolbar under the month title (`MonthSelector`). The hub opens on the **Monthly Summary** tab for the currently selected month and resets to it when closed.
 
 ## Tabs
 

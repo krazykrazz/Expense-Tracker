@@ -432,13 +432,13 @@ function AppContent({ onPaymentMethodsUpdate }) {
         </div>
       </header>
       <main className="App-main">
-        {/* View Mode Indicator */}
-        <div className="view-mode-indicator">
-          {isGlobalView ? (
+        {/* Global view banner (the month itself is the title in the toolbar below) */}
+        {isGlobalView && (
+          <div className="view-mode-indicator">
             <div className="view-mode-banner global">
               <div className="view-mode-content">
                 <div className="view-mode-badge global">
-                  <span className="view-mode-icon">🔍</span>
+                  <Icon name="search" size={16} />
                   <span>Global View</span>
                 </div>
                 <div className="view-mode-triggers">
@@ -451,16 +451,11 @@ function AppContent({ onPaymentMethodsUpdate }) {
                 onClick={handleReturnToMonthlyView}
                 aria-label="Return to monthly view"
               >
-                📅 Return to Monthly View
+                <Icon name="calendar" size={16} /> Return to Monthly View
               </button>
             </div>
-          ) : (
-            <div className="view-mode-badge monthly">
-              <span className="view-mode-icon">📅</span>
-              <span>Monthly View - {new Date(selectedYear, selectedMonth - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Month Selector - dimmed when in global view */}
         <div className={`month-selector-wrapper ${isGlobalView ? 'dimmed' : ''}`}>
@@ -715,7 +710,7 @@ function AppContent({ onPaymentMethodsUpdate }) {
           onClick={() => setMobileTab('expenses')}
           aria-pressed={mobileTab === 'expenses'}
         >
-          <span className="tab-icon">📋</span>
+          <Icon name="list" size={20} className="tab-icon" />
           <span>Expenses</span>
         </button>
         <button
@@ -723,7 +718,7 @@ function AppContent({ onPaymentMethodsUpdate }) {
           onClick={() => setMobileTab('summary')}
           aria-pressed={mobileTab === 'summary'}
         >
-          <span className="tab-icon">📊</span>
+          <Icon name="pieChart" size={20} className="tab-icon" />
           <span>Summary</span>
         </button>
       </nav>

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import MonthSelector from './MonthSelector';
 
 describe('MonthSelector', () => {
@@ -25,177 +25,87 @@ describe('MonthSelector', () => {
     vi.clearAllMocks();
   });
 
+  const openPicker = () => fireEvent.click(screen.getByRole('button', { name: 'December 2024' }));
+
   describe('Rendering', () => {
-    it('renders year selector with correct value', () => {
+    it('shows the month as the title, with the picker closed', () => {
       render(<MonthSelector {...defaultProps} />);
-      
-      const yearSelect = screen.getByLabelText('Year:');
-      expect(yearSelect.value).toBe('2024');
+
+      const title = screen.getByRole('button', { name: 'December 2024' });
+      expect(title).toHaveAttribute('aria-expanded', 'false');
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
 
-    it('renders month selector with correct value', () => {
+    it('the picker has the year (2000 to this year + 2) and the 12 months, the selected one pressed', () => {
       render(<MonthSelector {...defaultProps} />);
-      
-      const monthSelect = screen.getByLabelText('Month:');
-      expect(monthSelect.value).toBe('12');
-    });
+      openPicker();
 
-    it('renders all 12 months', () => {
-      render(<MonthSelector {...defaultProps} />);
-      
-      const monthSelect = screen.getByLabelText('Month:');
-      expect(monthSelect.options.length).toBe(12);
-      expect(screen.getByText('January')).toBeInTheDocument();
-      expect(screen.getByText('December')).toBeInTheDocument();
-    });
-
-    it('renders years from 2000 to currentYear+2', () => {
-      render(<MonthSelector {...defaultProps} />);
-      
       const yearSelect = screen.getByLabelText('Year:');
       const currentYear = new Date().getFullYear();
-      const expectedCount = (currentYear + 2) - 2000 + 1;
-      expect(yearSelect.options.length).toBe(expectedCount);
-      expect(screen.getByText('2000')).toBeInTheDocument();
-      expect(screen.getByText(String(currentYear + 2))).toBeInTheDocument();
+      expect(yearSelect.value).toBe('2024');
+      expect(yearSelect.options.length).toBe((currentYear + 2) - 2000 + 1);
+      const months = within(screen.getByRole('group', { name: 'Month' })).getAllByRole('button');
+      expect(months).toHaveLength(12);
+      expect(screen.getByRole('button', { name: 'December' })).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.getByRole('button', { name: 'January' })).toHaveAttribute('aria-pressed', 'false');
     });
 
-    it('renders Annual Summary button', () => {
+    it.each([
+      ['Annual Summary', 'View annual summary', 'mockOnViewAnnualSummary'],
+      ['Income Tax', 'View tax deductible expenses', 'mockOnViewTaxDeductible'],
+      ['Budgets', 'Manage budgets and view history', 'mockOnOpenBudgets'],
+      ['Analytics', 'View spending patterns and predictions', 'mockOnOpenAnalyticsHub'],
+      ['Financial', 'Manage loans, investments, and payment methods', 'mockOnOpenFinancialOverview']
+    ])('the %s button has its title and opens its view', (name, title, handler) => {
+      const handlers = {
+        mockOnViewAnnualSummary, mockOnViewTaxDeductible, mockOnOpenBudgets, mockOnOpenAnalyticsHub, mockOnOpenFinancialOverview
+      };
       render(<MonthSelector {...defaultProps} />);
-      expect(screen.getByText('📊 Annual Summary')).toBeInTheDocument();
+
+      const button = screen.getByRole('button', { name });
+      expect(button).toHaveAttribute('title', title);
+      fireEvent.click(button);
+      expect(handlers[handler]).toHaveBeenCalled();
     });
 
-    it('renders Income Tax button', () => {
+    it('does not render separate Manage Budgets, Budget History or Payment Methods buttons', () => {
       render(<MonthSelector {...defaultProps} />);
-      expect(screen.getByText('💰 Income Tax')).toBeInTheDocument();
-    });
-
-    it('renders Budgets button', () => {
-      render(<MonthSelector {...defaultProps} />);
-      expect(screen.getByText('💵 Budgets')).toBeInTheDocument();
-    });
-
-    it('does not render separate Manage Budgets or Budget History buttons', () => {
-      render(<MonthSelector {...defaultProps} />);
-      expect(screen.queryByText('💵 Manage Budgets')).not.toBeInTheDocument();
-      expect(screen.queryByText('📈 Budget History')).not.toBeInTheDocument();
-    });
-
-    it('renders Financial button', () => {
-      render(<MonthSelector {...defaultProps} />);
-      expect(screen.getByText('💼 Financial')).toBeInTheDocument();
-    });
-
-    it('does not render Payment Methods button', () => {
-      render(<MonthSelector {...defaultProps} />);
-      expect(screen.queryByText('💳 Payment Methods')).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /Manage Budgets|Budget History|Payment Methods/ })).not.toBeInTheDocument();
     });
   });
 
-  describe('Year selection', () => {
-    it('calls onMonthChange when year is changed', () => {
-      render(<MonthSelector {...defaultProps} />);
-      
-      const yearSelect = screen.getByLabelText('Year:');
-      fireEvent.change(yearSelect, { target: { value: '2025' } });
-      
-      expect(mockOnMonthChange).toHaveBeenCalledWith(2025, 12);
-    });
-
-    it('preserves selected month when year changes', () => {
+  describe('Picking a month', () => {
+    it('changing the year keeps the month', () => {
       render(<MonthSelector {...defaultProps} selectedMonth={6} />);
-      
-      const yearSelect = screen.getByLabelText('Year:');
-      fireEvent.change(yearSelect, { target: { value: '2023' } });
-      
+      fireEvent.click(screen.getByRole('button', { name: 'June 2024' }));
+
+      fireEvent.change(screen.getByLabelText('Year:'), { target: { value: '2023' } });
+
       expect(mockOnMonthChange).toHaveBeenCalledWith(2023, 6);
     });
-  });
 
-  describe('Month selection', () => {
-    it('calls onMonthChange when month is changed', () => {
-      render(<MonthSelector {...defaultProps} />);
-      
-      const monthSelect = screen.getByLabelText('Month:');
-      fireEvent.change(monthSelect, { target: { value: '6' } });
-      
-      expect(mockOnMonthChange).toHaveBeenCalledWith(2024, 6);
-    });
-
-    it('preserves selected year when month changes', () => {
+    it('picking a month keeps the year and closes the picker', () => {
       render(<MonthSelector {...defaultProps} selectedYear={2023} />);
-      
-      const monthSelect = screen.getByLabelText('Month:');
-      fireEvent.change(monthSelect, { target: { value: '3' } });
-      
+      fireEvent.click(screen.getByRole('button', { name: 'December 2023' }));
+
+      fireEvent.click(screen.getByRole('button', { name: 'March' }));
+
       expect(mockOnMonthChange).toHaveBeenCalledWith(2023, 3);
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    it('Escape and a click outside close the picker', () => {
+      render(<MonthSelector {...defaultProps} />);
+      openPicker();
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+      openPicker();
+      fireEvent.mouseDown(document.body);
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(mockOnMonthChange).not.toHaveBeenCalled();
     });
   });
-
-  describe('Button actions', () => {
-    it('calls onViewAnnualSummary when Annual Summary button is clicked', () => {
-      render(<MonthSelector {...defaultProps} />);
-      
-      fireEvent.click(screen.getByText('📊 Annual Summary'));
-      
-      expect(mockOnViewAnnualSummary).toHaveBeenCalled();
-    });
-
-    it('calls onViewTaxDeductible when Income Tax button is clicked', () => {
-      render(<MonthSelector {...defaultProps} />);
-      
-      fireEvent.click(screen.getByText('💰 Income Tax'));
-      
-      expect(mockOnViewTaxDeductible).toHaveBeenCalled();
-    });
-
-    it('calls onOpenBudgets when Budgets button is clicked', () => {
-      render(<MonthSelector {...defaultProps} />);
-      
-      fireEvent.click(screen.getByText('💵 Budgets'));
-      
-      expect(mockOnOpenBudgets).toHaveBeenCalled();
-    });
-
-    it('calls onOpenFinancialOverview when Financial button is clicked', () => {
-      render(<MonthSelector {...defaultProps} />);
-      
-      fireEvent.click(screen.getByText('💼 Financial'));
-      
-      expect(mockOnOpenFinancialOverview).toHaveBeenCalled();
-    });
-  });
-
-  describe('Button titles', () => {
-    it('has correct title for Annual Summary button', () => {
-      render(<MonthSelector {...defaultProps} />);
-      
-      const button = screen.getByText('📊 Annual Summary');
-      expect(button).toHaveAttribute('title', 'View annual summary');
-    });
-
-    it('has correct title for Income Tax button', () => {
-      render(<MonthSelector {...defaultProps} />);
-      
-      const button = screen.getByText('💰 Income Tax');
-      expect(button).toHaveAttribute('title', 'View tax deductible expenses');
-    });
-
-    it('has correct title for Budgets button', () => {
-      render(<MonthSelector {...defaultProps} />);
-      
-      const button = screen.getByText('💵 Budgets');
-      expect(button).toHaveAttribute('title', 'Manage budgets and view history');
-    });
-
-    it('has correct title for Financial button', () => {
-      render(<MonthSelector {...defaultProps} />);
-      
-      const button = screen.getByText('💼 Financial');
-      expect(button).toHaveAttribute('title', 'Manage loans, investments, and payment methods');
-    });
-  });
-
   describe('Month stepping', () => {
     it('steps to the previous month across a year boundary', () => {
       render(<MonthSelector {...defaultProps} selectedYear={2025} selectedMonth={1} />);
@@ -228,26 +138,15 @@ describe('MonthSelector', () => {
   describe('Edge cases', () => {
     it('handles January correctly', () => {
       render(<MonthSelector {...defaultProps} selectedMonth={1} />);
-      
-      const monthSelect = screen.getByLabelText('Month:');
-      expect(monthSelect.value).toBe('1');
+      expect(screen.getByRole('button', { name: 'January 2024' })).toBeInTheDocument();
     });
 
-    it('handles first year in range', () => {
-      render(<MonthSelector {...defaultProps} selectedYear={2020} />);
-      
-      const yearSelect = screen.getByLabelText('Year:');
-      expect(yearSelect.value).toBe('2020');
-    });
-
-    it('handles last year in range', () => {
-      render(<MonthSelector {...defaultProps} selectedYear={2030} />);
-      
-      const yearSelect = screen.getByLabelText('Year:');
-      expect(yearSelect.value).toBe('2030');
+    it('lists a selected year beyond this year + 2', () => {
+      render(<MonthSelector {...defaultProps} selectedYear={2040} />);
+      fireEvent.click(screen.getByRole('button', { name: 'December 2040' }));
+      expect(screen.getByLabelText('Year:').value).toBe('2040');
     });
   });
-
   describe('Prev/next navigation', () => {
     it('steps to the next month across a year boundary', () => {
       render(<MonthSelector {...defaultProps} selectedYear={2024} selectedMonth={12} />);

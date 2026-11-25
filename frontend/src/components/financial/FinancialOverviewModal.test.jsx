@@ -181,13 +181,13 @@ describe('FinancialOverviewModal', () => {
   describe('Rendering', () => {
     it('should not render when isOpen is false', () => {
       render(<FinancialOverviewModal {...defaultProps} isOpen={false} />);
-      expect(screen.queryByText('💼 Financial Overview')).not.toBeInTheDocument();
+      expect(screen.queryByText('Financial Overview')).not.toBeInTheDocument();
     });
 
     it('should render when isOpen is true', async () => {
       render(<FinancialOverviewModal {...defaultProps} />);
       await waitFor(() => {
-        expect(screen.getByText('💼 Financial Overview')).toBeInTheDocument();
+        expect(screen.getByText('Financial Overview')).toBeInTheDocument();
       });
     });
 
@@ -232,7 +232,7 @@ describe('FinancialOverviewModal', () => {
     it('should call onClose when overlay is clicked', async () => {
       const onClose = vi.fn();
       render(<FinancialOverviewModal {...defaultProps} onClose={onClose} />);
-      await waitFor(() => expect(screen.getByText('💼 Financial Overview')).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByText('Financial Overview')).toBeInTheDocument());
 
       const overlay = document.querySelector('.modal-overlay');
       fireEvent.click(overlay);

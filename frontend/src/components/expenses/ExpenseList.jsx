@@ -276,6 +276,7 @@ const ExpenseList = memo(({
   awaitingFirstLoad = false
 }) => {
   const [deletingId, setDeletingId] = useState(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [expenseToDelete, setExpenseToDelete] = useState(null);
@@ -861,6 +862,7 @@ const ExpenseList = memo(({
     return null;
   };
 
+  const localFilterCount = [localFilterType, localFilterMethod, localFilterInvoice, localFilterInsurance].filter(Boolean).length;
   const filterStatusMessage = getFilterStatusMessage();
   const noExpensesMessage = filteredExpenses.length === 0 ? filterStatusMessage : null;
 
@@ -869,7 +871,19 @@ const ExpenseList = memo(({
       <div className="expense-list-header">
         <h2>Expense List</h2>
         <div className="header-controls">
-          <div className="filter-controls">
+          {/* Phones: the filter selects collapse behind this toggle (hidden on wider screens) */}
+          <button
+            type="button"
+            className="filters-toggle"
+            aria-expanded={filtersOpen}
+            aria-controls="expense-list-filters"
+            onClick={() => setFiltersOpen(open => !open)}
+          >
+            <Icon name="filter" size={16} />
+            Filters
+            {localFilterCount > 0 && <span className="filters-toggle-count">{localFilterCount}</span>}
+          </button>
+          <div id="expense-list-filters" className={`filter-controls${filtersOpen ? ' open' : ''}`}>
             {/* Filter count badge (Requirements 3.1, 3.2, 3.3) */}
             {totalFilterCount > 0 && (
               <span className="filter-count-badge" data-testid="filter-count-badge">

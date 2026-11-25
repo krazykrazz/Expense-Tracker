@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.33.0] - 2026-11-25
+
+### Bank confirmation on loan payments, Plaid and notifications audit fixes (cross-site request guard), Plaid screens UI review
+
 ## [1.32.2] - 2026-11-24
 
 ### Bank deposits can now be counted as a part payment against a reimbursement entered by hand

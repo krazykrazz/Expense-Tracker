@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.33.0',
+    date: "November 25, 2026",
+    added: [],
+    changed: ["Bank confirmation on loan payments, Plaid and notifications audit fixes (cross-site request guard), Plaid screens UI review"],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.32.2',
     date: "November 24, 2026",
     added: [],

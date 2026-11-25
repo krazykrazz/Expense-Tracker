@@ -1,7 +1,7 @@
-import { formatDateTime } from '../../../utils/formatters';
+import { formatBankTime } from '../bankBalanceUtils';
 import { INSTITUTION_STATUS_TEXT } from './connectionStatus';
 
-const formatIso = (iso) => (iso ? formatDateTime(iso) : null);
+const formatIso = (iso) => (iso ? formatBankTime(iso) : null);
 
 /** "Bank data updated by Plaid: <time>" plus, when it's unhealthy, Plaid's status for the institution. */
 const BankFreshness = ({ item }) => {

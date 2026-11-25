@@ -21,13 +21,15 @@ const formatDateTime = (iso) => {
     : date.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 };
 
-/** "6:40 am" for today, "Nov 7, 6:40 am" otherwise. */
+/** "6:40 am" for today, "Nov 7, 6:40 am" this year, "Sep 22, 2025, 6:40 am" before. */
 export function formatBankTime(iso, now = Date.now()) {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return null;
-  return date.toDateString() === new Date(now).toDateString()
-    ? date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
-    : formatDateTime(iso);
+  const today = new Date(now);
+  if (date.toDateString() === today.toDateString()) return date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  return date.getFullYear() === today.getFullYear()
+    ? formatDateTime(iso)
+    : date.toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
 /**

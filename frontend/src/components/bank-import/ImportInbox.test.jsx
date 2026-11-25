@@ -96,7 +96,11 @@ describe('ImportInbox', () => {
 
     renderInbox();
     expect(await screen.findByText('Possible match')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Match' }));
+    const toggle = screen.getByRole('button', { name: 'Match' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(toggle);
+    // The open action says so, for the eye (its style) and for screen readers
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
     const picker = document.querySelector('.inbox-match-picker');
     fireEvent.click(within(picker).getByRole('button', { name: 'Match' }));
 
@@ -527,7 +531,8 @@ describe('ImportInbox', () => {
 
     renderInbox();
     expect(await screen.findByText('Refund / credit')).toBeInTheDocument();
-    expect(screen.getByText('-$10.00')).toBeInTheDocument();
+    // Money in reads as +$, whatever sign Plaid gives it
+    expect(screen.getByText('+$10.00')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Add' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Ignore' }));
 

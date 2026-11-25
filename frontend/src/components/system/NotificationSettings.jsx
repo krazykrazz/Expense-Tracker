@@ -119,7 +119,7 @@ const NotificationSettings = () => {
             <input
               value={fields.channelId}
               onChange={(event) => setFields(prev => ({ ...prev, channelId: event.target.value }))}
-              placeholder="18 or 19 digits"
+              placeholder="17 to 20 digits"
               inputMode="numeric"
               autoComplete="off"
               spellCheck={false}

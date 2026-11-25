@@ -159,6 +159,8 @@ Each row in To review has a small **Not an expense** action to move it the other
 | **Record payment**, **Link to card payment**, **Record payment to…** | Credit card payments; see [Credit card payments](#credit-card-payments). |
 
 - Refunds and credits on a credit card (zero or negative amounts) are labelled *Refund / credit*, unless they look like a card payment (*Card payment*). They can be applied to the purchase they refund (see [Refunds and repayments](#refunds-and-repayments-lower-what-the-expense-cost)), recorded as a payment or ignored, never added as an expense. Money coming into a bank account is labelled *Deposit* (see [Income](#income-confirm-a-deposit)).
+- **Amounts read as money in or out**: money in (a deposit, a refund, a card payment received) shows in green as **+$13.54**, money out as **$13.54** (Plaid itself sends money in as a negative number).
+- The action whose form or picker is open below a row stays highlighted; selecting it again closes it.
 - Amounts in a currency other than CAD get a badge; they are not converted.
 - Rows that can't be shown say so above the list: **hidden because the account has no payment method** (with a **Map accounts** link), or **hidden because they belong to an account the bank connection never listed** (nothing to map).
 - **Ignored rows are deleted after 2 months** (by purchase date), once a day. Rows linked to an expense, income, payment or fixed expense, and rows still to review, are never deleted. The period is the `plaid_retention_months` setting (whole months, 1 to 120; there is no screen for it yet). Nothing runs while Plaid isn't configured.

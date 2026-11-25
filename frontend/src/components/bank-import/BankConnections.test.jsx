@@ -148,6 +148,14 @@ describe('BankConnections', () => {
       await waitFor(() => expect(plaidApi.linkBankAccountInvestment).toHaveBeenLastCalledWith(1, null));
     });
 
+    it('names account kinds as written in Canada: RRSP, RESP, chequing', async () => {
+      render(<BankConnections status={sandbox} onStatusChange={vi.fn()} />);
+      await screen.findByLabelText('Investment for RRSP');
+
+      const kinds = [...document.querySelectorAll('.bank-account > span:first-child .bank-import-muted')].map(el => el.textContent.trim());
+      expect(kinds).toEqual(['RRSP', 'RESP', 'chequing']);
+    });
+
     it('does not offer an RESP for linking, and leaves deposit accounts on payment methods', async () => {
       render(<BankConnections status={sandbox} onStatusChange={vi.fn()} />);
 

@@ -44,6 +44,7 @@ export const CardPaymentButtons = ({ txn, unconnectedCards, expanded, onExpand, 
         className={cp.kind ? 'bank-import-primary' : 'bank-import-secondary'}
         onClick={() => toggle('card-payment')}
         disabled={busy || txn.pending}
+        aria-expanded={expanded === 'card-payment'}
         title={txn.pending ? 'Pending at the bank: record it once it settles' : undefined}
       >
         Record payment
@@ -51,10 +52,18 @@ export const CardPaymentButtons = ({ txn, unconnectedCards, expanded, onExpand, 
     );
   }
   if (cp.paymentCandidates.length > 0) {
-    return <button className="bank-import-primary" onClick={() => toggle('link-payment')} disabled={busy}>Link to card payment</button>;
+    return (
+      <button className="bank-import-primary" onClick={() => toggle('link-payment')} disabled={busy} aria-expanded={expanded === 'link-payment'}>
+        Link to card payment
+      </button>
+    );
   }
   if (unconnectedCards.length > 0 && cp.pairCandidates.length === 0 && (cp.kind || cp.looksLikeCardPayment)) {
-    return <button className="bank-import-secondary" onClick={() => toggle('record-to-card')} disabled={busy}>Record payment to…</button>;
+    return (
+      <button className="bank-import-secondary" onClick={() => toggle('record-to-card')} disabled={busy} aria-expanded={expanded === 'record-to-card'}>
+        Record payment to…
+      </button>
+    );
   }
   return null;
 };

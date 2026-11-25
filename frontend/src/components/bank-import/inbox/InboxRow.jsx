@@ -43,7 +43,7 @@ const InboxRow = ({ txn, filter, expanded, onExpand, onAction, busy, error, unco
             {txn.paymentMethodName}{txn.accountMask ? ` · ••${txn.accountMask}` : ''}
           </div>
         </div>
-        <div className={`inbox-row-amount ${txn.amount <= 0 ? 'credit' : ''}`}>
+        <div className={`inbox-row-amount ${txn.amount <= 0 ? 'credit' : ''}`} title={txn.amount < 0 ? 'Money in' : 'Money out'}>
           {formatSigned(txn.amount)}
           {txn.isoCurrencyCode && txn.isoCurrencyCode !== EXPECTED_CURRENCY && (
             <span className="inbox-badge warning" title="Not converted">{txn.isoCurrencyCode}</span>
@@ -88,14 +88,15 @@ const InboxRow = ({ txn, filter, expanded, onExpand, onAction, busy, error, unco
         <div className="inbox-row-actions">
           {filter === 'new' ? (
             <>
-              {txn.canAdd && <button className="bank-import-secondary" onClick={() => toggle('add')} disabled={busy}>Add</button>}
-              {hasCandidates && <button className="bank-import-secondary" onClick={() => toggle('match')} disabled={busy}>Match</button>}
-              {txn.isDeposit && <button className="bank-import-secondary" onClick={() => toggle('add-income')} disabled={busy}>Add income</button>}
+              {txn.canAdd && <button className="bank-import-secondary" onClick={() => toggle('add')} disabled={busy} aria-expanded={isOpen('add')}>Add</button>}
+              {hasCandidates && <button className="bank-import-secondary" onClick={() => toggle('match')} disabled={busy} aria-expanded={isOpen('match') || isOpen('split')}>Match</button>}
+              {txn.isDeposit && <button className="bank-import-secondary" onClick={() => toggle('add-income')} disabled={busy} aria-expanded={isOpen('add-income')}>Add income</button>}
               {txn.isDeposit && !txn.pending && (
                 <button
                   className={txn.insurance?.suggested ? 'bank-import-primary' : 'bank-import-secondary'}
                   onClick={() => toggle('insurance')}
                   disabled={busy}
+                  aria-expanded={isOpen('insurance')}
                 >
                   Apply to insurance
                 </button>
@@ -105,6 +106,7 @@ const InboxRow = ({ txn, filter, expanded, onExpand, onAction, busy, error, unco
                   className={txn.reimbursement.suggested && !txn.insurance?.suggested ? 'bank-import-primary' : 'bank-import-secondary'}
                   onClick={() => toggle('reimbursement')}
                   disabled={busy}
+                  aria-expanded={isOpen('reimbursement')}
                   title={txn.reimbursement.kind === 'refund'
                     ? 'A refund for a purchase on this card: lowers what it cost and records the credit on the card'
                     : 'Someone paid you back for an expense: lowers what it cost you'}
@@ -115,7 +117,14 @@ const InboxRow = ({ txn, filter, expanded, onExpand, onAction, busy, error, unco
               <CardPaymentButtons txn={txn} unconnectedCards={unconnectedCards} expanded={expanded} onExpand={onExpand} busy={busy} />
               <button className="bank-import-secondary" onClick={() => onAction('ignore')} disabled={busy}>Ignore</button>
               {notExpense ? (
-                <button className="bank-import-secondary" onClick={() => onAction('bucket', 'spending')} disabled={busy}>Move to To review</button>
+                <button
+                  className="bank-import-link"
+                  title="Spending after all: move it back to To review"
+                  onClick={() => onAction('bucket', 'spending')}
+                  disabled={busy}
+                >
+                  Move to To review
+                </button>
               ) : (
                 <button
                   className="bank-import-link"

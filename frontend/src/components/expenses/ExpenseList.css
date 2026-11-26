@@ -1577,8 +1577,8 @@
 
 .expense-table .edit-button,
 .expense-table .delete-button {
-  min-width: 30px;
-  height: 30px;
+  min-width: 26px;
+  height: 22px;
   padding: 0;
   color: var(--text-secondary);
   background: transparent;
@@ -1598,6 +1598,17 @@
   color: var(--action-color);
   background: color-mix(in srgb, var(--action-fill) 12%, transparent);
   border-color: transparent;
+}
+
+/* Desktop table: the actions column is only as wide as its two icons */
+@media (min-width: 769px) {
+  .expense-table thead th:last-child,
+  .expense-table td:last-child {
+    width: 1%;
+    padding-left: var(--spacing-1);
+    padding-right: var(--spacing-2);
+    white-space: nowrap;
+  }
 }
 
 /* With a mouse, actions appear on row hover or keyboard focus */

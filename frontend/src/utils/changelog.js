@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.34.0',
+    date: "November 26, 2026",
+    added: [],
+    changed: ["UI freshness: month title and picker, calm modal headers and banners, quiet row actions, phone filters"],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.33.0',
     date: "November 25, 2026",
     added: [],

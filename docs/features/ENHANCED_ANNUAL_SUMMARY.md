@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Annual Summary is a yearly financial overview opened from the "📊 Annual Summary" button in the month selector. It shows summary cards, a year-over-year comparison, income by category, and monthly charts for the selected year.
+The Annual Summary is a yearly financial overview opened from the "Annual Summary" button in the month selector. It shows summary cards, a year-over-year comparison, income by category, and monthly charts for the selected year.
 
 ## Features
 

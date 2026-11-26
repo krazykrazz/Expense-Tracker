@@ -312,9 +312,8 @@ describe('App Integration Tests - Global Expense Filtering', () => {
       );
     });
 
-    // Switch to a different month using the month dropdown (by ID)
-    const monthSelect = document.getElementById('month-select');
-    await user.selectOptions(monthSelect, '1'); // January
+    // Switch to a different month
+    await user.click(screen.getByRole('button', { name: 'Previous month' }));
 
     // Wait for month change
     await waitFor(() => {

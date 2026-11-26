@@ -396,6 +396,14 @@
   transform: scale(0.95);
 }
 
+.modal-title-icon {
+  display: inline-block;
+  flex-shrink: 0;
+  margin-right: 10px;
+  vertical-align: -4px;
+  color: var(--color-primary-text);
+}
+
 /* Accessibility: Respect reduced motion preferences for modals */
 @media (prefers-reduced-motion: reduce) {
   .modal-overlay {
@@ -511,6 +519,28 @@
   margin-bottom: var(--spacing-3);
   cursor: pointer;
   transition: var(--transition-card);
+}
+
+/* Shared calm surface for notification banners: each sets --banner-accent for its severity */
+.reminder-banner,
+.credit-card-reminder-banner,
+.billing-cycle-reminder-banner,
+.auto-generated-cycle-banner,
+.insurance-claim-reminder-banner,
+.data-reminder-banner {
+  background: color-mix(in srgb, var(--banner-accent, var(--color-primary)) 8%, var(--bg-card));
+  border: 1px solid color-mix(in srgb, var(--banner-accent, var(--color-primary)) 28%, var(--border-default));
+  border-left: 4px solid var(--banner-accent, var(--color-primary));
+  box-shadow: none;
+}
+
+.reminder-banner:hover,
+.credit-card-reminder-banner:hover,
+.billing-cycle-reminder-banner:hover,
+.auto-generated-cycle-banner:hover,
+.insurance-claim-reminder-banner:hover,
+.data-reminder-banner:hover {
+  background: color-mix(in srgb, var(--banner-accent, var(--color-primary)) 13%, var(--bg-card));
 }
 
 /* Tablet breakpoint for intermediate responsive behavior */

@@ -1,3 +1,4 @@
+import Icon from './Icon';
 import './FloatingAddButton.css';
 
 const FloatingAddButton = ({ onAddExpense, expenseCount = 0 }) => {
@@ -13,7 +14,7 @@ const FloatingAddButton = ({ onAddExpense, expenseCount = 0 }) => {
       aria-label="Add new expense"
       title="Add new expense"
     >
-      <span className="fab-icon">+</span>
+      <span className="fab-icon"><Icon name="plus" size={24} /></span>
       <span className="fab-text">Add Expense</span>
     </button>
   );

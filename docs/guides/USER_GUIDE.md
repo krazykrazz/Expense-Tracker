@@ -29,13 +29,13 @@ After deploying the application via Docker, access it at http://localhost:2424 i
 ### Screen Layout
 
 - **Header** (icon buttons, right side; hover for a tooltip): light/dark theme toggle (moon/sun), **System** (monitor icon: system information, backups, activity log, tools), **Settings** (sliders icon: retention, backup configuration, people, security), and the user menu (person icon: logout, when a password is set)
-- **Month selector**: **📊 Annual Summary**, **💰 Income Tax**, **💵 Budgets**, **📈 Analytics**, **💼 Financial**, plus previous/next month buttons, year and month dropdowns, and a jump-to-current-month button
+- **Month selector**: the month title with previous/next buttons (click the title to pick a year and month, and **This month** jumps back to today), plus the **Annual Summary**, **Income Tax**, **Budgets**, **Analytics** and **Financial** views
 - **Left column**: the expense list for the selected month (or the global filter results)
 - **Right column**: global filters above the **Monthly Summary** panel (notifications, income, balance, fixed and variable expenses, weekly breakdown, payment methods, expense types)
 
 ### First-Time Setup
 
-1. **Add Payment Methods** - **💼 Financial** → Payment Methods → **+ Add**
+1. **Add Payment Methods** - **Financial** → Payment Methods → **+ Add**
 2. **Set Up Income Sources** - **Manage Income** on the Monthly Income card
 3. **Configure Fixed Expenses** - **Manage Fixed** on the Fixed Expenses card
 4. **Add Family Members** (Optional) - **⚙️ Settings** → **👥 People**, for medical expense tracking
@@ -51,8 +51,10 @@ After deploying the application via Docker, access it at http://localhost:2424 i
 
 ### Editing and Deleting
 
-- **Edit**: Click the edit button (✏️) next to any expense
-- **Delete**: Click the delete button (🗑️) next to any expense
+- **Edit**: Click the pencil button on the expense's row
+- **Delete**: Click the bin button on the expense's row
+
+With a mouse, the buttons appear when you hover over (or tab into) a row; on touch screens they are always shown.
 
 ### Global Filtering
 
@@ -72,7 +74,7 @@ While any global filter is active, a "Global View" banner lists the active filte
 
 - Expenses are grouped by date, with a daily total on each date header
 - **Quick views**: **All**, **Needs review** (tax-deductible expenses missing an invoice, or medical expenses missing a person or with an open claim), **Tax-deductible**, **Recurring**
-- **Local filters**: Type, Method, Invoice and Insurance dropdowns narrow the current list without leaving the monthly view
+- **Local filters**: Type, Method, Invoice and Insurance dropdowns narrow the current list without leaving the monthly view. On phones they sit behind a **Filters** button, which shows how many are set
 - **Pagination**: 25, 50 (default), 100 or All per page
 
 ### Expense Form Sections
@@ -115,7 +117,7 @@ The application supports multi-device access with automatic data synchronization
 
 ### Viewing Payment Methods
 
-Click **"💼 Financial"** in the month selector. The Financial Overview shows Payment Methods, Loans and Investments sections, with net worth in the header. Payment methods are split into **Active** and **Inactive** tabs.
+Click **"Financial"** in the month selector. The Financial Overview shows Payment Methods, Loans and Investments sections, with net worth in the header. Payment methods are split into **Active** and **Inactive** tabs.
 
 ### Adding Payment Methods
 
@@ -273,7 +275,7 @@ Use **"📋 Copy from Previous Month"** in the income modal, or **"📋 Carry Fo
 
 ### Viewing Loans
 
-Click **"💼 Financial"** in the month selector. The Loans section has **Active Loans** and **Paid Off** tabs, and a **📊 View Total Debt Trend** button.
+Click **"Financial"** in the month selector. The Loans section has **Active Loans** and **Paid Off** tabs, and a **📊 View Total Debt Trend** button.
 
 ### Adding Loans
 
@@ -305,7 +307,7 @@ Convert existing balance entries to payment format using the migration tool in t
 
 ### Viewing Investments
 
-Click **"💼 Financial"** in the month selector and scroll to the Investments section.
+Click **"Financial"** in the month selector and scroll to the Investments section.
 
 ### Adding Investments
 
@@ -336,13 +338,13 @@ See reminder banners when investment values need updating for the current month.
 
 ### Managing Budgets
 
-1. Click **"💵 Budgets"** in the month selector
-2. On the **📋 Manage** tab, set limits for any budgetable category. A suggested amount based on recent spending is shown where available
+1. Click **"Budgets"** in the month selector
+2. On the **Manage** tab, set limits for any budgetable category. A suggested amount based on recent spending is shown where available
 3. If a month has no budgets yet, the previous month's budgets are shown (they are saved to the month when you change one); **📋 Copy from Previous Month** saves them in one step
 
 ### Planning Savings and Investments
 
-On the **🧭 Plan** tab you can see where the month's income goes: fixed expenses, category budgets, and savings/investment allocations (RRSP, TFSA, emergency fund, any goal), leaving an **Unassigned** amount. Allocations are plans only and are not counted as spending. When a month has allocations, the Balance card on the main screen also shows **After planned savings**. Analytics → Cash Flow, the Annual Summary and Budgets → History compare planned savings with what you actually saved, and a notification appears when budgets plus planned savings exceed income. See the [Budget Management Guide](BUDGET_MANAGEMENT_GUIDE.md#monthly-plan).
+On the **Plan** tab you can see where the month's income goes: fixed expenses, category budgets, and savings/investment allocations (RRSP, TFSA, emergency fund, any goal), leaving an **Unassigned** amount. Allocations are plans only and are not counted as spending. When a month has allocations, the Balance card on the main screen also shows **After planned savings**. Analytics → Cash Flow, the Annual Summary and Budgets → History compare planned savings with what you actually saved, and a notification appears when budgets plus planned savings exceed income. See the [Budget Management Guide](BUDGET_MANAGEMENT_GUIDE.md#monthly-plan).
 
 ### Monitoring Progress
 
@@ -365,7 +367,7 @@ Clicking an alert shows that category's expenses in the expense list. Dismissing
 
 ### Budget History
 
-Click **"💵 Budgets"** and select the **📊 History** tab to analyze budget performance over 3, 6, or 12 months, and export it to CSV.
+Click **"Budgets"** and select the **History** tab to analyze budget performance over 3, 6, or 12 months, and export it to CSV.
 
 ## Medical Expenses
 
@@ -402,7 +404,7 @@ Click **"💵 Budgets"** and select the **📊 History** tab to analyze budget p
 
 ### Tax Reports
 
-1. Click **"💰 Income Tax"** in the month selector
+1. Click **"Income Tax"** in the month selector
 2. Review totals (medical, donations), the **📊 Year-over-Year Comparison** and the **🧮 Tax Credit Calculator** (enter your annual net income)
 3. Check **"Group Medical Expenses by Person"** to see medical expenses per family member, with per-provider subtotals
 4. Filter by claim status or invoice attachment status
@@ -411,7 +413,7 @@ Click **"💵 Budgets"** and select the **📊 History** tab to analyze budget p
 
 ### Analytics Hub
 
-Click **"📈 Analytics"** in the month selector. The hub has these tabs:
+Click **"Analytics"** in the month selector. The hub has these tabs:
 
 - **Monthly Summary** - Totals, month-over-month change, top categories and merchants, and budget summary for the selected month
 - **Spending** - Spending over a period (Month, Year to date, Last 12 months, Full year; step with ‹ ›), with a category breakdown. Click a category to see its transactions for that period in the expense list
@@ -420,13 +422,13 @@ Click **"📈 Analytics"** in the month selector. The hub has these tabs:
 
 ### Annual Summary
 
-Click **"📊 Annual Summary"** in the month selector for a yearly overview with a year-over-year comparison.
+Click **"Annual Summary"** in the month selector for a yearly overview with a year-over-year comparison.
 
 ## Merchant Analytics
 
 ### Viewing Merchant Analytics
 
-1. Click **"📈 Analytics"** in the month selector
+1. Click **"Analytics"** in the month selector
 2. Select the **Merchants** tab
 
 ### Analyzing Top Merchants

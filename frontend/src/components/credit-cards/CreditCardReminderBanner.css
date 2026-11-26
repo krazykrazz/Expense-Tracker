@@ -21,26 +21,14 @@
 
 /* Due soon - warning style (yellow/orange) */
 .credit-card-reminder-banner.due-soon {
-  background: linear-gradient(135deg, light-dark(#fff3cd, hsl(46 55% 17%)) 0%, light-dark(#ffeeba, hsl(45 55% 17%)) 100%);
-  border: 1px solid #ffc107;
+  --banner-accent: #ffc107;
   color: light-dark(#856404, hsl(45 80% 78%));
 }
 
 /* Overdue - urgent style (red) */
 .credit-card-reminder-banner.overdue {
-  background: linear-gradient(135deg, light-dark(#f8d7da, hsl(355 55% 17%)) 0%, light-dark(#f5c6cb, hsl(354 55% 17%)) 100%);
-  border: 1px solid #dc3545;
+  --banner-accent: #dc3545;
   color: light-dark(#721c24, hsl(354 61% 78%));
-  animation: pulse-urgent 2s ease-in-out infinite;
-}
-
-@keyframes pulse-urgent {
-  0%, 100% {
-    box-shadow: 0 2px 8px rgba(220, 53, 69, 0.2);
-  }
-  50% {
-    box-shadow: 0 4px 16px rgba(220, 53, 69, 0.4);
-  }
 }
 
 .credit-card-reminder-banner .reminder-content {
@@ -246,14 +234,12 @@
 /* Dark mode support */
 :root[data-theme='dark'] {
   .credit-card-reminder-banner.due-soon {
-    background: linear-gradient(135deg, #3d3a2e 0%, #4a4530 100%);
-    border-color: #d4a106;
+    --banner-accent: #d4a106;
     color: #ffc107;
   }
 
   .credit-card-reminder-banner.overdue {
-    background: linear-gradient(135deg, #3d2a2c 0%, #4a3033 100%);
-    border-color: #c82333;
+    --banner-accent: #c82333;
     color: #f5c6cb;
   }
 

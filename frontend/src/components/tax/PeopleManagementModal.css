@@ -28,9 +28,9 @@
   justify-content: space-between;
   align-items: center;
   padding: var(--spacing-6, 24px);
-  border-bottom: 1px solid var(--border-muted, #f1f5f9);
-  background: linear-gradient(135deg, light-dark(#39843c, #4CAF50) 0%, light-dark(#39833c, #45a049) 100%);
-  color: white;
+  border-bottom: 1px solid var(--border-default);
+  background: var(--bg-card);
+  color: var(--text-primary);
   border-radius: var(--radius-xl, 16px) var(--radius-xl, 16px) 0 0;
 }
 
@@ -38,23 +38,23 @@
   margin: 0;
   font-size: var(--text-2xl, 20px);
   font-weight: var(--font-semibold, 600);
-  color: white;
+  color: var(--text-primary);
 }
 
 .people-modal-close {
-  background: rgba(255, 255, 255, 0.2);
+  background: transparent;
   border: none;
   font-size: 18px;
   cursor: pointer;
-  color: white;
+  color: var(--text-secondary);
   padding: var(--spacing-2, 8px) var(--spacing-3, 12px);
   border-radius: var(--radius-md, 8px);
   transition: all var(--transition-fast, 150ms ease);
 }
 
 .people-modal-close:hover {
-  background: rgba(255, 255, 255, 0.3);
-  transform: scale(1.05);
+  background: var(--bg-muted);
+  color: var(--text-primary);
 }
 
 .people-modal-close:active {

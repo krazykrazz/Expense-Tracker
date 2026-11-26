@@ -8,8 +8,7 @@
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   /* Green/teal color scheme - distinct from other reminder types */
-  background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
-  border: 1px solid #28a745;
+  --banner-accent: #28a745;
   color: light-dark(#155724, hsl(134 61% 78%));
 }
 
@@ -179,8 +178,7 @@
 /* Dark mode support */
 :root[data-theme='dark'] {
   .insurance-claim-reminder-banner {
-    background: linear-gradient(135deg, #1a3d24 0%, #1e4a2d 100%);
-    border-color: #28a745;
+    --banner-accent: #28a745;
     color: #c3e6cb;
   }
 

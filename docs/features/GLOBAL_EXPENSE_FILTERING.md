@@ -19,14 +19,14 @@ These are separate from the expense list's own local dropdowns (Type, Method, In
 
 ### Monthly View (Default)
 
-Shows the month chosen in the month selector (`GET /api/expenses?year=Y&month=M`). The selector has previous/next month buttons and a jump-to-current-month button.
+Shows the month chosen in the month selector (`GET /api/expenses?year=Y&month=M`). The selector shows the month as a title with previous/next buttons; clicking the title opens a picker (year select plus a month grid), and **This month** jumps back to the current month.
 
 ### Global View
 
 `isGlobalView` is true when any of these is set: search text, category, payment method, year, insurance status, start date, or end date. Insurance status is set only by the `filterByInsuranceStatus` window event (insurance notification click-through).
 
 In global view:
-- A "🔍 Global View" banner lists the active triggers ("Triggered by: Search, Category, Date Range (…)") with a **📅 Return to Monthly View** button.
+- A "Global View" banner lists the active triggers ("Triggered by: Search, Category, Date Range (…)") with a **Return to Monthly View** button.
 - The month selector is dimmed and non-interactive.
 - Expenses are fetched with `GET /api/expenses` plus `year`, `startDate`, `endDate` when set. With no year or dates, all expenses are fetched.
 - Search, category and payment method are then applied client-side (AND logic).

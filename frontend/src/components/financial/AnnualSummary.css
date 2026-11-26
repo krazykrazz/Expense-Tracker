@@ -11,7 +11,8 @@
 }
 
 .annual-summary-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-default);
   border-radius: var(--radius-xl, 16px) var(--radius-xl, 16px) 0 0;
   padding: var(--spacing-5, 20px) var(--spacing-6, 24px);
   margin-bottom: var(--spacing-5, 20px);
@@ -19,7 +20,7 @@
 
 .annual-summary-header h2 {
   margin: 0;
-  color: white;
+  color: var(--text-primary);
   font-size: var(--heading-2, 20px);
   font-weight: var(--font-semibold, 600);
   font-family: var(--font-sans);

@@ -40,7 +40,7 @@ The Investment Tracking feature enables users to monitor their investment portfo
 ## User Interface
 
 ### Investments Section (Financial Overview Modal)
-Open the Financial Overview modal with the "💼 Financial" button in the month selector. The "📈 Investments (N)" section is rendered by `InvestmentsSection` in `frontend/src/components/financial/FinancialOverviewModal.jsx`, with one `InvestmentRow` per investment.
+Open the Financial Overview modal with the "Financial" button in the month selector. The "📈 Investments (N)" section is rendered by `InvestmentsSection` in `frontend/src/components/financial/FinancialOverviewModal.jsx`, with one `InvestmentRow` per investment.
 
 **Features**:
 - List of all investments with current values

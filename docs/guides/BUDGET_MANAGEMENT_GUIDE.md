@@ -19,19 +19,19 @@ The Budget Tracking & Alerts feature helps you control spending by setting month
 | Where | The question it answers |
 |-------|-------------------------|
 | **Main screen → Monthly Summary** | How is this month going? Balance (income − fixed − variable spending), plus *After planned savings* when you have allocations. A notification appears when the plan is over income |
-| **💵 Budgets → 📋 Manage** | What may I spend per category? |
-| **💵 Budgets → 🧭 Plan** | Where does this month's income go? Fixed expenses, category budgets, savings and investments, and what is left **Unassigned** |
-| **💵 Budgets → 📊 History** | How did I do against my category budgets and planned savings? |
-| **📈 Analytics → Cash Flow / Monthly Summary** | What actually happened? Actuals only; planned savings are not spending. Cash Flow compares what you saved with what you planned |
-| **📊 Annual Summary** | The year's planned savings next to the actual Balance |
-| **💼 Financial** | The TFSA/RRSP accounts themselves |
+| **Budgets → Manage** | What may I spend per category? |
+| **Budgets → Plan** | Where does this month's income go? Fixed expenses, category budgets, savings and investments, and what is left **Unassigned** |
+| **Budgets → History** | How did I do against my category budgets and planned savings? |
+| **Analytics → Cash Flow / Monthly Summary** | What actually happened? Actuals only; planned savings are not spending. Cash Flow compares what you saved with what you planned |
+| **Annual Summary** | The year's planned savings next to the actual Balance |
+| **Financial** | The TFSA/RRSP accounts themselves |
 
 ## Getting Started
 
 ### Setting Your First Budget
 
 1. **Navigate to the month** you want to budget for using the month selector
-2. **Click "💵 Budgets"** button in the month selector area
+2. **Click "Budgets"** button in the month selector area
 3. **Enter budget amounts** for the categories you want to track:
    - **Food**: Groceries, restaurants, takeout
    - **Gas**: Fuel for vehicles
@@ -125,7 +125,7 @@ Below the summary, individual cards show progress for each budgeted category wit
 
 ## Monthly Plan
 
-The **🧭 Plan** tab shows where this month's income goes:
+The **Plan** tab shows where this month's income goes:
 
 | Line | Meaning |
 |------|---------|
@@ -139,7 +139,7 @@ Below that, **So far this month** shows your **Balance** (the same figure as the
 
 ### Savings & Investments
 
-- Click **➕ Add allocation**, enter a name and an amount, and optionally link one of your TFSA/RRSP accounts from **💼 Financial** (picking an account fills in the name).
+- Click **➕ Add allocation**, enter a name and an amount, and optionally link one of your TFSA/RRSP accounts from **Financial** (picking an account fills in the name).
 - Allocations are a **plan only**. They are not expenses, don't count as spending, and nothing is recorded as contributed.
 - Like budgets, a month with no allocations shows last month's, and they are saved to the month when you change one. Copying income (**Manage Income → Copy from Previous Month**) or fixed expenses (**Carry Forward from Previous Month**) also saves them, so the month keeps its plan even if you later change last month's. A month that already has its own allocations is left alone.
 - If no income is recorded for the month, the Plan tab asks you to add it with **Manage Income** on the main screen instead of showing a misleading remainder.
@@ -162,7 +162,7 @@ These use the same carry-forward rule as the Plan tab. Months after the current 
 
 ### Viewing Budget History
 
-1. **Click "💵 Budgets"** button in the month selector
+1. **Click "Budgets"** button in the month selector
 2. **Click the "History" tab**
 3. **Select a time period**: 3, 6, or 12 months
 3. **Review the analysis** showing:

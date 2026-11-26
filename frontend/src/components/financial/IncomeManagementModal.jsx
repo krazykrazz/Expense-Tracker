@@ -13,6 +13,7 @@ import { getMonthNameLong } from '../../utils/formatters';
 import { createLogger } from '../../utils/logger';
 import ConfirmDialog from '../shared/ConfirmDialog';
 import IncomeConfirmationIndicator from '../bank-import/IncomeConfirmationIndicator';
+import Icon from '../shared/Icon';
 
 const logger = createLogger('IncomeManagementModal');
 
@@ -452,7 +453,7 @@ const IncomeManagementModal = ({ isOpen, onClose, year, month, onUpdate }) => {
                     onClick={handleCopyFromPreviousMonth}
                     disabled={loading}
                   >
-                    📋 Copy from Previous Month
+                    <Icon name="copy" size={16} />Copy from Previous Month
                   </button>
                 )}
                 

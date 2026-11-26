@@ -132,7 +132,7 @@ describe('FloatingAddButton', () => {
             
             expect(icon).toBeInTheDocument();
             expect(text).toBeInTheDocument();
-            expect(icon).toHaveTextContent('+');
+            expect(icon.querySelector('svg')).toBeInTheDocument();
             expect(text).toHaveTextContent('Add Expense');
             
             // Button should be clickable
@@ -205,7 +205,7 @@ describe('FloatingAddButton', () => {
       
       expect(icon).toBeInTheDocument();
       expect(text).toBeInTheDocument();
-      expect(icon).toHaveTextContent('+');
+      expect(icon.querySelector('svg')).toBeInTheDocument();
       expect(text).toHaveTextContent('Add Expense');
     });
   });

@@ -95,58 +95,58 @@
   }
 }
 
-/* ─── MonthSelector: horizontal scroll on mobile ─────────────────────────── */
+/* ─── MonthSelector: month on top, the views as a scrolling row ──────────── */
 
 @media (max-width: 768px) {
   .month-selector {
-    flex-direction: row !important;
-    flex-wrap: nowrap !important;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--spacing-2);
+    margin-bottom: var(--spacing-3);
+  }
+
+  .month-nav {
+    justify-content: center;
+  }
+
+  .month-title {
+    font-size: var(--text-2xl);
+  }
+
+  .month-picker {
+    left: 50%;
+    transform: translateX(-50%);
+    animation: none;
+  }
+
+  /* .month-selector prefix: MonthSelector.css loads after this file */
+  .month-selector .toolbar-nav {
+    align-self: stretch;
+    max-width: 100%;
+    flex-wrap: nowrap;
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
-    gap: var(--spacing-2) !important;
-    padding: var(--spacing-2) var(--spacing-3) !important;
-    align-items: center !important;
+    padding: 2px var(--spacing-1);
     /* Fade edges to hint scrollability */
     -webkit-mask-image: linear-gradient(to right, transparent 0, black 12px, black calc(100% - 12px), transparent 100%);
     mask-image: linear-gradient(to right, transparent 0, black 12px, black calc(100% - 12px), transparent 100%);
   }
 
-  .month-selector::-webkit-scrollbar {
+  .month-selector .toolbar-nav::-webkit-scrollbar {
     display: none;
   }
 
-  /* Buttons stay compact */
   .annual-summary-button,
   .tax-deductible-button,
   .budgets-button,
   .analytics-hub-button,
   .financial-overview-button {
     flex-shrink: 0;
-    font-size: 12px !important;
-    padding: var(--spacing-2) var(--spacing-3) !important;
-    white-space: nowrap;
-  }
-
-  /* Selector groups stay inline */
-  .selector-group {
-    flex-direction: row !important;
-    align-items: center !important;
-    flex-shrink: 0;
-    gap: var(--spacing-1) !important;
-  }
-
-  .selector-group select {
-    width: auto !important;
-    min-width: 90px;
     font-size: 13px;
-    padding: var(--spacing-1) var(--spacing-2) !important;
-  }
-
-  .selector-group label {
-    font-size: 12px;
-    white-space: nowrap;
+    background: var(--bg-card);
+    border-color: var(--border-muted);
   }
 }
 

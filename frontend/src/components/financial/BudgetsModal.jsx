@@ -20,6 +20,7 @@ import BudgetProgressBar from './BudgetProgressBar';
 import BudgetPlanTab from './BudgetPlanTab';
 import ConfirmDialog from '../shared/ConfirmDialog';
 import './BudgetsModal.css';
+import Icon from '../shared/Icon';
 
 const logger = createLogger('BudgetsModal');
 
@@ -255,7 +256,7 @@ const ManageTabContent = ({ year, month, onBudgetUpdated, focusedCategory }) => 
           onClick={handleCopyFromPreviousMonth}
           disabled={loading || isCopying}
         >
-          {isCopying ? 'Copying...' : '📋 Copy from Previous Month'}
+          {isCopying ? 'Copying...' : <><Icon name="copy" size={16} />Copy from Previous Month</>}
         </button>
       </div>
 
@@ -733,7 +734,7 @@ const BudgetsModal = ({ isOpen, onClose, year, month, onBudgetUpdated, focusedCa
     <div className="modal-overlay" onClick={handleClose}>
       <div className="budgets-modal-container" onClick={(e) => e.stopPropagation()}>
         <div className="budgets-modal-header">
-          <h2>💵 Budgets — {getMonthNameLong(month)} {year}</h2>
+          <h2><Icon name="wallet" size={22} className="modal-title-icon" />Budgets — {getMonthNameLong(month)} {year}</h2>
           <button className="budgets-modal-close" onClick={handleClose} aria-label="Close">✕</button>
         </div>
 
@@ -742,19 +743,19 @@ const BudgetsModal = ({ isOpen, onClose, year, month, onBudgetUpdated, focusedCa
             className={`tab-button ${activeTab === 'manage' ? 'active' : ''}`}
             onClick={() => setActiveTab('manage')}
           >
-            📋 Manage
+            <Icon name="list" size={16} />Manage
           </button>
           <button
             className={`tab-button ${activeTab === 'plan' ? 'active' : ''}`}
             onClick={() => setActiveTab('plan')}
           >
-            🧭 Plan
+            <Icon name="compass" size={16} />Plan
           </button>
           <button
             className={`tab-button ${activeTab === 'history' ? 'active' : ''}`}
             onClick={() => setActiveTab('history')}
           >
-            📊 History
+            <Icon name="barChart" size={16} />History
           </button>
         </div>
 

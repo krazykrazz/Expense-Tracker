@@ -7,8 +7,7 @@
   margin-bottom: 12px;
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
-  background: linear-gradient(135deg, light-dark(#e0f2f1, hsl(177 41% 17%)) 0%, #b2dfdb 100%);
-  border: 1px solid #009688;
+  --banner-accent: #009688;
   color: #004d40;
 }
 
@@ -132,8 +131,7 @@
 /* Dark mode support */
 :root[data-theme='dark'] {
   .auto-generated-cycle-banner {
-    background: linear-gradient(135deg, #1a3c3a 0%, #1e4a47 100%);
-    border-color: #4db6ac;
+    --banner-accent: #4db6ac;
     color: #b2dfdb;
   }
 

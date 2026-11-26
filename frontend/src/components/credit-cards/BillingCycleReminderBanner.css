@@ -7,8 +7,7 @@
   margin-bottom: 12px;
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
-  background: linear-gradient(135deg, light-dark(#e3f2fd, hsl(205 55% 17%)) 0%, light-dark(#bbdefb, hsl(207 55% 17%)) 100%);
-  border: 1px solid #2196f3;
+  --banner-accent: #2196f3;
   color: light-dark(#0d47a1, hsl(216 80% 78%));
 }
 
@@ -113,8 +112,7 @@
 /* Dark mode support */
 :root[data-theme='dark'] {
   .billing-cycle-reminder-banner {
-    background: linear-gradient(135deg, #1a3a5c 0%, #1e4976 100%);
-    border-color: #42a5f5;
+    --banner-accent: #42a5f5;
     color: #bbdefb;
   }
 

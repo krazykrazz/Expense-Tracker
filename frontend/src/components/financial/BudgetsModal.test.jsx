@@ -69,19 +69,19 @@ describe('BudgetsModal', () => {
   describe('Rendering', () => {
     it('renders nothing when isOpen is false', () => {
       render(<BudgetsModal {...defaultProps} isOpen={false} />);
-      expect(screen.queryByText('💵 Budgets')).not.toBeInTheDocument();
+      expect(screen.queryByText(/Budgets —/)).not.toBeInTheDocument();
     });
 
     it('renders the modal when isOpen is true', () => {
       render(<BudgetsModal {...defaultProps} />);
-      expect(screen.getByText(/💵 Budgets/)).toBeInTheDocument();
+      expect(screen.getByText(/Budgets —/)).toBeInTheDocument();
     });
 
     it('renders all tab buttons with correct labels', () => {
       render(<BudgetsModal {...defaultProps} />);
-      expect(screen.getByText('📋 Manage')).toBeInTheDocument();
-      expect(screen.getByText('🧭 Plan')).toBeInTheDocument();
-      expect(screen.getByText('📊 History')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Manage' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Plan' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'History' })).toBeInTheDocument();
     });
 
     it('renders the month and year in the header', () => {
@@ -118,7 +118,7 @@ describe('BudgetsModal', () => {
       mockActiveTab = 'plan';
       render(<BudgetsModal {...defaultProps} />);
       expect(screen.getByTestId('plan-tab')).toBeInTheDocument();
-      expect(screen.getByText('🧭 Plan')).toHaveClass('active');
+      expect(screen.getByRole('button', { name: 'Plan' })).toHaveClass('active');
     });
 
     it('lets the plan tab switch to the manage tab', () => {
@@ -131,14 +131,14 @@ describe('BudgetsModal', () => {
     it('manage tab button has active class when manage is selected', () => {
       mockActiveTab = 'manage';
       render(<BudgetsModal {...defaultProps} />);
-      const manageBtn = screen.getByText('📋 Manage');
+      const manageBtn = screen.getByRole('button', { name: 'Manage' });
       expect(manageBtn).toHaveClass('active');
     });
 
     it('history tab button has active class when history is selected', () => {
       mockActiveTab = 'history';
       render(<BudgetsModal {...defaultProps} />);
-      const historyBtn = screen.getByText('📊 History');
+      const historyBtn = screen.getByRole('button', { name: 'History' });
       expect(historyBtn).toHaveClass('active');
     });
   });
@@ -147,14 +147,14 @@ describe('BudgetsModal', () => {
     it('calls setActiveTab with "history" when History tab is clicked', () => {
       mockActiveTab = 'manage';
       render(<BudgetsModal {...defaultProps} />);
-      fireEvent.click(screen.getByText('📊 History'));
+      fireEvent.click(screen.getByRole('button', { name: 'History' }));
       expect(mockSetActiveTab).toHaveBeenCalledWith('history');
     });
 
     it('calls setActiveTab with "manage" when Manage tab is clicked', () => {
       mockActiveTab = 'history';
       render(<BudgetsModal {...defaultProps} />);
-      fireEvent.click(screen.getByText('📋 Manage'));
+      fireEvent.click(screen.getByRole('button', { name: 'Manage' }));
       expect(mockSetActiveTab).toHaveBeenCalledWith('manage');
     });
   });

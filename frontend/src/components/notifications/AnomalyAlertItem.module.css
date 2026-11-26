@@ -16,14 +16,14 @@
   padding: var(--spacing-3, 12px) var(--spacing-4, 16px);
   border-radius: var(--radius-md, 8px);
   margin-bottom: var(--element-gap-lg, 12px);
-  background: linear-gradient(135deg, light-dark(#fff7ed, hsl(33 55% 17%)) 0%, light-dark(#ffedd5, hsl(34 55% 17%)) 100%);
-  border: 1px solid var(--color-warning, #f59e0b);
+  background: color-mix(in srgb, var(--color-warning) 8%, var(--bg-card));
+  border: 1px solid color-mix(in srgb, var(--color-warning) 28%, var(--border-default));
   color: var(--text-primary, #0f172a);
   transition: var(--transition-card);
 }
 
 .alertItem:hover {
-  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
+  background: color-mix(in srgb, var(--color-warning) 13%, var(--bg-card));
 }
 
 .clickable {
@@ -372,8 +372,6 @@
    ============================================ */
 
 :global(.theme-dark) .alertItem {
-  background: linear-gradient(135deg, #422006 0%, #451a03 100%);
-  border-color: var(--color-warning, #f59e0b);
   color: #fef3c7;
 }
 
@@ -467,8 +465,6 @@
 
 :global(:root[data-theme='dark']) {
   .alertItem {
-    background: linear-gradient(135deg, #422006 0%, #451a03 100%);
-    border-color: var(--color-warning, #f59e0b);
     color: #fef3c7;
   }
 

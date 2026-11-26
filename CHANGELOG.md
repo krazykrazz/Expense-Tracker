@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.34.0] - 2026-11-26
+
+### UI freshness: month title and picker, calm modal headers and banners, quiet row actions, phone filters
+
 ## [1.33.0] - 2026-11-25
 
 ### Bank confirmation on loan payments, Plaid and notifications audit fixes (cross-site request guard), Plaid screens UI review

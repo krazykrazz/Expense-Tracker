@@ -1061,7 +1061,7 @@ const ExpenseList = memo(({
               <th>Type</th>
               <th>Week</th>
               <th>Method</th>
-              <th>Actions</th>
+              <th><span className="sr-only">Actions</span></th>
             </tr>
           </thead>
           {awaitingFirstLoad && expenses.length === 0 && (

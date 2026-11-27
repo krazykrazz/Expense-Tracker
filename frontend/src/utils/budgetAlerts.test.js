@@ -248,7 +248,8 @@ describe('Budget Alert Utilities - Property-Based Tests', () => {
   test('Property 7: Dismissal independence', () => {
     fc.assert(
       fc.property(
-        fc.array(fc.string({ minLength: 1 }), { minLength: 2, maxLength: 5 }),
+        // Alert ids are unique: two alerts with the same id are the same alert
+        fc.uniqueArray(fc.string({ minLength: 1 }), { minLength: 2, maxLength: 5 }),
         (alertIds) => {
           const dismissedAlerts = new Set();
           

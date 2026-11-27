@@ -14,11 +14,31 @@ const loanRepository = require('../repositories/loanRepository');
 const activityLogService = require('./activityLogService');
 const loanPaymentService = require('./loanPaymentService');
 const logger = require('../config/logger');
+const plaidConfig = require('../config/plaid');
+const plaidRepository = require('../repositories/plaidRepository');
 
 /**
  * Note prefix for auto-logged payments
  */
 const AUTO_LOG_NOTE_PREFIX = 'Auto-logged from fixed expense';
+
+/**
+ * Days after the due date to wait for the bank before asking, when the fixed expense is paid from an account
+ * imported from the bank: confirming that payment in the Import Inbox records the loan payment (spec 3.4).
+ */
+const BANK_WAIT_DAYS = 5;
+
+const localDateString = (date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+
+const addDays = (dateStr, days) => {
+  const date = new Date(`${dateStr}T00:00:00`);
+  date.setDate(date.getDate() + days);
+  return localDateString(date);
+};
+
+/** The day the prompt (and the unconfirmed-payment notification) stops waiting for the bank. */
+const bankWaitEnds = (dueDate) => addDays(dueDate, BANK_WAIT_DAYS);
 
 class AutoPaymentLoggerService {
   /**
@@ -165,8 +185,11 @@ class AutoPaymentLoggerService {
       return true;
     });
     
+    const bankPaid = await this.bankImportedPaymentMethodIds();
+    const todayStr = localDateString(today);
+
     // Build suggestion objects with payment date
-    return eligibleExpenses.map(expense => {
+    const suggestions = eligibleExpenses.map(expense => {
       // Calculate the payment date (year-month-due_day), clamped to last day of month
       // _Requirements: 4.3_
       const monthStr = String(month).padStart(2, '0');
@@ -183,9 +206,31 @@ class AutoPaymentLoggerService {
         loanId: expense.loan_id,
         loanName: expense.loan_name,
         loanType: expense.loan_type,
-        suggestedPaymentDate: paymentDate
+        suggestedPaymentDate: paymentDate,
+        paymentMethodId: expense.payment_method_id ?? null
       };
     });
+
+    // Paid from a bank-imported account: give the bank payment a few days to arrive and be confirmed in the Inbox
+    return suggestions
+      .filter(s => !(bankPaid.has(s.paymentMethodId) && todayStr < bankWaitEnds(s.suggestedPaymentDate)))
+      .map(({ paymentMethodId: _paymentMethodId, ...suggestion }) => suggestion);
+  }
+
+  /**
+   * Payment methods whose transactions come from the bank. Empty without Plaid (it is optional) or when the lookup
+   * fails, so the prompt then behaves as it always has.
+   * @returns {Promise<Set<number>>}
+   */
+  async bankImportedPaymentMethodIds() {
+    const { enabled, environment } = plaidConfig.getPlaidConfig();
+    if (!enabled) return new Set();
+    try {
+      return new Set(await plaidRepository.findImportingPaymentMethodIds(environment));
+    } catch (err) {
+      logger.warn('Could not read bank-imported payment methods for the loan payment prompt', { error: err.message });
+      return new Set();
+    }
   }
 
   /**
@@ -242,3 +287,5 @@ class AutoPaymentLoggerService {
 }
 
 module.exports = new AutoPaymentLoggerService();
+module.exports.BANK_WAIT_DAYS = BANK_WAIT_DAYS;
+module.exports.bankWaitEnds = bankWaitEnds;

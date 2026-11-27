@@ -79,6 +79,21 @@ const money = (n) => {
 };
 const triggerLabel = (trigger) => (trigger === 'manual' ? 'Manual' : 'Scheduled');
 
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+/** 'YYYY-MM' (or a 'YYYY-MM-DD' date) → 'December 2026'; null when it isn't one. */
+function monthLabel(value) {
+  const match = /^(\d{4})-(\d{2})/.exec(String(value ?? ''));
+  const month = match ? Number(match[2]) : 0;
+  return month >= 1 && month <= 12 ? `${MONTH_NAMES[month - 1]} ${match[1]}` : null;
+}
+/** 'YYYY-MM-DD' → 'Dec 1, 2026' (calendar date, no timezone shift). */
+function dayLabel(value) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value ?? ''));
+  return match ? `${MONTH_NAMES[Number(match[2]) - 1].slice(0, 3)} ${Number(match[3])}, ${match[1]}` : String(value ?? '');
+}
+/** The month in a loan notification state ('unconfirmed:YYYY-MM'). */
+const stateMonth = (state) => (typeof state === 'string' && state.startsWith('unconfirmed:') ? state.slice('unconfirmed:'.length) : null);
+
 /**
  * Every message type decides its own layout: `name` is the header line next to the app icon ("Expense Tracker:
  * Backup Created"), `title` the subject in bold under it (the bank), `description` a sentence of context, and
@@ -149,6 +164,37 @@ const BUILDERS = {
     };
   },
 
+  loan_payment_unconfirmed: (d) => ({
+    name: 'Expense Tracker: Loan Payment Not Recorded',
+    title: safeName(d.loanName),
+    description: `The ${monthLabel(d.dueDate) || 'monthly'} payment is still not recorded 5 days after its due date. `
+      + 'If the bank paid it, confirm it in Bank Import → Inbox (confirming the fixed expense records the loan payment). '
+      + 'If it hasn\'t left your account, check with the lender.',
+    color: COLORS.amber,
+    ping: true,
+    fields: [
+      field('Amount', money(d.amount)),
+      field('Due', dayLabel(d.dueDate)),
+      ...(d.paymentMethodName ? [field('Paid from', safeName(d.paymentMethodName))] : [])
+    ]
+  }),
+
+  loan_payment_recorded: (d) => {
+    const missed = stateMonth(d.previousState);
+    const month = monthLabel(d.dueDate);
+    return {
+      name: 'Expense Tracker: Loan Payment Recorded',
+      title: safeName(d.loanName),
+      description: `The ${month || 'monthly'} payment is recorded.`,
+      color: COLORS.green,
+      ping: false,
+      fields: [
+        field('Amount', money(d.amount)),
+        ...(missed && monthLabel(missed) !== month ? [field('Still not recorded', monthLabel(missed))] : [])
+      ]
+    };
+  },
+
   backup_failed: (d, ctx) => ({
     name: 'Expense Tracker: Backup Failed',
     title: '',
@@ -210,7 +256,7 @@ const BUILDERS = {
 };
 
 /**
- * @param {string} eventKey one of EVENT_KEYS, 'backup_recovered' or 'test'
+ * @param {string} eventKey one of EVENT_KEYS, 'backup_recovered', 'loan_payment_recorded' or 'test'
  * @param {object} data event data (see BUILDERS)
  * @param {{timezone?: string, now?: number}} [context]
  * @returns {{name: string, title: string, description: string, color: string, ping: boolean,
@@ -222,4 +268,4 @@ function buildMessage(eventKey, data = {}, { timezone = 'America/Toronto', now =
   return builder(data, { timezone, now });
 }
 
-module.exports = { buildMessage, safeName, describeError, formatBytes, formatDuration, formatWhen, COLORS };
+module.exports = { buildMessage, safeName, describeError, formatBytes, formatDuration, formatWhen, monthLabel, COLORS };

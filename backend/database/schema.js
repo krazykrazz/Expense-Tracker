@@ -153,6 +153,7 @@ const TABLE_STATEMENTS = [
     year INTEGER NOT NULL,
     month INTEGER NOT NULL,
     value REAL NOT NULL CHECK(value >= 0),
+    source TEXT NOT NULL DEFAULT 'manual' CHECK(source IN ('manual', 'bank')),
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (investment_id) REFERENCES investments(id) ON DELETE CASCADE,

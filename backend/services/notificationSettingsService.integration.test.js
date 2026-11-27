@@ -96,6 +96,16 @@ describe('notificationSettingsService', () => {
     await expect(service.saveSettings({ events: 'plaid_stale' })).rejects.toMatchObject({ statusCode: 400 });
   });
 
+  test('a default-on event added after a selection was saved starts on; switched off after that, it stays off', async () => {
+    const enabled = async () => (await service.getSettings()).events.filter(e => e.enabled).map(e => e.key);
+    // A selection saved before the known events were kept
+    await run("INSERT INTO settings (key, value) VALUES ('notifications_events', '[\"plaid_stale\",\"backup_failed\"]')");
+    expect(await enabled()).toEqual(['plaid_stale', 'loan_payment_unconfirmed', 'backup_failed']);
+
+    await save({ events: ['plaid_stale', 'backup_failed'] });
+    expect(await enabled()).toEqual(['plaid_stale', 'backup_failed']);
+  });
+
   test.each([
     ['API key with a slash (it goes into a URL path)', { apiKey: '../../etc/passwd-aaaaaaaa' }],
     ['short API key', { apiKey: 'abc' }],

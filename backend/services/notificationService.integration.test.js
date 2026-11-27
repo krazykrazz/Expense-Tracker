@@ -252,6 +252,47 @@ describe('backup', () => {
   });
 });
 
+describe('loan payments the bank has not confirmed', () => {
+  const NOT_RECORDED = 'Expense Tracker: Loan Payment Not Recorded · Pine Mortgage';
+  const RECORDED = 'Expense Tracker: Loan Payment Recorded · Pine Mortgage';
+  const payment = (dueDate, recorded) => ({
+    loanId: 32, loanName: 'Pine Mortgage', fixedExpenseName: 'Pine Mortgage', amount: 2800, dueDate, paymentMethodName: 'Debit - WS', recorded
+  });
+
+  test('a recorded payment that was never missing sends nothing', async () => {
+    await service.reportLoanPayment(payment('2026-12-01', true));
+    expect(notifiarrProvider.send).not.toHaveBeenCalled();
+  });
+
+  test('a missing payment is announced once, and its recording once', async () => {
+    await service.reportLoanPayment(payment('2026-12-01', false));
+    await service.reportLoanPayment(payment('2026-12-01', false));
+    await service.reportLoanPayment(payment('2026-12-01', true));
+    await service.reportLoanPayment(payment('2026-12-01', true));
+
+    expect(sent()).toEqual([NOT_RECORDED, RECORDED]);
+    expect(notifiarrProvider.send.mock.calls[0][1].ping).toBe(true);
+  });
+
+  test('the next month still missing is announced again; recording a later month names the one still missing', async () => {
+    await service.reportLoanPayment(payment('2026-12-01', false));
+    await service.reportLoanPayment(payment('2027-01-01', false));
+    await service.reportLoanPayment(payment('2027-02-01', true));
+
+    expect(sent()).toEqual([NOT_RECORDED, NOT_RECORDED, RECORDED]);
+    const recorded = notifiarrProvider.send.mock.calls[2][1];
+    expect(recorded.description).toBe('The February 2027 payment is recorded.');
+    expect(recorded.fields).toContainEqual(expect.objectContaining({ title: 'Still not recorded', text: 'January 2027' }));
+  });
+
+  test('switched off, neither message is sent', async () => {
+    await settingsService.saveSettings({ events: ['plaid_needs_attention'] });
+    await service.reportLoanPayment(payment('2026-12-01', false));
+    await service.reportLoanPayment(payment('2026-12-01', true));
+    expect(notifiarrProvider.send).not.toHaveBeenCalled();
+  });
+});
+
 describe('occurrences', () => {
   test('sync changes are off by default and sent every time once switched on', async () => {
     const data = { added: 2, updated: 0, removed: 0 };

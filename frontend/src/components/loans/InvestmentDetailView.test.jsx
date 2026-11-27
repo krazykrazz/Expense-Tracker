@@ -65,6 +65,21 @@ describe('InvestmentDetailView bank balance (spec 4.1a)', () => {
   });
 });
 
+describe('InvestmentDetailView value history from the bank (spec 4.1b)', () => {
+  it('marks a month written from the bank, and not one entered by hand', async () => {
+    getValueHistory.mockResolvedValue([
+      { id: 2, investment_id: 1, year: 2026, month: 12, value: 188130.49, source: 'bank', valueChange: 1000, percentageChange: 0.5 },
+      { id: 1, investment_id: 1, year: 2026, month: 11, value: 187130.49, source: 'manual', valueChange: 0, percentageChange: 0 }
+    ]);
+    render(<InvestmentDetailView investment={investment} isOpen onClose={() => {}} />);
+
+    const icons = await screen.findAllByTestId('investment-value-bank');
+    expect(icons).toHaveLength(1);
+    expect(icons[0].closest('tr')).toHaveTextContent('$188,130.49');
+    expect(icons[0]).toHaveAttribute('title', expect.stringContaining('From the bank'));
+  });
+});
+
 describe('InvestmentRow bank balance (spec 4.1a)', () => {
   it('shows the balance only when linked, keeping Current Value', () => {
     const { rerender } = render(<InvestmentRow investment={investment} bankAccounts={[link()]} />);

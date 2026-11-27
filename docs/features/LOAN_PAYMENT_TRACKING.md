@@ -108,7 +108,7 @@ Lines of credit continue to use balance-based tracking due to their variable usa
 5. Save - reminders will appear when due date approaches
 
 ### Auto-Logging Payments
-1. When a linked fixed expense is due, a reminder banner appears
+1. When a linked fixed expense is due, a reminder banner appears. If the fixed expense is paid from a payment method imported from the bank (Bank Import), it waits 5 days after the due date instead: confirming the bank payment in the Import Inbox records the loan payment, and the prompt only appears if that hasn't happened
 2. Click "Log Payment" on the reminder
 3. Confirm the payment details
 4. Payment is automatically created for the linked loan

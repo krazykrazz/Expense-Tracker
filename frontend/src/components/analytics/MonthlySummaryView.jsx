@@ -9,6 +9,9 @@ import { useState, useEffect } from 'react';
 import './MonthlySummaryView.css';
 import { getMonthlySummary } from '../../services/analyticsApi';
 import { formatCurrency, getMonthNameLong } from '../../utils/formatters';
+import { createLogger } from '../../utils/logger';
+
+const logger = createLogger('MonthlySummaryView');
 
 const MonthlySummaryView = ({ year, month }) => {
   const [data, setData] = useState(null);
@@ -27,7 +30,7 @@ const MonthlySummaryView = ({ year, month }) => {
       setData(result);
     } catch (err) {
       setError('Unable to load monthly summary. Please try again.');
-      console.error('Error fetching monthly summary:', err);
+      logger.error('Error fetching monthly summary:', err);
     } finally {
       setLoading(false);
     }

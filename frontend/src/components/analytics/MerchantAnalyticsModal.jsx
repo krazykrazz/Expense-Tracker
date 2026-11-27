@@ -3,6 +3,9 @@ import './MerchantAnalyticsModal.css';
 import { getTopMerchants, getPeriodDisplayName, getSortByDisplayName } from '../../services/merchantAnalyticsApi';
 import { formatCurrency } from '../../utils/formatters';
 import MerchantDetailView from './MerchantDetailView';
+import { createLogger } from '../../utils/logger';
+
+const logger = createLogger('MerchantAnalyticsModal');
 
 const MerchantAnalyticsModal = ({ isOpen, onClose, onViewExpenses, embedded = false }) => {
   const [merchants, setMerchants] = useState([]);
@@ -32,7 +35,7 @@ const MerchantAnalyticsModal = ({ isOpen, onClose, onViewExpenses, embedded = fa
     } catch (err) {
       const errorMessage = err.message || 'Network error. Unable to load merchant analytics. Please check your connection and try again.';
       setError(errorMessage);
-      console.error('Error fetching merchants:', err);
+      logger.error('Error fetching merchants:', err);
     } finally {
       setLoading(false);
     }

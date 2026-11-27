@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getTaxDeductibleSummary } from '../services/expenseApi';
 import { calculatePercentageChange, getChangeIndicator } from '../utils/yoyComparison';
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger('useYoYComparison');
 
 /**
  * Custom hook for year-over-year comparison of tax deductible expenses
@@ -30,7 +33,7 @@ const useYoYComparison = ({ year, refreshTrigger }) => {
         const data = await getTaxDeductibleSummary(previousYear);
         setPreviousYearData(data);
       } catch (err) {
-        console.error('Error fetching previous year data:', err);
+        logger.error('Error fetching previous year data:', err);
         setYoyError('Unable to load previous year data');
         setPreviousYearData(null);
       } finally {

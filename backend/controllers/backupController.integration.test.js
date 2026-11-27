@@ -99,6 +99,17 @@ describe('Backup API Integration Tests', () => {
     });
   });
 
+  describe('POST /api/backup/restore (legacy .db)', () => {
+    it('rejects a .db upload that is not a SQLite database, and leaves the database alone', async () => {
+      const response = await request(app)
+        .post('/api/backup/restore')
+        .attach('backup', Buffer.from('not a database at all'), 'expenses.db')
+        .expect(400);
+
+      expect(response.body.error).toContain('Must be a SQLite database');
+    });
+  });
+
   describe('POST /api/backup/restore-archive', () => {
     it('should restore from valid backup archive', async () => {
       const response = await request(app)

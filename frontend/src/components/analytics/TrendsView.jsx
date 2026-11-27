@@ -9,6 +9,9 @@ import { useState, useEffect } from 'react';
 import './TrendsView.css';
 import { getTrends } from '../../services/analyticsApi';
 import { formatCurrency, getMonthNameShort } from '../../utils/formatters';
+import { createLogger } from '../../utils/logger';
+
+const logger = createLogger('TrendsView');
 
 const TrendsView = ({ year, month }) => {
   const [data, setData] = useState(null);
@@ -27,7 +30,7 @@ const TrendsView = ({ year, month }) => {
       setData(result);
     } catch (err) {
       setError('Unable to load trends data. Please try again.');
-      console.error('Error fetching trends:', err);
+      logger.error('Error fetching trends:', err);
     } finally {
       setLoading(false);
     }

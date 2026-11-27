@@ -2,6 +2,9 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { getNetIncomeForYear, saveNetIncomeForYear, getSelectedProvince, saveSelectedProvince } from '../utils/taxSettingsStorage';
 import { calculateAllTaxCredits } from '../utils/taxCreditCalculator';
 import { getAnnualIncomeByCategory } from '../services/incomeApi';
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger('useTaxCalculator');
 
 /**
  * Custom hook for managing tax calculator state and computations
@@ -64,7 +67,7 @@ function useTaxCalculator({ year, medicalTotal = 0, donationTotal = 0 }) {
         saveNetIncomeForYear(year, totalIncome);
       }
     } catch (error) {
-      console.error('Error fetching app income data:', error);
+      logger.error('Error fetching app income data:', error);
     } finally {
       setLoadingAppIncome(false);
     }

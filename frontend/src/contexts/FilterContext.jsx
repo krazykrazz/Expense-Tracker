@@ -1,6 +1,9 @@
 import { createContext, useContext, useState, useMemo, useCallback } from 'react';
 import { CATEGORIES } from '../utils/constants';
 import { formatLocalDate } from '../utils/formatters';
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger('FilterContext');
 
 const FilterContext = createContext(null);
 
@@ -61,7 +64,7 @@ export function FilterProvider({ children, paymentMethods = [] }) {
   // Handler: filterType change with validation
   const handleFilterTypeChange = useCallback((type) => {
     if (type && !CATEGORIES.includes(type)) {
-      console.warn(`Invalid category selected: ${type}. Resetting to empty.`);
+      logger.warn(`Invalid category selected: ${type}. Resetting to empty.`);
       setFilterType('');
       return;
     }
@@ -71,7 +74,7 @@ export function FilterProvider({ children, paymentMethods = [] }) {
   // Handler: filterMethod change with validation
   const handleFilterMethodChange = useCallback((method) => {
     if (method && paymentMethods.length > 0 && !paymentMethods.includes(method)) {
-      console.warn(`Invalid payment method selected: ${method}. Resetting to empty.`);
+      logger.warn(`Invalid payment method selected: ${method}. Resetting to empty.`);
       setFilterMethod('');
       return;
     }

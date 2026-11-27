@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import './MerchantDetailView.css';
 import { getMerchantDetails, getMerchantTrend } from '../../services/merchantAnalyticsApi';
 import { formatCurrency, formatDate } from '../../utils/formatters';
+import { createLogger } from '../../utils/logger';
+
+const logger = createLogger('MerchantDetailView');
 
 const MerchantDetailView = ({ merchantName, period, includeFixedExpenses, isOpen, onClose, onViewExpenses }) => {
   const [merchantDetails, setMerchantDetails] = useState(null);
@@ -32,7 +35,7 @@ const MerchantDetailView = ({ merchantName, period, includeFixedExpenses, isOpen
     } catch (err) {
       const errorMessage = err.message || 'Network error. Unable to load merchant details. Please check your connection and try again.';
       setError(errorMessage);
-      console.error('Error fetching merchant data:', err);
+      logger.error('Error fetching merchant data:', err);
     } finally {
       setLoading(false);
     }

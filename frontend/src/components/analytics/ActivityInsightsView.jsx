@@ -9,6 +9,9 @@ import { useState, useEffect } from 'react';
 import './ActivityInsightsView.css';
 import { getActivityInsights } from '../../services/analyticsApi';
 import { formatDateTime } from '../../utils/formatters';
+import { createLogger } from '../../utils/logger';
+
+const logger = createLogger('ActivityInsightsView');
 
 const ActivityInsightsView = ({ year, month }) => {
   const [data, setData] = useState(null);
@@ -27,7 +30,7 @@ const ActivityInsightsView = ({ year, month }) => {
       setData(result);
     } catch (err) {
       setError('Unable to load activity insights. Please try again.');
-      console.error('Error fetching activity insights:', err);
+      logger.error('Error fetching activity insights:', err);
     } finally {
       setLoading(false);
     }

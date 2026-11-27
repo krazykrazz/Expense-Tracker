@@ -1,6 +1,5 @@
 const { getDatabase } = require('../database/db');
 const { CATEGORIES } = require('../utils/categories');
-const logger = require('../config/logger');
 
 class ExpenseRepository {
   /**

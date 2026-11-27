@@ -43,6 +43,9 @@ import UserMenu from './components/system/UserMenu';
 import BankImportButton from './components/bank-import/BankImportButton';
 import Icon from './components/shared/Icon';
 import logo from './assets/logo-mark.svg';
+import { createLogger } from './utils/logger';
+
+const logger = createLogger('App');
 
 // Keep in sync with --header-bg (opaque equivalent) so the mobile browser chrome matches the header
 const THEME_COLORS = { light: '#ffffff', dark: '#020617' };
@@ -64,7 +67,7 @@ function App() {
         }
       } catch (err) {
         if (isMounted) {
-          console.error('Error fetching payment methods:', err);
+          logger.error('Error fetching payment methods:', err);
         }
       }
     };
@@ -292,7 +295,7 @@ function AppContent({ onPaymentMethodsUpdate }) {
         }
       } catch (err) {
         if (isMounted) {
-          console.error('Error fetching version info:', err);
+          logger.error('Error fetching version info:', err);
         }
       }
     };

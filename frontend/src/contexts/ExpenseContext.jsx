@@ -4,6 +4,9 @@ import { useFilterContext } from './FilterContext';
 import { authAwareFetch } from '../utils/fetchProvider';
 import { getTodayLocalDate } from '../utils/formatters';
 import { useSyncEvent } from '../hooks/useSyncEvent';
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger('ExpenseContext');
 
 const ExpenseContext = createContext(null);
 
@@ -89,7 +92,7 @@ export function ExpenseProvider({ children }) {
           userMessage = 'Unable to connect to the server. Please check your connection and try again.';
         }
         setError(userMessage);
-        console.error('Error fetching expenses:', err);
+        logger.error('Error fetching expenses:', err);
         // Keep existing expenses if we have them
       } finally {
         if (!controller.signal.aborted) {
@@ -128,7 +131,7 @@ export function ExpenseProvider({ children }) {
           setCurrentMonthExpenseCount(typeof data.count === 'number' ? data.count : (Array.isArray(data) ? data.length : 0));
         }
       } catch (err) {
-        if (isMounted) console.error('Error fetching current month expense count:', err);
+        if (isMounted) logger.error('Error fetching current month expense count:', err);
       }
     };
     fetchCount();

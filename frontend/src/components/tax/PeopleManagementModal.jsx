@@ -6,6 +6,9 @@ import {
   updatePerson,
   deletePerson
 } from '../../services/peopleApi';
+import { createLogger } from '../../utils/logger';
+
+const logger = createLogger('PeopleManagementModal');
 
 const PeopleManagementModal = ({ isOpen, onClose, onPeopleUpdated }) => {
   const [people, setPeople] = useState([]);
@@ -36,7 +39,7 @@ const PeopleManagementModal = ({ isOpen, onClose, onPeopleUpdated }) => {
     } catch (err) {
       const errorMessage = err.message || 'Network error. Unable to load people. Please check your connection and try again.';
       setError(errorMessage);
-      console.error('Error fetching people:', err);
+      logger.error('Error fetching people:', err);
     } finally {
       setLoading(false);
     }
@@ -137,7 +140,7 @@ const PeopleManagementModal = ({ isOpen, onClose, onPeopleUpdated }) => {
     } catch (err) {
       const errorMessage = err.message || 'Network error. Unable to save person. Please check your connection and try again.';
       setError(errorMessage);
-      console.error('Error saving person:', err);
+      logger.error('Error saving person:', err);
     } finally {
       setLoading(false);
     }
@@ -175,7 +178,7 @@ const PeopleManagementModal = ({ isOpen, onClose, onPeopleUpdated }) => {
     } catch (err) {
       const errorMessage = err.message || 'Network error. Unable to delete person. Please check your connection and try again.';
       setError(errorMessage);
-      console.error('Error deleting person:', err);
+      logger.error('Error deleting person:', err);
     } finally {
       setLoading(false);
     }

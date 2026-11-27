@@ -59,26 +59,6 @@ class InvestmentValueRepository {
       });
     });
   }
-  /**
-   * Find a value entry by ID
-   * @param {number} id - Value entry ID
-   * @returns {Promise<Object|null>} Value entry or null if not found
-   */
-  async findById(id) {
-    const db = await getDatabase();
-
-    return new Promise((resolve, reject) => {
-      const sql = 'SELECT * FROM investment_values WHERE id = ?';
-
-      db.get(sql, [id], (err, row) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-        resolve(row || null);
-      });
-    });
-  }
 
   /**
    * Find all value entries for an investment

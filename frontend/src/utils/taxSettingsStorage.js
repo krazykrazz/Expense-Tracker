@@ -4,6 +4,10 @@
  * 
  * Validates: Requirements 3.2, 3.3, 6.2
  */
+import { createLogger } from './logger';
+
+const logger = createLogger('taxSettingsStorage');
+
 
 const STORAGE_KEYS = {
   NET_INCOME: 'taxDeductible_netIncome',
@@ -39,7 +43,7 @@ export const saveNetIncomeForYear = (year, amount) => {
     incomeByYear[year] = amount;
     localStorage.setItem(STORAGE_KEYS.NET_INCOME, JSON.stringify(incomeByYear));
   } catch (error) {
-    console.error('Failed to save net income:', error);
+    logger.error('Failed to save net income:', error);
   }
 };
 
@@ -63,7 +67,7 @@ export const saveSelectedProvince = (provinceCode) => {
   try {
     localStorage.setItem(STORAGE_KEYS.PROVINCE, provinceCode);
   } catch (error) {
-    console.error('Failed to save province:', error);
+    logger.error('Failed to save province:', error);
   }
 };
 
@@ -75,7 +79,7 @@ export const clearAllTaxSettings = () => {
     localStorage.removeItem(STORAGE_KEYS.NET_INCOME);
     localStorage.removeItem(STORAGE_KEYS.PROVINCE);
   } catch (error) {
-    console.error('Failed to clear tax settings:', error);
+    logger.error('Failed to clear tax settings:', error);
   }
 };
 

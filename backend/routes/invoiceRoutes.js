@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const invoiceController = require('../controllers/invoiceController');
-const logger = require('../config/logger');
 const {
   upload,
   handleMulterError,

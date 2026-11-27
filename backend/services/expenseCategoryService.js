@@ -1,5 +1,4 @@
 const expenseRepository = require('../repositories/expenseRepository');
-const logger = require('../config/logger');
 
 class ExpenseCategoryService {
   /**

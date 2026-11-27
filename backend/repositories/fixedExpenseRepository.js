@@ -311,8 +311,6 @@ class FixedExpenseRepository {
    * @returns {Promise<Array>} Array of created fixed expense objects
    */
   async copyFixedExpenses(fromYear, fromMonth, toYear, toMonth) {
-    const db = await getDatabase();
-    
     // First, get all fixed expenses from the source month
     const sourceExpenses = await this.getFixedExpenses(fromYear, fromMonth);
     

@@ -23,6 +23,9 @@ import AutoLogPrompt from '../loans/AutoLogPrompt';
 import { formatCAD as formatCurrency } from '../../utils/formatters';
 import { getAnomalies, dismissAnomaly, markAnomalyAsExpected } from '../../services/analyticsApi';
 import './SummaryPanel.css';
+import { createLogger } from '../../utils/logger';
+
+const logger = createLogger('SummaryPanel');
 
 const SUMMARY_SYNC_ENTITIES = ['income', 'fixed_expense', 'loan', 'investment', 'credit_card'];
 
@@ -197,7 +200,7 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
       
       if (!response.ok) {
         // Fail silently - don't block summary panel loading
-        console.error('Failed to fetch reminder status');
+        logger.error('Failed to fetch reminder status');
         return;
       }
 
@@ -241,7 +244,7 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
     } catch (err) {
       if (err.name === 'AbortError') return;
       // Fail silently - don't block summary panel loading
-      console.error('Error fetching reminder status:', err);
+      logger.error('Error fetching reminder status:', err);
     }
   }, [selectedYear, selectedMonth, isCurrentOrPastMonth]);
 
@@ -262,7 +265,7 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
       
       if (!response.ok) {
         // Fail silently - don't block summary panel loading
-        console.error('Failed to fetch auto-log suggestions');
+        logger.error('Failed to fetch auto-log suggestions');
         return;
       }
 
@@ -271,7 +274,7 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
     } catch (err) {
       if (err.name === 'AbortError') return;
       // Fail silently - don't block summary panel loading
-      console.error('Error fetching auto-log suggestions:', err);
+      logger.error('Error fetching auto-log suggestions:', err);
     }
   }, [selectedYear, selectedMonth, isCurrentOrPastMonth]);
 
@@ -286,7 +289,7 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
     } catch (err) {
       if (err.name === 'AbortError') return;
       // Fail silently - don't block summary panel loading
-      console.error('Error fetching anomalies:', err);
+      logger.error('Error fetching anomalies:', err);
     }
   }, []);
 
@@ -313,7 +316,7 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
     } catch (err) {
       if (err.name === 'AbortError') return;
       setError(err.message);
-      console.error('Error fetching summary:', err);
+      logger.error('Error fetching summary:', err);
     } finally {
       if (!signal?.aborted) {
         setLoading(false);
@@ -403,7 +406,7 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
     try {
       await authAwareFetch(API_ENDPOINTS.DISMISS_AUTO_GENERATED_CYCLES, { method: 'POST' });
     } catch (err) {
-      console.error('Failed to dismiss auto-generated cycle notifications:', err);
+      logger.error('Failed to dismiss auto-generated cycle notifications:', err);
     }
   };
 
@@ -500,7 +503,7 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
         classification: anomaly.classification
       });
     } catch (err) {
-      console.error('Failed to dismiss anomaly:', err);
+      logger.error('Failed to dismiss anomaly:', err);
       // Rollback — re-fetch to restore accurate state
       fetchAnomalies();
     }
@@ -524,7 +527,7 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
         classification: anomaly.classification
       });
     } catch (err) {
-      console.error('Failed to mark anomaly as expected:', err);
+      logger.error('Failed to mark anomaly as expected:', err);
       // Rollback — re-fetch to restore accurate state
       fetchAnomalies();
     }
@@ -568,7 +571,7 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
       // Refresh summary data to update loan balances
       await fetchSummaryData();
     } catch (err) {
-      console.error('Error auto-logging payment:', err);
+      logger.error('Error auto-logging payment:', err);
       // Could show an error toast here
     } finally {
       setAutoLogLoading(false);

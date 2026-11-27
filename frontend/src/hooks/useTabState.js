@@ -1,4 +1,7 @@
 import { useState, useEffect } from 'react';
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger('useTabState');
 
 /**
  * Custom hook for managing tab state with localStorage persistence
@@ -13,7 +16,7 @@ function useTabState(storageKey, defaultTab) {
       const stored = localStorage.getItem(storageKey);
       return stored || defaultTab;
     } catch (error) {
-      console.error('Failed to load tab state from localStorage:', error);
+      logger.error('Failed to load tab state from localStorage:', error);
       return defaultTab;
     }
   });
@@ -23,7 +26,7 @@ function useTabState(storageKey, defaultTab) {
     try {
       localStorage.setItem(storageKey, activeTab);
     } catch (error) {
-      console.error('Failed to save tab state to localStorage:', error);
+      logger.error('Failed to save tab state to localStorage:', error);
     }
   }, [storageKey, activeTab]);
 

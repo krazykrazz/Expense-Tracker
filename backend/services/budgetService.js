@@ -236,24 +236,54 @@ class BudgetService {
     const db = await getDatabase();
 
     return new Promise((resolve, reject) => {
+      // A date range rather than strftime() on the column, so the date indexes can be used
       const sql = `
         SELECT SUM(amount) as total
         FROM expenses
-        WHERE strftime('%Y', date) = ? 
-          AND strftime('%m', date) = ?
+        WHERE date >= ? AND date < ?
           AND type = ?
       `;
 
-      const yearStr = year.toString();
-      const monthStr = month.toString().padStart(2, '0');
+      const y = parseInt(year);
+      const m = parseInt(month);
+      const start = `${y}-${String(m).padStart(2, '0')}-01`;
+      const end = m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, '0')}-01`;
 
-      db.get(sql, [yearStr, monthStr, category], (err, row) => {
+      db.get(sql, [start, end, category], (err, row) => {
         if (err) {
           reject(err);
           return;
         }
         resolve(row && row.total !== null ? parseFloat(row.total) : 0);
       });
+    });
+  }
+
+  /**
+   * Spent amount per category in a month, in one query (getSpentAmount for every category at once).
+   * @param {number} year - Year
+   * @param {number} month - Month (1-12)
+   * @returns {Promise<Map<string, number>>} category → total; categories with no spending are absent
+   */
+  async getSpentByCategory(year, month) {
+    const db = await getDatabase();
+    const y = parseInt(year);
+    const m = parseInt(month);
+    const start = `${y}-${String(m).padStart(2, '0')}-01`;
+    const end = m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, '0')}-01`;
+
+    return new Promise((resolve, reject) => {
+      db.all(
+        'SELECT type, SUM(amount) as total FROM expenses WHERE date >= ? AND date < ? GROUP BY type',
+        [start, end],
+        (err, rows) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+          resolve(new Map((rows || []).filter(row => row.total !== null).map(row => [row.type, parseFloat(row.total)])));
+        }
+      );
     });
   }
 
@@ -503,10 +533,11 @@ class BudgetService {
       // Get budgets for this month (without auto-carry-forward to get actual data)
       const budgets = await budgetRepository.findByYearMonth(monthInfo.year, monthInfo.month);
 
-      // Get spending for each budgetable category
+      // Get spending for each budgetable category (one query for the month)
+      const spentByCategory = await this.getSpentByCategory(monthInfo.year, monthInfo.month);
       const spending = {};
       for (const category of BudgetService.BUDGETABLE_CATEGORIES) {
-        spending[category] = await this.getSpentAmount(monthInfo.year, monthInfo.month, category);
+        spending[category] = spentByCategory.get(category) || 0;
       }
 
       monthlyData.push({

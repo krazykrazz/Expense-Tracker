@@ -5,6 +5,18 @@ const fs = require('fs');
 const path = require('path');
 const { DB_PATH } = require('../database/db');
 
+/** The first `length` bytes of a file as text, without reading the rest (a database can be large). */
+async function readFileHeader(filePath, length) {
+  const handle = await fs.promises.open(filePath, 'r');
+  try {
+    const buffer = Buffer.alloc(length);
+    const { bytesRead } = await handle.read(buffer, 0, length, 0);
+    return buffer.toString('utf8', 0, bytesRead);
+  } finally {
+    await handle.close();
+  }
+}
+
 /**
  * Get backup configuration
  * GET /api/backup/config
@@ -278,8 +290,7 @@ async function restoreBackup(req, res) {
       }
       
       // Validate that it's a SQLite database file
-      const fileBuffer = fs.readFileSync(uploadedFile);
-      const header = fileBuffer.toString('utf8', 0, 16);
+      const header = await readFileHeader(uploadedFile, 16);
       
       if (!header.startsWith('SQLite format 3')) {
         fs.unlinkSync(uploadedFile);

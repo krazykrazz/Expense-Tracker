@@ -19,7 +19,7 @@ function useActivityLog(initialLimit = 50) {
       const stored = localStorage.getItem('activityLogDisplayLimit');
       return stored ? parseInt(stored, 10) : initialLimit;
     } catch (err) {
-      console.error('Failed to load display limit from localStorage:', err);
+      logger.error('Failed to load display limit from localStorage:', err);
       return initialLimit;
     }
   });
@@ -54,7 +54,7 @@ function useActivityLog(initialLimit = 50) {
       setHasMore(data.hasMore || false);
       setOffset(newOffset);
     } catch (err) {
-      console.error('Error fetching activity logs:', err);
+      logger.error('Error fetching activity logs:', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -73,7 +73,7 @@ function useActivityLog(initialLimit = 50) {
       const data = await response.json();
       setStats(data);
     } catch (err) {
-      console.error('Error fetching activity stats:', err);
+      logger.error('Error fetching activity stats:', err);
       // Don't set error state for stats - it's not critical
     }
   }, []);
@@ -89,7 +89,7 @@ function useActivityLog(initialLimit = 50) {
     try {
       localStorage.setItem('activityLogDisplayLimit', limit.toString());
     } catch (err) {
-      console.error('Failed to save display limit to localStorage:', err);
+      logger.error('Failed to save display limit to localStorage:', err);
     }
     setDisplayLimitState(limit);
     // Reset to beginning when limit changes

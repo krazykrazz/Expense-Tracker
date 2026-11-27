@@ -1,7 +1,6 @@
 const expenseRepository = require('../repositories/expenseRepository');
 const expensePeopleRepository = require('../repositories/expensePeopleRepository');
 const expensePeopleService = require('./expensePeopleService');
-const logger = require('../config/logger');
 
 class ExpenseTaxService {
   /**

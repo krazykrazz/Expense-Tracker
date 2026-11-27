@@ -1,7 +1,6 @@
 const dbHelper = require('../utils/dbHelper');
 const budgetService = require('./budgetService');
 const { previousMonth } = require('../utils/monthlyRows');
-const logger = require('../config/logger');
 
 class MonthlySummaryService {
   /**

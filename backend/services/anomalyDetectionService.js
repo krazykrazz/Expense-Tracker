@@ -2431,6 +2431,13 @@ class AnomalyDetectionService {
         last3Months.push({ year: y, month: m });
       }
 
+      // Each period's budgets are the same for every category: load them once, not once per budget
+      const budgetsByPeriod = await Promise.all(last3Months.map(period =>
+        budgetService.getBudgets(period.year, period.month).catch(periodErr => {
+          logger.debug('Could not load budgets for ' + period.year + '-' + period.month + ':', periodErr.message);
+          return null;
+        })));
+
       for (const budget of budgets) {
         const spent = await budgetService.getSpentAmount(year, month, budget.category);
         const progress = budgetService.calculateProgress(spent, budget.limit);
@@ -2440,12 +2447,15 @@ class AnomalyDetectionService {
 
         // Count how many of the last 3 months had Critical severity for this category
         let criticalMonthsInLast3 = 0;
-        for (const period of last3Months) {
+        for (const [index, period] of last3Months.entries()) {
           try {
-            const periodBudgets = await budgetService.getBudgets(period.year, period.month);
+            const periodBudgets = budgetsByPeriod[index];
             const periodBudget = periodBudgets && periodBudgets.find(b => b.category === budget.category);
             if (periodBudget) {
-              const periodSpent = await budgetService.getSpentAmount(period.year, period.month, budget.category);
+              // The current month (index 0) was just summed above
+              const periodSpent = index === 0
+                ? spent
+                : await budgetService.getSpentAmount(period.year, period.month, budget.category);
               const periodProgress = budgetService.calculateProgress(periodSpent, periodBudget.limit);
               if (periodProgress >= 100) {
                 criticalMonthsInLast3++;

@@ -3,6 +3,10 @@
  * @param {string} isoTimestamp - ISO 8601 timestamp string
  * @returns {string} Human-readable relative time
  */
+import { createLogger } from './logger';
+
+const logger = createLogger('timeFormatters');
+
 export function formatRelativeTime(isoTimestamp) {
   try {
     const date = new Date(isoTimestamp);
@@ -66,7 +70,7 @@ export function formatRelativeTime(isoTimestamp) {
 
     return `${month} ${day} at ${displayHours}:${displayMinutes} ${ampm}`;
   } catch (error) {
-    console.error('Error formatting relative time:', error);
+    logger.error('Error formatting relative time:', error);
     return 'Unknown time';
   }
 }

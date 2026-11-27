@@ -16,7 +16,7 @@ The reminder system solves this by notifying users when data is missing for the 
 ## Features
 
 ### Investment Value Reminders
-- Displays when one or more investments have no `investment_values` entry for the month
+- Displays when one or more investments have no `investment_values` entry for the month (a value written from a linked bank account counts, so a bank-linked investment is filled in by the next sync)
 - Message: "Update N investment value(s) for <Month>"
 - Clicking the banner opens the Financial Overview modal on the Investments section, with investments needing updates highlighted
 - Dismissible (until the selected month changes or the page reloads)

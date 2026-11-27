@@ -24,6 +24,7 @@ Each can be switched on or off in Settings.
 | Bank not updating | `Bank Not Updating` | the bank, how long Plaid has had no data and what to do, when Plaid last got data, Plaid's status for the bank | on |
 | Bank recovered | `Bank Recovered` | the bank, what the problem was, how long it lasted | on |
 | A bank sync brought new activity | `New Bank Activity` or `Balances Changed` | the bank, the non-zero counts of new / updated / removed transactions, and one line per account whose balance moved (old → new amount) | off |
+| Loan payment not recorded (and recorded) | `Loan Payment Not Recorded`, then `Loan Payment Recorded` | the loan, the month, what to do, amount, due date, the account it is paid from; then the month now recorded and, if different, the month still missing | on |
 | Backup failed (and recovered) | `Backup Failed`, then `Backup Recovered` | type (manual / scheduled), last good backup, the error; or type, size, how long it was failing, file name | on |
 | Backup completed | `Backup Created` | type, size, how many backups are kept, file name | off |
 | Backup restored | `Backup Restored` | the file name restored | on |
@@ -38,6 +39,7 @@ Problems are announced when something **changes**, not every time it is seen:
 - A **sync error** is usually temporary at the bank, so it is only announced once it has lasted **an hour**. One that clears sooner sends nothing. Login problems and removed connections are announced straight away.
 - **Not updating** is announced once Plaid's data from the bank is over **24 hours** old. (The bank icon and Connections tab flag it earlier, at 12 hours; some banks are only fetched about once a day, so notifications wait longer.)
 - Banks are checked after each sync (automatic sync runs every 30 minutes during its active hours), and when **Log in again** finds a bank needs a login. Automatic sync skips banks that need a login, so that message is the one you will get for them.
+- **Loan payments** (with Bank Import only): for a fixed expense linked to a loan and paid from a payment method that imports from the bank, the in-app prompt to log the payment waits 5 days after the due date for the bank payment to be confirmed in the Inbox. An hourly check (8 am to 10 pm, business timezone) looks at each such loan's latest payment whose wait is over: if it isn't recorded you get **Loan payment not recorded** once for that month, and **Loan payment recorded** once it (or a later month's) is. Loans paid another way, and everything without Plaid, are never checked.
 - Backups are reported for the scheduled and manual backups, not for the temporary archive made by the browser download. A failure is announced once until a backup succeeds again.
 - What the app last told you is remembered, so a restart or a new version does not repeat it. A message that could not be delivered is tried again at the next sync or backup. Disconnecting a bank forgets it, and restoring a backup resets everything (the saved states describe the backup's moment, not now): a bank that is broken right after a restore is announced again.
 
@@ -56,9 +58,9 @@ A notification can never fail or slow down a sync or a backup. It is sent in the
 
 ## Technical Notes
 
-- Settings keys (in `settings`): `notifications_enabled`, `notifications_notifiarr_key_enc`, `notifications_channel_id`, `notifications_ping_user_id`, `notifications_events` (JSON list of enabled event keys; the defaults above apply until saved) and `notifications_state` (last notified state per bank and for the backup). No new tables.
+- Settings keys (in `settings`): `notifications_enabled`, `notifications_notifiarr_key_enc`, `notifications_channel_id`, `notifications_ping_user_id`, `notifications_events` (JSON list of enabled event keys; the defaults above apply until saved), `notifications_events_known` (the event keys that existed when it was saved: a default-on event added later starts switched on for an older selection; a selection saved before this key existed knew the first seven events) and `notifications_state` (last notified state per bank, per loan (`loan:<id>`, state `unconfirmed:YYYY-MM` or `ok`) and for the backup). No new tables.
 - API: `GET` / `PUT` / `DELETE /api/settings/notifications` and `POST /api/settings/notifications/test` (see [API Documentation](../API_DOCUMENTATION.md#notifications--notificationroutesjs)). Saving and removing are logged as `settings_updated` (`section: 'notifications'`).
-- Code: `notificationService` (rules and state), `notificationMessages` (text and privacy), `notifiarrProvider` (the Passthrough request), `notificationSettingsService`. They are called from `plaidSyncService` (status and changes after each sync), `plaidService` (a bank found to need a login, a disconnect) and `backupService`.
+- Code: `notificationService` (rules and state), `notificationMessages` (text and privacy), `notifiarrProvider` (the Passthrough request), `notificationSettingsService`. They are called from `plaidSyncService` (status and changes after each sync), `plaidService` (a bank found to need a login, a disconnect), `backupService` and `loanPaymentBankCheckService` (hourly cron in `server.js`).
 - Delivery counts only when Notifiarr answers `Pass through payload processed.`, not on the HTTP status alone. Discord IDs are kept as strings (they exceed JavaScript's safe integer range).
 - The title icon is `frontend/public/notification-icon.png`, served from `raw.githubusercontent.com` (`ICON_URL` in `notifiarrProvider.js`). If it can't be loaded the message is still delivered without it.
 

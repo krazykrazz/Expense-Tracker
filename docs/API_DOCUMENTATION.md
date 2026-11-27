@@ -166,7 +166,7 @@ Request/response details for the plan and allocation endpoints: [Budget Plan End
 | POST | `/api/investments` | Create an investment |
 | PUT | `/api/investments/:id` | Update an investment |
 | DELETE | `/api/investments/:id` | Delete an investment |
-| GET | `/api/investment-values/:investmentId` | Value history |
+| GET | `/api/investment-values/:investmentId` | Value history (each entry has `source`: `manual`, or `bank` when written from a linked bank account; POST/PUT always save `manual`) |
 | GET | `/api/investment-values/:investmentId/:year/:month` | Value for a month |
 | POST | `/api/investment-values` | Create or update a value entry |
 | PUT | `/api/investment-values/:id` | Update a value entry |

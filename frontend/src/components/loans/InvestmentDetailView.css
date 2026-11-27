@@ -848,3 +848,8 @@ button:disabled {
     transform: none;
   }
 }
+
+/* Bank icon on a value written from the bank (spec 4.1b) */
+.investment-value-bank {
+  margin-left: var(--spacing-2, 8px);
+}

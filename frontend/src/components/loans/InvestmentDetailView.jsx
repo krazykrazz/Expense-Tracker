@@ -7,6 +7,9 @@ import { validateAmount, validateName } from '../../utils/validation';
 import { createLogger } from '../../utils/logger';
 import BankLinkedBadge from '../bank-import/BankLinkedBadge';
 import BankBalance from '../bank-import/BankBalance';
+import Icon from '../shared/Icon';
+
+const BANK_VALUE_TITLE = 'From the bank: kept up to date after each sync until the month ends.\nEditing it keeps your value instead; deleting it lets the bank fill it again.';
 
 const logger = createLogger('InvestmentDetailView');
 
@@ -833,6 +836,17 @@ const InvestmentDetailView = ({ investment, isOpen, onClose, onUpdate, bankAccou
                           </td>
                           <td className="investment-value-amount">
                             {formatCurrency(entry.value)}
+                            {entry.source === 'bank' && (
+                              <span
+                                className="bank-confirmed-indicator confirmed bank-linked-badge investment-value-bank"
+                                title={BANK_VALUE_TITLE}
+                                role="img"
+                                aria-label={BANK_VALUE_TITLE.replace(/\n/g, ' ')}
+                                data-testid="investment-value-bank"
+                              >
+                                <Icon name="bank" size={13} />
+                              </span>
+                            )}
                           </td>
                           <td className={`investment-value-change ${
                             entry.valueChange === undefined || entry.valueChange === null ? '' :

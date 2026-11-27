@@ -213,6 +213,7 @@ Monthly investment value snapshots.
 | year | INTEGER NOT NULL | Year |
 | month | INTEGER NOT NULL | Month (1-12) |
 | value | REAL NOT NULL | Investment value at end of month (CHECK >= 0) |
+| source | TEXT NOT NULL | `manual` (default; entered or edited by hand) or `bank` (from a linked bank account's balance, updated after each sync until the month ends; spec 4.1b). Migration `investment_values_source_v1` |
 | created_at | TEXT | Creation timestamp |
 | updated_at | TEXT | Last update timestamp |
 

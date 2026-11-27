@@ -1,4 +1,5 @@
 const { getDatabase } = require('../database/db');
+const dbHelper = require('../utils/dbHelper');
 
 class InvestmentValueRepository {
   /**
@@ -123,7 +124,7 @@ class InvestmentValueRepository {
     return new Promise((resolve, reject) => {
       const sql = `
         UPDATE investment_values 
-        SET value = ?, updated_at = CURRENT_TIMESTAMP
+        SET value = ?, source = 'manual', updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `;
       
@@ -198,7 +199,7 @@ class InvestmentValueRepository {
           // Update existing entry
           const updateSql = `
             UPDATE investment_values 
-            SET value = ?, updated_at = CURRENT_TIMESTAMP
+            SET value = ?, source = 'manual', updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
           `;
           
@@ -241,6 +242,23 @@ class InvestmentValueRepository {
         }
       });
     });
+  }
+
+  /**
+   * Write a month's value from the bank (spec 4.1b): creates the row, or updates one the bank wrote before.
+   * A row entered or edited by hand (source 'manual') is never touched.
+   * @param {{investment_id: number, year: number, month: number, value: number}} valueEntry
+   * @returns {Promise<boolean>} whether a row was created or its value changed
+   */
+  async upsertFromBank(valueEntry) {
+    const { changes } = await dbHelper.execute(
+      `INSERT INTO investment_values (investment_id, year, month, value, source)
+       VALUES (?, ?, ?, ?, 'bank')
+       ON CONFLICT(investment_id, year, month) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+       WHERE investment_values.source = 'bank' AND investment_values.value <> excluded.value`,
+      [valueEntry.investment_id, valueEntry.year, valueEntry.month, valueEntry.value]
+    );
+    return changes > 0;
   }
 
   /**

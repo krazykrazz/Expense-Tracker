@@ -408,10 +408,12 @@ class FixedExpenseRepository {
       const sql = `
         SELECT 
           fe.id as fixed_expense_id, fe.name as fixed_expense_name, fe.amount,
-          fe.payment_due_day, fe.linked_loan_id, fe.year, fe.month,
+          fe.payment_due_day, fe.linked_loan_id, fe.year, fe.month, fe.payment_method_id,
+          pm.display_name as payment_method_name,
           l.id as loan_id, l.name as loan_name, l.loan_type, l.is_paid_off
         FROM fixed_expenses fe
         INNER JOIN loans l ON fe.linked_loan_id = l.id
+        LEFT JOIN payment_methods pm ON pm.id = fe.payment_method_id
         WHERE fe.linked_loan_id IS NOT NULL 
           AND fe.payment_due_day IS NOT NULL
           AND fe.year = ? AND fe.month = ?

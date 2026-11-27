@@ -163,6 +163,24 @@ class NotificationService {
     return this.notifyOccurrence('plaid_sync_changes', { ...changes, institutionName: bank.institutionName });
   }
 
+  /**
+   * Whether the latest due payment of a loan paid from a bank-imported account is recorded, once its 5-day wait for
+   * the bank has passed (loanPaymentBankCheckService). Announced once per loan and month when it isn't, and once
+   * more when a later check finds it (or a later month's payment) recorded.
+   * @param {{loanId: number, loanName: string, fixedExpenseName: string, amount: number, dueDate: string,
+   *   paymentMethodName?: (string|null), recorded: boolean}} payment
+   */
+  reportLoanPayment(payment, now = Date.now()) {
+    return this._transition({
+      stateKey: `loan:${payment.loanId}`,
+      state: payment.recorded ? 'ok' : `unconfirmed:${payment.dueDate.slice(0, 7)}`,
+      problemEvent: payment.recorded ? null : 'loan_payment_unconfirmed',
+      recoveryEvent: 'loan_payment_recorded',
+      data: payment,
+      now
+    });
+  }
+
   /** A disconnected bank's state is dropped, so a later connection with the same id starts clean. Never throws. */
   forgetBank(id) {
     return this._serial(async () => {

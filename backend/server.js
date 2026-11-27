@@ -42,6 +42,7 @@ const activityLogService = require('./services/activityLogService');
 const sseService = require('./services/sseService');
 const billingCycleSchedulerService = require('./services/billingCycleSchedulerService');
 const plaidSyncSchedulerService = require('./services/plaidSyncSchedulerService');
+const loanPaymentBankCheckService = require('./services/loanPaymentBankCheckService');
 const plaidRetentionService = require('./services/plaidRetentionService');
 const versionCheckService = require('./services/versionCheckService');
 const logger = require('./config/logger');
@@ -370,6 +371,17 @@ if (shouldStartRuntime) {
         await plaidRetentionService.run();
       }, { timezone: 'Etc/UTC' }));
       logger.info('Bank import retention cleanup scheduled (daily at 2:30 AM UTC)');
+
+      // Loan payments from a bank account still not recorded 5 days after their due date (Discord; no-op without
+      // Plaid, outside 8 am to 10 pm business time, or when the notification is off)
+      scheduledTasks.push(cron.schedule('20 * * * *', async () => {
+        try {
+          await loanPaymentBankCheckService.check();
+        } catch (err) {
+          logger.warn('Loan payment bank check failed', { error: err.message });
+        }
+      }, { timezone: 'Etc/UTC' }));
+      logger.info('Loan payment bank check scheduled (hourly)');
     });
   })
   .catch((err) => {

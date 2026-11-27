@@ -439,6 +439,19 @@ const MIGRATIONS = [
       }
       logger.info('Added loan_payment_id to plaid_fixed_expense_links', { linked, candidates: links.length });
     }
+  },
+  {
+    // Spec 4.1b: where a month's investment value came from. 'bank' rows are written from a linked bank account's
+    // balance and kept up to date until the month ends; anything entered or edited by hand is 'manual' and the bank
+    // never overwrites it. Every existing row was entered by hand.
+    name: 'investment_values_source_v1',
+    async apply(db) {
+      try {
+        await runSql(db, "ALTER TABLE investment_values ADD COLUMN source TEXT NOT NULL DEFAULT 'manual' CHECK(source IN ('manual', 'bank'))");
+      } catch (err) {
+        if (!err.message.includes('duplicate column name')) throw err;
+      }
+    }
   }
 ];
 

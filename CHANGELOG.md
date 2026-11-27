@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.35.0] - 2026-11-27
+
+### RRSP monthly values from the bank, loan payment prompt waits for the bank, unconfirmed loan payment notification, performance and cleanup sweep
+
 ## [1.34.0] - 2026-11-26
 
 ### UI freshness: month title and picker, calm modal headers and banners, quiet row actions, phone filters

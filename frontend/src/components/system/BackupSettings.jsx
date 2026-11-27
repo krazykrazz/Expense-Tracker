@@ -1215,6 +1215,13 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v1.35.0</div>
+                <div className="changelog-date">November 27, 2026</div>
+                <ul className="changelog-items">
+                  <li>RRSP monthly values from the bank, loan payment prompt waits for the bank, unconfirmed loan payment notification, performance and cleanup sweep</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v1.34.0</div>
                 <div className="changelog-date">November 26, 2026</div>
                 <ul className="changelog-items">

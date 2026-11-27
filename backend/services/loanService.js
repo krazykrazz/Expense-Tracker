@@ -1,5 +1,4 @@
 const loanRepository = require('../repositories/loanRepository');
-const loanBalanceRepository = require('../repositories/loanBalanceRepository');
 const mortgageService = require('./mortgageService');
 const { validateNumber, validateString } = require('../utils/validators');
 const activityLogService = require('./activityLogService');

@@ -7,7 +7,6 @@ const budgetService = require('./budgetService');
 const { getDatabase } = require('../database/db');
 const { validateYearMonth } = require('../utils/validators');
 const { previousMonth } = require('../utils/monthlyRows');
-const logger = require('../config/logger');
 
 /**
  * The first date of a year and of the next one, for `date >= ? AND date < ?`. Unlike `strftime('%Y', date) = ?`

@@ -1,5 +1,4 @@
 const expensePeopleRepository = require('../repositories/expensePeopleRepository');
-const peopleRepository = require('../repositories/peopleRepository');
 const expenseRepository = require('../repositories/expenseRepository');
 const expenseValidationService = require('./expenseValidationService');
 const logger = require('../config/logger');

@@ -17,6 +17,9 @@ import InsuranceStatusIndicator from '../expenses/InsuranceStatusIndicator';
 import QuickStatusUpdate from '../expenses/QuickStatusUpdate';
 import { TAX_RATES } from '../../utils/taxRatesConfig';
 import Icon from '../shared/Icon';
+import { createLogger } from '../../utils/logger';
+
+const logger = createLogger('TaxDeductible');
 
 const TaxDeductible = ({ year, refreshTrigger }) => {
   const [taxDeductible, setTaxDeductible] = useState(null);
@@ -105,7 +108,7 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
         const peopleData = await getPeople();
         setPeople(peopleData);
       } catch (err) {
-        console.error('Error fetching people:', err);
+        logger.error('Error fetching people:', err);
       }
     };
     
@@ -114,7 +117,7 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
         const categoriesData = await getCategories();
         setCategories(categoriesData || []);
       } catch (err) {
-        console.error('Error fetching categories:', err);
+        logger.error('Error fetching categories:', err);
       }
     };
     
@@ -132,7 +135,7 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
           setPeople(peopleData);
           await fetchTaxDeductibleData();
         } catch (err) {
-          console.error('Error refreshing data after people update:', err);
+          logger.error('Error refreshing data after people update:', err);
         }
       };
       refreshData();
@@ -181,7 +184,7 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
       const data = await response.json();
       setTaxDeductible(data);
     } catch (err) {
-      console.error('Error fetching tax deductible data:', err);
+      logger.error('Error fetching tax deductible data:', err);
       setTaxDeductible(null);
     } finally {
       setLoading(false);
@@ -219,7 +222,7 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
           setSelectedPeople([]);
         }
       } catch (error) {
-        console.error('Failed to load people for expense:', error);
+        logger.error('Failed to load people for expense:', error);
         setSelectedPeople([]);
       }
     } else {
@@ -310,7 +313,7 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
       setExpenseToEdit(null);
       setSelectedPeople([]);
     } catch (error) {
-      console.error('Error updating expense:', error);
+      logger.error('Error updating expense:', error);
       setEditMessage({ text: error.message, type: 'error' });
     } finally {
       setIsSubmitting(false);
@@ -403,7 +406,7 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
       // Refresh the data
       await fetchTaxDeductibleData();
     } catch (error) {
-      console.error('Error updating insurance status:', error);
+      logger.error('Error updating insurance status:', error);
     } finally {
       closeQuickStatus();
     }

@@ -2,6 +2,9 @@ import { createContext, useContext, useState, useCallback, useMemo, useEffect } 
 import { getPaymentMethods } from '../services/paymentMethodApi';
 import { getPeople } from '../services/peopleApi';
 import { getBudgets } from '../services/budgetApi';
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger('SharedDataContext');
 
 const SharedDataContext = createContext(null);
 
@@ -37,7 +40,7 @@ export function SharedDataProvider({ children, selectedYear, selectedMonth }) {
         }
       } catch (err) {
         if (isMounted) {
-          console.error('Error fetching payment methods:', err);
+          logger.error('Error fetching payment methods:', err);
         }
       }
     };
@@ -59,7 +62,7 @@ export function SharedDataProvider({ children, selectedYear, selectedMonth }) {
         }
       } catch (err) {
         if (isMounted) {
-          console.error('Error fetching people:', err);
+          logger.error('Error fetching people:', err);
         }
       }
     };
@@ -81,7 +84,7 @@ export function SharedDataProvider({ children, selectedYear, selectedMonth }) {
         }
       } catch (err) {
         if (!controller.signal.aborted) {
-          console.error('Error fetching budgets:', err);
+          logger.error('Error fetching budgets:', err);
         }
       }
     };

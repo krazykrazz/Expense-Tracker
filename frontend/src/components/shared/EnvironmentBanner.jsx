@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import { API_ENDPOINTS } from '../../config';
 import { authAwareFetch } from '../../utils/fetchProvider';
 import './EnvironmentBanner.css';
+import { createLogger } from '../../utils/logger';
+
+const logger = createLogger('EnvironmentBanner');
 
 /**
  * Displays a prominent banner when running in non-production environments.
@@ -28,7 +31,7 @@ function EnvironmentBanner() {
         }
       } catch (error) {
         // Silently fail - don't show banner if we can't determine environment
-        console.debug('Could not fetch environment info:', error);
+        logger.debug('Could not fetch environment info:', error);
       }
     };
 

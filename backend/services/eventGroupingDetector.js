@@ -10,7 +10,6 @@
  */
 
 const { EVENT_GROUPING_CONFIG } = require('../utils/analyticsConstants');
-const logger = require('../config/logger');
 
 /**
  * Detect event groups among anomalies.

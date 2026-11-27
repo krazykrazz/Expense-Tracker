@@ -1,4 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger('useFormSectionState');
 
 /**
  * Custom hook for managing collapsible section expansion states with sessionStorage persistence
@@ -18,7 +21,7 @@ export function useFormSectionState(mode, initialStates = {}) {
         return JSON.parse(stored);
       }
     } catch (error) {
-      console.error('Failed to parse section states from sessionStorage:', error);
+      logger.error('Failed to parse section states from sessionStorage:', error);
     }
     return initialStates;
   });
@@ -28,7 +31,7 @@ export function useFormSectionState(mode, initialStates = {}) {
     try {
       sessionStorage.setItem(storageKey, JSON.stringify(sectionStates));
     } catch (error) {
-      console.error('Failed to save section states to sessionStorage:', error);
+      logger.error('Failed to save section states to sessionStorage:', error);
     }
   }, [sectionStates, storageKey]);
 

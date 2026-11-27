@@ -1,8 +1,7 @@
 import Icon from '../shared/Icon';
 import { formatCurrency, formatDate } from '../../utils/formatters';
+import { toCents } from '../../utils/money';
 import './BankImport.css';
-
-const toCents = (amount) => Math.round(Number(amount) * 100);
 
 /**
  * Bank icon on a loan payment that the bank confirmed (Import Inbox → Confirm a fixed expense linked to the loan),

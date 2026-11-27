@@ -4,7 +4,6 @@ const { validateYearMonth } = require('../utils/validators');
 const { previousMonth } = require('../utils/monthlyRows');
 const { INCOME_CATEGORIES } = require('../utils/constants');
 const activityLogService = require('./activityLogService');
-const logger = require('../config/logger');
 
 class IncomeService {
   /**

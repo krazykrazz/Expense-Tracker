@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.35.0',
+    date: "November 27, 2026",
+    added: [],
+    changed: ["RRSP monthly values from the bank, loan payment prompt waits for the bank, unconfirmed loan payment notification, performance and cleanup sweep"],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.34.0',
     date: "November 26, 2026",
     added: [],

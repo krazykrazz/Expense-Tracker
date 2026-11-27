@@ -5,6 +5,7 @@ const activityLogService = require('./activityLogService');
 const plaidSettlementService = require('./plaidSettlementService');
 const plaidCardBalanceService = require('./plaidCardBalanceService');
 const plaidBackfillService = require('./plaidBackfillService');
+const plaidInvestmentValueService = require('./plaidInvestmentValueService');
 const notificationService = require('./notificationService');
 const { runWithTabId } = require('../utils/requestContext');
 const { decrypt } = require('../utils/tokenCrypto');
@@ -117,6 +118,7 @@ class PlaidSyncService {
           }
           // Only against a balance fetched just now: an old one would settle the wrong charges, irreversibly
           if (balancesFresh) await this._settleFromBalance(id);
+          if (balancesFresh) await this._applyInvestmentValues(id);
           // One-off backfills of data older versions didn't keep (spec 2.1, 2.5.7); never fails the sync. Outside the
           // request's tab context, like settlements, so the tab that started the sync refreshes too
           await runWithTabId(null, () => plaidBackfillService.afterSync(item, accessToken));
@@ -164,6 +166,19 @@ class PlaidSyncService {
       }
     } catch (err) {
       logger.warn('Settling pending charges from the bank balance failed', { plaidItemId: id, error: err.message });
+    }
+  }
+
+  /**
+   * This month's value of each investment linked to the bank's accounts (spec 4.1b). Outside the request's tab
+   * context so every tab refreshes; never fails the sync.
+   */
+  async _applyInvestmentValues(id) {
+    try {
+      const written = await runWithTabId(null, () => plaidInvestmentValueService.applyLinkedBalances(id));
+      if (written.length > 0) logger.info('Investment values updated from the bank', { plaidItemId: id, investments: written.length });
+    } catch (err) {
+      logger.warn('Updating investment values from the bank failed', { plaidItemId: id, error: err.message });
     }
   }
 

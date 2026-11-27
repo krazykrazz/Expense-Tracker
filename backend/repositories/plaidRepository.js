@@ -129,6 +129,35 @@ class PlaidRepository {
     );
   }
 
+  /**
+   * Every account linked to an investment that this bank holds at least one account of (an investment may sum
+   * accounts at several banks), with its bank's environment and error, for the monthly values (spec 4.1b).
+   */
+  async findInvestmentAccountsSharingItem(plaidItemId) {
+    return dbHelper.queryAll(
+      `SELECT a.investment_id AS investmentId, inv.name AS investmentName, a.type AS accountType,
+              a.current_balance AS currentBalance, a.balance_currency AS balanceCurrency,
+              i.environment, i.last_error AS lastError
+       FROM plaid_accounts a
+       JOIN plaid_items i ON i.id = a.plaid_item_id
+       JOIN investments inv ON inv.id = a.investment_id
+       WHERE a.investment_id IN (SELECT investment_id FROM plaid_accounts WHERE plaid_item_id = ? AND investment_id IS NOT NULL)
+       ORDER BY a.investment_id, a.id`,
+      [plaidItemId]
+    );
+  }
+
+  /** Payment methods a bank account of the given Plaid environment imports into. */
+  async findImportingPaymentMethodIds(environment) {
+    const rows = await dbHelper.queryAll(
+      `SELECT DISTINCT a.payment_method_id AS paymentMethodId
+       FROM plaid_accounts a JOIN plaid_items i ON i.id = a.plaid_item_id
+       WHERE a.payment_method_id IS NOT NULL AND i.environment = ?`,
+      [environment]
+    );
+    return rows.map(row => row.paymentMethodId);
+  }
+
   /** Map an account to a payment method (null = don't import). A payment method replaces an investment link. */
   async updateAccountPaymentMethod(id, paymentMethodId) {
     const { changes } = await dbHelper.execute(

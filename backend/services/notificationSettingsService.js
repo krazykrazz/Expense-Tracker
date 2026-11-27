@@ -2,7 +2,7 @@ const settingsRepository = require('../repositories/settingsRepository');
 const activityLogService = require('./activityLogService');
 const notifiarrProvider = require('./notifiarrProvider');
 const { buildMessage } = require('./notificationMessages');
-const { EVENTS, EVENT_KEYS, DEFAULT_EVENT_KEYS, STATE_KEY } = require('./notificationEvents');
+const { EVENTS, EVENT_KEYS, DEFAULT_EVENT_KEYS, LEGACY_EVENT_KEYS, STATE_KEY } = require('./notificationEvents');
 const timeBoundaryService = require('./timeBoundaryService');
 const { encrypt, decrypt } = require('../utils/tokenCrypto');
 const { fail } = require('../utils/httpError');
@@ -13,7 +13,8 @@ const KEYS = {
   apiKey: 'notifications_notifiarr_key_enc',
   channelId: 'notifications_channel_id',
   pingUserId: 'notifications_ping_user_id',
-  events: 'notifications_events'
+  events: 'notifications_events',
+  eventsKnown: 'notifications_events_known'
 };
 const KEY_UNREADABLE = 'The saved Notifiarr API key cannot be decrypted because the encryption key changed '
   + '(for example after restoring a backup on another machine). Re-enter the API key.';
@@ -21,14 +22,25 @@ const KEY_UNREADABLE = 'The saved Notifiarr API key cannot be decrypted because 
 const hint = (value) => (value ? `••••${value.slice(-4)}` : null);
 const isBlank = (value) => typeof value !== 'string' || value.trim() === '';
 
-function parseEvents(stored) {
-  if (!stored) return DEFAULT_EVENT_KEYS;
+const parseList = (stored) => {
   try {
     const parsed = JSON.parse(stored);
-    return Array.isArray(parsed) ? parsed.filter(key => EVENT_KEYS.includes(key)) : DEFAULT_EVENT_KEYS;
+    return Array.isArray(parsed) ? parsed : null;
   } catch {
-    return DEFAULT_EVENT_KEYS;
+    return null;
   }
+};
+
+/**
+ * The switched-on events: the saved selection plus any default-on event added since it was saved (`known` lists
+ * the events that existed at that save; a selection saved before it was kept knew LEGACY_EVENT_KEYS).
+ */
+function parseEvents(stored, storedKnown) {
+  const selected = stored ? parseList(stored) : null;
+  if (!selected) return DEFAULT_EVENT_KEYS;
+  const known = (storedKnown && parseList(storedKnown)) || LEGACY_EVENT_KEYS;
+  const added = DEFAULT_EVENT_KEYS.filter(key => !known.includes(key));
+  return EVENT_KEYS.filter(key => selected.includes(key) || added.includes(key));
 }
 
 /**
@@ -59,7 +71,7 @@ class NotificationSettingsService {
       apiKey,
       channelId,
       pingUserId: values[KEYS.pingUserId] || '',
-      events: new Set(parseEvents(values[KEYS.events])),
+      events: new Set(parseEvents(values[KEYS.events], values[KEYS.eventsKnown])),
       keyError
     };
   }
@@ -156,6 +168,7 @@ class NotificationSettingsService {
     await settingsRepository.setSetting(KEYS.pingUserId, next.pingUserId);
     await settingsRepository.setSetting(KEYS.enabled, enabled ? '1' : '0');
     await settingsRepository.setSetting(KEYS.events, JSON.stringify(events));
+    await settingsRepository.setSetting(KEYS.eventsKnown, JSON.stringify(EVENT_KEYS));
 
     const changes = [];
     if (enabled !== current.enabled) changes.push(enabled ? 'turned on' : 'turned off');

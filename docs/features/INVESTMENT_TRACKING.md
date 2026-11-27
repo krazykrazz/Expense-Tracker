@@ -18,6 +18,7 @@ The Investment Tracking feature enables users to monitor their investment portfo
 - **Upsert Logic**: Adding a value for an existing month updates the existing entry
 - **Value Changes**: Automatic calculation of month-over-month changes
 - **Percentage Changes**: Display percentage change from previous month
+- **From the bank (optional)**: with Bank Import, an investment linked to a bank account gets the current month's value from its balance after each sync, until the month ends. Those months are `source = 'bank'` and show a bank icon in Value History; a value entered or edited by hand is `manual` and never overwritten. See [Plaid Bank Import](PLAID_INTEGRATION.md#connections-tab)
 
 ### Visual Indicators
 - **Arrow Indicators**: 
@@ -101,6 +102,7 @@ CREATE TABLE IF NOT EXISTS investment_values (
   year INTEGER NOT NULL,
   month INTEGER NOT NULL,
   value REAL NOT NULL CHECK(value >= 0),
+  source TEXT NOT NULL DEFAULT 'manual' CHECK(source IN ('manual', 'bank')),
   created_at TEXT DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (investment_id) REFERENCES investments(id) ON DELETE CASCADE,

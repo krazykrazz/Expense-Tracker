@@ -88,7 +88,7 @@ const EXPECTED_TABLES = {
   budgets: ['id', 'year', 'month', 'category', 'limit', 'created_at', 'updated_at'],
   budget_allocations: ['id', 'year', 'month', 'name', 'amount', 'investment_id', 'created_at', 'updated_at'],
   investments: ['id', 'name', 'type', 'initial_value', 'created_at', 'updated_at'],
-  investment_values: ['id', 'investment_id', 'year', 'month', 'value', 'created_at', 'updated_at'],
+  investment_values: ['id', 'investment_id', 'year', 'month', 'value', 'source', 'created_at', 'updated_at'],
   people: ['id', 'name', 'date_of_birth', 'created_at', 'updated_at'],
   expense_people: ['id', 'expense_id', 'person_id', 'amount', 'original_amount', 'created_at'],
   expense_invoices: ['id', 'expense_id', 'person_id', 'filename', 'original_filename', 'file_path', 'file_size', 'mime_type', 'upload_date'],

@@ -248,7 +248,7 @@ Get a Discord message when something needs your attention, without opening the a
 
 ### What You'll Get
 
-Tick or untick each kind under **Notify me about**: a bank needs a login, was removed or has a sync error; a bank isn't updating; a bank recovered; backup failed (and recovered), completed or restored; and, off by default, a summary of each bank sync that brought something new.
+Tick or untick each kind under **Notify me about**: a bank needs a login, was removed or has a sync error; a bank isn't updating; a bank recovered; backup failed (and recovered), completed or restored; a loan payment paid from a bank-imported account still not recorded 5 days after its due date (and when it is); and, off by default, a summary of each bank sync that brought something new.
 
 You are told when something **changes**, once: a bank that stays broken is announced one time and then again when it recovers. A sync error is only announced if it lasts an hour, and "not updating" once Plaid has had no data for 24 hours (the bank icon flags it earlier, at 12). Messages contain bank and account names, error codes and amounts, never card or account numbers. A problem sending a message never affects syncing or backups; **Remove** in the Notifications tab deletes the key and channel.
 
@@ -324,7 +324,9 @@ Click **"Financial"** in the month selector and scroll to the Investments sectio
 
 ### Bank Balance (optional)
 
-With [Bank Import](#bank-import-optional) set up, link a Wealthsimple RRSP or TFSA account to its investment under **Bank Import → Connections** (choose the investment in the account's dropdown). The investment then shows a bank icon and **Bank $186,331.55 · as of 6:37 am** next to its **Current Value** and at the top of its **View**. It is only for comparing: your monthly value entries are not changed. It is dimmed and marked "(may be out of date)" when the bank hasn't updated recently. Several accounts linked to one investment are added up.
+With [Bank Import](#bank-import-optional) set up, link a Wealthsimple RRSP or TFSA account to its investment under **Bank Import → Connections** (choose the investment in the account's dropdown). The investment then shows a bank icon and **Bank $186,331.55 · as of 6:37 am** next to its **Current Value** and at the top of its **View**. It is dimmed and marked "(may be out of date)" when the bank hasn't updated recently. Several accounts linked to one investment are added up.
+
+The bank also fills in the investment's **monthly value**: after each bank sync, this month's value is set from the balance and kept up to date until the month ends, so each month holds its month-end balance. These months show a bank icon in the Value History and count for the monthly reminder. A value you enter or edit yourself is never overwritten; delete it to let the bank fill that month again.
 
 ### Portfolio Overview
 

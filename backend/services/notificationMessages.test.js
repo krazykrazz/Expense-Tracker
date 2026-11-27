@@ -159,6 +159,28 @@ describe('buildMessage', () => {
   });
 });
 
+describe('loan payment messages', () => {
+  const data = { loanName: 'Pine Mortgage', fixedExpenseName: 'Pine Mortgage', amount: 2800, dueDate: '2026-12-01', paymentMethodName: 'Debit - WS' };
+
+  test('not recorded: names the loan and month, says what to do, pings', () => {
+    const message = buildMessage('loan_payment_unconfirmed', data, ctx);
+    expect(message).toMatchObject({ name: 'Expense Tracker: Loan Payment Not Recorded', title: 'Pine Mortgage', color: 'F39C12', ping: true });
+    expect(message.description).toContain('December 2026 payment');
+    expect(message.description).toContain('Inbox');
+    expect(message.fields.map(f => [f.title, f.text])).toEqual([['Amount', '$2,800.00'], ['Due', 'Dec 1, 2026'], ['Paid from', 'Debit - WS']]);
+  });
+
+  test('recorded: names the month; a different month still missing is listed, the same one is not', () => {
+    const same = buildMessage('loan_payment_recorded', { ...data, previousState: 'unconfirmed:2026-12' }, ctx);
+    expect(same).toMatchObject({ name: 'Expense Tracker: Loan Payment Recorded', color: '2ECC71', ping: false });
+    expect(same.description).toBe('The December 2026 payment is recorded.');
+    expect(same.fields.map(f => f.title)).toEqual(['Amount']);
+
+    const later = buildMessage('loan_payment_recorded', { ...data, dueDate: '2027-01-01', previousState: 'unconfirmed:2026-12' }, ctx);
+    expect(text(later, 'Still not recorded')).toBe('December 2026');
+  });
+});
+
 describe('helpers', () => {
   test.each([
     ['CIBC Visa 1234567', 'CIBC Visa ••••'],

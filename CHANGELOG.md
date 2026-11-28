@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.36.0] - 2026-11-28
+
+### Plaid workflow polish: card payments recorded from either side and linked automatically; Not an expense = done; Unlink from bank; stuck-bank strip; one primary action on deposits; split pending charges; Update to amount pre-ticked within 5%
+
 ## [1.35.0] - 2026-11-27
 
 ### RRSP monthly values from the bank, loan payment prompt waits for the bank, unconfirmed loan payment notification, performance and cleanup sweep

@@ -452,6 +452,16 @@ const SystemModal = () => {
           <div className="changelog">
             <div className="changelog-entry">
               <div className="changelog-version">
+                v1.36.0
+                {isCurrentVersion('v1.36.0') && <span className="current-version-badge">Current Version</span>}
+              </div>
+              <div className="changelog-date">November 28, 2026</div>
+              <ul className="changelog-items">
+                <li>Plaid workflow polish: card payments recorded from either side and linked automatically; Not an expense = done; Unlink from bank; stuck-bank strip; one primary action on deposits; split pending charges; Update to amount pre-ticked within 5%</li>
+              </ul>
+            </div>
+            <div className="changelog-entry">
+              <div className="changelog-version">
                 v1.35.0
                 {isCurrentVersion('v1.35.0') && <span className="current-version-badge">Current Version</span>}
               </div>

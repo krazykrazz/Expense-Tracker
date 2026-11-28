@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.36.0',
+    date: "November 28, 2026",
+    added: [],
+    changed: ["Plaid workflow polish: card payments recorded from either side and linked automatically; Not an expense = done; Unlink from bank; stuck-bank strip; one primary action on deposits; split pending charges; Update to amount pre-ticked within 5%"],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.35.0',
     date: "November 27, 2026",
     added: [],

@@ -12,6 +12,7 @@ const DEFAULT_DAYS_BACK = 30;
 const TYPE_LABELS = { credit: 'credit card', depository: 'bank', investment: 'investment', loan: 'loan' };
 
 const { fail } = require('../utils/httpError');
+const plaidCardPaymentService = require('./plaidCardPaymentService');
 
 /**
  * Bank file import: a fallback for when Plaid can't fetch from a bank. A CSV exported from the bank's website
@@ -72,6 +73,7 @@ class PlaidFileImportService {
       // Outside the request's tab context so every tab, including this one, refreshes the updated expenses
       await runWithTabId(null, () => plaidSettlementService.applySettlements(settlements));
     }
+    await runWithTabId(null, () => plaidCardPaymentService.autoLink());
     await activityLogService.logEvent(
       'plaid_file_imported',
       'plaid_transaction',

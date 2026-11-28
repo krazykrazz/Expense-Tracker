@@ -19,9 +19,9 @@ const KIND_LABELS = { card_payment: 'Card payment', transfer: 'Transfer', loan_p
  * action that is open (`expanded`). Decisions go to `onAction(action, payload)` (see inboxActions).
  * Rows in Not expenses (`txn.bucket`) keep every action and can be moved back to To review, and the other way.
  * @param {{txn: object, filter: 'new'|'ignored', expanded: (string|null), onExpand: Function, onAction: Function,
- *   busy: boolean, error?: string, unconnectedCards?: Array}} props
+ *   busy: boolean, error?: string, creditCards?: Array}} props
  */
-const InboxRow = ({ txn, filter, expanded, onExpand, onAction, busy, error, unconnectedCards = [] }) => {
+const InboxRow = ({ txn, filter, expanded, onExpand, onAction, busy, error, creditCards = [] }) => {
   const incomeCandidates = txn.incomeCandidates || [];
   const hasCandidates = txn.matchCandidates.length > 0 || txn.fixedCandidates.length > 0 || incomeCandidates.length > 0 || Boolean(txn.split);
   const closeFixed = txn.fixedCandidates.filter(fixed => isCloseFixed(txn, fixed));
@@ -114,7 +114,7 @@ const InboxRow = ({ txn, filter, expanded, onExpand, onAction, busy, error, unco
                   Apply to an expense
                 </button>
               )}
-              <CardPaymentButtons txn={txn} unconnectedCards={unconnectedCards} expanded={expanded} onExpand={onExpand} busy={busy} />
+              <CardPaymentButtons txn={txn} creditCards={creditCards} expanded={expanded} onExpand={onExpand} busy={busy} />
               <button className="bank-import-secondary" onClick={() => onAction('ignore')} disabled={busy}>Ignore</button>
               {notExpense ? (
                 <button
@@ -141,7 +141,7 @@ const InboxRow = ({ txn, filter, expanded, onExpand, onAction, busy, error, unco
           )}
         </div>
       </div>
-      {filter === 'new' && <CardPaymentHint txn={txn} unconnectedCards={unconnectedCards} />}
+      {filter === 'new' && <CardPaymentHint txn={txn} creditCards={creditCards} />}
       {error && <div className="bank-import-error" role="alert">{error}</div>}
       {isOpen('add') && (
         <AddExpenseForm txn={txn} busy={busy} warnCardPayment={isCardPaymentRow(txn)} onCancel={() => onExpand(null)} onSubmit={(fields) => onAction('add', fields)} />
@@ -150,7 +150,7 @@ const InboxRow = ({ txn, filter, expanded, onExpand, onAction, busy, error, unco
         <CardPaymentPanel
           txn={txn}
           mode={expanded}
-          unconnectedCards={unconnectedCards}
+          creditCards={creditCards}
           busy={busy}
           onCancel={() => onExpand(null)}
           onSubmit={(body) => onAction('card-payment', body)}

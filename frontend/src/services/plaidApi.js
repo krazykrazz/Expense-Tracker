@@ -170,7 +170,7 @@ export const saveAutoSyncSettings = (fields) =>
  * @param {'new'|'ignored'} status
  * @param {'spending'|'not_expense'} bucket the tab of new rows: To review or Not expenses (ignored rows: any)
  * @returns {Promise<{transactions: Array, hiddenUnmapped: number, hiddenUnknown: number, counts: {toReview: number, notExpenses: number},
- *   cancelled: Array, unconnectedCards: Array}>}
+ *   cancelled: Array, creditCards: Array}>}
  */
 export const getInbox = (status = 'new', bucket = 'spending', options = {}) =>
   call('fetching import inbox', () => apiGet(API_ENDPOINTS.PLAID_INBOX(status, bucket), 'fetch import inbox', options));

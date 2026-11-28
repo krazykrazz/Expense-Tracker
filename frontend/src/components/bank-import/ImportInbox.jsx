@@ -186,7 +186,7 @@ const ImportInbox = ({ initialView, onExpensesChanged, onInboxChanged, onOpenCon
               onAction={(action, payload) => handleAction(txn, action, payload)}
               busy={busyId === txn.id}
               error={rowErrors[txn.id]}
-              unconnectedCards={data.unconnectedCards || []}
+              creditCards={data.creditCards || []}
             />
           ))}
         </ul>

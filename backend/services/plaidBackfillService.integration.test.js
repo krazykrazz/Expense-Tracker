@@ -139,10 +139,11 @@ describe('plaidBackfillService.backfillCapture', () => {
     expect(client.transactionsGet.mock.calls.map(([args]) => args.options.offset)).toEqual([0, 2]);
   });
 
-  test('rows that now count as card payments move to Not expenses', async () => {
-    await stage('payment', { amount: -500, name: 'PAYMENT THANK YOU' });
+  test('rows that now count as transfers move to Not expenses', async () => {
+    const chequing = await run("INSERT INTO plaid_accounts (plaid_item_id, account_id, name) VALUES (?, 'acc-chq', 'Chequing')", [ITEM.id]);
+    await stage('payment', { amount: 500, name: 'Transfer out', accountId: chequing });
     client.transactionsGet.mockResolvedValueOnce(getResponse([fromPlaid('payment', {
-      amount: -500, personal_finance_category: { primary: 'LOAN_PAYMENTS', detailed: 'LOAN_PAYMENTS_CREDIT_CARD_PAYMENT', confidence_level: 'VERY_HIGH' }
+      amount: 500, personal_finance_category: { primary: 'TRANSFER_OUT', detailed: 'TRANSFER_OUT_ACCOUNT_TRANSFER', confidence_level: 'VERY_HIGH' }
     })]));
 
     const result = await plaidBackfillService.backfillCapture(ITEM, 'access-token', TODAY);

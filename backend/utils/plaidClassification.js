@@ -2,14 +2,15 @@
  * Pure rules: what kind of money movement a staged bank transaction is, from Plaid's personal finance category
  * and the bank's description. Amounts use Plaid's sign: positive = money out of the account.
  *
- * Kinds: `card_payment`, `transfer` and `loan_payment`. `bucketFor` puts those in the Inbox's Not expenses tab
- * (spec 3.1); everything else, deposits included, stays in To review.
+ * Kinds: `card_payment`, `transfer` and `loan_payment`. `bucketFor` puts transfers in the Inbox's Not expenses tab
+ * (spec 3.1); everything else, card payments and deposits included, stays in To review.
  */
 
 const CARD_PAYMENT_PFC = 'LOAN_PAYMENTS_CREDIT_CARD_PAYMENT';
 const BUCKETS = ['spending', 'not_expense'];
-// Loan payments stay in To review: they are often matched to a fixed expense (mortgage)
-const NOT_EXPENSE_KINDS = new Set(['card_payment', 'transfer']);
+// Only transfers between accounts need nothing. Card payments stay in To review: they still have to be recorded on the
+// card (owner, 2026-11-27, after one sat unnoticed); loan payments are often matched to a fixed expense (mortgage)
+const NOT_EXPENSE_KINDS = new Set(['transfer']);
 const E_TRANSFER_TEXT = /e-?transfer/i;
 
 /** A credit on a card that says it's a payment: "Credit Card Payment - From: Cash", "PAYMENT THANK YOU/PAIEMEN T MERCI". */
@@ -45,10 +46,10 @@ function kindFor(txn) {
 }
 
 /**
- * The Inbox tab a staged row belongs in: `not_expense` (Not expenses) for card payments and transfers out
- * between accounts; `spending` (To review) for everything else. Deposits always stay in To review (income and
- * insurer payouts, which Plaid often files as `TRANSFER_IN`, are acted on there), as do Interac e-Transfers,
- * loan payments, refunds on a card, bank fees and rows without a category.
+ * The Inbox tab a staged row belongs in: `not_expense` (Not expenses) for transfers out between accounts;
+ * `spending` (To review) for everything else. Card payments stay in To review until recorded on the card, and so do
+ * deposits (income and insurer payouts, which Plaid often files as `TRANSFER_IN`, are acted on there), Interac
+ * e-Transfers, loan payments, refunds on a card, bank fees and rows without a category.
  * @param {Parameters<typeof kindFor>[0]} txn
  * @returns {'spending'|'not_expense'}
  */

@@ -3,9 +3,10 @@ import { formatCurrency, formatDate } from '../../utils/formatters';
 
 /**
  * Credit card payments in the Import Inbox. A payment leaves a bank account as a debit and arrives on the card as
- * a credit; both resolve to one recorded payment. The card's credit records it (optionally taking the paying
- * debit along), the debit links to it. `txn.cardPayment` comes from the server: { side, kind, looksLikeCardPayment,
- * pairCandidates (the other side's bank rows), paymentCandidates (payments already recorded) }.
+ * a credit; both resolve to one recorded payment. Whichever side arrives first records it (taking the other along
+ * when it is already here); the side that arrives later links itself on the server, or is offered **Link** when
+ * that isn't certain. `txn.cardPayment` comes from the server: { side, kind, looksLikeCardPayment, pairCandidates
+ * (the other side's bank rows), paymentCandidates (payments already recorded), suggestedCardId (debits) }.
  */
 
 const accountLabel = (row) => `${row.paymentMethodName}${row.accountMask ? ` ••${row.accountMask}` : ''}`;
@@ -33,7 +34,7 @@ export const CardPaymentBadge = ({ txn }) => {
 };
 
 /** Row buttons for a card payment: which panel they open is decided by InboxRow's `expanded` mode. */
-export const CardPaymentButtons = ({ txn, unconnectedCards, expanded, onExpand, busy }) => {
+export const CardPaymentButtons = ({ txn, creditCards, expanded, onExpand, busy }) => {
   const cp = txn.cardPayment;
   if (!cp) return null;
   const toggle = (mode) => onExpand(expanded === mode ? null : mode);
@@ -58,35 +59,25 @@ export const CardPaymentButtons = ({ txn, unconnectedCards, expanded, onExpand, 
       </button>
     );
   }
-  if (unconnectedCards.length > 0 && cp.pairCandidates.length === 0 && (cp.kind || cp.looksLikeCardPayment)) {
+  const sure = cp.kind || cp.pairCandidates.length > 0;
+  if (creditCards.length > 0 && (sure || cp.looksLikeCardPayment)) {
     return (
-      <button className="bank-import-secondary" onClick={() => toggle('record-to-card')} disabled={busy} aria-expanded={expanded === 'record-to-card'}>
-        Record payment to…
+      <button className={sure ? 'bank-import-primary' : 'bank-import-secondary'} onClick={() => toggle('record-to-card')} disabled={busy} aria-expanded={expanded === 'record-to-card'}>
+        Record payment
       </button>
     );
   }
   return null;
 };
 
-/** What to do next with a debit that is, or may be, a card payment. */
-export const CardPaymentHint = ({ txn, unconnectedCards }) => {
+/** For a debit recorded to a connected card: its credit needs no action when it arrives. */
+export const CardPaymentHint = ({ txn }) => {
   const cp = txn.cardPayment;
-  if (!cp || cp.side !== 'funding' || cp.paymentCandidates.length > 0) return null;
-  if (cp.pairCandidates.length > 0) {
-    const credit = cp.pairCandidates[0];
-    return (
-      <div className="inbox-row-hint">
-        Paid {accountLabel(credit)}: record it from that credit ({formatDate(credit.date)})
-        {cp.pairCandidates.length > 1 ? ` (or one of ${cp.pairCandidates.length - 1} other card${cp.pairCandidates.length > 2 ? 's' : ''} with the same amount)` : ''}.
-        It links this debit too.
-      </div>
-    );
-  }
+  if (!cp || cp.side !== 'funding' || cp.paymentCandidates.length > 0 || cp.pairCandidates.length > 0) return null;
   if (!cp.kind && !cp.looksLikeCardPayment) return null;
   return (
     <div className="inbox-row-hint">
-      Looks like a credit card payment. Record it from the card&apos;s credit when it arrives in the inbox, usually within a few days.
-      {unconnectedCards.length > 0 ? ' For a card that isn’t connected to a bank, record it here.' : ''}
+      Record it here. When the card is connected to a bank, its credit links to this payment by itself when it arrives.
     </div>
   );
 };
@@ -180,23 +171,34 @@ const LinkDebit = ({ txn, onSubmit, onCancel, busy }) => (
   </div>
 );
 
-const RecordToCard = ({ txn, unconnectedCards, onSubmit, onCancel, busy }) => {
-  const [paymentMethodId, setPaymentMethodId] = useState(unconnectedCards.length === 1 ? String(unconnectedCards[0].id) : '');
+const RecordToCard = ({ txn, creditCards, onSubmit, onCancel, busy }) => {
+  const { pairCandidates, suggestedCardId } = txn.cardPayment;
+  const initial = suggestedCardId ?? (creditCards.length === 1 ? creditCards[0].id : null);
+  const [paymentMethodId, setPaymentMethodId] = useState(initial === null ? '' : String(initial));
+  const card = creditCards.find(c => String(c.id) === paymentMethodId);
+  // The chosen card's credit already in the inbox: record from it, so both rows are linked to the payment
+  const credits = pairCandidates.filter(pair => card && pair.paymentMethodId === card.id);
+  const credit = credits.length === 1 ? credits[0] : null;
   return (
     <div className="inbox-match-picker" data-testid="card-payment-panel">
-      <div className="bank-import-muted">
-        For a card that isn&apos;t connected to a bank. A connected card records its payments from its own credit.
-      </div>
       <label className="inbox-card-payment-select">
         Card
         <select value={paymentMethodId} onChange={(event) => setPaymentMethodId(event.target.value)}>
           <option value="" disabled>Choose…</option>
-          {unconnectedCards.map(card => <option key={card.id} value={card.id}>{card.name}</option>)}
+          {creditCards.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
       </label>
-      <div>Records a {formatCurrency(Math.abs(txn.amount))} payment dated {formatDate(txn.postedDate)}.</div>
+      <div>
+        Records a {formatCurrency(Math.abs(txn.amount))} payment{card ? <> to <strong>{card.name}</strong></> : ''} dated {formatDate(credit ? credit.date : txn.postedDate)}.
+        {credit && ` Its credit on ${formatDate(credit.date)} is linked too.`}
+        {!credit && card?.connected && ' Its credit links to it when it arrives.'}
+      </div>
       <div className="inbox-form-actions">
-        <button className="bank-import-primary" onClick={() => onSubmit({ paymentMethodId: Number(paymentMethodId) })} disabled={busy || !paymentMethodId}>
+        <button
+          className="bank-import-primary"
+          onClick={() => onSubmit(credit ? { alsoLinkId: credit.id } : { paymentMethodId: Number(paymentMethodId) })}
+          disabled={busy || !paymentMethodId}
+        >
           Record payment
         </button>
         <button className="bank-import-secondary" onClick={onCancel} disabled={busy}>Cancel</button>
@@ -206,10 +208,10 @@ const RecordToCard = ({ txn, unconnectedCards, onSubmit, onCancel, busy }) => {
 };
 
 /** The panel for the row's expanded mode, or null. */
-export const CardPaymentPanel = ({ txn, mode, unconnectedCards, onSubmit, onCancel, busy }) => {
+export const CardPaymentPanel = ({ txn, mode, creditCards, onSubmit, onCancel, busy }) => {
   if (!txn.cardPayment) return null;
   if (mode === 'card-payment') return <RecordCardCredit txn={txn} onSubmit={onSubmit} onCancel={onCancel} busy={busy} />;
   if (mode === 'link-payment') return <LinkDebit txn={txn} onSubmit={onSubmit} onCancel={onCancel} busy={busy} />;
-  if (mode === 'record-to-card') return <RecordToCard txn={txn} unconnectedCards={unconnectedCards} onSubmit={onSubmit} onCancel={onCancel} busy={busy} />;
+  if (mode === 'record-to-card') return <RecordToCard txn={txn} creditCards={creditCards} onSubmit={onSubmit} onCancel={onCancel} busy={busy} />;
   return null;
 };

@@ -6,6 +6,7 @@ const plaidSettlementService = require('./plaidSettlementService');
 const plaidCardBalanceService = require('./plaidCardBalanceService');
 const plaidBackfillService = require('./plaidBackfillService');
 const plaidInvestmentValueService = require('./plaidInvestmentValueService');
+const plaidCardPaymentService = require('./plaidCardPaymentService');
 const notificationService = require('./notificationService');
 const { runWithTabId } = require('../utils/requestContext');
 const { decrypt } = require('../utils/tokenCrypto');
@@ -119,6 +120,8 @@ class PlaidSyncService {
           // Only against a balance fetched just now: an old one would settle the wrong charges, irreversibly
           if (balancesFresh) await this._settleFromBalance(id);
           if (balancesFresh) await this._applyInvestmentValues(id);
+          // The other side of a card payment already recorded links itself (never fails the sync)
+          await runWithTabId(null, () => plaidCardPaymentService.autoLink());
           // One-off backfills of data older versions didn't keep (spec 2.1, 2.5.7); never fails the sync. Outside the
           // request's tab context, like settlements, so the tab that started the sync refreshes too
           await runWithTabId(null, () => plaidBackfillService.afterSync(item, accessToken));

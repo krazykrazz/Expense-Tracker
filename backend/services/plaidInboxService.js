@@ -31,7 +31,7 @@ class PlaidInboxService {
    * @param {'spending'|'not_expense'} bucket the tab of new rows: To review or Not expenses (spec 3.1); ignored
    *   rows are listed whatever their bucket
    * @returns {Promise<{transactions: Array, hiddenUnmapped: number, hiddenUnknown: number,
-   *   counts: {toReview: number, notExpenses: number}, cancelled: Array, unconnectedCards: Array}>}
+   *   counts: {toReview: number, notExpenses: number}, cancelled: Array, creditCards: Array}>}
    */
   async listInbox(status = 'new', bucket = 'spending') {
     if (!INBOX_STATUSES.includes(status)) {
@@ -58,7 +58,7 @@ class PlaidInboxService {
       isNew ? this._incomeCandidates(rows) : new Map(),
       isNew ? this._suggestCategories([...new Set(rows.flatMap(row => [placeOf(row), defaultPlace(row)]))]) : new Map(),
       // Both tabs: a card payment's two sides can sit in different tabs (a funding debit without a category)
-      isNew ? plaidCardPaymentService.describeRows(allRows) : { byRow: new Map(), unconnectedCards: [] },
+      isNew ? plaidCardPaymentService.describeRows(allRows) : { byRow: new Map(), creditCards: [] },
       isNew ? plaidInsuranceService.describeDeposits(rows) : new Map(),
       isNew ? plaidReimbursementService.describeRows(rows) : new Map(),
       isNew ? plaidSplitService.describeRows(rows) : new Map()
@@ -113,7 +113,7 @@ class PlaidInboxService {
       hiddenUnknown,
       counts,
       cancelled: isNew && bucket === 'spending' ? await this._cancelledPending() : [],
-      unconnectedCards: cardPayments.unconnectedCards
+      creditCards: cardPayments.creditCards
     };
   }
 

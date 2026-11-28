@@ -2,6 +2,8 @@ const plaidRepository = require('../repositories/plaidRepository');
 const plaidCardPaymentRepository = require('../repositories/plaidCardPaymentRepository');
 const paymentMethodRepository = require('../repositories/paymentMethodRepository');
 const creditCardPaymentService = require('./creditCardPaymentService');
+const plaidConfig = require('../config/plaid');
+const logger = require('../config/logger');
 const {
   PAYMENT_WINDOW_DAYS, shiftDate, isCardRow, isCardCredit, isFundingDebit, isCardPaymentSide, isPaymentPair,
   pairCardPayments, findPaymentCandidates
@@ -13,6 +15,7 @@ const {
 
 const pairShape = (row) => ({
   id: row.id,
+  paymentMethodId: row.paymentMethodId,
   date: row.date,
   amount: row.amount,
   accountName: row.accountName,
@@ -22,29 +25,52 @@ const pairShape = (row) => ({
 
 /**
  * Credit card payments in the Import Inbox. A payment leaves a funding account (chequing) as a debit and
- * reaches the card as a credit; both bank rows resolve to ONE credit_card_payments row:
- * - the card side records it (`record`), optionally taking the paying debit along;
- * - the funding side links to it (`link`), and only records when the card has no bank connection
- *   (`recordFromFunding`), because no card row will ever arrive for it.
+ * reaches the card as a credit; both bank rows resolve to ONE credit_card_payments row. Whichever side is seen
+ * first records it (owner, 2026-11-27: waiting for a slow card's credit hid the payment):
+ * - a card credit records it on its card (`record`), optionally taking the paying debit along;
+ * - a funding debit records it on the card the user picks (`recordFromFunding`), taking that card's credit along
+ *   when it is already in the inbox;
+ * - the other side, arriving later, links itself (`autoLink`) when exactly one recorded payment fits it and it is
+ *   the only row that fits that payment; anything less certain stays for the user (`link`). A payment entered by
+ *   hand in the card view is linked the same way.
  * Text and category never decide anything here: they label rows. Pairing (same cents, opposite sides, within
  * 5 days) is the evidence, and the user always chooses between several candidates.
  */
+/** Words of a card's name worth looking for in a debit's text ("CIBC MC" → cibc, mc). */
+const nameWords = (name) => String(name || '').toLowerCase().split(/[^a-z0-9]+/).filter(word => word.length >= 2);
+
+/**
+ * The card a debit most likely paid: the card of its only card credit in the inbox, else the only card whose name
+ * shares the most words with the debit's text ("CIBC MASTERCARD - Bill payment" → CIBC MC), else none.
+ */
+function suggestCard(row, pairCandidates, creditCards) {
+  const pairCards = [...new Set(pairCandidates.map(pair => pair.paymentMethodId).filter(Boolean))];
+  if (pairCards.length === 1) return pairCards[0];
+  const text = new Set(nameWords([row.name, row.merchantName].filter(Boolean).join(' ')));
+  const scored = creditCards
+    .map(card => ({ id: card.id, score: nameWords(card.name).filter(word => text.has(word)).length }))
+    .filter(card => card.score > 0)
+    .sort((a, b) => b.score - a.score);
+  if (scored.length === 0 || (scored.length > 1 && scored[0].score === scored[1].score)) return null;
+  return scored[0].id;
+}
+
 class PlaidCardPaymentService {
   /**
    * What the inbox shows for card payments on each `new` row.
    * @param {Array} rows inbox rows (findInbox)
-   * @returns {Promise<{byRow: Map<number, object>, unconnectedCards: Array<{id: number, name: string}>}>}
+   * @returns {Promise<{byRow: Map<number, object>, creditCards: Array<{id: number, name: string, connected: boolean}>}>}
    */
   async describeRows(rows) {
     // A pending credit on a card is listed too (it can't be recorded yet, and the inbox says so)
     const sides = rows.filter(row => isCardPaymentSide(row) || (row.pending && isCardCredit(row)));
     const byRow = new Map();
-    if (sides.length === 0) return { byRow, unconnectedCards: [] };
+    if (sides.length === 0) return { byRow, creditCards: [] };
 
     const dates = sides.map(row => row.date).sort();
-    const [payments, unconnectedCards] = await Promise.all([
+    const [payments, creditCards] = await Promise.all([
       plaidCardPaymentRepository.findPaymentsInRange(shiftDate(dates[0], -PAYMENT_WINDOW_DAYS), shiftDate(dates[dates.length - 1], PAYMENT_WINDOW_DAYS)),
-      plaidCardPaymentRepository.findUnconnectedCreditCards()
+      plaidCardPaymentRepository.findCreditCards()
     ]);
     const pairs = pairCardPayments(rows);
 
@@ -59,22 +85,25 @@ class PlaidCardPaymentService {
       // Every credit on a card can be recorded as a payment (a missed label never blocks); a debit elsewhere
       // only shows anything when something says it could be one
       if (!isCardCredit(row) && !kind && !looksLike && pairCandidates.length === 0 && paymentCandidates.length === 0) continue;
+      const side = isCardCredit(row) ? 'card' : 'funding';
       byRow.set(row.id, {
-        side: isCardCredit(row) ? 'card' : 'funding',
+        side,
         kind,
         looksLikeCardPayment: looksLike,
         pairCandidates,
-        paymentCandidates
+        paymentCandidates,
+        ...(side === 'funding' ? { suggestedCardId: suggestCard(row, pairCandidates, creditCards) } : {})
       });
     }
-    return { byRow, unconnectedCards: sides.some(isFundingDebit) ? unconnectedCards : [] };
+    return { byRow, creditCards: sides.some(isFundingDebit) ? creditCards : [] };
   }
 
   /**
    * Handle `POST /inbox/:id/card-payment`. The row's side decides what the body may carry:
    * - `{ creditCardPaymentId }` on either side: link to a recorded payment;
    * - `{ alsoLinkId? }` on a card credit: record the payment (and link the paying debit);
-   * - `{ paymentMethodId }` on a funding debit: record the payment to a card with no bank connection.
+   * - `{ paymentMethodId }` on a funding debit: record the payment to that card;
+   * - `{ alsoLinkId }` on a funding debit: record it from that card credit, linking both (the credit's card).
    * @returns {Promise<{created: boolean, payment: object, transaction: object, linkedTransactionIds: number[]}>}
    */
   async act(id, body = {}) {
@@ -90,7 +119,12 @@ class PlaidCardPaymentService {
       if (has('paymentMethodId')) throw fail('A credit on a card is recorded on that card', 400);
       return this.record(id, { alsoLinkId: body.alsoLinkId });
     }
-    if (has('alsoLinkId')) throw fail('Record a card payment from the credit on the card', 400);
+    if (has('alsoLinkId')) {
+      if (has('paymentMethodId')) throw fail('Choose either the card credit or a card, not both', 400);
+      const creditId = parseInt(body.alsoLinkId, 10);
+      if (Number.isNaN(creditId) || creditId === id) throw fail('Choose the card credit from the list', 400);
+      return this.record(creditId, { alsoLinkId: id });
+    }
     return this.recordFromFunding(id, { paymentMethodId: body.paymentMethodId });
   }
 
@@ -120,8 +154,8 @@ class PlaidCardPaymentService {
   }
 
   /**
-   * Record the debit that paid a card the bank doesn't report on. Refused for a connected card: its credit will
-   * arrive in the inbox and record the payment there, so it is never recorded twice.
+   * Record the debit that paid a card as a payment on that card. When the card is connected to a bank its credit
+   * arrives later and links itself to this payment (`autoLink`), so it is never recorded twice.
    */
   async recordFromFunding(id, { paymentMethodId } = {}) {
     return exclusive(id, async () => {
@@ -134,15 +168,15 @@ class PlaidCardPaymentService {
       if (!card || card.type !== 'credit_card' || !card.is_active) {
         throw fail('Choose an active credit card', 400);
       }
-      if (await plaidCardPaymentRepository.isCardConnected(card.id)) {
-        throw fail(`${card.display_name} is connected to a bank. Record the payment from its credit when it arrives in the inbox.`, 400);
-      }
       return this._record(txn, null, card);
     });
   }
 
-  /** Link a bank row to a payment that is already recorded (by hand, or from the other side). Creates nothing. */
-  async link(id, creditCardPaymentId) {
+  /**
+   * Link a bank row to a payment that is already recorded (by hand, or from the other side). Creates nothing.
+   * @param {{automatic?: boolean}} [options] `automatic` when autoLink chose it (said so in the activity log)
+   */
+  async link(id, creditCardPaymentId, { automatic = false } = {}) {
     return exclusive(id, async () => {
       const txn = await requireNew(id, { settled: true });
       if (!isCardPaymentSide(txn)) {
@@ -164,8 +198,8 @@ class PlaidCardPaymentService {
       }
 
       await plaidCardPaymentRepository.link(null, txn.id, payment.id, side);
-      await logReview(txn, 'card_payment', `Linked bank transaction ${describeTxn(txn)} to the ${money(payment.amount)} payment to ${payment.paymentMethodName} on ${payment.date}`, {
-        creditCardPaymentId: payment.id, side
+      await logReview(txn, 'card_payment', `${automatic ? 'Automatically linked' : 'Linked'} bank transaction ${describeTxn(txn)} to the ${money(payment.amount)} payment to ${payment.paymentMethodName} on ${payment.date}`, {
+        creditCardPaymentId: payment.id, side, ...(automatic ? { automatic: true } : {})
       });
       return {
         created: false,
@@ -174,6 +208,58 @@ class PlaidCardPaymentService {
         linkedTransactionIds: [txn.id]
       };
     });
+  }
+
+  /**
+   * Link bank rows to payments already recorded, without asking, where it can't be wrong: a settled card payment
+   * row (by its category or text) still to review that exactly one recorded payment fits (same cents within the
+   * window, its card for a credit, that side not linked yet), when it is also the only such row that payment fits.
+   * Run after a sync, a bank file import and a payment entered by hand. Nothing without Plaid; never throws.
+   * @returns {Promise<Array<{transactionId: number, creditCardPaymentId: number}>>}
+   */
+  async autoLink() {
+    try {
+      if (!plaidConfig.isEnabled()) return [];
+      const rows = (await plaidRepository.findInbox('new')).filter(row => {
+        if (!isCardPaymentSide(row)) return false;
+        const classified = { pfcDetailed: row.pfcDetailed, amount: row.amount, isCard: isCardRow(row), name: row.name, merchantName: row.merchantName };
+        return kindFor(classified) === 'card_payment' || looksLikeCardPayment(classified);
+      });
+      if (rows.length === 0) return [];
+
+      const dates = rows.map(row => row.date).sort();
+      const payments = await plaidCardPaymentRepository.findPaymentsInRange(
+        shiftDate(dates[0], -PAYMENT_WINDOW_DAYS), shiftDate(dates[dates.length - 1], PAYMENT_WINDOW_DAYS)
+      );
+      const fits = rows.map(row => ({ row, candidates: findPaymentCandidates(row, payments) }));
+      // How many rows of each side every payment fits: a payment two rows fit is left for the user
+      const claims = new Map();
+      for (const { row, candidates } of fits) {
+        for (const payment of candidates) {
+          const key = `${payment.id}:${isCardCredit(row) ? 'card' : 'funding'}`;
+          claims.set(key, (claims.get(key) || 0) + 1);
+        }
+      }
+
+      const linked = [];
+      for (const { row, candidates } of fits) {
+        if (candidates.length !== 1) continue;
+        const [payment] = candidates;
+        if (claims.get(`${payment.id}:${isCardCredit(row) ? 'card' : 'funding'}`) !== 1) continue;
+        try {
+          await this.link(row.id, payment.id, { automatic: true });
+          linked.push({ transactionId: row.id, creditCardPaymentId: payment.id });
+        } catch (err) {
+          // Reviewed or linked meanwhile: the user's choice stands
+          logger.debug('Card payment not linked automatically', { plaidTransactionId: row.id, error: err.message });
+        }
+      }
+      if (linked.length > 0) logger.info('Card payments linked automatically', { linked: linked.length });
+      return linked;
+    } catch (err) {
+      logger.warn('Linking card payments automatically failed', { error: err.message });
+      return [];
+    }
   }
 
   /**

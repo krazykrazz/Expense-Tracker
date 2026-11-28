@@ -216,7 +216,7 @@ describe('Consolidated Schema – Unit Tests', () => {
     expect(await dbGet(db, "SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_plaid_transactions_merchant_entity'")).toBeDefined();
     const rows = await dbAll(db, "SELECT transaction_id, review_bucket FROM plaid_transactions WHERE transaction_id LIKE 'mig-%' ORDER BY transaction_id");
     expect(Object.fromEntries(rows.map(r => [r.transaction_id, r.review_bucket]))).toEqual({
-      'mig-added': 'spending', 'mig-card-pay': 'not_expense', 'mig-etransfer': 'spending', 'mig-insurer': 'spending',
+      'mig-added': 'spending', 'mig-card-pay': 'spending', 'mig-etransfer': 'spending', 'mig-insurer': 'spending',
       'mig-loan': 'spending', 'mig-no-pfc': 'spending', 'mig-refund': 'spending', 'mig-xfer': 'not_expense',
       'mig-xfer-ignored': 'not_expense'
     });

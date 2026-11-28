@@ -891,15 +891,19 @@ describe('plaidService', () => {
 
     test('mapping an account to a credit card reclassifies its rows still to review', async () => {
       const item = await connect();
-      client.transactionsSync.mockResolvedValueOnce(page({ added: [txn('pay', { amount: -500, name: 'PAYMENT THANK YOU' })] }));
+      // A transfer out of a bank account is Not expenses; on a card it isn't a transfer
+      client.transactionsSync.mockResolvedValueOnce(page({ added: [txn('out', {
+        amount: 500, name: 'Transfer out',
+        personal_finance_category: { primary: 'TRANSFER_OUT', detailed: 'TRANSFER_OUT_ACCOUNT_TRANSFER', confidence_level: 'HIGH' }
+      })] }));
       await plaidService.syncItem(item.id);
-      expect(await get('SELECT review_bucket FROM plaid_transactions')).toEqual({ review_bucket: 'spending' });
+      expect(await get('SELECT review_bucket FROM plaid_transactions')).toEqual({ review_bucket: 'not_expense' });
 
       const card = await run("INSERT INTO payment_methods (type, display_name, full_name, is_active) VALUES ('credit_card', 'Bucket Visa', 'Bucket Visa', 1)");
       const { id: accountId } = await get("SELECT id FROM plaid_accounts WHERE account_id = 'acc-1'");
       await plaidService.updateAccountMapping(accountId, card);
 
-      expect(await get('SELECT review_bucket FROM plaid_transactions')).toEqual({ review_bucket: 'not_expense' });
+      expect(await get('SELECT review_bucket FROM plaid_transactions')).toEqual({ review_bucket: 'spending' });
       await run('DELETE FROM plaid_accounts');
       await run('DELETE FROM payment_methods WHERE id = ?', [card]);
     });

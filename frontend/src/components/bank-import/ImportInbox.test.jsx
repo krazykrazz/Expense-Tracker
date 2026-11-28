@@ -672,12 +672,12 @@ describe('ImportInbox', () => {
     const chequingDebit = (overrides = {}) => txn({
       id: 11, transactionId: 'visa-debit', place: 'Credit Card Payment', rawName: 'Credit Card Payment', amount: 3471.31,
       date: '2026-10-30', postedDate: '2026-10-30', accountMask: '5070', paymentMethodName: 'Debit', suggestedCategory: null,
-      cardPayment: cp({ side: 'funding', kind: null, pairCandidates: [{ id: 10, date: '2026-10-30', amount: -3471.31, accountMask: 'KL54', paymentMethodName: 'WS VISA' }] }),
+      cardPayment: cp({ side: 'funding', kind: null, pairCandidates: [{ id: 10, date: '2026-10-30', amount: -3471.31, accountMask: 'KL54', paymentMethodId: 4, paymentMethodName: 'WS VISA' }] }),
       ...overrides
     });
     const respond = (transactions, extra = {}) => plaidApi.getInbox
-      .mockResolvedValueOnce({ transactions, hiddenUnmapped: 0, unconnectedCards: [], ...extra })
-      .mockResolvedValue({ transactions: [], hiddenUnmapped: 0, unconnectedCards: [] });
+      .mockResolvedValueOnce({ transactions, hiddenUnmapped: 0, creditCards: [], ...extra })
+      .mockResolvedValue({ transactions: [], hiddenUnmapped: 0, creditCards: [] });
 
     it('labels a credit on a card as a card payment instead of a refund, and offers Record payment', async () => {
       respond([visaCredit(), visaCredit({ id: 12, transactionId: 'refund', place: 'AMAZON REFUND', amount: -25, cardPayment: cp({ kind: null, looksLikeCardPayment: false }) })]);
@@ -758,14 +758,14 @@ describe('ImportInbox', () => {
       expect(await screen.findByRole('button', { name: 'Record payment' })).toBeDisabled();
     });
 
-    it('tells the debit where to record it, and keeps Add with a double-count warning', async () => {
-      respond([chequingDebit()]);
+    it('offers Record payment on the debit, and keeps Add with a double-count warning', async () => {
+      respond([chequingDebit()], { creditCards: [{ id: 4, name: 'WS VISA', connected: true }] });
 
       renderInbox();
 
       expect(await screen.findByText('Card payment')).toBeInTheDocument();
-      expect(screen.getByText(/record it from that credit \(Oct 30, 2026\)/)).toHaveTextContent('Paid WS VISA ••KL54');
-      expect(screen.queryByRole('button', { name: /Link to card payment|Record payment/ })).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Record payment' })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Link to card payment' })).not.toBeInTheDocument();
       fireEvent.click(screen.getByRole('button', { name: 'Add' }));
       expect(screen.getByRole('note')).toHaveTextContent(/counts the spending twice/);
     });
@@ -793,16 +793,46 @@ describe('ImportInbox', () => {
       await waitFor(() => expect(plaidApi.cardPaymentInboxTransaction).toHaveBeenCalledWith(11, { creditCardPaymentId: 5 }));
     });
 
-    it('records a debit to a card that is not connected to a bank', async () => {
+    it('records a debit to any card, the suggested one preselected; a connected card\'s credit links later', async () => {
       respond(
-        [chequingDebit({ cardPayment: cp({ side: 'funding', kind: null, pairCandidates: [] }) })],
-        { unconnectedCards: [{ id: 9, name: 'Amex' }, { id: 12, name: 'Store Card' }] }
+        [chequingDebit({ cardPayment: cp({ side: 'funding', kind: 'card_payment', pairCandidates: [], suggestedCardId: 4 }) })],
+        { creditCards: [{ id: 4, name: 'CIBC MC', connected: true }, { id: 12, name: 'Store Card', connected: false }] }
       );
       plaidApi.cardPaymentInboxTransaction.mockResolvedValue({ created: true, payment: { id: 6 }, linkedTransactionIds: [11] });
 
       renderInbox();
-      expect(await screen.findByText(/Looks like a credit card payment/)).toBeInTheDocument();
-      fireEvent.click(screen.getByRole('button', { name: 'Record payment to…' }));
+      expect(await screen.findByText(/its credit links to this payment by itself/)).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Record payment' }));
+      const suggested = await screen.findByTestId('card-payment-panel');
+      expect(within(suggested).getByLabelText('Card')).toHaveValue('4');
+      expect(suggested).toHaveTextContent('Its credit links to it when it arrives.');
+      fireEvent.click(within(suggested).getByRole('button', { name: 'Record payment' }));
+      await waitFor(() => expect(plaidApi.cardPaymentInboxTransaction).toHaveBeenCalledWith(11, { paymentMethodId: 4 }));
+    });
+
+    it('records a debit from its card credit already in the inbox', async () => {
+      respond([chequingDebit({ cardPayment: cp({ side: 'funding', kind: null, suggestedCardId: 4,
+        pairCandidates: [{ id: 10, date: '2026-10-30', amount: -3471.31, accountMask: 'KL54', paymentMethodId: 4, paymentMethodName: 'WS VISA' }] }) })],
+      { creditCards: [{ id: 4, name: 'WS VISA', connected: true }] });
+      plaidApi.cardPaymentInboxTransaction.mockResolvedValue({ created: true, payment: { id: 6 }, linkedTransactionIds: [10, 11] });
+
+      renderInbox();
+      fireEvent.click(await screen.findByRole('button', { name: 'Record payment' }));
+      const panel = await screen.findByTestId('card-payment-panel');
+      expect(panel).toHaveTextContent('is linked too');
+      fireEvent.click(within(panel).getByRole('button', { name: 'Record payment' }));
+      await waitFor(() => expect(plaidApi.cardPaymentInboxTransaction).toHaveBeenCalledWith(11, { alsoLinkId: 10 }));
+    });
+
+    it('asks which card when none is suggested', async () => {
+      respond(
+        [chequingDebit({ cardPayment: cp({ side: 'funding', kind: null, looksLikeCardPayment: true, pairCandidates: [] }) })],
+        { creditCards: [{ id: 9, name: 'Amex', connected: false }, { id: 12, name: 'Store Card', connected: false }] }
+      );
+      plaidApi.cardPaymentInboxTransaction.mockResolvedValue({ created: true, payment: { id: 6 }, linkedTransactionIds: [11] });
+
+      renderInbox();
+      fireEvent.click(await screen.findByRole('button', { name: 'Record payment' }));
       const panel = await screen.findByTestId('card-payment-panel');
       const submit = within(panel).getByRole('button', { name: 'Record payment' });
       expect(submit).toBeDisabled();
@@ -812,29 +842,23 @@ describe('ImportInbox', () => {
       await waitFor(() => expect(plaidApi.cardPaymentInboxTransaction).toHaveBeenCalledWith(11, { paymentMethodId: 12 }));
     });
 
-    it('offers nothing for a debit that is not a card payment, or to record to a card when every card is connected', async () => {
-      respond([
-        txn({ id: 20, transactionId: 'hydro', place: 'HYDRO ONE - Bill payment', cardPayment: null }),
-        chequingDebit({ cardPayment: cp({ side: 'funding', kind: null, pairCandidates: [] }) })
-      ]);
+    it('offers nothing for a debit that is not a card payment', async () => {
+      respond([txn({ id: 20, transactionId: 'hydro', place: 'HYDRO ONE - Bill payment', cardPayment: null })]);
 
       renderInbox();
 
       await screen.findByText('HYDRO ONE - Bill payment');
-      const [hydro, debit] = screen.getAllByTestId('inbox-row');
-      expect(within(hydro).queryByText(/card payment/i)).not.toBeInTheDocument();
-      expect(within(debit).getByText(/Looks like a credit card payment/)).toBeInTheDocument();
-      // Every card is connected, so there is nowhere to record a payment from the debit
+      expect(screen.queryByText(/card payment/i)).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /Record payment/ })).not.toBeInTheDocument();
     });
 
     it('reloads when a card payment changes elsewhere, and the pre-checked debit follows the new candidates', async () => {
       plaidApi.getInbox
-        .mockResolvedValueOnce({ transactions: [visaCredit()], hiddenUnmapped: 0, unconnectedCards: [] })
+        .mockResolvedValueOnce({ transactions: [visaCredit()], hiddenUnmapped: 0, creditCards: [] })
         .mockResolvedValue({
           transactions: [visaCredit({ cardPayment: cp({ pairCandidates: [debitPair({ id: 13, accountMask: '9999' })] }) })],
           hiddenUnmapped: 0,
-          unconnectedCards: []
+          creditCards: []
         });
       plaidApi.cardPaymentInboxTransaction.mockResolvedValue({ created: true, payment: { id: 5 }, linkedTransactionIds: [10, 13] });
 

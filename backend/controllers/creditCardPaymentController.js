@@ -2,6 +2,8 @@ const creditCardPaymentService = require('../services/creditCardPaymentService')
 const paymentMethodService = require('../services/paymentMethodService');
 const activityLogService = require('../services/activityLogService');
 const logger = require('../config/logger');
+const plaidCardPaymentService = require('../services/plaidCardPaymentService');
+const { runWithTabId } = require('../utils/requestContext');
 
 /**
  * Record a credit card payment
@@ -43,6 +45,10 @@ async function recordPayment(req, res) {
     };
 
     const payment = await creditCardPaymentService.recordPayment(paymentData);
+
+    // Bank rows of this payment already in the Import Inbox link to it now; later ones link when they arrive.
+    // Outside the request's tab so this tab's Inbox refreshes too; never throws, no-op without Plaid
+    await runWithTabId(null, () => plaidCardPaymentService.autoLink());
 
     logger.debug('Credit card payment recorded via API:', {
       paymentId: payment.id,

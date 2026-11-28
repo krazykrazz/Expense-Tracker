@@ -44,7 +44,7 @@ describe('plaidClassification', () => {
     );
   });
 
-  test('deposits and card charges are always To review; Not expenses exactly for card payments and transfers', () => {
+  test('deposits and card charges are always To review; Not expenses exactly for transfers (card payments stay in To review until recorded)', () => {
     fc.assert(
       fc.property(arbCategorised, (txn) => {
         const bucket = bucketFor(txn);
@@ -54,7 +54,7 @@ describe('plaidClassification', () => {
 
         if (!txn.isCard && moneyIn) expect(bucket).toBe('spending');
         if (txn.isCard && !moneyIn) expect(bucket).toBe('spending');
-        expect(bucket).toBe(['card_payment', 'transfer'].includes(kind) ? 'not_expense' : 'spending');
+        expect(bucket).toBe(kind === 'transfer' ? 'not_expense' : 'spending');
         if (kind === 'transfer' || kind === 'loan_payment') expect(txn.isCard).toBe(false);
         if (kind === 'transfer') expect(eTransfer).toBe(false);
         if (!txn.isCard && !moneyIn && txn.pfcPrimary === 'TRANSFER_OUT' && !eTransfer) expect(bucket).toBe('not_expense');

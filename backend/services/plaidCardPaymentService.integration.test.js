@@ -12,6 +12,7 @@ jest.mock('../database/db', () => ({
   getDatabase: jest.fn()
 }));
 jest.mock('./activityLogService');
+jest.mock('../config/plaid', () => ({ ...jest.requireActual('../config/plaid'), isEnabled: jest.fn(() => true) }));
 
 const { getDatabase } = require('../database/db');
 const activityLogService = require('./activityLogService');
@@ -165,12 +166,17 @@ describe('plaidCardPaymentService', () => {
       await rejectsWith(plaidCardPaymentService.act(await idOf('visa-credit'), {}), 400, /pending/);
     });
 
-    test('lists cards with no bank connection for the debit side', async () => {
-      await stageVisaDebit();
+    test('lists every active card for the debit side, saying which are connected, and suggests the card it names', async () => {
+      await stageCibcDebit();
 
-      const { unconnectedCards } = await plaidInboxService.listInbox('new');
+      const { creditCards, transactions } = await plaidInboxService.listInbox('new');
 
-      expect(unconnectedCards).toEqual([{ id: spareCard, name: 'Spare Card' }]);
+      expect(creditCards).toEqual([
+        { id: cibcMc, name: 'CIBC MC', connected: true },
+        { id: spareCard, name: 'Spare Card', connected: false },
+        { id: WS_VISA, name: 'WS VISA', connected: true }
+      ]);
+      expect(transactions[0].cardPayment.suggestedCardId).toBe(cibcMc);
     });
 
     test('offers a payment recorded by hand as a match for the credit, on its own card only', async () => {
@@ -366,13 +372,76 @@ describe('plaidCardPaymentService', () => {
       expect(await rowStatus('visa-debit')).toBe('matched');
     });
 
-    test('refuses a connected card: its credit records the payment', async () => {
-      await stageVisaDebit();
+    test('records a payment to a connected card from the debit; the card credit arriving later links itself', async () => {
+      await stageCibcDebit();
+      await rejectsWith(plaidCardPaymentService.act(await idOf('cibc-debit'), { paymentMethodId: DEBIT }), 400, /credit card/);
+      await rejectsWith(plaidCardPaymentService.act(await idOf('cibc-debit'), {}), 400, /credit card/);
 
-      await rejectsWith(plaidCardPaymentService.act(await idOf('visa-debit'), { paymentMethodId: WS_VISA }), 400, /WS VISA is connected to a bank/);
-      await rejectsWith(plaidCardPaymentService.act(await idOf('visa-debit'), { paymentMethodId: DEBIT }), 400, /credit card/);
-      await rejectsWith(plaidCardPaymentService.act(await idOf('visa-debit'), {}), 400, /credit card/);
-      expect(await payments()).toEqual([]);
+      const result = await plaidCardPaymentService.act(await idOf('cibc-debit'), { paymentMethodId: cibcMc });
+      expect(result.created).toBe(true);
+      expect(await payments()).toEqual([expect.objectContaining({ payment_method_id: cibcMc, amount: 4104.59, payment_date: '2026-10-29' })]);
+
+      await stageCibcCredit({ date: '2026-10-31' });
+      const linked = await plaidCardPaymentService.autoLink();
+
+      expect(linked).toEqual([{ transactionId: await idOf('cibc-credit'), creditCardPaymentId: result.payment.id }]);
+      expect(await links()).toEqual([
+        { side: 'card', tid: 'cibc-credit', paymentId: result.payment.id },
+        { side: 'funding', tid: 'cibc-debit', paymentId: result.payment.id }
+      ]);
+      expect(await payments()).toHaveLength(1);
+      const auto = activityLogService.logEvent.mock.calls.find(call => call[0] === 'plaid_transaction_updated' && call[4].automatic);
+      expect(auto[3]).toMatch(/^Automatically linked/);
+    });
+
+    test('a debit records from its card credit already in the inbox, linking both', async () => {
+      await stageCibcCredit();
+      await stageCibcDebit();
+
+      await plaidCardPaymentService.act(await idOf('cibc-debit'), { alsoLinkId: await idOf('cibc-credit') });
+
+      const [payment] = await payments();
+      expect(payment).toMatchObject({ payment_method_id: cibcMc, amount: 4104.59 });
+      expect((await links()).map(l => l.tid)).toEqual(['cibc-credit', 'cibc-debit']);
+    });
+  });
+
+  describe('automatic links', () => {
+    test('a payment entered by hand links the debit already in the inbox and the credit that arrives later', async () => {
+      await stageCibcDebit();
+      const payment = await creditCardPaymentService.recordPayment({ payment_method_id: cibcMc, amount: 4104.59, payment_date: '2026-10-28' });
+      await plaidCardPaymentService.autoLink();
+      await stageCibcCredit();
+      await plaidCardPaymentService.autoLink();
+
+      expect(await links()).toEqual([
+        { side: 'card', tid: 'cibc-credit', paymentId: payment.id },
+        { side: 'funding', tid: 'cibc-debit', paymentId: payment.id }
+      ]);
+    });
+
+    test('leaves rows for the user when it is not certain', async () => {
+      // Two payments of the same amount fit the debit; two credits fit one payment
+      await creditCardPaymentService.recordPayment({ payment_method_id: cibcMc, amount: 4104.59, payment_date: '2026-10-29' });
+      await creditCardPaymentService.recordPayment({ payment_method_id: WS_VISA, amount: 4104.59, payment_date: '2026-10-29' });
+      await stageCibcDebit();
+      await creditCardPaymentService.recordPayment({ payment_method_id: WS_VISA, amount: 3471.31, payment_date: '2026-10-30' });
+      await stageVisaCredit();
+      await stage('visa-credit-2', { accountId: visaAccountId, amount: -3471.31, date: '2026-10-31', name: 'Credit Card Payment - From: Cash' });
+      // A credit that doesn't say it's a payment (a refund of the same amount) is never linked
+      await creditCardPaymentService.recordPayment({ payment_method_id: cibcMc, amount: 25, payment_date: '2026-10-29' });
+      await stage('refund', { accountId: cibcAccountId, amount: -25, date: '2026-10-29', name: 'AMAZON.CA' });
+
+      expect(await plaidCardPaymentService.autoLink()).toEqual([]);
+      expect(await links()).toEqual([]);
+    });
+
+    test('does nothing without Plaid', async () => {
+      require('../config/plaid').isEnabled.mockReturnValueOnce(false);
+      await stageCibcDebit();
+      await creditCardPaymentService.recordPayment({ payment_method_id: cibcMc, amount: 4104.59, payment_date: '2026-10-29' });
+
+      expect(await plaidCardPaymentService.autoLink()).toEqual([]);
     });
   });
 
@@ -384,7 +453,8 @@ describe('plaidCardPaymentService', () => {
       const debitId = await idOf('visa-debit');
 
       await rejectsWith(plaidCardPaymentService.act(creditId, { paymentMethodId: spareCard }), 400);
-      await rejectsWith(plaidCardPaymentService.act(debitId, { alsoLinkId: creditId }), 400);
+      await rejectsWith(plaidCardPaymentService.act(debitId, { alsoLinkId: creditId, paymentMethodId: WS_VISA }), 400);
+      await rejectsWith(plaidCardPaymentService.act(debitId, { alsoLinkId: debitId }), 400);
       await rejectsWith(plaidCardPaymentService.act(creditId, { creditCardPaymentId: 1, alsoLinkId: debitId }), 400);
       await rejectsWith(plaidCardPaymentService.act(99999, {}), 404);
     });

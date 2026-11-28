@@ -36,22 +36,20 @@ class PlaidCardPaymentRepository {
     return row ? withLinkFlags(row) : null;
   }
 
-  /** Active credit cards no bank account is mapped to: no card-side row will ever arrive for their payments. */
-  async findUnconnectedCreditCards() {
-    return dbHelper.queryAll(
-      `SELECT pm.id, pm.display_name AS name FROM payment_methods pm
+  /**
+   * Active credit cards a debit can pay, and whether a bank account is mapped to each (then its credit arrives in the
+   * inbox too, and links itself to a payment recorded from the debit).
+   * @returns {Promise<Array<{id: number, name: string, connected: boolean}>>}
+   */
+  async findCreditCards() {
+    const rows = await dbHelper.queryAll(
+      `SELECT pm.id, pm.display_name AS name,
+              EXISTS (SELECT 1 FROM plaid_accounts pa WHERE pa.payment_method_id = pm.id) AS connected
+       FROM payment_methods pm
        WHERE pm.type = 'credit_card' AND pm.is_active = 1
-         AND NOT EXISTS (SELECT 1 FROM plaid_accounts pa WHERE pa.payment_method_id = pm.id)
        ORDER BY pm.display_name`
     );
-  }
-
-  async isCardConnected(paymentMethodId) {
-    const row = await dbHelper.queryOne(
-      'SELECT 1 AS connected FROM plaid_accounts WHERE payment_method_id = ? LIMIT 1',
-      [paymentMethodId]
-    );
-    return Boolean(row);
+    return rows.map(row => ({ ...row, connected: Boolean(row.connected) }));
   }
 
   /**

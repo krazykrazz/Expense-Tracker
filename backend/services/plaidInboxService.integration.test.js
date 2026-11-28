@@ -814,6 +814,15 @@ describe('plaidInboxService', () => {
       expect(await get('SELECT status FROM plaid_transactions WHERE id = ?', [id])).toEqual({ status: 'new' });
     });
 
+    test('a pending charge the bank cancelled is refused: it is resolved under Cancelled at bank', async () => {
+      const id = await stage('t-hold', { pending: 1 });
+      await plaidReviewService.addAsExpense(id, { type: 'Dining Out' });
+      await run("UPDATE plaid_transactions SET removed_at = '2026-10-13' WHERE id = ?", [id]);
+
+      await expect(plaidReviewService.unlinkFromBank(id)).rejects.toMatchObject({ statusCode: 409, message: expect.stringContaining('Keep expense') });
+      expect(await get('SELECT status FROM plaid_transactions WHERE id = ?', [id])).toEqual({ status: 'added' });
+    });
+
     test('a split charge is refused with where to undo it', async () => {
       const id = await stage('t-split', { amount: 50 });
       await run("UPDATE plaid_transactions SET status = 'added' WHERE id = ?", [id]);

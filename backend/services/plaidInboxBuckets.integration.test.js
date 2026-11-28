@@ -28,11 +28,11 @@ let cardAccountId;
 
 const { run, get } = sqlHelpers(() => db);
 
-const stage = (transactionId, { accountId = debitAccountId, amount = 25.5, name = 'SQ *COFFEE SHOP', bucket = 'spending', status = 'new', pending = 0, removedAt = null } = {}) =>
+const stage = (transactionId, { accountId = debitAccountId, amount = 25.5, name = 'SQ *COFFEE SHOP', bucket = 'spending', status = 'new', pending = 0, removedAt = null, pfcPrimary = null } = {}) =>
   run(
-    `INSERT INTO plaid_transactions (transaction_id, plaid_account_id, amount, date, name, review_bucket, status, pending, removed_at)
-     VALUES (?, ?, ?, '2026-10-12', ?, ?, ?, ?, ?)`,
-    [transactionId, accountId, amount, name, bucket, status, pending, removedAt]
+    `INSERT INTO plaid_transactions (transaction_id, plaid_account_id, amount, date, name, review_bucket, status, pending, removed_at, pfc_primary)
+     VALUES (?, ?, ?, '2026-10-12', ?, ?, ?, ?, ?, ?)`,
+    [transactionId, accountId, amount, name, bucket, status, pending, removedAt, pfcPrimary]
   );
 
 const ids = (transactions) => transactions.map(t => t.transactionId).sort();
@@ -128,11 +128,16 @@ describe('Inbox tabs: To review / Not expenses', () => {
   });
 
   test('Mark all done finishes every open Not expenses row only', async () => {
-    await stage('t1', { amount: 300, bucket: 'not_expense' });
-    await stage('t2', { amount: 400, bucket: 'not_expense' });
+    await stage('t1', { amount: 300, bucket: 'not_expense', pfcPrimary: 'TRANSFER_OUT' });
+    await stage('t2', { amount: 400, bucket: 'not_expense', pfcPrimary: 'TRANSFER_OUT' });
     await stage('coffee');
 
+    // Filed under Not expenses by the old rules: a card payment goes back to To review instead of being finished
+    await stage('old-card-payment', { accountId: cardAccountId, amount: -500, name: 'PAYMENT THANK YOU', bucket: 'not_expense' });
+
     expect(await plaidReviewService.markAllNotExpensesDone()).toEqual({ done: 2 });
-    expect((await plaidInboxService.listInbox('new')).counts).toEqual({ toReview: 1, notExpenses: 0 });
+    expect((await plaidInboxService.listInbox('new')).counts).toEqual({ toReview: 2, notExpenses: 0 });
+    expect(await get("SELECT status, review_bucket FROM plaid_transactions WHERE transaction_id = 'old-card-payment'"))
+      .toEqual({ status: 'new', review_bucket: 'spending' });
   });
 });

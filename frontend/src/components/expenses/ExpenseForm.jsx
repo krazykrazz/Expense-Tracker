@@ -905,7 +905,7 @@ const ExpenseForm = ({ onExpenseAdded, onClose, people: propPeople, expense = nu
     <div className="expense-form-container">
       <h2>{isEditing ? 'Edit Expense' : 'Add New Expense'}</h2>
       {isEditing && <BankSplit expense={expense} disabled={isSubmitting} onChanged={onClose} />}
-      {isEditing && expense?.bankLink && ['added', 'matched'].includes(expense.bankLink.status) && !expense.bankLink.split && (
+      {isEditing && expense?.bankLink && ['added', 'matched'].includes(expense.bankLink.status) && !expense.bankLink.split && !expense.bankLink.removed && (
         <UnlinkFromBank
           bankTransactionId={expense.bankLink.bankTransactionId}
           what="expense"

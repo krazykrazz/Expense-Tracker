@@ -352,6 +352,16 @@ describe('ImportInbox', () => {
       await waitFor(() => expect(onExpensesChanged).toHaveBeenCalled());
     });
 
+    it('a pending deposit from the insurer is not offered Apply to insurance yet', async () => {
+      plaidApi.getInbox.mockResolvedValue({ transactions: [dsf({ amount: -267.3, pending: true, insurance: { suggested: true } })], hiddenUnmapped: 0 });
+
+      renderInbox();
+
+      expect(await screen.findByRole('button', { name: 'Add income' })).toHaveClass('bank-import-primary');
+      expect(screen.queryByRole('button', { name: 'Apply to insurance' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'More…' })).not.toBeInTheDocument();
+    });
+
     it('splits across picked claims and only applies once the amounts add up to the deposit', async () => {
       plaidApi.getInbox.mockResolvedValue({ transactions: [dsf({ amount: -267.3, insurance: { suggested: false } })], hiddenUnmapped: 0 });
       plaidApi.getInsuranceCandidates.mockResolvedValue({

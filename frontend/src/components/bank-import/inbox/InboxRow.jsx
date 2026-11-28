@@ -35,7 +35,8 @@ const InboxRow = ({ txn, filter, expanded, onExpand, onAction, busy, error, cred
   // under More… so the row reads as one suggestion. Other rows show their actions as before.
   const actions = [
     closeIncome.length > 0 && 'match',
-    txn.insurance?.suggested && 'insurance',
+    // Insurance and reimbursements take a settled deposit only
+    txn.insurance?.suggested && !txn.pending && 'insurance',
     txn.reimbursement?.suggested && 'reimbursement',
     hasCandidates && 'match',
     txn.isDeposit && 'add-income',

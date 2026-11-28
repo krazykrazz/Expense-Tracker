@@ -220,7 +220,8 @@ class PlaidCardPaymentService {
   async autoLink() {
     try {
       if (!plaidConfig.isEnabled()) return [];
-      const rows = (await plaidRepository.findInbox('new')).filter(row => {
+      const inbox = await plaidRepository.findInbox('new');
+      const rows = inbox.filter(row => {
         if (!isCardPaymentSide(row)) return false;
         const classified = { pfcDetailed: row.pfcDetailed, amount: row.amount, isCard: isCardRow(row), name: row.name, merchantName: row.merchantName };
         return kindFor(classified) === 'card_payment' || looksLikeCardPayment(classified);
@@ -228,9 +229,11 @@ class PlaidCardPaymentService {
       if (rows.length === 0) return [];
 
       const dates = rows.map(row => row.date).sort();
-      const payments = await plaidCardPaymentRepository.findPaymentsInRange(
-        shiftDate(dates[0], -PAYMENT_WINDOW_DAYS), shiftDate(dates[dates.length - 1], PAYMENT_WINDOW_DAYS)
-      );
+      const [payments, creditCards] = await Promise.all([
+        plaidCardPaymentRepository.findPaymentsInRange(shiftDate(dates[0], -PAYMENT_WINDOW_DAYS), shiftDate(dates[dates.length - 1], PAYMENT_WINDOW_DAYS)),
+        plaidCardPaymentRepository.findCreditCards()
+      ]);
+      const pairs = pairCardPayments(inbox);
       const fits = rows.map(row => ({ row, candidates: findPaymentCandidates(row, payments) }));
       // How many rows of each side every payment fits: a payment two rows fit is left for the user
       const claims = new Map();
@@ -245,6 +248,10 @@ class PlaidCardPaymentService {
       for (const { row, candidates } of fits) {
         if (candidates.length !== 1) continue;
         const [payment] = candidates;
+        // A debit says nothing about which card it paid, so only the same amount ties it to a payment: link it only
+        // when its card credit or its text names that payment's card (another card's payment of the same amount
+        // would otherwise take it, and the real one would never be recorded)
+        if (!isCardCredit(row) && suggestCard(row, pairs.get(row.id) || [], creditCards) !== payment.paymentMethodId) continue;
         if (claims.get(`${payment.id}:${isCardCredit(row) ? 'card' : 'funding'}`) !== 1) continue;
         try {
           await this.link(row.id, payment.id, { automatic: true });

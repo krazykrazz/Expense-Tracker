@@ -380,6 +380,9 @@ class PlaidReviewService {
    */
   async markAllNotExpensesDone() {
     let done = 0;
+    // Rows filed under older rules (card payments, before 2026-11-27) go back to To review first, so they aren't
+    // finished unseen before the next sync reclassifies them
+    await plaidBucketRepository.classify(null, "pt.review_bucket = 'not_expense'");
     for (const { id } of await plaidBucketRepository.findOpenNotExpenses()) {
       try {
         await this.setBucket(id, 'not_expense');
@@ -401,6 +404,8 @@ class PlaidReviewService {
       const txn = await plaidRepository.findTransactionById(id);
       if (!txn) throw fail('Bank transaction not found', 404);
       if (!['added', 'matched'].includes(txn.status)) throw fail(`This bank transaction isn't linked (it is ${txn.status})`, 409);
+      // Back in the Inbox a dropped charge would look like one still to add, and no sync would ever remove it
+      if (txn.removedAt) throw fail('The bank cancelled this pending charge: use Keep expense under Cancelled at bank in the Import Inbox', 409);
       const kinds = await plaidLinkRepository.findLinkKinds(id);
       if (kinds.split) throw fail('This bank charge is split across several expenses: use Remove from this charge on each expense', 409);
       if (kinds.cardPayment) throw fail('This is a card payment: delete the payment in the card\'s Payments tab to return it to the Inbox', 409);

@@ -57,7 +57,8 @@ describe('plaidClassification', () => {
         expect(bucket).toBe(kind === 'transfer' ? 'not_expense' : 'spending');
         if (kind === 'transfer' || kind === 'loan_payment') expect(txn.isCard).toBe(false);
         if (kind === 'transfer') expect(eTransfer).toBe(false);
-        if (!txn.isCard && !moneyIn && txn.pfcPrimary === 'TRANSFER_OUT' && !eTransfer) expect(bucket).toBe('not_expense');
+        // A transfer out is Not expenses unless its detailed category says it pays a card (To review, to record it)
+        if (!txn.isCard && !moneyIn && txn.pfcPrimary === 'TRANSFER_OUT' && txn.pfcDetailed !== CARD_PAYMENT_PFC && !eTransfer) expect(bucket).toBe('not_expense');
         if (txn.pfcPrimary === 'LOAN_PAYMENTS' && txn.pfcDetailed !== CARD_PAYMENT_PFC && !txn.isCard) expect(bucket).toBe('spending');
       }),
       pbtOptions()

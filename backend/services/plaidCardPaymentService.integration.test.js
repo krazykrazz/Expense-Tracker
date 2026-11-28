@@ -436,6 +436,18 @@ describe('plaidCardPaymentService', () => {
       expect(await links()).toEqual([]);
     });
 
+    test('never links a debit to a payment on a card it does not name', async () => {
+      // The CIBC debit's text names CIBC MC; a payment of the same amount to another card is not its payment
+      await creditCardPaymentService.recordPayment({ payment_method_id: spareCard, amount: 4104.59, payment_date: '2026-10-29' });
+      await stageCibcDebit();
+      // A debit that names no card is left for the user too
+      await creditCardPaymentService.recordPayment({ payment_method_id: WS_VISA, amount: 3471.31, payment_date: '2026-10-30' });
+      await stageVisaDebit();
+
+      expect(await plaidCardPaymentService.autoLink()).toEqual([]);
+      expect(await links()).toEqual([]);
+    });
+
     test('does nothing without Plaid', async () => {
       require('../config/plaid').isEnabled.mockReturnValueOnce(false);
       await stageCibcDebit();

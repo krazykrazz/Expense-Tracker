@@ -1,21 +1,24 @@
 import { useState } from 'react';
 import { formatCurrency, formatDate } from '../../../utils/formatters';
-import { dueLabel } from './inboxFormat';
+import { dueLabel, updatesPlanByDefault } from './inboxFormat';
 
 /**
  * One planned fixed expense a bank payment could confirm. When it is linked to a loan (`fixed.loanPayment`) the
  * payment can also become the loan's payment: linked to the one already logged for it, or recorded at the bank's
  * date and amount (spec 3.5). The first is preselected when there is a logged payment near the date.
+ * When the bank amount differs, "Update to <bank amount>" changes the planned amount (ticked when the difference is small).
  * @param {{fixed: object, txn: object, busy: boolean,
- *   onConfirm: (loanChoice?: {loanPayment: 'link'|'log', loanPaymentId?: number}) => void}} props
+ *   onConfirm: (options: {updateAmount: boolean, loanPayment?: 'link'|'log', loanPaymentId?: number}) => void}} props
  */
 const FixedCandidate = ({ fixed, txn, busy, onConfirm }) => {
   const offer = fixed.loanPayment;
   const [choice, setChoice] = useState(offer?.existing ? 'link' : 'log');
+  const [updateAmount, setUpdateAmount] = useState(() => updatesPlanByDefault(fixed.amount, txn.amount));
 
   const confirm = () => {
-    if (!offer || choice === 'none') return onConfirm();
-    return onConfirm(choice === 'link' ? { loanPayment: 'link', loanPaymentId: offer.existing.id } : { loanPayment: 'log' });
+    const update = { updateAmount: fixed.amountDiffers ? updateAmount : true };
+    if (!offer || choice === 'none') return onConfirm(update);
+    return onConfirm({ ...update, ...(choice === 'link' ? { loanPayment: 'link', loanPaymentId: offer.existing.id } : { loanPayment: 'log' }) });
   };
 
   return (
@@ -23,7 +26,10 @@ const FixedCandidate = ({ fixed, txn, busy, onConfirm }) => {
       <span>
         {fixed.name} · {dueLabel(fixed)} · {formatCurrency(fixed.amount)}
         {fixed.amountDiffers && (
-          <span className="bank-import-muted"> (planned amount will be updated to {formatCurrency(txn.amount)})</span>
+          <label className="inbox-inline-check">
+            <input type="checkbox" checked={updateAmount} onChange={(event) => setUpdateAmount(event.target.checked)} disabled={busy} />
+            {' '}Update to {formatCurrency(txn.amount)}
+          </label>
         )}
       </span>
       <button className="bank-import-primary" onClick={confirm} disabled={busy}>Confirm</button>

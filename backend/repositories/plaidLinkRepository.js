@@ -101,6 +101,43 @@ class PlaidLinkRepository {
     return dbHelper.runInTransaction(tx => linkTransaction(tx, 'fixedExpense', transactionId, [fixedExpenseId, landedDate, plannedAmount]));
   }
 
+  /**
+   * What a reviewed bank row is linked to, for Unlink from bank.
+   * @returns {Promise<{fixedExpense: boolean, incomeSource: boolean, cardPayment: boolean, insurance: boolean,
+   *   reimbursement: boolean, split: boolean}>}
+   */
+  async findLinkKinds(transactionId) {
+    const row = await dbHelper.queryOne(
+      `SELECT
+         EXISTS (SELECT 1 FROM plaid_fixed_expense_links WHERE plaid_transaction_id = ?1) AS fixedExpense,
+         EXISTS (SELECT 1 FROM plaid_income_links WHERE plaid_transaction_id = ?1) AS incomeSource,
+         EXISTS (SELECT 1 FROM plaid_card_payment_links WHERE plaid_transaction_id = ?1) AS cardPayment,
+         EXISTS (SELECT 1 FROM plaid_insurance_links WHERE plaid_transaction_id = ?1) AS insurance,
+         EXISTS (SELECT 1 FROM plaid_reimbursement_links WHERE plaid_transaction_id = ?1) AS reimbursement,
+         EXISTS (SELECT 1 FROM plaid_split_links WHERE plaid_transaction_id = ?1) AS split`,
+      [transactionId]
+    );
+    return Object.fromEntries(Object.entries(row).map(([key, value]) => [key, Boolean(value)]));
+  }
+
+  /**
+   * Unlink a reviewed bank row from its expense, fixed expense or income source and return it to the Inbox, in
+   * one transaction. The expense, fixed expense or income itself is kept as it is.
+   * @returns {Promise<boolean>} false when the row was no longer added or matched
+   */
+  async unlinkReviewed(transactionId) {
+    return dbHelper.runInTransaction(async (tx) => {
+      const { changes } = await tx.run(
+        "UPDATE plaid_transactions SET status = 'new', expense_id = NULL WHERE id = ? AND status IN ('added', 'matched')",
+        [transactionId]
+      );
+      if (changes === 0) return false;
+      await tx.run('DELETE FROM plaid_fixed_expense_links WHERE plaid_transaction_id = ?', [transactionId]);
+      await tx.run('DELETE FROM plaid_income_links WHERE plaid_transaction_id = ?', [transactionId]);
+      return true;
+    });
+  }
+
   /** Undo linkFixedExpense (used when a follow-up step fails). */
   async unlinkFixedExpense(transactionId) {
     await unlinkTransaction('fixedExpense', transactionId, ['matched']);
@@ -179,7 +216,7 @@ class PlaidLinkRepository {
     const confirmations = new Map();
     if (fixedExpenseIds.length === 0) return confirmations;
     const rows = await dbHelper.queryAll(
-      `SELECT l.fixed_expense_id AS fixedExpenseId, l.landed_date AS landedDate, l.planned_amount AS plannedAmount,
+      `SELECT l.fixed_expense_id AS fixedExpenseId, l.plaid_transaction_id AS bankTransactionId, l.landed_date AS landedDate, l.planned_amount AS plannedAmount,
               pt.amount, COALESCE(pt.merchant_name, pt.name) AS name
        FROM plaid_fixed_expense_links l
        JOIN plaid_transactions pt ON pt.id = l.plaid_transaction_id
@@ -265,7 +302,7 @@ class PlaidLinkRepository {
     const confirmations = new Map();
     if (incomeSourceIds.length === 0) return confirmations;
     const rows = await dbHelper.queryAll(
-      `SELECT l.income_source_id AS incomeSourceId, l.landed_date AS landedDate, l.planned_amount AS plannedAmount,
+      `SELECT l.income_source_id AS incomeSourceId, l.plaid_transaction_id AS bankTransactionId, l.landed_date AS landedDate, l.planned_amount AS plannedAmount,
               ABS(pt.amount) AS amount, COALESCE(pt.merchant_name, pt.name) AS name
        FROM plaid_income_links l
        JOIN plaid_transactions pt ON pt.id = l.plaid_transaction_id

@@ -58,6 +58,8 @@ const BankImportModal = ({ status, initialTab = 'inbox', initialInboxView = null
         <div className="bank-import-body">
           {activeTab === 'inbox' ? (
             <ImportInbox
+              status={status}
+              onStatusChange={onStatusChange}
               initialView={initialInboxView}
               onExpensesChanged={onExpensesChanged}
               onInboxChanged={onInboxChanged}

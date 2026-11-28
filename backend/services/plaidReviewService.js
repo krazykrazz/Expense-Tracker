@@ -175,10 +175,10 @@ class PlaidReviewService {
   /**
    * Confirm a planned fixed expense with a bank transaction and record when it actually landed.
    * When the bank amount differs from the planned amount, the fixed expense is updated to the bank amount
-   * (through fixedExpenseService, so validation and the activity log apply).
+   * (through fixedExpenseService, so validation and the activity log apply), unless `updateAmount` is false.
    * For a fixed expense linked to a loan, `loanChoice` can also record the bank payment as a loan payment
    * (`loanPayment: 'log'`) or link the payment already logged (`'link'` with `loanPaymentId`); see plaidLoanPaymentService.
-   * @param {{loanPayment?: ('log'|'link'|'none'), loanPaymentId?: number}} [loanChoice]
+   * @param {{loanPayment?: ('log'|'link'|'none'), loanPaymentId?: number, updateAmount?: boolean}} [loanChoice]
    */
   async matchToFixedExpense(id, fixedExpenseId, tabId = null, loanChoice = {}) {
     return exclusive(id, async () => {
@@ -210,7 +210,7 @@ class PlaidReviewService {
       }
 
       let updated = false;
-      if (toCents(plannedAmount) !== toCents(txn.amount)) {
+      if (toCents(plannedAmount) !== toCents(txn.amount) && loanChoice.updateAmount !== false) {
         try {
           const current = await fixedExpenseRepository.findById(fixed.id);
           await fixedExpenseService.updateFixedExpense(fixed.id, { ...current, amount: round2(txn.amount) }, tabId);
@@ -239,7 +239,7 @@ class PlaidReviewService {
       });
       return {
         transaction: await plaidRepository.findTransactionById(id),
-        fixedExpense: { id: fixed.id, name: fixed.name, plannedAmount, amount: round2(txn.amount), amountUpdated: updated, landedDate, loanPayment }
+        fixedExpense: { id: fixed.id, name: fixed.name, plannedAmount, amount: updated ? round2(txn.amount) : plannedAmount, amountUpdated: updated, landedDate, loanPayment }
       };
     });
   }
@@ -351,8 +351,9 @@ class PlaidReviewService {
   }
 
   /**
-   * Move a row still to review between the Inbox tabs (To review = 'spending', Not expenses = 'not_expense'). The
-   * choice sticks: later syncs no longer classify the row.
+   * A row still to review, moved by the user. `spending` puts it in To review (for a row the category filed under
+   * Not expenses); `not_expense` finishes it as not an expense: it leaves the Inbox and is listed with the done and
+   * ignored rows, where Undo brings it back to To review. Either choice sticks: syncs no longer classify the row.
    */
   async setBucket(id, bucket) {
     if (!BUCKETS.includes(bucket)) {
@@ -360,24 +361,80 @@ class PlaidReviewService {
     }
     return exclusive(id, async () => {
       const txn = await requireNew(id);
-      if (!(await plaidBucketRepository.setBucket(id, bucket))) {
+      const done = bucket === 'not_expense';
+      const changed = done ? await plaidBucketRepository.markNotExpense(id) : await plaidBucketRepository.setBucket(id, bucket);
+      if (!changed) {
         throw fail('This bank transaction changed meanwhile. Refresh the Inbox and try again.', 409);
       }
-      const tab = bucket === 'spending' ? 'To review' : 'Not expenses';
-      await logReview(txn, 'bucket', `Moved bank transaction ${describeTxn(txn)} to ${tab}`, { bucket, previousBucket: txn.bucket });
+      await logReview(txn, 'bucket', done
+        ? `Marked bank transaction ${describeTxn(txn)} as not an expense`
+        : `Moved bank transaction ${describeTxn(txn)} to To review`, { bucket, previousBucket: txn.bucket, done });
       return { transaction: await plaidRepository.findTransactionById(id) };
     });
   }
 
+  /**
+   * Mark every row the category filed under Not expenses (transfers between accounts) as done. A row being
+   * reviewed elsewhere at that moment is skipped.
+   * @returns {Promise<{done: number}>}
+   */
+  async markAllNotExpensesDone() {
+    let done = 0;
+    // Rows filed under older rules (card payments, before 2026-11-27) go back to To review first, so they aren't
+    // finished unseen before the next sync reclassifies them
+    await plaidBucketRepository.classify(null, "pt.review_bucket = 'not_expense'");
+    for (const { id } of await plaidBucketRepository.findOpenNotExpenses()) {
+      try {
+        await this.setBucket(id, 'not_expense');
+        done += 1;
+      } catch (err) {
+        if (!err.statusCode || err.statusCode >= 500) throw err;
+      }
+    }
+    return { done };
+  }
+
+  /**
+   * Unlink from bank: a bank row added or matched to an expense, or confirming a fixed expense or income, goes back
+   * to the Inbox; the expense, fixed expense or income is kept as it is (amounts and dates included), and a loan
+   * payment recorded from a confirmation stays. Links with their own undo are refused with where to find it.
+   */
+  async unlinkFromBank(id) {
+    return exclusive(id, async () => {
+      const txn = await plaidRepository.findTransactionById(id);
+      if (!txn) throw fail('Bank transaction not found', 404);
+      if (!['added', 'matched'].includes(txn.status)) throw fail(`This bank transaction isn't linked (it is ${txn.status})`, 409);
+      // Back in the Inbox a dropped charge would look like one still to add, and no sync would ever remove it
+      if (txn.removedAt) throw fail('The bank cancelled this pending charge: use Keep expense under Cancelled at bank in the Import Inbox', 409);
+      const kinds = await plaidLinkRepository.findLinkKinds(id);
+      if (kinds.split) throw fail('This bank charge is split across several expenses: use Remove from this charge on each expense', 409);
+      if (kinds.cardPayment) throw fail('This is a card payment: delete the payment in the card\'s Payments tab to return it to the Inbox', 409);
+      if (kinds.insurance || kinds.reimbursement) throw fail('Undo it from the expense\'s reimbursements in its edit form', 409);
+      if (!(await plaidLinkRepository.unlinkReviewed(id))) {
+        throw fail('This bank transaction changed meanwhile. Refresh and try again.', 409);
+      }
+      const what = kinds.fixedExpense ? 'its fixed expense' : kinds.incomeSource ? 'its income' : 'its expense';
+      await logReview(txn, 'unlink', `Unlinked bank transaction ${describeTxn(txn)} from ${what}; it is back in the Inbox`, {
+        expenseId: txn.expenseId ?? null, fixedExpense: kinds.fixedExpense, incomeSource: kinds.incomeSource
+      });
+      return { transaction: await plaidRepository.findTransactionById(id) };
+    });
+  }
+
+  /** Undo Ignore (back to its tab) or Not an expense (back to To review). */
   async unignore(id) {
     const txn = await plaidRepository.findTransactionById(id);
     if (!txn) {
       throw fail('Bank transaction not found', 404);
     }
-    if (!(await plaidRepository.unignoreTransaction(id))) {
+    const notExpense = txn.bucket === 'not_expense';
+    const restored = notExpense ? await plaidBucketRepository.restoreToReview(id) : await plaidRepository.unignoreTransaction(id);
+    if (!restored) {
       throw fail(`Only ignored transactions can be restored (this one is ${txn.status})`, 409);
     }
-    await logReview(txn, 'unignore', `Restored ignored bank transaction ${describeTxn(txn)} to the inbox`);
+    await logReview(txn, 'unignore', notExpense
+      ? `Returned bank transaction ${describeTxn(txn)} to To review (was marked not an expense)`
+      : `Restored ignored bank transaction ${describeTxn(txn)} to the inbox`);
     return { transaction: await plaidRepository.findTransactionById(id) };
   }
 }

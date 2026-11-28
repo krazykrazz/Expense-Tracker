@@ -712,6 +712,16 @@ describe('plaidInboxService', () => {
       expect(items[0].bankConfirmation).toMatchObject({ amount: 17.78, plannedAmount: 17.47 });
     });
 
+    test('with Update unticked, the planned amount is kept', async () => {
+      const heloc = await addFixed({ name: 'HELOC Interest', amount: 17.47, dueDay: 25, month: 10 });
+      const id = await stage('t-heloc', { amount: 17.78, date: '2026-10-27', authorizedDate: '2026-10-27' });
+
+      const result = await plaidReviewService.matchToFixedExpense(id, heloc, null, { updateAmount: false });
+
+      expect(result.fixedExpense).toMatchObject({ plannedAmount: 17.47, amount: 17.47, amountUpdated: false });
+      expect(await get('SELECT amount FROM fixed_expenses WHERE id = ?', [heloc])).toEqual({ amount: 17.47 });
+    });
+
     test('if the amount cannot be updated, the link is undone', async () => {
       const legacy = await addFixed({ amount: 50, dueDay: 1, paymentType: 'Fixed', paymentMethodId: DEBIT });
       const id = await stage('t-legacy', { amount: 55, date: '2026-10-02', authorizedDate: '2026-10-02' });
@@ -759,6 +769,69 @@ describe('plaidInboxService', () => {
       const { transactions } = await plaidInboxService.listInbox('new');
 
       expect(transactions[0].fixedCandidates.map(f => f.id)).toEqual([november]);
+    });
+  });
+
+  describe('unlink from bank', () => {
+    test('an added expense is kept and its bank row goes back to the Inbox', async () => {
+      const id = await stage('t-coffee');
+      const { expense } = await plaidReviewService.addAsExpense(id, { type: 'Dining Out' });
+
+      const { transaction } = await plaidReviewService.unlinkFromBank(id);
+
+      expect(transaction).toMatchObject({ status: 'new', expenseId: null });
+      expect(await get('SELECT amount FROM expenses WHERE id = ?', [expense.id])).toEqual({ amount: 25.5 });
+      expect((await plaidInboxService.listInbox('new')).transactions.map(t => t.id)).toEqual([id]);
+      expect(activityLogService.logEvent).toHaveBeenCalledWith('plaid_transaction_updated', 'plaid_transaction', id,
+        expect.stringContaining('from its expense'), expect.objectContaining({ action: 'unlink' }));
+      await expect(plaidReviewService.unlinkFromBank(id)).rejects.toMatchObject({ statusCode: 409 });
+      await expect(plaidReviewService.unlinkFromBank(999999)).rejects.toMatchObject({ statusCode: 404 });
+    });
+
+    test('a fixed expense confirmation is removed and the fixed expense kept', async () => {
+      const mortgage = await run(
+        "INSERT INTO fixed_expenses (year, month, name, amount, category, payment_type, payment_due_day) VALUES (2026, 10, 'Mortgage', 1500, 'Housing', 'Debit', 1)"
+      );
+      const id = await stage('t-bill', { amount: 1500, date: '2026-10-02', authorizedDate: '2026-10-02' });
+      await plaidReviewService.matchToFixedExpense(id, mortgage);
+
+      await plaidReviewService.unlinkFromBank(id);
+
+      expect((await get('SELECT COUNT(*) AS n FROM plaid_fixed_expense_links')).n).toBe(0);
+      expect(await get('SELECT amount FROM fixed_expenses WHERE id = ?', [mortgage])).toEqual({ amount: 1500 });
+      expect(await get('SELECT status FROM plaid_transactions WHERE id = ?', [id])).toEqual({ status: 'new' });
+    });
+
+    test('an income confirmation is removed and the income kept', async () => {
+      const pay = await run("INSERT INTO income_sources (year, month, name, amount, category) VALUES (2026, 10, 'JAT', 100, 'Salary')");
+      const id = await stage('t-pay', { amount: -100, date: '2026-10-15', authorizedDate: null, name: 'JAT', merchantName: null });
+      await plaidReviewService.matchToIncome(id, pay);
+
+      await plaidReviewService.unlinkFromBank(id);
+
+      expect((await get('SELECT COUNT(*) AS n FROM plaid_income_links')).n).toBe(0);
+      expect(await get('SELECT amount FROM income_sources WHERE id = ?', [pay])).toEqual({ amount: 100 });
+      expect(await get('SELECT status FROM plaid_transactions WHERE id = ?', [id])).toEqual({ status: 'new' });
+    });
+
+    test('a pending charge the bank cancelled is refused: it is resolved under Cancelled at bank', async () => {
+      const id = await stage('t-hold', { pending: 1 });
+      await plaidReviewService.addAsExpense(id, { type: 'Dining Out' });
+      await run("UPDATE plaid_transactions SET removed_at = '2026-10-13' WHERE id = ?", [id]);
+
+      await expect(plaidReviewService.unlinkFromBank(id)).rejects.toMatchObject({ statusCode: 409, message: expect.stringContaining('Keep expense') });
+      expect(await get('SELECT status FROM plaid_transactions WHERE id = ?', [id])).toEqual({ status: 'added' });
+    });
+
+    test('a split charge is refused with where to undo it', async () => {
+      const id = await stage('t-split', { amount: 50 });
+      await run("UPDATE plaid_transactions SET status = 'added' WHERE id = ?", [id]);
+      const expenseId = await addExpense({ amount: 50 });
+      await run('INSERT INTO plaid_split_links (plaid_transaction_id, expense_id) VALUES (?, ?)', [id, expenseId]);
+
+      await expect(plaidReviewService.unlinkFromBank(id)).rejects.toMatchObject({ statusCode: 409, message: expect.stringContaining('Remove from this charge') });
+      expect(await get('SELECT status FROM plaid_transactions WHERE id = ?', [id])).toEqual({ status: 'added' });
+      await run('DELETE FROM plaid_split_links');
     });
   });
 

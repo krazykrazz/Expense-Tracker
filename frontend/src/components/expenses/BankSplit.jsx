@@ -7,7 +7,7 @@ import { toCents } from '../../utils/money';
 /**
  * A bank charge entered as several expenses (spec 3.9), on the Edit Expense form of one of them: how much of the
  * charge its linked expenses cover, **Add another expense to this charge** while some is left, and **Remove from
- * this charge** for an expense that belongs to a split. Renders nothing for an expense without a settled bank link, or
+ * this charge** for an expense that belongs to a split (a pending charge too). Renders nothing for an expense without a bank link, or
  * one that is the whole charge. The form then holds stale links, so `onChanged` closes it and the list reloads.
  * @param {{expense?: object, disabled?: boolean, onChanged?: Function}} props
  */
@@ -17,7 +17,7 @@ const BankSplit = ({ expense, disabled = false, onChanged }) => {
   const [error, setError] = useState(null);
 
   const link = expense?.bankLink;
-  if (!link || link.pending || link.removed || link.disconnected || !['added', 'matched'].includes(link.status) || !(link.amount > 0)) return null;
+  if (!link || link.removed || link.disconnected || !['added', 'matched'].includes(link.status) || !(link.amount > 0)) return null;
 
   const covered = link.split ? link.split.total : (expense.original_cost ?? expense.amount);
   const leftCents = toCents(link.amount) - toCents(covered);

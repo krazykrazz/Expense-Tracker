@@ -188,6 +188,8 @@ export const API_ENDPOINTS = {
   PLAID_INBOX: (status = 'new', bucket = 'spending') =>
     `${API_BASE_URL}/api/plaid/inbox?status=${encodeURIComponent(status)}&bucket=${encodeURIComponent(bucket)}`,
   PLAID_INBOX_ACTION: (id, action) => `${API_BASE_URL}/api/plaid/inbox/${id}/${action}`,
+  PLAID_INBOX_NOT_EXPENSES_DONE: `${API_BASE_URL}/api/plaid/inbox/not-expenses/done`,
+  PLAID_TRANSACTION_UNLINK: (id) => `${API_BASE_URL}/api/plaid/transactions/${id}/unlink`,
   PLAID_INBOX_INSURANCE_CANDIDATES: (id, includePaid = false) =>
     `${API_BASE_URL}/api/plaid/inbox/${id}/insurance-candidates${includePaid ? '?includePaid=true' : ''}`,
   PLAID_INBOX_REIMBURSEMENT_CANDIDATES: (id, all = false) =>

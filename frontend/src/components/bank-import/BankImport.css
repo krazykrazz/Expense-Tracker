@@ -1090,3 +1090,34 @@
   padding-left: 1.2em;
   list-style: disc;
 }
+
+/* Banks whose new transactions may be missing, at the top of the Inbox (calm warning surface) */
+.inbox-stuck-banks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2, 8px);
+  margin: var(--spacing-2, 8px) 0;
+  padding: var(--spacing-2, 8px) var(--spacing-3, 12px);
+  background: color-mix(in srgb, var(--color-warning) 8%, var(--bg-card));
+  border: 1px solid color-mix(in srgb, var(--color-warning) 28%, var(--border-default));
+  border-left: 4px solid var(--color-warning);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm, 13px);
+}
+
+.inbox-stuck-bank {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-2, 8px);
+}
+
+/* Unlink from bank on an expense, fixed expense or income */
+.bank-unlink {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-2, 8px);
+  margin: var(--spacing-1, 4px) 0;
+}

@@ -17,6 +17,7 @@ import { createLogger } from '../../utils/logger';
 import ConfirmDialog from '../shared/ConfirmDialog';
 import { fixedConfirmationState, fixedConfirmationTitle, bankPillProps } from '../bank-import/bankConfirmation';
 import '../bank-import/BankImport.css';
+import UnlinkFromBank from '../bank-import/UnlinkFromBank';
 
 const fixedBankPill = (fixedExpense) => bankPillProps(fixedConfirmationState(fixedExpense), fixedConfirmationTitle(fixedExpense));
 
@@ -757,6 +758,14 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
                           >
                             ✕
                           </button>
+                          {expense.bankConfirmation && (
+                            <UnlinkFromBank
+                              bankTransactionId={expense.bankConfirmation.bankTransactionId}
+                              what="fixed expense"
+                              disabled={loading}
+                              onUnlinked={() => { handleCancelEdit(); fetchFixedExpenses(); }}
+                            />
+                          )}
                         </div>
                       ) : (
                         <div className="fixed-expense-display">

@@ -18,7 +18,7 @@ describe('FixedCandidate', () => {
 
     expect(screen.queryByTestId('loan-payment-choice')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
-    expect(onConfirm).toHaveBeenCalledWith();
+    expect(onConfirm).toHaveBeenCalledWith({ updateAmount: true });
   });
 
   it('with a payment already logged near the date, links it unless another choice is made', () => {
@@ -26,15 +26,15 @@ describe('FixedCandidate', () => {
 
     expect(screen.getByLabelText(/It is the payment already logged/)).toBeChecked();
     fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
-    expect(onConfirm).toHaveBeenLastCalledWith({ loanPayment: 'link', loanPaymentId: 41 });
+    expect(onConfirm).toHaveBeenLastCalledWith({ updateAmount: true, loanPayment: 'link', loanPaymentId: 41 });
 
     fireEvent.click(screen.getByLabelText(/Record a payment of \$1,500\.00/));
     fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
-    expect(onConfirm).toHaveBeenLastCalledWith({ loanPayment: 'log' });
+    expect(onConfirm).toHaveBeenLastCalledWith({ updateAmount: true, loanPayment: 'log' });
 
     fireEvent.click(screen.getByLabelText('Leave the payment history alone'));
     fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
-    expect(onConfirm).toHaveBeenLastCalledWith();
+    expect(onConfirm).toHaveBeenLastCalledWith({ updateAmount: true });
   });
 
   it('with nothing logged yet, records the payment by default and offers no link', () => {
@@ -43,6 +43,18 @@ describe('FixedCandidate', () => {
     expect(screen.queryByLabelText(/It is the payment already logged/)).not.toBeInTheDocument();
     expect(screen.getByLabelText(/Record a payment of/)).toBeChecked();
     fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
-    expect(onConfirm).toHaveBeenCalledWith({ loanPayment: 'log' });
+    expect(onConfirm).toHaveBeenCalledWith({ updateAmount: true, loanPayment: 'log' });
+  });
+
+  it.each([
+    ['ticks Update to $X for a small difference', 1480, true],
+    ['leaves it unticked for a far-off amount', 150, false]
+  ])('%s', (_label, planned, ticked) => {
+    const onConfirm = renderCandidate(fixed({ amount: planned, amountDiffers: true }));
+
+    const box = screen.getByLabelText('Update to $1,500.00');
+    expect(box.checked).toBe(ticked);
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
+    expect(onConfirm).toHaveBeenLastCalledWith({ updateAmount: ticked });
   });
 });

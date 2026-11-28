@@ -423,6 +423,8 @@ class PlaidRepository {
    */
   async transferPendingLink(pendingRowId, postedRowId, status, expenseId) {
     return dbHelper.runInTransaction(async (tx) => {
+      // The other expenses of a split charge (spec 3.9) move too, before the pending row (and its links) goes
+      await tx.run('UPDATE plaid_split_links SET plaid_transaction_id = ? WHERE plaid_transaction_id = ?', [postedRowId, pendingRowId]);
       await tx.run('DELETE FROM plaid_transactions WHERE id = ?', [pendingRowId]);
       const { changes } = await tx.run(
         "UPDATE plaid_transactions SET status = ?, expense_id = ? WHERE id = ? AND status = 'new' AND pending = 0",

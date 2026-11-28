@@ -19,10 +19,9 @@ const expense = (extra = {}) => ({ id: 1, amount: 244.02, original_cost: null, b
 beforeEach(() => vi.clearAllMocks());
 
 describe('BankSplit (Edit Expense)', () => {
-  it('shows nothing for an expense without a settled bank link, or one that is the whole charge', () => {
+  it('shows nothing for an expense without a bank link, or one that is the whole charge', () => {
     const none = [
       { id: 1, amount: 10, bankLink: null },
-      expense({ bankLink: link({ pending: true }) }),
       expense({ bankLink: link({ removed: true }) }),
       expense({ bankLink: link({ disconnected: true }) }),
       expense({ bankLink: link({ status: 'new' }) }),

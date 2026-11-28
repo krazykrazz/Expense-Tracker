@@ -196,10 +196,14 @@ export const matchInboxTransaction = (id, expenseId, { updateAmount = false } = 
  * links the one already logged (`'link'`, with `loanPaymentId`); omitted or `'none'`: no loan payment is touched.
  * @param {{loanPayment?: ('log'|'link'|'none'), loanPaymentId?: number}} [choice]
  */
-export const matchInboxTransactionToFixed = (id, fixedExpenseId, { loanPayment, loanPaymentId } = {}) =>
+export const matchInboxTransactionToFixed = (id, fixedExpenseId, { loanPayment, loanPaymentId, updateAmount } = {}) =>
   call('matching bank transaction to fixed expense', () => apiPost(
     API_ENDPOINTS.PLAID_INBOX_ACTION(id, 'match-fixed'),
-    { fixedExpenseId, ...(loanPayment && loanPayment !== 'none' ? { loanPayment, ...(loanPaymentId != null ? { loanPaymentId } : {}) } : {}) },
+    {
+      fixedExpenseId,
+      ...(updateAmount === false ? { updateAmount: false } : {}),
+      ...(loanPayment && loanPayment !== 'none' ? { loanPayment, ...(loanPaymentId != null ? { loanPaymentId } : {}) } : {})
+    },
     'match fixed expense'
   ));
 
@@ -287,7 +291,15 @@ export const resolveCancelledPending = (id, decision) =>
 export const ignoreInboxTransaction = (id) =>
   call('ignoring bank transaction', () => apiPost(API_ENDPOINTS.PLAID_INBOX_ACTION(id, 'ignore'), {}, 'ignore transaction'));
 
-/** Move a row between the Inbox's To review ('spending') and Not expenses ('not_expense') tabs. */
+/** Unlink a reviewed bank transaction from its expense, fixed expense or income; it goes back to the Inbox. */
+export const unlinkBankTransaction = (id) =>
+  call('unlinking bank transaction', () => apiPost(API_ENDPOINTS.PLAID_TRANSACTION_UNLINK(id), {}, 'unlink bank transaction'));
+
+/** Mark every row filed under Not expenses (transfers between accounts) as done. @returns {Promise<{done: number}>} */
+export const markAllNotExpensesDone = () =>
+  call('marking not expenses done', () => apiPost(API_ENDPOINTS.PLAID_INBOX_NOT_EXPENSES_DONE, {}, 'mark not expenses done'));
+
+/** 'spending' moves a row to To review; 'not_expense' marks it not an expense (done: it leaves the Inbox). */
 export const setInboxTransactionBucket = (id, bucket) =>
   call('moving bank transaction', () => apiPost(API_ENDPOINTS.PLAID_INBOX_ACTION(id, 'bucket'), { bucket }, 'move transaction'));
 

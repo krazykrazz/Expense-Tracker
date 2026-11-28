@@ -45,6 +45,37 @@ class PlaidBucketRepository {
     );
     return changes > 0;
   }
+
+  /**
+   * Finish a row as not an expense: it leaves the Inbox and is kept with the ignored rows (same retention), its
+   * bucket saying why. Only while it is still to review.
+   */
+  async markNotExpense(id) {
+    const { changes } = await dbHelper.execute(
+      "UPDATE plaid_transactions SET review_bucket = 'not_expense', bucket_overridden = 1, status = 'ignored' WHERE id = ? AND status = 'new'",
+      [id]
+    );
+    return changes > 0;
+  }
+
+  /** The Not expenses rows still waiting (filed there by their category), for Mark all done. */
+  async findOpenNotExpenses() {
+    return dbHelper.queryAll(
+      `SELECT pt.id FROM plaid_transactions pt
+       JOIN plaid_accounts pa ON pa.id = pt.plaid_account_id
+       WHERE pt.status = 'new' AND pt.review_bucket = 'not_expense' AND pa.payment_method_id IS NOT NULL
+       ORDER BY pt.id`
+    );
+  }
+
+  /** Undo of Not an expense: back to To review, to stay there. */
+  async restoreToReview(id) {
+    const { changes } = await dbHelper.execute(
+      "UPDATE plaid_transactions SET status = 'new', review_bucket = 'spending', bucket_overridden = 1 WHERE id = ? AND status = 'ignored'",
+      [id]
+    );
+    return changes > 0;
+  }
 }
 
 module.exports = new PlaidBucketRepository();

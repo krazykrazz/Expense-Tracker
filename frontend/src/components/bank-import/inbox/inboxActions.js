@@ -24,7 +24,7 @@ export const INBOX_ACTIONS = {
   // The payload is a fixed expense id, or { fixedExpenseId, loanPayment, loanPaymentId } to also record or link a loan payment
   'match-fixed': {
     run: (id, payload) => (typeof payload === 'object'
-      ? matchInboxTransactionToFixed(id, payload.fixedExpenseId, { loanPayment: payload.loanPayment, loanPaymentId: payload.loanPaymentId })
+      ? matchInboxTransactionToFixed(id, payload.fixedExpenseId, { loanPayment: payload.loanPayment, loanPaymentId: payload.loanPaymentId, updateAmount: payload.updateAmount })
       : matchInboxTransactionToFixed(id, payload)),
     changesData: true
   },

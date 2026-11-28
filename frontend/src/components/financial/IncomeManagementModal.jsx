@@ -14,6 +14,7 @@ import { createLogger } from '../../utils/logger';
 import ConfirmDialog from '../shared/ConfirmDialog';
 import IncomeConfirmationIndicator from '../bank-import/IncomeConfirmationIndicator';
 import Icon from '../shared/Icon';
+import UnlinkFromBank from '../bank-import/UnlinkFromBank';
 
 const logger = createLogger('IncomeManagementModal');
 
@@ -404,6 +405,14 @@ const IncomeManagementModal = ({ isOpen, onClose, year, month, onUpdate }) => {
                             >
                               ✕
                             </button>
+                            {source.bankConfirmation && (
+                              <UnlinkFromBank
+                                bankTransactionId={source.bankConfirmation.bankTransactionId}
+                                what="income"
+                                disabled={loading}
+                                onUnlinked={() => { handleCancelEdit(); fetchIncomeSources(); }}
+                              />
+                            )}
                           </div>
                         ) : (
                           <div className="income-source-display">

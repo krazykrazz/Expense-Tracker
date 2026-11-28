@@ -34,12 +34,11 @@ const byDateCloseness = (day) => (a, b) => dayDiff(a.date, day) - dayDiff(b.date
  */
 class PlaidSplitService {
   /**
-   * Whether and how this bank row can take part in a split: 'match' for a settled charge still to review (it needs a
-   * complete set of expenses), 'complete' for a settled charge already linked to an expense (more can be added).
+   * Whether and how this bank row can take part in a split: 'match' for a charge (settled or pending) still to review (it needs a
+   * complete set of expenses), 'complete' for a charge already linked to an expense (more can be added).
    */
   _mode(txn) {
     if (!txn) throw fail('Bank transaction not found', 404);
-    if (txn.pending) throw fail('This transaction is still pending at the bank. Split it once it settles.', 400);
     if (txn.removedAt) throw fail('The bank dropped this transaction', 400);
     if (!(txn.amount > 0)) throw fail('Only a charge can be split across expenses', 400);
     if (!txn.paymentMethodId) throw fail('Map this bank account to a payment method first', 400);
@@ -96,7 +95,9 @@ class PlaidSplitService {
    */
   async describeRows(rows) {
     const result = new Map();
-    const eligible = rows.filter(row => !row.pending && !row.removedAt && row.amount > 0 && row.paymentMethodId);
+    // Pending charges too (owner, 2026-11-27): the links stay when it settles in place, and a changed amount shows
+    // on the shared bank pill (the parts no longer add up)
+    const eligible = rows.filter(row => !row.removedAt && row.amount > 0 && row.paymentMethodId);
     if (eligible.length === 0) return result;
 
     const windows = eligible.map(row => ({ row, ...expenseDateWindow(row) }));

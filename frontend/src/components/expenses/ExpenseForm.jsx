@@ -30,6 +30,7 @@ import BankSplit from './BankSplit';
 import CollapsibleSection from '../shared/CollapsibleSection';
 import HelpTooltip from '../shared/HelpTooltip';
 import './ExpenseForm.css';
+import UnlinkFromBank from '../bank-import/UnlinkFromBank';
 
 const logger = createLogger('ExpenseForm');
 
@@ -904,6 +905,15 @@ const ExpenseForm = ({ onExpenseAdded, onClose, people: propPeople, expense = nu
     <div className="expense-form-container">
       <h2>{isEditing ? 'Edit Expense' : 'Add New Expense'}</h2>
       {isEditing && <BankSplit expense={expense} disabled={isSubmitting} onChanged={onClose} />}
+      {isEditing && expense?.bankLink && ['added', 'matched'].includes(expense.bankLink.status) && !expense.bankLink.split && (
+        <UnlinkFromBank
+          bankTransactionId={expense.bankLink.bankTransactionId}
+          what="expense"
+          summary={{ name: expense.bankLink.name || expense.bankLink.rawName, date: expense.bankLink.date, amount: expense.bankLink.amount }}
+          disabled={isSubmitting}
+          onUnlinked={() => { window.dispatchEvent(new Event('expensesUpdated')); onClose?.(); }}
+        />
+      )}
       <form onSubmit={handleSubmit} className="expense-form">
         <fieldset disabled={isSubmitting} className="expense-form-fieldset">
         {/* Row 1: Date and Place - Place has initial focus (Requirements 1.1, 3.2) */}

@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { formatCurrency } from '../../../utils/formatters';
-import { MONTHS } from './inboxFormat';
+import { MONTHS, updatesPlanByDefault } from './inboxFormat';
 
 /**
- * Expected income a deposit could confirm, each with "Update to <deposit>" when the amounts differ (on by default).
+ * Expected income a deposit could confirm, each with "Update to <deposit>" when the amounts differ (ticked when the
+ * difference is small).
  * @param {{txn: object, onMatchIncome: Function, busy: boolean}} props
  */
 const IncomeCandidates = ({ txn, onMatchIncome, busy }) => {
@@ -14,7 +15,7 @@ const IncomeCandidates = ({ txn, onMatchIncome, busy }) => {
       <div className="bank-import-muted">Expected income: this month, or the next/previous month within 3 days</div>
       <ul>
         {txn.incomeCandidates.map(income => {
-          const update = updateAmount[income.id] ?? true;
+          const update = updateAmount[income.id] ?? updatesPlanByDefault(income.amount, deposit);
           return (
             <li key={`i-${income.id}`} data-testid="income-candidate">
               <span>

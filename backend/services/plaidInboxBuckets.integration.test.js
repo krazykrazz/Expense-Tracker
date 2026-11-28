@@ -110,4 +110,29 @@ describe('Inbox tabs: To review / Not expenses', () => {
     await expect(plaidReviewService.setBucket(id, 'not_expense')).rejects.toMatchObject({ statusCode: 409 });
     await expect(plaidReviewService.setBucket(999999, 'spending')).rejects.toMatchObject({ statusCode: 404 });
   });
+  test('Not an expense finishes a row: it leaves both tabs, and Undo returns it to To review', async () => {
+    const id = await stage('coffee');
+
+    await plaidReviewService.setBucket(id, 'not_expense');
+
+    expect(await get('SELECT status, review_bucket, bucket_overridden FROM plaid_transactions WHERE id = ?', [id]))
+      .toEqual({ status: 'ignored', review_bucket: 'not_expense', bucket_overridden: 1 });
+    expect((await plaidInboxService.listInbox('new')).counts).toEqual({ toReview: 0, notExpenses: 0 });
+    expect(activityLogService.logEvent).toHaveBeenCalledWith('plaid_transaction_updated', 'plaid_transaction', id,
+      expect.stringContaining('as not an expense'), expect.objectContaining({ action: 'bucket', done: true }));
+
+    await plaidReviewService.unignore(id);
+
+    expect(await get('SELECT status, review_bucket FROM plaid_transactions WHERE id = ?', [id]))
+      .toEqual({ status: 'new', review_bucket: 'spending' });
+  });
+
+  test('Mark all done finishes every open Not expenses row only', async () => {
+    await stage('t1', { amount: 300, bucket: 'not_expense' });
+    await stage('t2', { amount: 400, bucket: 'not_expense' });
+    await stage('coffee');
+
+    expect(await plaidReviewService.markAllNotExpensesDone()).toEqual({ done: 2 });
+    expect((await plaidInboxService.listInbox('new')).counts).toEqual({ toReview: 1, notExpenses: 0 });
+  });
 });

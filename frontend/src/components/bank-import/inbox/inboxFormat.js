@@ -18,3 +18,8 @@ export const isCloseFixed = (txn, fixed) => !fixed.amountDiffers || Math.abs(fix
 
 /** Expected income is a likely match when its name fits the deposit or the amount is exact. */
 export const isCloseIncome = (income) => income.nameMatch || !income.amountDiffers;
+/**
+ * Whether "Update to <bank amount>" starts ticked when confirming a planned amount: only for a small difference
+ * (within 5%), so a far-off amount (a $280 debit against a $2,800 plan) doesn't quietly change the plan.
+ */
+export const updatesPlanByDefault = (planned, actual) => Math.abs(Math.abs(actual) - Math.abs(planned)) <= Math.abs(planned) * 0.05;

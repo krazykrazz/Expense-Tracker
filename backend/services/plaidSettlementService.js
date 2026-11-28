@@ -140,7 +140,10 @@ class PlaidSettlementService {
       }
 
       if (action === 'delete_expense') {
-        // Expense first: if that fails nothing has changed
+        // The charge was cancelled: every expense it was entered as goes (a split's other parts first, then the main
+        // one; if that fails nothing has changed for it)
+        const parts = await plaidSplitRepository.findPartsForTransactions([id]);
+        for (const { expenseId } of parts) await expenseService.deleteExpense(expenseId, tabId);
         if (txn.expenseId) await expenseService.deleteExpense(txn.expenseId, tabId);
         await plaidFileImportRepository.deleteTransaction(id);
         await logReview(txn, 'cancelled_delete', `Deleted the expense for cancelled pending charge ${describeTxn(txn)}`, { expenseId: txn.expenseId });

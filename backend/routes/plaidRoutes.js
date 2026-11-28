@@ -32,6 +32,7 @@ router.post('/card-balances/:id/use-bank-limit', plaidController.useBankCreditLi
 router.get('/sync-settings', plaidController.getSyncSettings);
 router.put('/sync-settings', plaidController.saveSyncSettings);
 router.get('/inbox', plaidController.getInbox);
+router.post('/inbox/not-expenses/done', plaidController.markAllNotExpensesDone);
 router.post('/inbox/:id/add', plaidController.addAsExpense);
 router.post('/inbox/:id/match', plaidController.matchToExpense);
 router.post('/inbox/:id/match-fixed', plaidController.matchToFixedExpense);
@@ -46,6 +47,7 @@ router.post('/inbox/:id/reimbursement', plaidController.applyReimbursement);
 router.delete('/inbox/:id/reimbursement', plaidController.unlinkReimbursement);
 router.get('/transactions/:id/split-candidates', plaidController.getSplitCandidates);
 router.post('/transactions/:id/split', plaidController.splitTransaction);
+router.post('/transactions/:id/unlink', plaidController.unlinkTransaction);
 router.delete('/transactions/:id/split/:expenseId', plaidController.removeSplitExpense);
 router.post('/inbox/:id/cancelled', plaidController.resolveCancelled);
 router.post('/inbox/:id/ignore', plaidController.ignore);

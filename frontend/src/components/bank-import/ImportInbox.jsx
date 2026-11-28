@@ -1,38 +1,41 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { getInbox, resolveCancelledPending } from '../../services/plaidApi';
+import { getInbox, resolveCancelledPending, markAllNotExpensesDone } from '../../services/plaidApi';
 import { useSyncEvent } from '../../hooks/useSyncEvent';
 import InboxRow from './inbox/InboxRow';
 import CancelledRow from './inbox/CancelledRow';
+import StuckBanks from './inbox/StuckBanks';
 import { INBOX_ACTIONS } from './inbox/inboxActions';
 
-/** The Inbox filters: the two tabs of rows still to review (by bucket), and ignored rows. */
+/** The Inbox filters: the two tabs of rows still to review (by bucket), and the rows finished as not an expense or ignored. */
 const VIEWS = [
   { value: 'spending', label: 'To review', status: 'new', countKey: 'toReview' },
   { value: 'not_expense', label: 'Not expenses', status: 'new', countKey: 'notExpenses' },
-  { value: 'ignored', label: 'Ignored', status: 'ignored', countKey: null }
+  { value: 'ignored', label: 'Done & ignored', status: 'ignored', countKey: null }
 ];
 const COUNT_KEY = { spending: 'toReview', not_expense: 'notExpenses' };
 
 /**
- * The tab counts once `txn` leaves the list: it no longer counts where it was, and moving it (or restoring an
- * ignored row) counts it in the tab it goes to.
+ * The tab counts once `txn` leaves the list: it no longer counts where it was, and moving it to To review (or
+ * restoring a done or ignored row) counts it in the tab it goes to. Marking it not an expense finishes it.
  */
 const countsAfter = (counts, txn, action, payload) => {
   if (!counts) return counts;
   const next = { ...counts };
   const from = txn.status === 'new' ? COUNT_KEY[txn.bucket] : null;
-  const to = action === 'bucket' ? COUNT_KEY[payload] : action === 'unignore' ? COUNT_KEY[txn.bucket] : null;
+  // Undo of Not an expense returns the row to To review
+  const restoredTo = txn.bucket === 'not_expense' ? 'toReview' : COUNT_KEY[txn.bucket];
+  const to = action === 'bucket' ? (payload === 'spending' ? 'toReview' : null) : action === 'unignore' ? restoredTo : null;
   if (from) next[from] = Math.max(0, next[from] - 1);
   if (to) next[to] += 1;
   return next;
 };
 
 /**
- * Inbox tab: each synced bank transaction is added as a new expense, matched to an existing one, or ignored.
- * Rows still to review are split into To review (spending) and Not expenses (card payments and transfers between
- * accounts); either can be moved to the other. `initialView` picks the filter it opens on (default To review).
+ * Inbox tab: each synced bank transaction is added as a new expense, matched to an existing one, marked not an
+ * expense, or ignored. Rows still to review are split into To review (spending) and Not expenses (transfers between
+ * accounts, filed there by their category, to mark done). `initialView` picks the filter it opens on (default To review).
  */
-const ImportInbox = ({ initialView, onExpensesChanged, onInboxChanged, onOpenConnections }) => {
+const ImportInbox = ({ status, onStatusChange, initialView, onExpensesChanged, onInboxChanged, onOpenConnections }) => {
   const [view, setView] = useState(VIEWS.some(v => v.value === initialView) ? initialView : 'spending');
   const { status: filter } = VIEWS.find(v => v.value === view);
   const [data, setData] = useState({ transactions: [], hiddenUnmapped: 0 });
@@ -98,6 +101,22 @@ const ImportInbox = ({ initialView, onExpensesChanged, onInboxChanged, onOpenCon
     }
   };
 
+  const [markingAll, setMarkingAll] = useState(false);
+  const [markAllError, setMarkAllError] = useState(null);
+  const handleMarkAllDone = async () => {
+    setMarkingAll(true);
+    setMarkAllError(null);
+    try {
+      await markAllNotExpensesDone();
+      onInboxChanged?.();
+      await load();
+    } catch (err) {
+      setMarkAllError(err.message);
+    } finally {
+      setMarkingAll(false);
+    }
+  };
+
   const { transactions, hiddenUnmapped, hiddenUnknown, counts } = data;
   const cancelled = view === 'spending' ? (data.cancelled || []) : [];
 
@@ -132,7 +151,14 @@ const ImportInbox = ({ initialView, onExpensesChanged, onInboxChanged, onOpenCon
           ))}
         </div>
         <span className="bank-import-muted">{loading ? 'Loading…' : `${transactions.length} transaction${transactions.length === 1 ? '' : 's'}`}</span>
+        {view === 'not_expense' && transactions.length > 0 && (
+          <button className="bank-import-secondary" onClick={handleMarkAllDone} disabled={markingAll || busyId !== null}>
+            {markingAll ? 'Marking…' : 'Mark all done'}
+          </button>
+        )}
       </div>
+      {markAllError && <div className="bank-import-error" role="alert">{markAllError}</div>}
+      <StuckBanks status={status} onStatusChange={onStatusChange} onReload={load} onOpenConnections={onOpenConnections} />
 
       {hiddenUnmapped > 0 && (
         <div className="bank-import-message">
@@ -170,8 +196,8 @@ const ImportInbox = ({ initialView, onExpensesChanged, onInboxChanged, onOpenCon
         <div className="bank-import-empty">
           {{
             spending: 'Nothing to review. Use Sync now on the Connections tab to pull new transactions.',
-            not_expense: 'No card payments or transfers waiting.',
-            ignored: 'No ignored transactions.'
+            not_expense: 'No transfers waiting.',
+            ignored: 'Nothing marked not an expense or ignored.'
           }[view]}
         </div>
       ) : (

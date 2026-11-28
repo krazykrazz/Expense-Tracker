@@ -16,6 +16,7 @@ jest.mock('./activityLogService');
 const { getDatabase } = require('../database/db');
 const activityLogService = require('./activityLogService');
 const plaidSplitService = require('./plaidSplitService');
+const plaidSettlementService = require('./plaidSettlementService');
 const plaidInboxService = require('./plaidInboxService');
 const plaidCycleCheckService = require('./plaidCycleCheckService');
 const expenseService = require('./expenseService');
@@ -135,11 +136,37 @@ describe('candidates', () => {
 
   test('refuses a row that can not be split', async () => {
     await expect(plaidSplitService.candidates(99999)).rejects.toMatchObject({ statusCode: 404 });
-    await expect(plaidSplitService.candidates(await bankRow('p', 50, { pending: 1 }))).rejects.toMatchObject({ statusCode: 400 });
     await expect(plaidSplitService.candidates(await bankRow('c', -50))).rejects.toMatchObject({ statusCode: 400 });
     await expect(plaidSplitService.candidates(await bankRow('i', 50, { status: 'ignored' }))).rejects.toMatchObject({ statusCode: 409 });
     await run('UPDATE plaid_accounts SET payment_method_id = NULL WHERE id = ?', [debitAccountId]);
     await expect(plaidSplitService.candidates(await bankRow('u', 50, { accountId: debitAccountId }))).rejects.toMatchObject({ statusCode: 400 });
+  });
+});
+
+describe('a pending charge (owner, 2026-11-27)', () => {
+  test('can be split; the links stay when it settles, and move with it when it settles under a new reference', async () => {
+    const { id, big, small } = await brio({ pending: 1 });
+    await plaidSplitService.apply(id, [big, small]);
+    expect(await rowOf(id)).toEqual({ status: 'matched', expenseId: big });
+    expect(await partsOf(id)).toEqual([small]);
+
+    // Dropped by the bank and posted under its own id: linking the posted row takes the split along
+    await run("UPDATE plaid_transactions SET removed_at = '2026-11-22' WHERE id = ?", [id]);
+    const posted = await bankRow('brio-posted', 326.49, { date: '2026-11-21' });
+    await plaidSettlementService.resolveCancelled(id, { action: 'link', postedId: posted });
+
+    expect(await rowOf(posted)).toEqual({ status: 'matched', expenseId: big });
+    expect(await partsOf(posted)).toEqual([small]);
+  });
+
+  test('a cancelled one deletes every expense it was entered as', async () => {
+    const { id, big, small } = await brio({ pending: 1 });
+    await plaidSplitService.apply(id, [big, small]);
+    await run("UPDATE plaid_transactions SET removed_at = '2026-11-22' WHERE id = ?", [id]);
+
+    await plaidSettlementService.resolveCancelled(id, { action: 'delete_expense' });
+
+    expect(await all(`SELECT id FROM expenses WHERE id IN (${big}, ${small})`)).toEqual([]);
   });
 });
 
@@ -197,7 +224,7 @@ describe('apply to a charge still to review', () => {
     expect(activityLogService.logEvent).not.toHaveBeenCalled();
   });
 
-  test('refuses another payment method, an expense already linked (as an expense or as a part), a pending row, a credit and a reviewed row', async () => {
+  test('refuses another payment method, an expense already linked (as an expense or as a part), a credit and a reviewed row', async () => {
     const { id, big, small } = await brio();
     const debit = await expense({ amount: 82.47, paymentMethodId: DEBIT, method: 'Debit' });
     await expect(plaidSplitService.apply(id, [big, debit])).rejects.toMatchObject({ statusCode: 400 });
@@ -211,7 +238,6 @@ describe('apply to a charge still to review', () => {
     const again = await bankRow('again', 326.49);
     await expect(plaidSplitService.apply(again, [big, small])).rejects.toMatchObject({ statusCode: 409, message: expect.stringMatching(/is already linked to a bank transaction/) });
 
-    await expect(plaidSplitService.apply(await bankRow('p', 100, { pending: 1 }), [big, small])).rejects.toMatchObject({ statusCode: 400 });
     await expect(plaidSplitService.apply(await bankRow('c', -100), [big, small])).rejects.toMatchObject({ statusCode: 400 });
     expect(await rowOf(id)).toEqual({ status: 'new', expenseId: null });
     expect(await rowOf(again)).toEqual({ status: 'new', expenseId: null });

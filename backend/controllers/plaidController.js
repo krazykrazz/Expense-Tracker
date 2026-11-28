@@ -210,8 +210,8 @@ const matchToExpense = asyncHandler(async (req, res) => {
  * Body: { fixedExpenseId, loanPayment?: 'log'|'link'|'none', loanPaymentId? }
  */
 const matchToFixedExpense = asyncHandler(async (req, res) => {
-  const { fixedExpenseId, loanPayment, loanPaymentId } = req.body || {};
-  res.json(await plaidReviewService.matchToFixedExpense(idParam(req), fixedExpenseId, tabIdOf(req), { loanPayment, loanPaymentId }));
+  const { fixedExpenseId, loanPayment, loanPaymentId, updateAmount } = req.body || {};
+  res.json(await plaidReviewService.matchToFixedExpense(idParam(req), fixedExpenseId, tabIdOf(req), { loanPayment, loanPaymentId, updateAmount }));
 });
 
 /**
@@ -326,6 +326,16 @@ const setBucket = asyncHandler(async (req, res) => {
   res.json(await plaidReviewService.setBucket(inboxIdParam(req), (req.body || {}).bucket));
 });
 
+/** POST /api/plaid/transactions/:id/unlink: return a reviewed bank row to the Inbox, keeping what it was linked to */
+const unlinkTransaction = asyncHandler(async (req, res) => {
+  res.json(await plaidReviewService.unlinkFromBank(idParam(req)));
+});
+
+/** POST /api/plaid/inbox/not-expenses/done: mark every row filed under Not expenses as done */
+const markAllNotExpensesDone = asyncHandler(async (req, res) => {
+  res.json(await plaidReviewService.markAllNotExpensesDone());
+});
+
 /** POST /api/plaid/inbox/:id/unignore */
 const unignore = asyncHandler(async (req, res) => {
   res.json(await plaidReviewService.unignore(idParam(req)));
@@ -333,6 +343,8 @@ const unignore = asyncHandler(async (req, res) => {
 
 module.exports = {
   getCardBalances,
+  markAllNotExpensesDone,
+  unlinkTransaction,
   getCardCycleChecks,
   useBankCreditLimit,
   importBankFile,
